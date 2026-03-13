@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'core/di/injection_container.dart';
+import 'core/navigation/main_shell.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
 
-void main() {
+/// 🔧 DEV FLAG — false = login screen, true = skip to home
+const bool kSkipLogin = false;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initDependencies();
   runApp(const TravelAdvisorApp());
 }
 
@@ -10,17 +19,10 @@ class TravelAdvisorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Travel Advisor',
+      title: 'GP Travel Advisor',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const Scaffold(
-        body: Center(
-          child: Text('Travel Advisor Mobile'),
-        ),
-      ),
+      theme: AppTheme.light,
+      home: kSkipLogin ? const MainShell() : const LoginScreen(),
     );
   }
 }
