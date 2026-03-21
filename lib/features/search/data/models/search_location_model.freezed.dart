@@ -24,6 +24,7 @@ mixin _$SearchLocationModel {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get imageUrl => throw _privateConstructorUsedError;
+  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this SearchLocationModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,7 +43,7 @@ abstract class $SearchLocationModelCopyWith<$Res> {
     $Res Function(SearchLocationModel) then,
   ) = _$SearchLocationModelCopyWithImpl<$Res, SearchLocationModel>;
   @useResult
-  $Res call({String id, String name, String imageUrl});
+  $Res call({String id, String name, String imageUrl, String type});
 }
 
 /// @nodoc
@@ -59,7 +60,12 @@ class _$SearchLocationModelCopyWithImpl<$Res, $Val extends SearchLocationModel>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? imageUrl = null}) {
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? imageUrl = null,
+    Object? type = null,
+  }) {
     return _then(
       _value.copyWith(
             id: null == id
@@ -73,6 +79,10 @@ class _$SearchLocationModelCopyWithImpl<$Res, $Val extends SearchLocationModel>
             imageUrl: null == imageUrl
                 ? _value.imageUrl
                 : imageUrl // ignore: cast_nullable_to_non_nullable
+                      as String,
+            type: null == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
                       as String,
           )
           as $Val,
@@ -89,7 +99,7 @@ abstract class _$$SearchLocationModelImplCopyWith<$Res>
   ) = __$$SearchLocationModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String id, String name, String imageUrl});
+  $Res call({String id, String name, String imageUrl, String type});
 }
 
 /// @nodoc
@@ -105,7 +115,12 @@ class __$$SearchLocationModelImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? imageUrl = null}) {
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? imageUrl = null,
+    Object? type = null,
+  }) {
     return _then(
       _$SearchLocationModelImpl(
         id: null == id
@@ -120,6 +135,10 @@ class __$$SearchLocationModelImplCopyWithImpl<$Res>
             ? _value.imageUrl
             : imageUrl // ignore: cast_nullable_to_non_nullable
                   as String,
+        type: null == type
+            ? _value.type
+            : type // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -132,6 +151,7 @@ class _$SearchLocationModelImpl implements _SearchLocationModel {
     required this.id,
     required this.name,
     required this.imageUrl,
+    this.type = 'city',
   });
 
   factory _$SearchLocationModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -143,10 +163,13 @@ class _$SearchLocationModelImpl implements _SearchLocationModel {
   final String name;
   @override
   final String imageUrl;
+  @override
+  @JsonKey()
+  final String type;
 
   @override
   String toString() {
-    return 'SearchLocationModel(id: $id, name: $name, imageUrl: $imageUrl)';
+    return 'SearchLocationModel(id: $id, name: $name, imageUrl: $imageUrl, type: $type)';
   }
 
   @override
@@ -157,12 +180,13 @@ class _$SearchLocationModelImpl implements _SearchLocationModel {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl));
+                other.imageUrl == imageUrl) &&
+            (identical(other.type, type) || other.type == type));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, imageUrl);
+  int get hashCode => Object.hash(runtimeType, id, name, imageUrl, type);
 
   /// Create a copy of SearchLocationModel
   /// with the given fields replaced by the non-null parameter values.
@@ -186,6 +210,7 @@ abstract class _SearchLocationModel implements SearchLocationModel {
     required final String id,
     required final String name,
     required final String imageUrl,
+    final String type,
   }) = _$SearchLocationModelImpl;
 
   factory _SearchLocationModel.fromJson(Map<String, dynamic> json) =
@@ -197,6 +222,8 @@ abstract class _SearchLocationModel implements SearchLocationModel {
   String get name;
   @override
   String get imageUrl;
+  @override
+  String get type;
 
   /// Create a copy of SearchLocationModel
   /// with the given fields replaced by the non-null parameter values.

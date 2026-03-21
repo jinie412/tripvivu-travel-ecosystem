@@ -1,80 +1,108 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
+import '../../../itinerary/domain/entities/itinerary_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
+import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class CurrentItineraryCard extends StatelessWidget {
-  const CurrentItineraryCard({super.key});
+  final ItineraryEntity? item;
+
+  const CurrentItineraryCard({super.key, this.item});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.blobLight.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'TH2',
-                  style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '24 \u2013 26',
-                  style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w900),
-                ),
-              ],
+    if (item == null) {
+      return const SizedBox.shrink(); // Hide if no current itinerary
+    }
+
+    final fmtMonth = DateFormat('MMM', 'vi_VN').format(item!.startDate ?? DateTime.now()).toUpperCase();
+    final fmtDay = '${item!.startDate?.day ?? ''} \u2013 ${item!.endDate?.day ?? ''}';
+
+    final cubit = context.read<ItineraryCubit>();
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider.value(
+              value: cubit,
+              child: ItinerarySummaryScreen(itineraryId: item!.id),
             ),
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ĐANG DIỄN RA',
-                  style: TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Du lịch thành phố Hồ Chí Minh',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1E)),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 12, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    SizedBox(width: 12),
-                    Icon(Icons.people_outline, size: 12, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text('2 người', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  ],
-                ),
-              ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppColors.blobLight.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    fmtMonth,
+                    style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    fmtDay,
+                    style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
             ),
-          )
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item!.status == ItineraryStatus.upcoming ? 'SẮP DIỄN RA' : (item!.status == ItineraryStatus.completed ? 'HOÀN THÀNH' : 'ĐANG DIỄN RA'),
+                    style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item!.title,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1E)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      const Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
+                      const SizedBox(width: 12),
+                      const Icon(Icons.people_outline, size: 12, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text('${item!.durationDays} ngày', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

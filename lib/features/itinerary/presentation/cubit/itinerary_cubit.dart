@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/itinerary_entity.dart';
+import '../../domain/entities/itinerary_summary.dart';
+import '../../domain/entities/itinerary_detail_entity.dart';
 import '../../domain/usecases/itinerary_usecases.dart';
 import 'itinerary_state.dart';
 
@@ -13,17 +15,23 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final GetItinerariesUseCase _getItineraries;
   final GetItinerarySummaryUseCase _getSummary;
   final DeleteItineraryUseCase _deleteItinerary;
+  final GetItineraryDetailUseCase _getItineraryDetail;
 
   /// Filter đang active, null = "Tất cả".
   ItineraryStatus? _currentFilter;
+
+  /// Filter con cho "Đã đi".
+  CompletedFilter _currentCompletedFilter = CompletedFilter.all;
 
   ItineraryCubit({
     required GetItinerariesUseCase getItineraries,
     required GetItinerarySummaryUseCase getSummary,
     required DeleteItineraryUseCase deleteItinerary,
+    required GetItineraryDetailUseCase getItineraryDetail,
   })  : _getItineraries = getItineraries,
         _getSummary = getSummary,
         _deleteItinerary = deleteItinerary,
+        _getItineraryDetail = getItineraryDetail,
         super(const ItineraryInitial());
 
   /// Tải toàn bộ dữ liệu (danh sách + thống kê).
@@ -37,10 +45,24 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         _getItineraries(status: _currentFilter),
         _getSummary(),
       ]);
+
+      var itineraries = results[0] as List<ItineraryEntity>;
+      
+      // Lọc thêm theo Rating nếu đang ở tab "Đã đi"
+      if (_currentFilter == ItineraryStatus.completed) {
+        if (_currentCompletedFilter == CompletedFilter.rated) {
+          itineraries = itineraries.where((i) => i.rating != null).toList();
+        } else if (_currentCompletedFilter == CompletedFilter.unrated) {
+          itineraries = itineraries.where((i) => i.rating == null).toList();
+        }
+      }
+
       emit(ItineraryLoaded(
-        itineraries: results[0] as List<ItineraryEntity>,
+        itineraries: itineraries,
         summary: results[1] as dynamic,
         activeFilter: _currentFilter,
+        activeCompletedFilter: _currentCompletedFilter,
+        selectedItinerary: (state is ItineraryLoaded) ? (state as ItineraryLoaded).selectedItinerary : null,
       ));
     } catch (e) {
       emit(ItineraryError(e.toString()));
@@ -52,6 +74,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   /// Gọi khi người dùng bấm chip filter (Tất cả / Sắp đi / Đã đi / Nháp).
   Future<void> filterBy(ItineraryStatus? status) async {
     _currentFilter = status;
+    // Reset filter con khi đổi tab chính
+    _currentCompletedFilter = CompletedFilter.all;
+    await loadData();
+  }
+
+  /// Lọc con cho "Đã đi" (Tất cả / Đã đánh giá / Chưa đánh giá).
+  Future<void> filterByCompleted(CompletedFilter filter) async {
+    _currentCompletedFilter = filter;
     await loadData();
   }
 
@@ -66,5 +96,53 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     } catch (e) {
       emit(ItineraryError('Không thể xóa lịch trình: ${e.toString()}'));
     }
+  }
+
+  /// Chọn một lịch trình để xem chi tiết.
+  /// Cubit sẽ fetch data detail và lưu vào [selectedItinerary].
+  Future<void> selectItinerary(String id) async {
+    final currentState = state;
+    if (currentState is ItineraryLoaded) {
+      // Clear previous selection to show loading
+      emit(currentState.copyWithSelected(null));
+      
+      try {
+        final detail = await _getItineraryDetail(id);
+        emit((state as ItineraryLoaded).copyWithSelected(detail));
+      } catch (e) {
+        emit(ItineraryError('Không thể tải chi tiết: ${e.toString()}'));
+      }
+    } else {
+      // Nếu chưa load danh sách (ví dụ đi từ màn hình Saved)
+      emit(const ItineraryLoading());
+      try {
+        // Tải cả summary và detail để có đủ data cho trạng thái Loaded
+        final results = await Future.wait([
+          _getSummary(),
+          _getItineraryDetail(id),
+          _getItineraries(),
+        ]);
+        
+        emit(ItineraryLoaded(
+          itineraries: results[2] as List<ItineraryEntity>,
+          summary: results[0] as ItinerarySummary,
+          selectedItinerary: results[1] as ItineraryDetailEntity,
+        ));
+      } catch (e) {
+        emit(ItineraryError('Không thể tải dữ liệu: ${e.toString()}'));
+      }
+    }
+  }
+}
+
+extension on ItineraryLoaded {
+  ItineraryLoaded copyWithSelected(dynamic selected) {
+    return ItineraryLoaded(
+      itineraries: itineraries,
+      summary: summary,
+      activeFilter: activeFilter,
+      activeCompletedFilter: activeCompletedFilter,
+      selectedItinerary: selected,
+    );
   }
 }

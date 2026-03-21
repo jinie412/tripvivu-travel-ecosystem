@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection_container.dart';
 import '../cubit/review_cubit.dart';
 import '../cubit/review_state.dart';
@@ -11,20 +11,26 @@ import 'place_review_screen.dart';
 
 class RateItineraryScreen extends StatelessWidget {
   final String itineraryId;
+  final bool isReadOnly;
 
-  const RateItineraryScreen({super.key, required this.itineraryId});
+  const RateItineraryScreen({
+    super.key,
+    required this.itineraryId,
+    this.isReadOnly = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ReviewCubit>()..loadReviewData(itineraryId),
-      child: const _RateItineraryView(),
+      child: _RateItineraryView(isReadOnly: isReadOnly),
     );
   }
 }
 
 class _RateItineraryView extends StatelessWidget {
-  const _RateItineraryView();
+  final bool isReadOnly;
+  const _RateItineraryView({required this.isReadOnly});
 
   @override
   Widget build(BuildContext context) {
@@ -73,19 +79,19 @@ class _RateItineraryView extends StatelessWidget {
                         rating: state.generalRating,
                         applyToAll: state.applyToAllLocations,
                         mediaPaths: state.mediaPaths,
-                        onRatingChanged: (rating) {
+                        onRatingChanged: isReadOnly ? (_) {} : (rating) {
                           context.read<ReviewCubit>().setGeneralRating(rating);
                         },
-                        onApplyToAllChanged: (value) {
+                        onApplyToAllChanged: isReadOnly ? (_) {} : (value) {
                           context.read<ReviewCubit>().toggleApplyToAll(value);
                         },
-                        onAddMedia: () {
+                        onAddMedia: isReadOnly ? () {} : () {
                           context.read<ReviewCubit>().addMedia();
                         },
-                        onRemoveMedia: (path) {
+                        onRemoveMedia: isReadOnly ? (_) {} : (path) {
                           context.read<ReviewCubit>().removeMedia(path);
                         },
-                        onClearAllMedia: () {
+                        onClearAllMedia: isReadOnly ? () {} : () {
                           context.read<ReviewCubit>().clearAllMedia();
                         },
                       ),
@@ -135,7 +141,8 @@ class _RateItineraryView extends StatelessWidget {
                       ...filteredLocations.map(
                         (loc) => LocationReviewListTile(
                           location: loc,
-                          onRatingChanged: (rating) {
+                          isReadOnly: isReadOnly,
+                          onRatingChanged: isReadOnly ? (_) {} : (rating) {
                             context.read<ReviewCubit>().setLocationRating(loc.id, rating);
                           },
                           onWriteReview: () {
@@ -145,6 +152,7 @@ class _RateItineraryView extends StatelessWidget {
                                 builder: (_) => PlaceReviewScreen(
                                   locationId: loc.id,
                                   reviewCubit: context.read<ReviewCubit>(),
+                                  isReadOnly: isReadOnly,
                                 ),
                               ),
                             );
@@ -186,11 +194,11 @@ class _RateItineraryView extends StatelessWidget {
                         minimumSize: const Size(double.infinity, 48),
                         elevation: 0,
                       ),
-                      onPressed: () {
+                      onPressed: isReadOnly ? () => Navigator.pop(context) : () {
                          // Thực hiện gửi đánh giá
                       },
-                      child: const Text('Gửi đánh giá',
-                          style: TextStyle(
+                      child: Text(isReadOnly ? 'Quay lại' : 'Gửi đánh giá',
+                          style: const TextStyle(
                               fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
                   ),

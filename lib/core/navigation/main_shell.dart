@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/di/injection_container.dart';
 import '../../features/home/presentation/screens/explore_screen.dart';
 import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/saved/presentation/screens/saved_screen.dart';
 import '../../features/saved/presentation/cubit/saved_cubit.dart';
-import '../../features/saved/data/repositories/saved_repository_impl.dart';
-import '../../features/saved/data/datasources/saved_mock_data_source.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import '../../features/trip_planner/presentation/screens/trip_planner_screen.dart';
+import '../../features/profile/presentation/widgets/profile_drawer.dart';
+import 'tab_cubit.dart';
 
 /// Shell chính chứa Bottom Navigation Bar + IndexedStack các tab.
-///
-/// 5 tab: Khám phá (0) · Lịch trình (1) · [+] FAB (2) · Đã lưu (3) · Cá nhân (4)
-/// Tab 2 không có trang — chỉ có FAB ở giữa.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -21,18 +22,13 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
-
   /// Danh sách các trang tương ứng với tab navigation.
-  /// Index 2 bỏ trống (FAB slot).
   final List<Widget> _pages = [
     const ExploreScreen(), // 0 — Khám phá
     const ItineraryScreen(), // 1 — Lịch trình
     const SizedBox.shrink(), // 2 — placeholder cho FAB
     BlocProvider(
-      create: (context) => SavedCubit(
-        repository: SavedRepositoryImpl(dataSource: SavedMockDataSource()),
-      ),
+      create: (context) => sl<SavedCubit>(),
       child: const SavedScreen(),
     ), // 3 — Đã lưu
     const ProfileScreen(), // 4 - Cá nhân
@@ -40,37 +36,40 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: _BottomNav(
-        currentIndex: _currentIndex,
-        onTap: (i) {
-          // Bỏ qua tap vào slot FAB (index 2).
-          if (i == 2) return;
-          setState(() => _currentIndex = i);
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => sl<ItineraryCubit>()..loadData()),
+        BlocProvider(create: (_) => sl<ProfileCubit>()..loadProfile()),
+        BlocProvider(create: (_) => TabCubit()),
+      ],
+      child: BlocBuilder<TabCubit, int>(
+        builder: (context, currentIndex) {
+          return Scaffold(
+            drawer: const ProfileDrawer(),
+            body: IndexedStack(
+              index: currentIndex,
+              children: _pages,
+            ),
+            bottomNavigationBar: _BottomNav(
+              currentIndex: currentIndex,
+              onTap: (i) {
+                if (i == 2) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const TripPlannerScreen(),
+                    ),
+                  );
+                  return;
+                }
+                context.read<TabCubit>().changeTab(i);
+              },
+            ),
+          );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Mở màn tạo lịch trình mới.
-        },
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, size: 28),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── Bottom Navigation Bar ────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class _BottomNav extends StatelessWidget {
   final int currentIndex;
@@ -82,14 +81,13 @@ class _BottomNav extends StatelessWidget {
     return BottomAppBar(
       color: Colors.white,
       elevation: 8,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _NavItem(
+      padding: EdgeInsets.zero,
+      height: 90, 
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Expanded(
+            child: _NavItem(
               icon: Icons.explore_outlined,
               activeIcon: Icons.explore,
               label: 'Khám phá',
@@ -97,7 +95,9 @@ class _BottomNav extends StatelessWidget {
               current: currentIndex,
               onTap: onTap,
             ),
-            _NavItem(
+          ),
+          Expanded(
+            child: _NavItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
               label: 'Lịch trình',
@@ -105,9 +105,38 @@ class _BottomNav extends StatelessWidget {
               current: currentIndex,
               onTap: onTap,
             ),
-            // Khoảng trống cho FAB notch.
-            const SizedBox(width: 56),
-            _NavItem(
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onTap(2),
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tạo lịch trình',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF9E9E9E),
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: _NavItem(
               icon: Icons.favorite_outline,
               activeIcon: Icons.favorite,
               label: 'Đã lưu',
@@ -115,7 +144,9 @@ class _BottomNav extends StatelessWidget {
               current: currentIndex,
               onTap: onTap,
             ),
-            _NavItem(
+          ),
+          Expanded(
+            child: _NavItem(
               icon: Icons.person_outline,
               activeIcon: Icons.person,
               label: 'Cá nhân',
@@ -123,8 +154,8 @@ class _BottomNav extends StatelessWidget {
               current: currentIndex,
               onTap: onTap,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -169,45 +200,6 @@ class _NavItem extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── Placeholder cho tab chưa triển khai ──────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _PlaceholderTab extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _PlaceholderTab({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 56, color: const Color(0xFFBDBDBD)),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tính năng đang phát triển',
-              style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
-            ),
-          ],
-        ),
       ),
     );
   }

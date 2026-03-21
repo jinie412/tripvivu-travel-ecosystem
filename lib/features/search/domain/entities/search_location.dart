@@ -8,5 +8,6 @@ class SearchLocation with _$SearchLocation {
     required String id,
     required String name,
     required String imageUrl,
+    @Default('city') String type, // 'city' or 'place'
   }) = _SearchLocation;
 }

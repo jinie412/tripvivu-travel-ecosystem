@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/search_location.dart';
 import '../../../../features/city_detail/presentation/screens/city_detail_screen.dart';
+import '../../../../features/place/presentation/screens/place_detail_screen.dart';
+import '../../../../features/place/presentation/cubit/place_detail_cubit.dart';
+import '../../../../core/di/injection_container.dart';
 
 class SearchResultWidget extends StatelessWidget {
   final List<SearchLocation> results;
@@ -45,15 +49,27 @@ class SearchResultWidget extends StatelessWidget {
               final location = results[index];
               return InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CityDetailScreen(
-                        cityName: location.name,
-                        cityId: location.id,
+                  if (location.type == 'place') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => sl<PlaceDetailCubit>(),
+                          child: PlaceDetailScreen(placeId: location.id),
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CityDetailScreen(
+                          cityName: location.name,
+                          cityId: location.id,
+                        ),
+                      ),
+                    );
+                  }
                 },
                 child: _buildResultItem(location.name, location.imageUrl),
               );

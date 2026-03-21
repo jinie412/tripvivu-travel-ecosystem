@@ -12,6 +12,7 @@ _$SearchLocationModelImpl _$$SearchLocationModelImplFromJson(
   id: json['id'] as String,
   name: json['name'] as String,
   imageUrl: json['imageUrl'] as String,
+  type: json['type'] as String? ?? 'city',
 );
 
 Map<String, dynamic> _$$SearchLocationModelImplToJson(
@@ -20,4 +21,5 @@ Map<String, dynamic> _$$SearchLocationModelImplToJson(
   'id': instance.id,
   'name': instance.name,
   'imageUrl': instance.imageUrl,
+  'type': instance.type,
 };

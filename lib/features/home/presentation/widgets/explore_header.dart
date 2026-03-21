@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../../../search/presentation/screens/search_screen.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ExploreHeader extends StatelessWidget {
   const ExploreHeader({super.key});
@@ -28,7 +28,7 @@ class ExploreHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.tune, color: AppColors.primary, size: 20),
+                  icon: const Icon(Icons.menu, color: AppColors.primary, size: 20),
                   onPressed: () {
                     Scaffold.of(context).openDrawer();
                   },

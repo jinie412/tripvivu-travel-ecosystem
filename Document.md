@@ -1,3 +1,4 @@
+
 # ✈️ GPTravelAdvisor - Flutter Architecture Guide
 
 ![Flutter Version](https://img.shields.io/badge/Flutter-3.x-blue?style=for-the-badge&logo=flutter)
@@ -28,61 +29,91 @@ lib/
 │   └── ...                 # Feature mới sẽ tạo tại đây
 └── assets/                 # Hình ảnh, Icons (SVG), Fonts
 
-# 🏗️ Chi tiết cấu trúc một Feature (Feature Layers)
-
-Mỗi tính năng (Feature) trong dự án phải được phân tách rạch ròi thành 3 lớp chính để đảm bảo UI không bao giờ can thiệp trực tiếp vào dữ liệu thô.
+```
 
 ---
 
-## 📂 1. Presentation Layer (Tầng hiển thị)
-*Đây là nơi duy nhất chứa code Flutter (Widget).*
+## 🏗️ 2. Cấu trúc bên trong một Feature
 
-- **`screens/`**: Chứa các trang chính của feature (ví dụ: `home_screen.dart`).
-- **`widgets/`**: Chứa các thành phần giao diện nhỏ chỉ dùng riêng cho feature này (ví dụ: `hotel_card.dart`).
-- **`cubit/`**: Nơi quản lý State (Trạng thái). 
-    - `*_cubit.dart`: Xử lý logic và phát ra (emit) trạng thái.
-    - `*_state.dart`: Định nghĩa các trạng thái của màn hình (Initial, Loading, Success, Error).
+Mỗi folder trong `features/` được chia làm 3 lớp (layers):
 
+### 🔹 Presentation (Tầng giao diện)
 
+* **Screens:** Các trang lớn của ứng dụng.
+* **Widgets:** Các thành phần nhỏ có thể tái sử dụng.
+* **Cubit:** Quản lý trạng thái (State) của UI.
 
----
+### 🔹 Domain (Tầng Logic nghiệp vụ)
 
-## 📂 2. Domain Layer (Tầng nghiệp vụ)
-*Đây là "não bộ" của dự án, chỉ chứa code Dart thuần túy (Pure Dart), không phụ thuộc vào Flutter hay API.*
+* **Entities:** Các đối tượng dữ liệu thuần Dart (không chứa logic JSON).
+* **Repositories (Interface):** Các bản thiết kế quy định tính năng cần làm gì.
+* **UseCases:** Các hành động cụ thể (VD: `GetHotelsUseCase`).
 
-- **`entities/`**: Định nghĩa các đối tượng dữ liệu mà UI cần hiển thị (ví dụ: `Hotel`, `User`).
-- **`repositories/`**: Định nghĩa các **Interface** (Abstract class). Nó chỉ nói "Tôi cần lấy dữ liệu khách sạn", còn lấy ở đâu thì nó không quan tâm.
-- **`usecases/`**: Mỗi hành động của người dùng là một UseCase (ví dụ: `GetTopHotels`, `SearchDestinations`).
+### 🔹 Data (Tầng Dữ liệu)
 
----
-
-## 📂 3. Data Layer (Tầng dữ liệu)
-*Nơi trực tiếp làm việc với môi trường bên ngoài (API, Database).*
-
-- **`models/`**: Chứa các class kế thừa từ Entity nhưng có thêm phương thức `fromJson` và `toJson`.
-- **`datasources/`**: 
-    - `remote_data_source.dart`: Gọi API qua Dio.
-    - `local_data_source.dart`: Lấy dữ liệu từ SharedPreferences hoặc SQLite.
-- **`repositories/`**: Bản thực thi (Implementation) của Interface bên Domain. Nó sẽ điều phối việc lấy dữ liệu từ DataSource nào và chuyển đổi (map) từ **Model** sang **Entity**.
+* **Models:** Đối tượng có chứa logic `fromJson` và `toJson`.
+* **DataSources:** Nơi gọi API trực tiếp (Remote) hoặc lấy từ Cache (Local).
+* **Repositories (Impl):** Thực thi các Interface từ tầng Domain.
 
 ---
 
-## 🔄 Mối quan hệ giữa các thành phần
+## 🔄 3. Luồng dữ liệu (Data Flow)
 
-| Từ (Source) | Gọi đến (Target) | Phương thức |
-| :--- | :--- | :--- |
-| **UI** | **Cubit** | `context.read<MyCubit>().doSomething()` |
-| **Cubit** | **UseCase** | `useCase.execute()` |
-| **UseCase** | **Repository (Interface)** | `repository.getData()` |
-| **Repository (Impl)** | **DataSource** | `remoteDataSource.fetchRawData()` |
+Để phát triển tính năng, chúng ta tuân thủ luồng:
+**UI** ➔ **Cubit** ➔ **UseCase** ➔ **Repository** ➔ **DataSource** ➔ **API**
+
+Khi dữ liệu trả về:
+**API (JSON)** ➔ **Model** ➔ **Entity** ➔ **Repository** ➔ **Cubit (State)** ➔ **UI (Rebuild)**
 
 ---
 
-## 💡 Ví dụ về quy tắc đặt tên (Naming Convention)
+## 🚀 4. Quy trình thêm Feature mới
 
-Giả sử làm feature **Auth**:
-- **Entity**: `UserEntity`
-- **Model**: `UserModel`
-- **Repository Interface**: `AuthRepository`
-- **Repository Implementation**: `AuthRepositoryImpl`
-- **Cubit**: `AuthCubit`
+Thực hiện theo 8 bước để tránh sai sót:
+
+1. **Entity:** Tạo tại `domain/entities/`.
+2. **Model:** Tạo tại `data/models/` (Dùng `freezed` để generate).
+3. **DataSource:** Viết hàm gọi API/Mock tại `data/datasources/`.
+4. **Repository Impl:** Triển khai logic tại `data/repositories/`.
+5. **UseCase:** Viết hàm thực thi logic cho UI tại `domain/usecases/`.
+6. **Cubit:** Quản lý trạng thái `Loading`, `Loaded`, `Error` tại `presentation/cubit/`.
+7. **UI:** Vẽ màn hình và dùng `BlocBuilder` để hiển thị dữ liệu.
+8. **DI:** Đăng ký các lớp vào `core/di/injection_container.dart`.
+
+---
+
+## 🛠️ 5. Lệnh thực thi (Commands)
+
+Chúng ta sử dụng `build_runner` để tự động tạo code cho Model & Entity.
+
+* **Chạy một lần:**
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+
+```
+
+* **Chạy chế độ "Watch" (Tự động cập nhật khi lưu file):**
+
+```bash
+flutter pub run build_runner watch --delete-conflicting-outputs
+
+```
+
+---
+
+## ⚠️ 6. Quy tắc bắt buộc (Coding Standards)
+
+* **UI:** Không viết logic xử lý dữ liệu (if/else, tính toán) trong Widget. Tất cả phải nằm trong Cubit.
+* **Dependency Injection:** Luôn sử dụng `sl<T>()` từ GetIt để khởi tạo đối tượng.
+* **Assets:** Chỉ sử dụng định dạng `.svg` cho icon. Không vẽ icon bằng code.
+* **Naming:**
+* Folder/File: `snake_case` (ví dụ: `hotel_card_widget.dart`).
+* Class: `PascalCase` (ví dụ: `HotelCardWidget`).
+
+
+* **Colors:** Không dùng màu trực tiếp. Dùng `AppColors.primary`, `AppColors.background`.
+
+---
+
+> **Note:** Nếu bạn cần thay đổi từ dữ liệu ảo (Mock) sang dữ liệu thật (API), bạn chỉ cần sửa trong `injection_container.dart` bằng cách đổi DataSource, toàn bộ UI sẽ không bị ảnh hưởng.

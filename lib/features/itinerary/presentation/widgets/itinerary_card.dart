@@ -2,7 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/itinerary_entity.dart';
 
 /// Card lịch trình (Sắp đi / Nháp) — có ảnh, badge ngày, progress bar.
@@ -32,33 +33,12 @@ class ItineraryCard extends StatelessWidget {
           motion: const BehindMotion(),
           extentRatio: 0.4,
           children: [
-            // ── Nút Sửa ──
-            CustomSlidableAction(
-              onPressed: (_) => onEdit?.call(),
-              backgroundColor: const Color(0xFF42A5F5),
-              foregroundColor: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.edit_outlined, size: 22),
-                  SizedBox(height: 4),
-                  Text('Sửa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
             // ── Nút Xóa ──
             CustomSlidableAction(
               onPressed: (_) => onDelete?.call(),
               backgroundColor: const Color(0xFFEF5350),
               foregroundColor: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.circular(16),
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -137,6 +117,28 @@ class ItineraryCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                      // Badge "Đã đi" ở góc trên bên trái
+                      if (item.status == ItineraryStatus.completed)
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50), // Green for completed
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'ĐÃ ĐI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -161,11 +163,35 @@ class ItineraryCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () {},
-                            child: const Icon(Icons.more_vert,
-                                size: 20, color: Color(0xFF9E9E9E)),
-                          ),
+                          if (item.status == ItineraryStatus.completed)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RateItineraryScreen(
+                                      itineraryId: item.id,
+                                      isReadOnly: item.rating != null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: item.rating == null ? AppColors.primary : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  item.rating == null ? 'Đánh giá' : 'Xem đánh giá',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.rating == null ? Colors.white : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 8),

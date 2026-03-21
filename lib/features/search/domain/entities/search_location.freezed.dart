@@ -20,6 +20,7 @@ mixin _$SearchLocation {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get imageUrl => throw _privateConstructorUsedError;
+  String get type => throw _privateConstructorUsedError;
 
   /// Create a copy of SearchLocation
   /// with the given fields replaced by the non-null parameter values.
@@ -35,7 +36,7 @@ abstract class $SearchLocationCopyWith<$Res> {
     $Res Function(SearchLocation) then,
   ) = _$SearchLocationCopyWithImpl<$Res, SearchLocation>;
   @useResult
-  $Res call({String id, String name, String imageUrl});
+  $Res call({String id, String name, String imageUrl, String type});
 }
 
 /// @nodoc
@@ -52,7 +53,12 @@ class _$SearchLocationCopyWithImpl<$Res, $Val extends SearchLocation>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? imageUrl = null}) {
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? imageUrl = null,
+    Object? type = null,
+  }) {
     return _then(
       _value.copyWith(
             id: null == id
@@ -66,6 +72,10 @@ class _$SearchLocationCopyWithImpl<$Res, $Val extends SearchLocation>
             imageUrl: null == imageUrl
                 ? _value.imageUrl
                 : imageUrl // ignore: cast_nullable_to_non_nullable
+                      as String,
+            type: null == type
+                ? _value.type
+                : type // ignore: cast_nullable_to_non_nullable
                       as String,
           )
           as $Val,
@@ -82,7 +92,7 @@ abstract class _$$SearchLocationImplCopyWith<$Res>
   ) = __$$SearchLocationImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String id, String name, String imageUrl});
+  $Res call({String id, String name, String imageUrl, String type});
 }
 
 /// @nodoc
@@ -98,7 +108,12 @@ class __$$SearchLocationImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? id = null, Object? name = null, Object? imageUrl = null}) {
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? imageUrl = null,
+    Object? type = null,
+  }) {
     return _then(
       _$SearchLocationImpl(
         id: null == id
@@ -113,6 +128,10 @@ class __$$SearchLocationImplCopyWithImpl<$Res>
             ? _value.imageUrl
             : imageUrl // ignore: cast_nullable_to_non_nullable
                   as String,
+        type: null == type
+            ? _value.type
+            : type // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -125,6 +144,7 @@ class _$SearchLocationImpl implements _SearchLocation {
     required this.id,
     required this.name,
     required this.imageUrl,
+    this.type = 'city',
   });
 
   @override
@@ -133,10 +153,13 @@ class _$SearchLocationImpl implements _SearchLocation {
   final String name;
   @override
   final String imageUrl;
+  @override
+  @JsonKey()
+  final String type;
 
   @override
   String toString() {
-    return 'SearchLocation(id: $id, name: $name, imageUrl: $imageUrl)';
+    return 'SearchLocation(id: $id, name: $name, imageUrl: $imageUrl, type: $type)';
   }
 
   @override
@@ -147,11 +170,12 @@ class _$SearchLocationImpl implements _SearchLocation {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.imageUrl, imageUrl) ||
-                other.imageUrl == imageUrl));
+                other.imageUrl == imageUrl) &&
+            (identical(other.type, type) || other.type == type));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, imageUrl);
+  int get hashCode => Object.hash(runtimeType, id, name, imageUrl, type);
 
   /// Create a copy of SearchLocation
   /// with the given fields replaced by the non-null parameter values.
@@ -170,6 +194,7 @@ abstract class _SearchLocation implements SearchLocation {
     required final String id,
     required final String name,
     required final String imageUrl,
+    final String type,
   }) = _$SearchLocationImpl;
 
   @override
@@ -178,6 +203,8 @@ abstract class _SearchLocation implements SearchLocation {
   String get name;
   @override
   String get imageUrl;
+  @override
+  String get type;
 
   /// Create a copy of SearchLocation
   /// with the given fields replaced by the non-null parameter values.

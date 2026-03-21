@@ -10,6 +10,7 @@ class SearchLocationModel with _$SearchLocationModel {
     required String id,
     required String name,
     required String imageUrl,
+    @Default('city') String type,
   }) = _SearchLocationModel;
 
   factory SearchLocationModel.fromJson(Map<String, dynamic> json) =>
@@ -22,6 +23,7 @@ extension SearchLocationModelX on SearchLocationModel {
       id: id,
       name: name,
       imageUrl: imageUrl,
+      type: type,
     );
   }
 }

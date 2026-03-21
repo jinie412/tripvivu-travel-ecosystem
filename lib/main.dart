@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/di/injection_container.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
@@ -9,6 +10,7 @@ const bool kSkipLogin = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('vi_VN', null);
   await initDependencies();
   runApp(const TravelAdvisorApp());
 }

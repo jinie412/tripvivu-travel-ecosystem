@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/search_location.dart';
+import '../../../../features/city_detail/presentation/screens/city_detail_screen.dart';
+import '../../../../features/place/presentation/screens/place_detail_screen.dart';
+import '../../../../features/place/presentation/cubit/place_detail_cubit.dart';
+import '../../../../core/di/injection_container.dart';
 
 class SearchSuggestionWidget extends StatelessWidget {
   final List<SearchLocation> recentSearches;
@@ -68,7 +73,32 @@ class SearchSuggestionWidget extends StatelessWidget {
             itemCount: recentSearches.length,
             itemBuilder: (context, index) {
               final location = recentSearches[index];
-              return _buildRecentItem(location.name, location.imageUrl);
+              return InkWell(
+                onTap: () {
+                  if (location.type == 'place') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => sl<PlaceDetailCubit>(),
+                          child: PlaceDetailScreen(placeId: location.id),
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CityDetailScreen(
+                          cityName: location.name,
+                          cityId: location.id,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: _buildRecentItem(location.name, location.imageUrl),
+              );
             },
           ),
         ),
@@ -82,7 +112,7 @@ class SearchSuggestionWidget extends StatelessWidget {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8), // Border radius 8px
+            borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
               imageUrl: imageUrl,
               width: 56,

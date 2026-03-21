@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/itinerary_entity.dart';
 import '../../domain/entities/itinerary_summary.dart';
+import '../../domain/entities/itinerary_detail_entity.dart';
 
 /// Trạng thái của màn hình "Lịch trình của tôi".
 ///
@@ -15,6 +16,9 @@ abstract class ItineraryState extends Equatable {
   @override
   List<Object?> get props => [];
 }
+
+/// Filter cho tab "Đã đi".
+enum CompletedFilter { all, rated, unrated }
 
 /// Trạng thái ban đầu — chưa tải dữ liệu.
 class ItineraryInitial extends ItineraryState {
@@ -37,14 +41,22 @@ class ItineraryLoaded extends ItineraryState {
   /// Tab filter đang active (null = "Tất cả").
   final ItineraryStatus? activeFilter;
 
+  /// Lịch trình đang được chọn để xem chi tiết hoặc tổng quan.
+  final ItineraryDetailEntity? selectedItinerary;
+
+  /// Filter cho tab "Đã đi".
+  final CompletedFilter activeCompletedFilter;
+
   const ItineraryLoaded({
     required this.itineraries,
     required this.summary,
     this.activeFilter,
+    this.selectedItinerary,
+    this.activeCompletedFilter = CompletedFilter.all,
   });
 
   @override
-  List<Object?> get props => [itineraries, summary, activeFilter];
+  List<Object?> get props => [itineraries, summary, activeFilter, selectedItinerary, activeCompletedFilter];
 }
 
 /// Lỗi — hiển thị thông báo và nút Retry.

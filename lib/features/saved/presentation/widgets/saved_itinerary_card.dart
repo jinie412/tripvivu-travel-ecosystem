@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../city_detail/domain/entities/city_entities.dart';
 
 class SavedItineraryCard extends StatelessWidget {
@@ -54,7 +54,7 @@ class SavedItineraryCard extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(
                       item.title,
@@ -67,12 +67,12 @@ class SavedItineraryCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         _buildInfoItem(Icons.calendar_today_outlined, item.duration),
                         const SizedBox(width: 20),
-                        _buildInfoItem(Icons.location_on_outlined, '5 địa điểm'), // Mock static for now
+                        _buildInfoItem(Icons.location_on_outlined, '5 địa điểm'), 
                         const SizedBox(width: 20),
                         _buildInfoItem(Icons.favorite, item.likes, iconColor: Colors.grey[400]),
                       ],

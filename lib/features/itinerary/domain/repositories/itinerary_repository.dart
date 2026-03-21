@@ -1,5 +1,6 @@
 import '../entities/itinerary_entity.dart';
 import '../entities/itinerary_summary.dart';
+import '../entities/itinerary_detail_entity.dart';
 
 /// Hợp đồng (Interface) cho tầng Data.
 ///
@@ -11,6 +12,9 @@ abstract class ItineraryRepository {
 
   /// Lấy thống kê tổng quan (tổng / đã đi / sắp đi / nháp).
   Future<ItinerarySummary> getSummary();
+
+  /// Lấy chi tiết một lịch trình theo [id].
+  Future<ItineraryDetailEntity> getItineraryDetail(String id);
 
   /// Xóa một lịch trình theo [id].
   Future<void> deleteItinerary(String id);

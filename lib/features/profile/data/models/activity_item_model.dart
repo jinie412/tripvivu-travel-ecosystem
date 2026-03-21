@@ -13,6 +13,8 @@ class ActivityItemModel {
   @JsonKey(defaultValue: ActivityStatus.none)
   final ActivityStatus status;
   final String? code;
+  final String? restaurantName;
+  final List<String>? orderItems;
 
   const ActivityItemModel({
     required this.id,
@@ -22,6 +24,8 @@ class ActivityItemModel {
     this.date,
     this.status = ActivityStatus.none,
     this.code,
+    this.restaurantName,
+    this.orderItems,
   });
 
   factory ActivityItemModel.fromJson(Map<String, dynamic> json) =>
@@ -37,5 +41,7 @@ class ActivityItemModel {
         date: date,
         status: status,
         code: code,
+        restaurantName: restaurantName,
+        orderItems: orderItems,
       );
 }
