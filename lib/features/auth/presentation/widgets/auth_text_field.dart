@@ -7,7 +7,7 @@ class AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String hintText;
-  final IconData prefixIcon;
+  final IconData? prefixIcon;
   final Widget? suffixIcon;
   final bool obscureText;
   final TextInputType keyboardType;
@@ -20,7 +20,7 @@ class AuthTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.hintText,
-    required this.prefixIcon,
+    this.prefixIcon,
     this.suffixIcon,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
@@ -60,11 +60,13 @@ class AuthTextField extends StatelessWidget {
               fontSize: 14,
               color: AppColors.textSecondary,
             ),
-            prefixIcon: Icon(
-              prefixIcon,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
+            prefixIcon: prefixIcon != null
+                ? Icon(
+                    prefixIcon,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  )
+                : null,
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.inputFill,
