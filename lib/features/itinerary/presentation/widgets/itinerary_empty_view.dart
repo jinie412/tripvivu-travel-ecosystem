@@ -27,9 +27,9 @@ class ItineraryEmptyView extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFFE0F2FE).withOpacity(0.8),
-                        const Color(0xFFEFF6FF).withOpacity(0.4),
-                        Colors.white.withOpacity(0.0),
+                        const Color(0xFFE0F2FE).withValues(alpha: 0.8),
+                        const Color(0xFFEFF6FF).withValues(alpha: 0.4),
+                        Colors.white.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -51,7 +51,7 @@ class ItineraryEmptyView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -101,7 +101,7 @@ class ItineraryEmptyView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   elevation: 8,
-                  shadowColor: AppColors.primary.withOpacity(0.4),
+                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,

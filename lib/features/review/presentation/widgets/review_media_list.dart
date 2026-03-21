@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class ReviewMediaList extends StatelessWidget {
   final List<String> mediaPaths;

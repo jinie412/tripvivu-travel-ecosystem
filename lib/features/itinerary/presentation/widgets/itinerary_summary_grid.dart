@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../domain/entities/itinerary_summary.dart';
 
 /// Lưới thống kê 2×2 — Tổng số · Đã đi · Sắp đi · Đang tạo

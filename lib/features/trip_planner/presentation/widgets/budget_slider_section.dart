@@ -7,10 +7,10 @@ class BudgetSliderSection extends StatelessWidget {
   final ValueChanged<double> onChanged;
 
   const BudgetSliderSection({
-    Key? key,
+    super.key,
     required this.currentBudget,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class BudgetSliderSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
+          children: [
             Icon(Icons.money, color: AppColors.primary),
             SizedBox(width: 8),
             Text(
@@ -37,9 +37,9 @@ class BudgetSliderSection extends StatelessWidget {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: AppColors.primary,
-            inactiveTrackColor: AppColors.primary.withOpacity(0.2),
+            inactiveTrackColor: AppColors.primary.withValues(alpha: 0.2),
             thumbColor: AppColors.primary,
-            overlayColor: AppColors.primary.withOpacity(0.1),
+            overlayColor: AppColors.primary.withValues(alpha: 0.1),
             trackHeight: 4.0,
           ),
           child: Slider(

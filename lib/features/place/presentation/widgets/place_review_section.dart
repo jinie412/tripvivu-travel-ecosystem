@@ -48,7 +48,7 @@ class PlaceReviewSection extends StatelessWidget {
           const SizedBox(height: 24),
           ...reviews.asMap().entries.map((entry) => ReviewCard(
             review: entry.value,
-          )).toList(),
+          )),
         ],
       ),
     );
@@ -139,7 +139,7 @@ class PlaceReviewSection extends StatelessWidget {
       children: List.generate(5, (index) => Icon(
         Icons.star,
         size: 16,
-        color: index < count ? Colors.amber : Colors.grey.withOpacity(0.3),
+        color: index < count ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
       )),
     );
   }

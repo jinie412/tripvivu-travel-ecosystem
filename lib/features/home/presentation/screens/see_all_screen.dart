@@ -94,7 +94,7 @@ class SeeAllScreen extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 20),
+              separatorBuilder: (_, _) => const SizedBox(height: 20),
               itemBuilder: (_, i) => items[i],
             ),
           ),

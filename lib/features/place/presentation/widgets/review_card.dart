@@ -103,7 +103,7 @@ class ReviewCard extends StatelessWidget {
       children: List.generate(5, (index) => Icon(
         Icons.star,
         size: 12,
-        color: index < rating.floor() ? Colors.amber : Colors.grey.withOpacity(0.3),
+        color: index < rating.floor() ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
       )),
     );
   }

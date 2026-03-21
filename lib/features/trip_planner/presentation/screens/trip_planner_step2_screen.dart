@@ -11,7 +11,7 @@ import '../widgets/topic_selector.dart';
 import 'trip_planner_step3_screen.dart';
 
 class TripPlannerStep2Screen extends StatelessWidget {
-  const TripPlannerStep2Screen({Key? key}) : super(key: key);
+  const TripPlannerStep2Screen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             Text(
               'Bước 2/3',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -75,7 +75,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
                   height: 4,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -186,7 +186,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
                             'Tiếp tục',
                             style: TextStyle(
@@ -215,7 +215,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   final String title;
 
-  const _SectionTitle({Key? key, required this.title}) : super(key: key);
+  const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {

@@ -10,14 +10,14 @@ class MemberCounterCard extends StatelessWidget {
   final VoidCallback onChildDecrease;
 
   const MemberCounterCard({
-    Key? key,
+    super.key,
     required this.adultCount,
     required this.childCount,
     required this.onAdultIncrease,
     required this.onAdultDecrease,
     required this.onChildIncrease,
     required this.onChildDecrease,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,7 @@ class MemberCounterCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inputBorder.withOpacity(0.5)),
+        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [

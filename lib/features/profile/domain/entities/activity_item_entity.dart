@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 enum ActivityType { itinerary, rated, reviewPending, food }
 enum ActivityStatus { none, upcoming, preparing, delivered, pendingReview }

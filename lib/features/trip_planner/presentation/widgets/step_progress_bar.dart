@@ -6,10 +6,10 @@ class StepProgressBar extends StatelessWidget {
   final int totalSteps;
 
   const StepProgressBar({
-    Key? key,
+    super.key,
     required this.currentStep,
     required this.totalSteps,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class StepProgressBar extends StatelessWidget {
             ),
             height: 4,
             decoration: BoxDecoration(
-              color: isCompleted ? AppColors.primary : AppColors.inputBorder.withOpacity(0.5),
+              color: isCompleted ? AppColors.primary : AppColors.inputBorder.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(2),
             ),
           ),

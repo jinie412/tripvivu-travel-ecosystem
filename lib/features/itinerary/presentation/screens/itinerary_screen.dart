@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
 
-import '../../domain/entities/itinerary_entity.dart';
+
+
 import '../cubit/itinerary_cubit.dart';
 import '../cubit/itinerary_state.dart';
 import '../widgets/itinerary_card.dart';
-import '../widgets/itinerary_completed_card.dart';
+
 import '../widgets/itinerary_empty_view.dart';
 import '../widgets/itinerary_filter_chips.dart';
 import '../widgets/itinerary_summary_grid.dart';

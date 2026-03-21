@@ -51,6 +51,8 @@ class ItineraryStatCard extends StatelessWidget {
               color: Color(0xFF1C1C1E),
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
@@ -60,6 +62,8 @@ class ItineraryStatCard extends StatelessWidget {
               color: Color(0xFF6B7280),
             ),
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

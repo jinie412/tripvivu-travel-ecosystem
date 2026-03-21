@@ -7,16 +7,16 @@ class TripTypeSelector extends StatelessWidget {
   final ValueChanged<TripType> onChanged;
 
   const TripTypeSelector({
-    Key? key,
+    super.key,
     required this.selectedType,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.inputBorder.withOpacity(0.3),
+        color: AppColors.inputBorder.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
@@ -59,7 +59,7 @@ class TripTypeSelector extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   )

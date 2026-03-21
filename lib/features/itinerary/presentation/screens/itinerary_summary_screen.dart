@@ -194,43 +194,50 @@ class _ItinerarySummaryView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 14, color: Colors.white70),
-                      const SizedBox(width: 4),
-                      Text(
-                        'ĐIỂM ĐẾN',
-                        style: TextStyle(
-                          fontSize: 10, 
-                          color: Colors.white.withValues(alpha: 0.7), 
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: Colors.white70),
+                        const SizedBox(width: 4),
+                        Text(
+                          'ĐIỂM ĐẾN',
+                          style: TextStyle(
+                            fontSize: 10, 
+                            color: Colors.white.withValues(alpha: 0.7), 
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      destination,
+                      style: const TextStyle(
+                        fontSize: 28, 
+                        fontWeight: FontWeight.bold, 
+                        color: Colors.white,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    destination,
-                    style: const TextStyle(
-                      fontSize: 28, 
-                      fontWeight: FontWeight.bold, 
-                      color: Colors.white,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dateRange,
-                    style: TextStyle(
-                      fontSize: 13, 
-                      color: Colors.white.withValues(alpha: 0.8),
+                    const SizedBox(height: 4),
+                    Text(
+                      dateRange,
+                      style: TextStyle(
+                        fontSize: 13, 
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 16),
               Container(
                 width: 56,
                 height: 56,
@@ -301,7 +308,7 @@ class _ItinerarySummaryView extends StatelessWidget {
       crossAxisCount: 2,
       mainAxisSpacing: 16,
       crossAxisSpacing: 16,
-      childAspectRatio: 1.3,
+      childAspectRatio: 1.15,
       children: [
         ItineraryStatCard(
           label: 'Thời gian',
@@ -430,7 +437,7 @@ class _ItinerarySummaryView extends StatelessWidget {
               Expanded(child: Text(note.toString(), style: const TextStyle(fontSize: 14, color: Color(0xFF475569), height: 1.4))),
             ],
           ),
-        )).toList(),
+        )),
       ],
     );
   }
