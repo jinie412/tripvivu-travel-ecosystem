@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../features/home/presentation/widgets/notification_drawer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/di/injection_container.dart';
@@ -46,6 +47,7 @@ class _MainShellState extends State<MainShell> {
         builder: (context, currentIndex) {
           return Scaffold(
             drawer: const ProfileDrawer(),
+            endDrawer: const NotificationDrawer(),
             body: IndexedStack(
               index: currentIndex,
               children: _pages,

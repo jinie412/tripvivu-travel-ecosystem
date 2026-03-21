@@ -141,45 +141,13 @@ class _ExploreViewState extends State<_ExploreView> {
                   title: 'Lịch trình của bạn', 
                   onSeeAll: null,
                 ),
-                
-                // Start Itinerary Switch Row
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'BẮT ĐẦU LỊCH TRÌNH',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2563EB),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Transform.scale(
-                        scale: 0.8,
-                        child: Switch(
-                          value: _isItineraryStarted,
-                          onChanged: _onToggleItinerary,
-                          activeThumbColor: const Color(0xFF2563EB),
-                          activeTrackColor: const Color(0xFFBFDBFE),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: CurrentItineraryCard(item: state.currentItinerary),
+                  child: CurrentItineraryCard(
+                    item: state.currentItinerary,
+                    isStarted: _isItineraryStarted,
+                    onToggle: _onToggleItinerary,
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
