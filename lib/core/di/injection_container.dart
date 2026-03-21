@@ -73,11 +73,13 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetSuggestionsUseCase(sl()));
   sl.registerLazySingleton(() => GetDestinationsUseCase(sl()));
   sl.registerLazySingleton(() => GetHotelsUseCase(sl()));
+  sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
   sl.registerFactory(
     () => ExploreCubit(
       getSuggestions: sl(),
       getDestinations: sl(),
       getHotels: sl(),
+      getRestaurants: sl(),
       getItineraries: sl(),
     ),
   );

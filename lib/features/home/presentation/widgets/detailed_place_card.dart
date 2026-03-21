@@ -82,6 +82,16 @@ class _DetailedPlaceCardState extends State<DetailedPlaceCard> {
                           setState(() {
                             _isFavorite = !_isFavorite;
                           });
+                          if (_isFavorite) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã lưu vào danh mục yêu thích'),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                         icon: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_outline,

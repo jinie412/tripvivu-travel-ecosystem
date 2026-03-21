@@ -125,7 +125,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     // 5. Footer (Back to login)
                     TextButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.primary),
+                      icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.primary),
                       label: const Text(
                         'Quay lại Đăng nhập',
                         style: TextStyle(

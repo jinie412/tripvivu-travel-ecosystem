@@ -58,7 +58,7 @@ class SearchHeaderWidget extends StatelessWidget {
                       textAlignVertical: TextAlignVertical.center, // Đảm bảo text align center
                       onChanged: onChanged,
                       decoration: InputDecoration(
-                        hintText: 'Địa điểm tham quan, nhà hàng, khách sạn,...',
+                        hintText: 'Tìm kiếm thành phố, địa điểm, nhà hàng...',
                         hintStyle: TextStyle(
                           fontSize: 16,
                           color: Colors.grey.shade500, // Màu xám nhạt

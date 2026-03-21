@@ -47,11 +47,11 @@ class _SavedScreenState extends State<SavedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Padding(
-                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      padding: EdgeInsets.fromLTRB(24, 16, 24, 16),
                       child: Text(
                         'Bộ sưu tập',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                           letterSpacing: -0.5,
@@ -72,7 +72,6 @@ class _SavedScreenState extends State<SavedScreen> {
                       indicatorWeight: 3,
                       dividerColor: Colors.transparent,
                     ),
-                    const SizedBox(height: 8),
                     Expanded(
                       child: TabBarView(
                         children: [
@@ -85,7 +84,7 @@ class _SavedScreenState extends State<SavedScreen> {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: SizedBox(
-                                  height: 250,
+                                  height: 270,
                                   child: SavedItineraryCard(
                                     item: item,
                                     onTap: () {

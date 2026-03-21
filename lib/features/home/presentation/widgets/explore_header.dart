@@ -11,9 +11,9 @@ class ExploreHeader extends StatelessWidget {
       color: AppColors.primary,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 16,
-        left: 16,
-        right: 16,
-        bottom: 24,
+        left: 24,
+        right: 24,
+        bottom: 16,
       ),
       child: Column(
         children: [
@@ -32,6 +32,30 @@ class ExploreHeader extends StatelessWidget {
                   onPressed: () {
                     Scaffold.of(context).openDrawer();
                   },
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Vị trí
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined, color: Colors.white, size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'VỊ TRÍ CỦA BẠN',
+                          style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'QUẬN 1, HỒ CHÍ MINH',
+                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
@@ -67,30 +91,6 @@ class ExploreHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              // Vị trí
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, color: Colors.white, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'VỊ TRÍ CỦA BẠN',
-                          style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'QUẬN 1, HỒ CHÍ MINH',
-                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -103,20 +103,27 @@ class ExploreHeader extends StatelessWidget {
               );
             },
             child: Container(
-              height: 44,
+              height: 48,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                color: const Color(0xFFF1F3F4),
+                border: Border.all(color: Colors.black, width: 1.0),
+                borderRadius: BorderRadius.circular(24),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+                  const Icon(Icons.search, color: Colors.black, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tìm kiếm điểm đến, món ăn...',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      'Tìm kiếm thành phố, địa điểm, nhà hàng...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ],

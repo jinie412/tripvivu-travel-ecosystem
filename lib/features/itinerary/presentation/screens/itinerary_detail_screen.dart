@@ -415,7 +415,7 @@ class _ItineraryDetailView extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _floatingCircleButton(Icons.arrow_back, () => Navigator.pop(context)),
+                      _floatingCircleButton(Icons.arrow_back_ios_new, () => Navigator.pop(context)),
                       _floatingCircleButton(Icons.share_outlined, onShareTap),
                     ],
                   ),

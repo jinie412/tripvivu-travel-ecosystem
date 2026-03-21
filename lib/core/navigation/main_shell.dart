@@ -52,7 +52,7 @@ class _MainShellState extends State<MainShell> {
               index: currentIndex,
               children: _pages,
             ),
-            bottomNavigationBar: _BottomNav(
+            bottomNavigationBar: SharedBottomNav(
               currentIndex: currentIndex,
               onTap: (i) {
                 if (i == 2) {
@@ -73,10 +73,10 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class SharedBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  const _BottomNav({required this.currentIndex, required this.onTap});
+  const SharedBottomNav({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +89,7 @@ class _BottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.explore_outlined,
               activeIcon: Icons.explore,
               label: 'Khám phá',
@@ -99,7 +99,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
               label: 'Lịch trình',
@@ -138,7 +138,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.favorite_outline,
               activeIcon: Icons.favorite,
               label: 'Đã lưu',
@@ -148,7 +148,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.person_outline,
               activeIcon: Icons.person,
               label: 'Cá nhân',
@@ -163,13 +163,14 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class NavItem extends StatelessWidget {
   final IconData icon, activeIcon;
   final String label;
   final int index, current;
   final ValueChanged<int> onTap;
 
-  const _NavItem({
+  const NavItem({
+    super.key,
     required this.icon,
     required this.activeIcon,
     required this.label,

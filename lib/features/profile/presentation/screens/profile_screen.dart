@@ -15,7 +15,7 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -26,7 +26,7 @@ class ProfileScreen extends StatelessWidget {
                   Text(
                     'Tài khoản',
                     style: AppTextStyles.heading1.copyWith(
-                      fontSize: 32,
+                      fontSize: 22,
                       color: const Color(0xFF113D3C),
                     ),
                   ),

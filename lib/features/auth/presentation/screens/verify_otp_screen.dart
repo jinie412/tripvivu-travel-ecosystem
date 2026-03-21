@@ -194,7 +194,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                   // 6. Footer (Back)
                   TextButton.icon(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.primary),
+                    icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.primary),
                     label: const Text(
                       'Quay lại',
                       style: TextStyle(

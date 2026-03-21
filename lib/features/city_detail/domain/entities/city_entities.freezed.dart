@@ -25,6 +25,7 @@ mixin _$CityItinerary {
   String get duration => throw _privateConstructorUsedError; // e.g., "3 NGÀY"
   String get views => throw _privateConstructorUsedError;
   String get likes => throw _privateConstructorUsedError;
+  String get location => throw _privateConstructorUsedError;
 
   /// Create a copy of CityItinerary
   /// with the given fields replaced by the non-null parameter values.
@@ -49,6 +50,7 @@ abstract class $CityItineraryCopyWith<$Res> {
     String duration,
     String views,
     String likes,
+    String location,
   });
 }
 
@@ -75,6 +77,7 @@ class _$CityItineraryCopyWithImpl<$Res, $Val extends CityItinerary>
     Object? duration = null,
     Object? views = null,
     Object? likes = null,
+    Object? location = null,
   }) {
     return _then(
       _value.copyWith(
@@ -110,6 +113,10 @@ class _$CityItineraryCopyWithImpl<$Res, $Val extends CityItinerary>
                 ? _value.likes
                 : likes // ignore: cast_nullable_to_non_nullable
                       as String,
+            location: null == location
+                ? _value.location
+                : location // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -134,6 +141,7 @@ abstract class _$$CityItineraryImplCopyWith<$Res>
     String duration,
     String views,
     String likes,
+    String location,
   });
 }
 
@@ -159,6 +167,7 @@ class __$$CityItineraryImplCopyWithImpl<$Res>
     Object? duration = null,
     Object? views = null,
     Object? likes = null,
+    Object? location = null,
   }) {
     return _then(
       _$CityItineraryImpl(
@@ -194,6 +203,10 @@ class __$$CityItineraryImplCopyWithImpl<$Res>
             ? _value.likes
             : likes // ignore: cast_nullable_to_non_nullable
                   as String,
+        location: null == location
+            ? _value.location
+            : location // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -211,6 +224,7 @@ class _$CityItineraryImpl implements _CityItinerary {
     required this.duration,
     required this.views,
     required this.likes,
+    this.location = '',
   });
 
   @override
@@ -230,10 +244,13 @@ class _$CityItineraryImpl implements _CityItinerary {
   final String views;
   @override
   final String likes;
+  @override
+  @JsonKey()
+  final String location;
 
   @override
   String toString() {
-    return 'CityItinerary(id: $id, title: $title, authorName: $authorName, authorAvatar: $authorAvatar, imageUrl: $imageUrl, duration: $duration, views: $views, likes: $likes)';
+    return 'CityItinerary(id: $id, title: $title, authorName: $authorName, authorAvatar: $authorAvatar, imageUrl: $imageUrl, duration: $duration, views: $views, likes: $likes, location: $location)';
   }
 
   @override
@@ -252,7 +269,9 @@ class _$CityItineraryImpl implements _CityItinerary {
             (identical(other.duration, duration) ||
                 other.duration == duration) &&
             (identical(other.views, views) || other.views == views) &&
-            (identical(other.likes, likes) || other.likes == likes));
+            (identical(other.likes, likes) || other.likes == likes) &&
+            (identical(other.location, location) ||
+                other.location == location));
   }
 
   @override
@@ -266,6 +285,7 @@ class _$CityItineraryImpl implements _CityItinerary {
     duration,
     views,
     likes,
+    location,
   );
 
   /// Create a copy of CityItinerary
@@ -287,6 +307,7 @@ abstract class _CityItinerary implements CityItinerary {
     required final String duration,
     required final String views,
     required final String likes,
+    final String location,
   }) = _$CityItineraryImpl;
 
   @override
@@ -305,6 +326,8 @@ abstract class _CityItinerary implements CityItinerary {
   String get views;
   @override
   String get likes;
+  @override
+  String get location;
 
   /// Create a copy of CityItinerary
   /// with the given fields replaced by the non-null parameter values.

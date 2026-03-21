@@ -1,31 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../city_detail/domain/entities/city_entities.dart';
+import '../../../city_detail/presentation/widgets/city_detail_cards.dart';
+import '../../domain/entities/trip_suggestion.dart';
 
-class SavedItineraryCard extends StatelessWidget {
-  final CityItinerary item;
-  final VoidCallback? onTap;
-
-  const SavedItineraryCard({super.key, required this.item, this.onTap});
+class HomeItineraryCard extends StatelessWidget {
+  final TripSuggestion item;
+  const HomeItineraryCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: CachedNetworkImage(
-            imageUrl: item.imageUrl,
-            height: 180,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(color: Colors.grey[200]),
-            errorWidget: (context, url, error) => const Icon(Icons.error),
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: item.imageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: item.imageUrl!,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      height: 180,
+                      width: double.infinity,
+                      color: Color(item.placeholderColor),
+                      child: const Icon(Icons.image, color: Colors.white, size: 40),
+                    ),
+            ),
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.days.toLowerCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const Positioned(
+              top: 12,
+              right: 12,
+              child: LikeButton(),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Text(
@@ -46,15 +76,15 @@ class SavedItineraryCard extends StatelessWidget {
             CircleAvatar(
               radius: 12,
               backgroundImage: CachedNetworkImageProvider(
-                item.authorAvatar,
+                'https://i.pravatar.cc/100?u=${item.id}',
               ),
             ),
             const SizedBox(width: 8),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                item.authorName,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              child: const Text(
+                'Traveler',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ),
             const Spacer(),
@@ -91,7 +121,6 @@ class SavedItineraryCard extends StatelessWidget {
           ],
         ),
       ],
-    ),
     );
   }
 }

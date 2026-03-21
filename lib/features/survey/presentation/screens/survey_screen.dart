@@ -104,7 +104,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
                               width: 48,
                               child: currentStep > 0
                                   ? IconButton(
-                                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                                      icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                                       onPressed: () {
                                         context.read<SurveyCubit>().prevStep();
                                         _pageController.previousPage(

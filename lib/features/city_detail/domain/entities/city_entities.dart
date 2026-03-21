@@ -13,6 +13,7 @@ class CityItinerary with _$CityItinerary {
     required String duration, // e.g., "3 NGÀY"
     required String views,
     required String likes,
+    @Default('') String location,
   }) = _CityItinerary;
 }
 

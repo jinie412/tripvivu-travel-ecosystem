@@ -58,7 +58,7 @@ class _ItineraryView extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 24,
+              top: MediaQuery.of(context).padding.top + 16,
               left: 24,
               right: 24,
             ),
@@ -72,7 +72,7 @@ class _ItineraryView extends StatelessWidget {
                   child: Text(
                     'Lịch trình của tôi',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1E293B),
                     ),
@@ -88,15 +88,15 @@ class _ItineraryView extends StatelessWidget {
 
         if (state.itineraries.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: ItineraryFilterChips(
-                activeFilter: state.activeFilter,
-                activeSubFilter: state.activeCompletedFilter,
-                onChanged: (status) => cubit.filterBy(status),
-                onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: ItineraryFilterChips(
+              activeFilter: state.activeFilter,
+              activeSubFilter: state.activeCompletedFilter,
+              onChanged: (status) => cubit.filterBy(status),
+              onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
             ),
+          ),
           ),
           if (state.itineraries.isNotEmpty && state.activeFilter == null)
             SliverToBoxAdapter(
@@ -120,7 +120,7 @@ class _ItineraryView extends StatelessWidget {
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                if (index == 0) return const SizedBox(height: 12);
+                if (index == 0) return const SizedBox(height: 16);
                 if (index == state.itineraries.length + 1) {
                   return const SizedBox(height: 100);
                 }
