@@ -93,7 +93,6 @@ class GoogleSignInButton extends StatelessWidget {
             const Text(
               'Google',
               style: TextStyle(
-                fontFamily: 'Roboto',
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF374151),
@@ -148,7 +147,6 @@ class FacebookSignInButton extends StatelessWidget {
             const Text(
               'Facebook',
               style: TextStyle(
-                fontFamily: 'Roboto',
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF374151),

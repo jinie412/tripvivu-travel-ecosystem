@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/itinerary_entity.dart';
+import '../../domain/entities/itinerary_summary.dart';
+import '../../domain/entities/itinerary_detail_entity.dart';
 import '../../domain/usecases/itinerary_usecases.dart';
 import 'itinerary_state.dart';
 
@@ -109,6 +111,25 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         emit((state as ItineraryLoaded).copyWithSelected(detail));
       } catch (e) {
         emit(ItineraryError('Không thể tải chi tiết: ${e.toString()}'));
+      }
+    } else {
+      // Nếu chưa load danh sách (ví dụ đi từ màn hình Saved)
+      emit(const ItineraryLoading());
+      try {
+        // Tải cả summary và detail để có đủ data cho trạng thái Loaded
+        final results = await Future.wait([
+          _getSummary(),
+          _getItineraryDetail(id),
+          _getItineraries(),
+        ]);
+        
+        emit(ItineraryLoaded(
+          itineraries: results[2] as List<ItineraryEntity>,
+          summary: results[0] as ItinerarySummary,
+          selectedItinerary: results[1] as ItineraryDetailEntity,
+        ));
+      } catch (e) {
+        emit(ItineraryError('Không thể tải dữ liệu: ${e.toString()}'));
       }
     }
   }

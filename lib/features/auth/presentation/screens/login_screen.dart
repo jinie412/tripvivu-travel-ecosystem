@@ -5,7 +5,7 @@ import '../../../../core/di/injection_container.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_shared_widgets.dart';
 import 'register_screen.dart';
-import '../../../../core/navigation/main_shell.dart';
+import 'forgot_password_screen.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -52,10 +52,12 @@ class _LoginViewState extends State<_LoginView> {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthSuccess) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainShell()),
-          );
+          FocusScope.of(context).unfocus();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.pushReplacementNamed(context, '/survey');
+            }
+          });
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -80,14 +82,16 @@ class _LoginViewState extends State<_LoginView> {
                     // ── Logo ──────────────────────────────────────────────────
                     Center(
                       child: Container(
-                        width: 88,
-                        height: 88,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFD6E8FF),
-                          shape: BoxShape.circle,
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEBF5FF),
+                          borderRadius: BorderRadius.circular(32),
                         ),
-                        child: const Icon(Icons.flight_takeoff_rounded,
-                            size: 46, color: AppColors.primary),
+                        child: const Center(
+                          child: Icon(Icons.flight_takeoff_rounded,
+                              size: 48, color: AppColors.primary),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -139,7 +143,10 @@ class _LoginViewState extends State<_LoginView> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: () {},
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                        ),
                         child: const Text('Quên mật khẩu?',
                             style: TextStyle(
                                 color: AppColors.primary,
@@ -163,7 +170,9 @@ class _LoginViewState extends State<_LoginView> {
                               disabledBackgroundColor:
                                   AppColors.primary.withValues(alpha: 0.6),
                               elevation: 0,
-                              shape: const StadiumBorder(),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: isLoading
                                 ? const SizedBox(

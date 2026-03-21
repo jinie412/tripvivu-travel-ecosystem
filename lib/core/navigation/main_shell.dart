@@ -5,11 +5,12 @@ import '../../core/di/injection_container.dart';
 import '../../features/home/presentation/screens/explore_screen.dart';
 import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/saved/presentation/screens/saved_screen.dart';
+import '../../features/saved/presentation/cubit/saved_cubit.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import '../../features/trip_planner/presentation/screens/trip_planner_screen.dart';
 import '../../features/profile/presentation/widgets/profile_drawer.dart';
-import '../../features/itinerary/presentation/screens/saved_screen.dart';
 import 'tab_cubit.dart';
 
 /// Shell chính chứa Bottom Navigation Bar + IndexedStack các tab.
@@ -21,15 +22,16 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-
-
   /// Danh sách các trang tương ứng với tab navigation.
   final List<Widget> _pages = [
-    const ExploreScreen(),        // 0 — Khám phá
-    const ItineraryScreen(),      // 1 — Lịch trình
-    const SizedBox.shrink(),      // 2 — placeholder cho FAB
-    const SavedScreen(),          // 3
-    const ProfileScreen(),        // 4 - Cá nhân
+    const ExploreScreen(), // 0 — Khám phá
+    const ItineraryScreen(), // 1 — Lịch trình
+    const SizedBox.shrink(), // 2 — placeholder cho FAB
+    BlocProvider(
+      create: (context) => sl<SavedCubit>(),
+      child: const SavedScreen(),
+    ), // 3 — Đã lưu
+    const ProfileScreen(), // 4 - Cá nhân
   ];
 
   @override
@@ -69,11 +71,6 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-// ... (Phần code _BottomNav, _NavItem và _PlaceholderTab giữ nguyên như cũ)
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── Bottom Navigation Bar ────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class _BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -85,7 +82,7 @@ class _BottomNav extends StatelessWidget {
       color: Colors.white,
       elevation: 8,
       padding: EdgeInsets.zero,
-      height: 90, // Set height directly on BottomAppBar
+      height: 90, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -109,7 +106,6 @@ class _BottomNav extends StatelessWidget {
               onTap: onTap,
             ),
           ),
-          // Nút trung tâm có text ở dưới
           Expanded(
             child: GestureDetector(
               onTap: () => onTap(2),
@@ -208,4 +204,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-

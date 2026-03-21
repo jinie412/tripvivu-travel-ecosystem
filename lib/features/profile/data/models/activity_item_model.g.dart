@@ -19,6 +19,10 @@ ActivityItemModel _$ActivityItemModelFromJson(Map<String, dynamic> json) =>
           $enumDecodeNullable(_$ActivityStatusEnumMap, json['status']) ??
           ActivityStatus.none,
       code: json['code'] as String?,
+      restaurantName: json['restaurantName'] as String?,
+      orderItems: (json['orderItems'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$ActivityItemModelToJson(ActivityItemModel instance) =>
@@ -30,6 +34,8 @@ Map<String, dynamic> _$ActivityItemModelToJson(ActivityItemModel instance) =>
       'date': instance.date?.toIso8601String(),
       'status': _$ActivityStatusEnumMap[instance.status]!,
       'code': instance.code,
+      'restaurantName': instance.restaurantName,
+      'orderItems': instance.orderItems,
     };
 
 const _$ActivityTypeEnumMap = {

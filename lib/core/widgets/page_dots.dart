@@ -19,8 +19,8 @@ class PageDots extends StatelessWidget {
         final active = i == current;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active ? 18 : 8,
+          margin: const EdgeInsets.symmetric(horizontal: 4), // Spacing = 4 + 4 = 8px
+          width: active ? 20 : 8,
           height: 8,
           decoration: BoxDecoration(
             color: active ? AppColors.primary : Colors.grey.shade300,
