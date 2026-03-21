@@ -575,8 +575,9 @@ class _ItineraryDetailView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _dayMetaItem(Icons.sunny, '${currentDayData.temperature}°C', const Color(0xFFF59E0B)),
-                    _dayMetaItem(Icons.access_time, currentDayData.totalDuration, const Color(0xFF3B82F6)),
+                    Expanded(child: _dayMetaItem(Icons.sunny, '${currentDayData.temperature}°C', const Color(0xFFF59E0B))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _dayMetaItem(Icons.access_time, currentDayData.totalDuration, const Color(0xFF3B82F6))),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -585,10 +586,14 @@ class _ItineraryDetailView extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${currentDayData.locationsCount} Địa điểm tham quan',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                    Expanded(
+                      child: Text(
+                        '${currentDayData.locationsCount} Địa điểm tham quan',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       'DT: ${currencyFormatter.format(currentDayData.dayBudget)} đ',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
@@ -668,10 +673,11 @@ class _ItineraryDetailView extends StatelessWidget {
 
   Widget _dayMetaItem(IconData icon, String value, Color iconColor) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 18, color: iconColor),
         const SizedBox(width: 8),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+        Flexible(child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis, maxLines: 1)),
       ],
     );
   }
