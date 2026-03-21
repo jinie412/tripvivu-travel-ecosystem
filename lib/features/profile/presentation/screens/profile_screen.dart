@@ -3,6 +3,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'edit_profile_screen.dart';
 import 'notifications_screen.dart';
+import 'change_password_screen.dart';
 import 'support_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -82,6 +83,17 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              _buildMenuItem(
+                icon: Icons.lock_outline_rounded,
+                title: 'Đổi mật khẩu',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
                   );
                 },
               ),
