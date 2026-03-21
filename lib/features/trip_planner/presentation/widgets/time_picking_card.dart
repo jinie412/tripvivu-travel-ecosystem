@@ -8,12 +8,12 @@ class TimePickingCard extends StatelessWidget {
   final VoidCallback onTapEnd;
 
   const TimePickingCard({
-    Key? key,
+    super.key,
     this.startTime,
     this.endTime,
     required this.onTapStart,
     required this.onTapEnd,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,7 @@ class TimePickingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inputBorder.withOpacity(0.5)),
+        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -47,7 +47,7 @@ class TimePickingCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.inputFill,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.inputBorder.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -89,7 +89,7 @@ class TimePickingCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.inputFill,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.inputBorder.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [

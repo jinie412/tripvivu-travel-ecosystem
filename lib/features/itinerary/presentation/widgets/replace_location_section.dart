@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../../../core/widgets/net_image.dart';
 
 class ReplaceLocationSection extends StatelessWidget {
@@ -107,7 +107,7 @@ class ReplaceLocationSection extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

@@ -7,11 +7,11 @@ class DatePickingField extends StatelessWidget {
   final VoidCallback onTap;
 
   const DatePickingField({
-    Key? key,
+    super.key,
     required this.label,
     this.date,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,7 @@ class DatePickingField extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.inputBorder.withOpacity(0.5)),
+          border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [

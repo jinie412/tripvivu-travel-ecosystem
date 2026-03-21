@@ -7,10 +7,10 @@ class TransportationSelector extends StatelessWidget {
   final ValueChanged<Transportation> onChanged;
 
   const TransportationSelector({
-    Key? key,
+    super.key,
     required this.selectedOption,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,13 +79,13 @@ class TransportationSelector extends StatelessWidget {
           color: isSelected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.inputBorder.withOpacity(0.5),
+            color: isSelected ? AppColors.primary : AppColors.inputBorder.withValues(alpha: 0.5),
             width: 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     spreadRadius: 0,
                     blurRadius: 10,
                     offset: const Offset(0, 4),

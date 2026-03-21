@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
+
 
 import '../../../../core/theme/app_colors.dart';
 import '../cubit/trip_planner_cubit.dart';
@@ -13,7 +13,7 @@ import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
 import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class TripPlannerStep3Screen extends StatelessWidget {
-  const TripPlannerStep3Screen({Key? key}) : super(key: key);
+  const TripPlannerStep3Screen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +40,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
           ),
         ),
         title: Column(
-          children: const [
+          children: [
             Text(
               'Tạo lịch trình mới',
               style: TextStyle(
@@ -166,7 +166,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
                             'Hoàn thành',
                             style: TextStyle(
@@ -192,12 +192,3 @@ class TripPlannerStep3Screen extends StatelessWidget {
   }
 }
 
-class _DashedBorderContainer extends StatelessWidget {
-  final Widget child;
-  const _DashedBorderContainer({Key? key, required this.child}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}

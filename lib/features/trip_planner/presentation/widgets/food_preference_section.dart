@@ -14,10 +14,10 @@ class FoodPreferenceSection extends StatelessWidget {
   ];
 
   const FoodPreferenceSection({
-    Key? key,
+    super.key,
     required this.selectedPreferences,
     required this.onToggle,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class FoodPreferenceSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: const [
+          children: [
             Icon(Icons.restaurant, color: AppColors.primary),
             SizedBox(width: 8),
             Text(
@@ -53,7 +53,7 @@ class FoodPreferenceSection extends StatelessWidget {
                     color: isSelected ? AppColors.primary : AppColors.inputFill,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : AppColors.inputBorder.withOpacity(0.5),
+                      color: isSelected ? AppColors.primary : AppColors.inputBorder.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Text(
@@ -67,7 +67,7 @@ class FoodPreferenceSection extends StatelessWidget {
                   ),
                 ),
               );
-            }).toList(),
+            }),
             // Thêm mới button
             GestureDetector(
               onTap: () {
@@ -85,7 +85,7 @@ class FoodPreferenceSection extends StatelessWidget {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Icon(Icons.add, size: 16, color: AppColors.textSecondary),
                     SizedBox(width: 4),
                     Text(

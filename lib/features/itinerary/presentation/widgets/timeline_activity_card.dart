@@ -153,21 +153,24 @@ class TimelineActivityCard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   if (activity.isFree)
-                                    Row(
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         _label('MIỄN PHÍ', const Color(0xFFECFDF5), const Color(0xFF10B981)),
-                                        const SizedBox(width: 8),
                                         _statusLabel(),
                                       ],
                                     )
                                   else 
-                                    Row(
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         if (activity.price > 0) ...[
                                           Text('${activity.price.toInt()} VNĐ', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                                          const SizedBox(width: 8),
                                           const Text('Vé vào cửa', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-                                          const SizedBox(width: 8),
                                         ],
                                         _statusLabel(),
                                       ],
@@ -206,7 +209,7 @@ class TimelineActivityCard extends StatelessWidget {
                               const SizedBox(width: 8),
                               const Icon(Icons.directions_car, size: 12, color: Color(0xFF9CA3AF)),
                               const SizedBox(width: 8),
-                              Text(activity.transportInfo!, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic)),
+                              Expanded(child: Text(activity.transportInfo!, style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic), maxLines: 1, overflow: TextOverflow.ellipsis)),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -291,7 +294,6 @@ class TimelineActivityCard extends StatelessWidget {
           ),
         );
       case ActivityStatus.chuaDi:
-      default:
         return Container(
           width: 12,
           height: 12,
@@ -309,7 +311,6 @@ class TimelineActivityCard extends StatelessWidget {
       case ActivityStatus.diQua:
         return _label('ĐÃ ĐI QUA', const Color(0xFFF1F5F9), const Color(0xFF64748B));
       case ActivityStatus.chuaDi:
-      default:
         return _label('CHƯA ĐẾN', const Color(0xFFF8FAFC), const Color(0xFF94A3B8));
     }
   }

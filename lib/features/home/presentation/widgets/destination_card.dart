@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/destination.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+import '../../domain/entities/destination.dart';
+
 import '../../../../core/widgets/net_image.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../place/presentation/screens/place_detail_screen.dart';
@@ -15,7 +14,7 @@ class DestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<ItineraryCubit>();
+
     return GestureDetector(
       onTap: () {
         Navigator.push(

@@ -12,7 +12,7 @@ import '../widgets/trip_type_selector.dart';
 import 'trip_planner_step2_screen.dart';
 
 class TripPlannerScreen extends StatelessWidget {
-  const TripPlannerScreen({Key? key}) : super(key: key);
+  const TripPlannerScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class TripPlannerScreen extends StatelessWidget {
 }
 
 class _TripPlannerView extends StatelessWidget {
-  const _TripPlannerView({Key? key}) : super(key: key);
+  const _TripPlannerView();
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +48,7 @@ class _TripPlannerView extends StatelessWidget {
           ),
         ),
         title: Column(
-          children: const [
+          children: [
             Text(
               'Tạo lịch trình mới',
               style: TextStyle(
@@ -184,7 +184,7 @@ class _TripPlannerView extends StatelessWidget {
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
                             'Tiếp tục',
                             style: TextStyle(

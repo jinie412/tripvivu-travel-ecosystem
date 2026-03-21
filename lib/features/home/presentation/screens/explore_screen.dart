@@ -12,11 +12,11 @@ import '../widgets/explore_header.dart';
 import '../widgets/hotel_card.dart';
 import '../widgets/trip_card_widget.dart';
 
-import '../../../profile/presentation/widgets/profile_drawer.dart';
+
 import '../../../food/presentation/screens/food_menu_screen.dart';
 import '../../../food/presentation/widgets/pre_order_popup.dart';
 import '../../../review/presentation/widgets/itinerary_rating_popup.dart';
-import '../../../review/presentation/screens/rate_itinerary_screen.dart';
+
 import '../../../place/presentation/screens/place_detail_screen.dart';
 import '../../../place/presentation/cubit/place_detail_cubit.dart';
 import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
@@ -169,7 +169,7 @@ class _ExploreViewState extends State<_ExploreView> {
                         child: Switch(
                           value: _isItineraryStarted,
                           onChanged: _onToggleItinerary,
-                          activeColor: const Color(0xFF2563EB),
+                          activeThumbColor: const Color(0xFF2563EB),
                           activeTrackColor: const Color(0xFFBFDBFE),
                         ),
                       ),
@@ -333,7 +333,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     scrollDirection: Axis.horizontal,
                     itemCount: state.hotels.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (_, i) {
                       final h = state.hotels[i];
                       return SizedBox(
