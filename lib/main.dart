@@ -4,6 +4,7 @@ import 'core/di/injection_container.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/survey/presentation/screens/survey_screen.dart';
 
 /// 🔧 DEV FLAG — false = login screen, true = skip to home
 const bool kSkipLogin = false;
@@ -25,6 +26,10 @@ class TravelAdvisorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: kSkipLogin ? const MainShell() : const LoginScreen(),
+      routes: {
+        '/home': (context) => const MainShell(),
+        '/survey': (context) => const SurveyScreen(),
+      },
     );
   }
 }

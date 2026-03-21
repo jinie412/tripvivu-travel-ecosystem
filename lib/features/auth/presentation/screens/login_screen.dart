@@ -6,7 +6,6 @@ import '../widgets/auth_text_field.dart';
 import '../widgets/auth_shared_widgets.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import '../../../../core/navigation/main_shell.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -53,10 +52,12 @@ class _LoginViewState extends State<_LoginView> {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthSuccess) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const MainShell()),
-          );
+          FocusScope.of(context).unfocus();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.pushReplacementNamed(context, '/survey');
+            }
+          });
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

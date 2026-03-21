@@ -37,6 +37,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đang tạo tài khoản...')),
       );
+      // Navigate to survey after a small delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/survey');
+        }
+      });
     }
   }
 
