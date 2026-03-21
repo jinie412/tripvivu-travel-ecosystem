@@ -45,19 +45,23 @@ class MockProfileDataSource implements ProfileDataSource {
         type: ActivityType.reviewPending,
         status: ActivityStatus.pendingReview,
       ),
-      const ActivityItemModel(
+      ActivityItemModel(
         id: 'act-4',
         title: 'Bánh mì xíu mại',
         type: ActivityType.food,
         code: '#TRV123',
         status: ActivityStatus.preparing,
+        restaurantName: 'Cơm tấm Ba Ghiền',
+        orderItems: ['Cơm tấm sườn bì chả', 'Trà đá'],
       ),
-      const ActivityItemModel(
+      ActivityItemModel(
         id: 'act-5',
         title: 'Lẩu gà lá é',
         type: ActivityType.food,
         code: '#TRV120',
         status: ActivityStatus.delivered,
+        restaurantName: 'Lẩu gà lá é Tao Ngộ',
+        orderItems: ['Lẩu gà lá é (Lớn)', 'Bún thêm'],
       ),
     ];
   }

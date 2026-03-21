@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/itinerary_review_entity.dart';
 import '../../../../core/widgets/net_image.dart';
 import 'star_rating_input.dart';
@@ -172,8 +172,14 @@ class ReviewItineraryCard extends StatelessWidget {
               maxLines: 4,
               decoration: InputDecoration(
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                filled: false,
                 hintText: 'Hãy cho chúng tôi biết về những điểm nổi bật, về vấn đề hậu cần và những gì có thể được cải thiện...',
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
               ),
             ),
           ),

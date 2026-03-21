@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/itinerary_summary.dart';
 
 /// Lưới thống kê 2×2 — Tổng số · Đã đi · Sắp đi · Đang tạo
@@ -14,22 +14,34 @@ class ItinerarySummaryGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'Thống kê của lịch trình',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1E),
+            ),
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _StatCard(
-                  label: 'TỔNG SỐ',
-                  value: summary.total,
-                  valueColor: AppColors.primary,
+                  label: 'Tổng số',
+                  valueStr: '${summary.total} lịch trình',
+                  icon: Icons.assignment_outlined,
+                  iconColor: const Color(0xFF3B82F6),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _StatCard(
-                  label: 'ĐÃ ĐI',
-                  value: summary.completed,
-                  valueColor: const Color(0xFF34A853),
+                  label: 'Hoàn thành',
+                  valueStr: '${summary.completed} chuyến',
+                  icon: Icons.check_circle_outline,
+                  iconColor: const Color(0xFF10B981),
                 ),
               ),
             ],
@@ -39,17 +51,19 @@ class ItinerarySummaryGrid extends StatelessWidget {
             children: [
               Expanded(
                 child: _StatCard(
-                  label: 'SẮP ĐI',
-                  value: summary.upcoming,
-                  valueColor: const Color(0xFFFFA500),
+                  label: 'Sắp tới',
+                  valueStr: '${summary.upcoming} chuyến',
+                  icon: Icons.upcoming_outlined,
+                  iconColor: const Color(0xFFF59E0B),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _StatCard(
-                  label: 'ĐANG TẠO',
-                  value: summary.draft,
-                  valueColor: const Color(0xFF9E9E9E),
+                  label: 'Bản nháp',
+                  valueStr: '${summary.draft} bản',
+                  icon: Icons.edit_note_outlined,
+                  iconColor: const Color(0xFF6B7280),
                 ),
               ),
             ],
@@ -62,44 +76,61 @@ class ItinerarySummaryGrid extends StatelessWidget {
 
 class _StatCard extends StatelessWidget {
   final String label;
-  final int value;
-  final Color valueColor;
+  final String valueStr;
+  final IconData icon;
+  final Color iconColor;
 
   const _StatCard({
     required this.label,
-    required this.value,
-    required this.valueColor,
+    required this.valueStr,
+    required this.icon,
+    required this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            valueStr,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1C1C1E),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
           Text(
             label,
             style: const TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF9E9E9E),
-              letterSpacing: 0.5,
+              color: Color(0xFF6B7280),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value.toString(),
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: valueColor,
-            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

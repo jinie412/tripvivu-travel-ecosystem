@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// A reusable text field widget matching the Figma auth screen design.
 /// Shows a label above the field, a prefix icon, and an optional suffix widget.

@@ -1,6 +1,7 @@
 import '../entities/itinerary_entity.dart';
 import '../repositories/itinerary_repository.dart';
 import '../entities/itinerary_summary.dart';
+import '../entities/itinerary_detail_entity.dart';
 
 /// UseCase: Lấy danh sách lịch trình (có thể lọc theo status).
 class GetItinerariesUseCase {
@@ -29,5 +30,15 @@ class DeleteItineraryUseCase {
 
   Future<void> call(String id) {
     return _repository.deleteItinerary(id);
+  }
+}
+
+/// UseCase: Lấy chi tiết lịch trình.
+class GetItineraryDetailUseCase {
+  final ItineraryRepository _repository;
+  GetItineraryDetailUseCase(this._repository);
+
+  Future<ItineraryDetailEntity> call(String id) {
+    return _repository.getItineraryDetail(id);
   }
 }

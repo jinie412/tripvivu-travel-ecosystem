@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 import '../../domain/entities/itinerary_entity.dart';
 
 /// Card lịch trình "Đã đi" — có badge "ĐÃ ĐI" + rating ⭐ thay cho progress bar.
@@ -28,33 +29,12 @@ class ItineraryCompletedCard extends StatelessWidget {
           motion: const BehindMotion(),
           extentRatio: 0.4,
           children: [
-            CustomSlidableAction(
-              onPressed: (_) => onEdit?.call(),
-              backgroundColor: const Color(0xFF42A5F5),
-              foregroundColor: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.edit_outlined, size: 22),
-                  SizedBox(height: 4),
-                  Text('Sửa',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
+
             CustomSlidableAction(
               onPressed: (_) => onDelete?.call(),
               backgroundColor: const Color(0xFFEF5350),
               foregroundColor: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.circular(16),
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -142,9 +122,32 @@ class ItineraryCompletedCard extends StatelessWidget {
                               ),
                             ),
                             GestureDetector(
-                              onTap: () {},
-                              child: const Icon(Icons.more_vert,
-                                  size: 18, color: Color(0xFF9E9E9E)),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RateItineraryScreen(
+                                      itineraryId: item.id,
+                                      isReadOnly: item.rating != null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: item.rating == null ? const Color(0xFF0EA5E9) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  item.rating == null ? 'Đánh giá' : 'Xem đánh giá',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.rating == null ? Colors.white : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),

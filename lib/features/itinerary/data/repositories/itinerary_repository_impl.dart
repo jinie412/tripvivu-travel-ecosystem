@@ -1,5 +1,6 @@
 import '../../domain/entities/itinerary_entity.dart';
 import '../../domain/entities/itinerary_summary.dart';
+import '../../domain/entities/itinerary_detail_entity.dart';
 import '../../domain/repositories/itinerary_repository.dart';
 import '../datasources/itinerary_datasource.dart';
 
@@ -43,5 +44,11 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   @override
   Future<void> deleteItinerary(String id) async {
     await _dataSource.deleteItinerary(id);
+  }
+
+  @override
+  Future<ItineraryDetailEntity> getItineraryDetail(String id) async {
+    final model = await _dataSource.getItineraryDetail(id);
+    return model.toEntity();
   }
 }
