@@ -133,6 +133,28 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }
     }
   }
+
+  void toggleItineraryStatus(String id, bool isOngoing) {
+    if (state is ItineraryLoaded) {
+      final currentState = state as ItineraryLoaded;
+      final updatedList = currentState.itineraries.map((itinerary) {
+        if (itinerary.id == id) {
+          return itinerary.copyWith(
+            status: isOngoing ? ItineraryStatus.ongoing : ItineraryStatus.upcoming,
+          );
+        }
+        return itinerary;
+      }).toList();
+
+      emit(ItineraryLoaded(
+        itineraries: updatedList,
+        summary: currentState.summary,
+        activeFilter: currentState.activeFilter,
+        activeCompletedFilter: currentState.activeCompletedFilter,
+        selectedItinerary: currentState.selectedItinerary,
+      ));
+    }
+  }
 }
 
 extension on ItineraryLoaded {

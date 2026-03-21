@@ -23,8 +23,8 @@ class MockItineraryDataSource implements ItineraryDataSource {
       title: 'Sài Gòn 3N2Đ',
       imageUrl:
           'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
-      startDate: DateTime(2024, 10, 15),
-      endDate: DateTime(2024, 10, 17),
+      startDate: DateTime.now(),
+      endDate: DateTime.now().add(const Duration(days: 2)),
       estimatedCost: 5200000,
       currency: 'VNĐ',
       durationDays: 3,
@@ -37,8 +37,8 @@ class MockItineraryDataSource implements ItineraryDataSource {
       title: 'Đà Nẵng - Hội An 5N',
       imageUrl:
           'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=600&q=80',
-      startDate: DateTime(2024, 11, 1),
-      endDate: DateTime(2024, 11, 5),
+      startDate: DateTime.now(),
+      endDate: DateTime.now().add(const Duration(days: 4)),
       estimatedCost: 8500000,
       currency: 'VNĐ',
       durationDays: 5,
