@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+
 import '../../features/auth/data/datasources/auth_datasource.dart';
 import '../../features/auth/data/repositories/mock_auth_repository.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
@@ -26,6 +28,11 @@ import '../../features/review/data/repositories/review_repository_impl.dart';
 import '../../features/review/domain/repositories/review_repository.dart';
 import '../../features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 import '../../features/review/presentation/cubit/review_cubit.dart';
+import '../../features/place/data/datasources/place_datasource.dart';
+import '../../features/place/data/repositories/place_repository_impl.dart';
+import '../../features/place/domain/repositories/place_repository.dart';
+import '../../features/place/domain/usecases/get_place_detail_usecase.dart';
+import '../../features/place/presentation/cubit/place_detail_cubit.dart';
 import '../network/dio_client.dart';
 
 final sl = GetIt.instance;
@@ -86,6 +93,7 @@ Future<void> initDependencies() async {
       getSuggestions: sl<GetSuggestionsUseCase>(),
       getDestinations: sl<GetDestinationsUseCase>(),
       getHotels: sl<GetHotelsUseCase>(),
+      getItineraries: sl<GetItinerariesUseCase>(),
     ),
   );
 
@@ -111,6 +119,8 @@ Future<void> initDependencies() async {
       () => GetItinerarySummaryUseCase(sl<ItineraryRepository>()));
   sl.registerLazySingleton(
       () => DeleteItineraryUseCase(sl<ItineraryRepository>()));
+  sl.registerLazySingleton(
+      () => GetItineraryDetailUseCase(sl<ItineraryRepository>()));
 
   // ── Itinerary Cubit ────────────────────────────────────────────────────────
   sl.registerFactory(
@@ -118,6 +128,7 @@ Future<void> initDependencies() async {
       getItineraries: sl<GetItinerariesUseCase>(),
       getSummary: sl<GetItinerarySummaryUseCase>(),
       deleteItinerary: sl<DeleteItineraryUseCase>(),
+      getItineraryDetail: sl<GetItineraryDetailUseCase>(),
     ),
   );
 
@@ -169,4 +180,28 @@ Future<void> initDependencies() async {
       getItineraryForReview: sl<GetItineraryForReviewUseCase>(),
     ),
   );
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ── Place Feature ──────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+
+  sl.registerLazySingleton<PlaceDataSource>(
+    () => MockPlaceDataSource(),
+  );
+
+  sl.registerLazySingleton<PlaceRepository>(
+    () => PlaceRepositoryImpl(sl<PlaceDataSource>()),
+  );
+
+  sl.registerLazySingleton(
+    () => GetPlaceDetailUseCase(sl<PlaceRepository>()),
+  );
+
+  sl.registerFactory(
+    () => PlaceDetailCubit(
+      getPlaceDetailUseCase: sl<GetPlaceDetailUseCase>(),
+    ),
+  );
+  // ── Trip Planner Cubit ─────────────────────────────────────────────────────
+  sl.registerFactory(() => TripPlannerCubit());
 }

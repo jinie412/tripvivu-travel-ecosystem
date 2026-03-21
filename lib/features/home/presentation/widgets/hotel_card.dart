@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/hotel.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/net_image.dart';
 
 class HotelCard extends StatelessWidget {

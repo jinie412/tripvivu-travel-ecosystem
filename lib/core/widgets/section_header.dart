@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
+import '../theme/app_colors.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
-  final VoidCallback onSeeAll;
+  final String actionLabel;
+  final VoidCallback? onSeeAll;
 
   const SectionHeader({
     super.key,
     required this.title,
-    required this.onSeeAll,
+    this.actionLabel = 'Xem tất cả',
+    this.onSeeAll,
   });
 
   @override
@@ -26,17 +28,18 @@ class SectionHeader extends StatelessWidget {
               color: Color(0xFF1C1C1E),
             ),
           ),
-          GestureDetector(
-            onTap: onSeeAll,
-            child: const Text(
-              'Xem tất cả',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w500,
+          if (onSeeAll != null && actionLabel.isNotEmpty)
+            GestureDetector(
+              onTap: onSeeAll,
+              child: Text(
+                actionLabel,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

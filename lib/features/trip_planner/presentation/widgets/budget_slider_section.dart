@@ -1,0 +1,86 @@
+import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
+
+class BudgetSliderSection extends StatelessWidget {
+  final double currentBudget;
+  final ValueChanged<double> onChanged;
+
+  const BudgetSliderSection({
+    Key? key,
+    required this.currentBudget,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final formatCurrency = NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.money, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text(
+              'Mức ngân sách',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: AppColors.primary.withOpacity(0.2),
+            thumbColor: AppColors.primary,
+            overlayColor: AppColors.primary.withOpacity(0.1),
+            trackHeight: 4.0,
+          ),
+          child: Slider(
+            value: currentBudget,
+            min: 500000,
+            max: 10000000,
+            divisions: 19, // steps of 500k
+            onChanged: onChanged,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              formatCurrency.format(500000),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              formatCurrency.format(currentBudget),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              formatCurrency.format(10000000),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}

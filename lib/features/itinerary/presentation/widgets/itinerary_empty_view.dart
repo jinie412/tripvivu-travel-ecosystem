@@ -1,71 +1,121 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// Trạng thái rỗng — hiển thị khi chưa có lịch trình nào.
-///
-/// Gồm icon bản đồ, text hướng dẫn, và nút "⊕ Tạo lịch trình".
 class ItineraryEmptyView extends StatelessWidget {
   final VoidCallback? onCreateTap;
+
   const ItineraryEmptyView({super.key, this.onCreateTap});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 48),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icon bản đồ lớn (giống Figma)
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F4FD),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.map_outlined,
-                size: 48,
-                color: AppColors.primary,
-              ),
+            // ── Large Icon Background ─────────────────────────────────────────────
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Inner Glow Circle
+                Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFFE0F2FE).withOpacity(0.8),
+                        const Color(0xFFEFF6FF).withOpacity(0.4),
+                        Colors.white.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+                // Middle Circle
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                // Map Icon in a White Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.map_outlined,
+                    size: 44,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 48),
+            // ── Text Content ────────────────────────────────────────────────────────
             const Text(
               'Bạn chưa có lịch trình nào',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1C1C1E),
-              ),
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1E293B),
+                letterSpacing: -0.5,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             const Text(
               'Bắt đầu tạo chuyến đi đầu tiên của bạn.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF6B7280),
-              ),
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: Color(0xFF64748B),
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 28),
-            // Nút tạo lịch trình
+            const SizedBox(height: 40),
+            // ── Action Button ───────────────────────────────────────────────────────
             SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
+              width: 200,
+              height: 56,
+              child: ElevatedButton(
                 onPressed: onCreateTap,
-                icon: const Icon(Icons.add_circle_outline, size: 20),
-                label: const Text(
-                  'Tạo lịch trình',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: const StadiumBorder(),
-                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 8,
+                  shadowColor: AppColors.primary.withOpacity(0.4),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_circle_outline, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Tạo lịch trình',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

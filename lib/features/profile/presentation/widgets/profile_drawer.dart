@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/profile/domain/entities/activity_item_entity.dart';
 import '../../../../features/profile/domain/entities/profile_entity.dart';
 import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../../../features/profile/presentation/cubit/profile_state.dart';
 import '../../../../features/review/presentation/screens/rate_itinerary_screen.dart';
+import '../../../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import '../../../../features/itinerary/domain/entities/itinerary_entity.dart';
+import '../../../../features/itinerary/presentation/cubit/itinerary_state.dart';
+import '../../../../core/navigation/tab_cubit.dart';
 
 class ProfileDrawer extends StatelessWidget {
   const ProfileDrawer({super.key});
@@ -19,6 +24,12 @@ class ProfileDrawer extends StatelessWidget {
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       width: MediaQuery.of(context).size.width * 0.85,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
       child: BlocProvider(
         create: (_) => sl<ProfileCubit>()..loadProfile(),
         child: const _DrawerContent(),
@@ -113,12 +124,21 @@ class _DrawerContent extends StatelessWidget {
             ...ratedItems.map((e) => _ActivityTile(
                 item: e, icon: Icons.location_on_outlined, isImage: false)),
             
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 20, bottom: 8, top: 4),
-                child: Text('Xem tất cả', 
-                    style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.bold)),
+            InkWell(
+              onTap: () {
+                final itCub = context.read<ItineraryCubit>();
+                itCub.filterBy(ItineraryStatus.completed);
+                itCub.filterByCompleted(CompletedFilter.unrated);
+                context.read<TabCubit>().changeTab(1);
+                Scaffold.of(context).closeDrawer();
+              },
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 20, bottom: 8, top: 4),
+                  child: Text('Xem tất cả', 
+                      style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
               ),
             ),
 
@@ -148,9 +168,16 @@ class _DrawerContent extends StatelessWidget {
             ...foodItems.map((e) => _FoodOrderCard(item: e)),
 
             const Divider(height: 32, color: Color(0xFFF3F4F6)),
-            const _MenuTile(
-                icon: Icons.settings_outlined, label: 'Cài đặt tài khoản'),
-            const _MenuTile(icon:Icons.exit_to_app_rounded, label: 'Đăng xuất'),
+            _MenuTile(
+              icon: Icons.exit_to_app_rounded,
+              label: 'Đăng xuất',
+              onTap: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              },
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -218,24 +245,28 @@ class _PillHeader extends StatelessWidget {
 class _MenuTile extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _MenuTile({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _MenuTile({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey.shade700, size: 22),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4B5563))),
-          ),
-        ],
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.grey.shade700, size: 22),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4B5563))),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -330,9 +361,16 @@ class _ActivityTile extends StatelessWidget {
   }
 }
 
-class _FoodOrderCard extends StatelessWidget {
+class _FoodOrderCard extends StatefulWidget {
   final ActivityItemEntity item;
   const _FoodOrderCard({required this.item});
+
+  @override
+  State<_FoodOrderCard> createState() => _FoodOrderCardState();
+}
+
+class _FoodOrderCardState extends State<_FoodOrderCard> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -340,78 +378,113 @@ class _FoodOrderCard extends StatelessWidget {
     Color statusBgColor = Colors.transparent;
     Color statusTextColor = Colors.transparent;
 
-    if (item.status == ActivityStatus.preparing) {
+    if (widget.item.status == ActivityStatus.preparing) {
       statusText = 'Đang chuẩn bị';
       statusBgColor = AppColors.blobLight.withValues(alpha: 0.3);
       statusTextColor = AppColors.primary;
-    } else if (item.status == ActivityStatus.delivered) {
+    } else if (widget.item.status == ActivityStatus.delivered) {
       statusText = 'Đã giao';
       statusBgColor = Colors.transparent;
       statusTextColor = Colors.grey.shade500;
     }
 
-    final isPreparing = item.status == ActivityStatus.preparing;
+    final isPreparing = widget.item.status == ActivityStatus.preparing;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isPreparing
-                  ? AppColors.blobLight.withValues(alpha: 0.2)
-                  : Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isPreparing
-                  ? Icons.shopping_bag_outlined
-                  : Icons.check_circle_outline,
-              color: isPreparing ? AppColors.primary : Colors.grey.shade500,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            if (_isExpanded)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(item.title,
-                    style: const TextStyle(
-                        fontSize: 13,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isPreparing
+                        ? AppColors.blobLight.withValues(alpha: 0.2)
+                        : Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isPreparing
+                        ? Icons.shopping_bag_outlined
+                        : Icons.check_circle_outline,
+                    color: isPreparing ? AppColors.primary : Colors.grey.shade500,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.item.restaurantName ?? 'Nhà hàng',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1C1C1E))),
+                      const SizedBox(height: 2),
+                      Text(widget.item.title,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(widget.item.code ?? '',
+                          style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                if (statusText.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusBgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: statusTextColor,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1C1C1E))),
-                const SizedBox(height: 2),
-                Text(item.code ?? '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      ),
+                    ),
+                  )
               ],
             ),
-          ),
-          if (statusText.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusBgColor,
-                borderRadius: BorderRadius.circular(20),
+            if (_isExpanded && widget.item.orderItems != null) ...[
+              const Divider(height: 24),
+              Column(
+                children: widget.item.orderItems!
+                    .map((food) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 4, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Text(food, style: const TextStyle(fontSize: 11)),
+                            ],
+                          ),
+                        ))
+                    .toList(),
               ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: statusTextColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }

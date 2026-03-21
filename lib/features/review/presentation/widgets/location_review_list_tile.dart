@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/net_image.dart';
 import '../../domain/entities/location_review_entity.dart';
 
-class LocationReviewListTile extends StatelessWidget {
+class LocationReviewListTile extends StatefulWidget {
   final LocationReviewEntity location;
   final ValueChanged<double>? onRatingChanged;
   final VoidCallback? onWriteReview;
+  final bool isReadOnly;
 
-  const LocationReviewListTile(
-      {super.key,
-      required this.location,
-      this.onRatingChanged,
-      this.onWriteReview});
+  const LocationReviewListTile({
+    super.key,
+    required this.location,
+    this.onRatingChanged,
+    this.onWriteReview,
+    this.isReadOnly = false,
+  });
+
+  @override
+  State<LocationReviewListTile> createState() => _LocationReviewListTileState();
+}
+
+class _LocationReviewListTileState extends State<LocationReviewListTile> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +53,7 @@ class LocationReviewListTile extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: NetImage(
-              url: location.imageUrl,
+              url: widget.location.imageUrl,
               placeholderColor: AppColors.blobLight.toARGB32(),
             ),
           ),
@@ -63,7 +73,7 @@ class LocationReviewListTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'NGÀY ${location.day}',
+                        'NGÀY ${widget.location.day}',
                         style: const TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.bold,
@@ -77,9 +87,9 @@ class LocationReviewListTile extends StatelessWidget {
                         (index) {
                           final starValue = index + 1;
                           return GestureDetector(
-                            onTap: onRatingChanged != null ? () => onRatingChanged!(starValue.toDouble()) : null,
+                            onTap: widget.onRatingChanged != null ? () => widget.onRatingChanged!(starValue.toDouble()) : null,
                             child: Icon(
-                              starValue <= (location.rating ?? 0)
+                              starValue <= (widget.location.rating ?? 0)
                                   ? Icons.star_rounded
                                   : Icons.star_border_rounded,
                               size: 14,
@@ -93,7 +103,7 @@ class LocationReviewListTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  location.name,
+                  widget.location.name,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -101,13 +111,13 @@ class LocationReviewListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (location.reviewText != null && location.reviewText!.isNotEmpty)
+                if (widget.location.reviewText != null && widget.location.reviewText!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      location.reviewText!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      widget.location.reviewText!,
+                      maxLines: _isExpanded ? null : 1,
+                      overflow: _isExpanded ? null : TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade600,
@@ -119,9 +129,11 @@ class LocationReviewListTile extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
-                    onTap: onWriteReview,
+                    onTap: widget.isReadOnly 
+                      ? () => setState(() => _isExpanded = !_isExpanded)
+                      : widget.onWriteReview,
                     child: Text(
-                      'Viết đánh giá',
+                      widget.isReadOnly ? 'Xem đầy đủ đánh giá' : 'Viết đánh giá',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

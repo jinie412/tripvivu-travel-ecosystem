@@ -3,21 +3,29 @@ import 'package:flutter/material.dart';
 
 class NetImage extends StatelessWidget {
   final String? url;
-  final int placeholderColor;
+  final int? placeholderColor;
   final double borderRadius;
+  final BoxFit fit;
+  final double? width;
+  final double? height;
 
   const NetImage({
     super.key,
     required this.url,
-    required this.placeholderColor,
+    this.placeholderColor,
     this.borderRadius = 0,
+    this.fit = BoxFit.cover,
+    this.width,
+    this.height,
   });
 
   @override
   Widget build(BuildContext context) {
     final placeholder = Container(
+      width: width ?? double.infinity,
+      height: height ?? double.infinity,
       decoration: BoxDecoration(
-        color: Color(placeholderColor),
+        color: placeholderColor != null ? Color(placeholderColor!) : const Color(0xFFE5E7EB),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -26,9 +34,9 @@ class NetImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(borderRadius),
       child: CachedNetworkImage(
         imageUrl: url!,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
+        fit: fit,
+        width: width ?? double.infinity,
+        height: height ?? double.infinity,
         placeholder: (context, url) => placeholder,
         errorWidget: (context, url, error) => placeholder,
       ),
