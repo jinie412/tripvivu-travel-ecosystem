@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -16,11 +18,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r20)),
       ),
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.symmetric(vertical: AppSizes.s20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -60,7 +62,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           children: [
             // 1. Top Header with Centered Title
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
               child: Row(
                 children: [
                   IconButton(
@@ -73,12 +75,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         'Hộp thư đến',
                         style: AppTextStyles.heading2.copyWith(
                           fontSize: 18,
-                          color: const Color(0xFF113D3C),
+                          color: AppColorsExt.textDark,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48), // Padding to balance the IconButton
+                  const SizedBox(width: AppSizes.s48), // Padding to balance the IconButton
                 ],
               ),
             ),
@@ -89,7 +91,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
             // 3. Filter Section
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24),
               child: Row(
                 children: [
                   _buildSortSelector(),

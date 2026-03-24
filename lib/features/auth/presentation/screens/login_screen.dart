@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection_container.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_shared_widgets.dart';
@@ -85,28 +87,28 @@ class _LoginViewState extends State<_LoginView> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEBF5FF),
-                          borderRadius: BorderRadius.circular(32),
+                          color: AppColorsExt.authBgLight,
+                          borderRadius: BorderRadius.circular(AppSizes.r32),
                         ),
                         child: const Center(
                           child: Icon(Icons.flight_takeoff_rounded,
-                              size: 48, color: AppColors.primary),
+                              size: AppSizes.s48, color: AppColors.primary),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSizes.s24),
                     const Text('Đăng nhập',
                         style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A3C6E)),
                         textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.s8),
                     const Text('Sẵn sàng cho chuyến đi tiếp theo?',
                         style: TextStyle(
                             fontSize: 14, color: AppColors.textSecondary),
                         textAlign: TextAlign.center),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
                     // ── Email ─────────────────────────────────────────────────
                     AuthTextField(
                       controller: _emailController,
@@ -116,7 +118,7 @@ class _LoginViewState extends State<_LoginView> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSizes.s16),
                     // ── Password ──────────────────────────────────────────────
                     AuthTextField(
                       controller: _passwordController,
@@ -132,13 +134,13 @@ class _LoginViewState extends State<_LoginView> {
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
                           color: AppColors.textSecondary,
-                          size: 20,
+                          size: AppSizes.iconMd,
                         ),
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.s8),
                     // ── Forgot password ───────────────────────────────────────
                     Align(
                       alignment: Alignment.centerRight,
@@ -154,13 +156,13 @@ class _LoginViewState extends State<_LoginView> {
                                 fontWeight: FontWeight.w600)),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSizes.s24),
                     // ── Login button ──────────────────────────────────────────
                     BlocBuilder<AuthCubit, AuthState>(
                       builder: (context, state) {
                         final isLoading = state is AuthLoading;
                         return SizedBox(
-                          height: 52,
+                          height: AppSizes.buttonHeight,
                           child: ElevatedButton(
                             onPressed:
                                 isLoading ? null : () => _submit(context),
@@ -171,7 +173,7 @@ class _LoginViewState extends State<_LoginView> {
                                   AppColors.primary.withValues(alpha: 0.6),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(AppSizes.r12),
                               ),
                             ),
                             child: isLoading
@@ -189,9 +191,9 @@ class _LoginViewState extends State<_LoginView> {
                         );
                       },
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: AppSizes.s28),
                     const OrDivider(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSizes.s20),
                     // ── Social buttons ────────────────────────────────────────
                     BlocBuilder<AuthCubit, AuthState>(
                       builder: (context, state) {

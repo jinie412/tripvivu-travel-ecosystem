@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 import 'edit_profile_screen.dart';
 import 'notifications_screen.dart';
 import 'change_password_screen.dart';
@@ -15,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -27,7 +29,7 @@ class ProfileScreen extends StatelessWidget {
                     'Tài khoản',
                     style: AppTextStyles.heading1.copyWith(
                       fontSize: 22,
-                      color: const Color(0xFF113D3C),
+                      color: AppColorsExt.textDark,
                     ),
                   ),
                   CircleAvatar(
@@ -39,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSizes.s32),
 
               // Menu Items
               _buildMenuItem(
@@ -110,19 +112,19 @@ class ProfileScreen extends StatelessWidget {
               ),
               const Divider(height: 1),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: AppSizes.s48),
 
               // Logout Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: AppSizes.buttonHeight,
                 child: ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppSizes.r16),
                     ),
                     elevation: 0,
                   ),
@@ -133,7 +135,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: AppSizes.s40),
 
               // Footer Info
               Center(
@@ -145,9 +147,9 @@ class ProfileScreen extends StatelessWidget {
                         color: Colors.grey[400],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.s8),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s40),
                       child: Text(
                         'ID thiết bị: 19d532bc-7d43-4941-900b-a18233ea8644',
                         textAlign: TextAlign.center,
@@ -176,14 +178,14 @@ class ProfileScreen extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
       leading: Icon(
         icon,
-        color: const Color(0xFF113D3C),
-        size: 26,
+        color: AppColorsExt.textDark,
+        size: AppSizes.iconLg,
       ),
       title: Text(
         title,
         style: AppTextStyles.heading2.copyWith(
           fontSize: 18,
-          color: const Color(0xFF113D3C),
+          color: AppColorsExt.textDark,
         ),
       ),
       trailing: const Icon(

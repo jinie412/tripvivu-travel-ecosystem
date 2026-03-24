@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -12,17 +14,17 @@ class SupportScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF113D3C), size: 22),
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColorsExt.textDark, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Hỗ trợ',
-          style: AppTextStyles.heading2.copyWith(color: const Color(0xFF113D3C)),
+          style: AppTextStyles.heading2.copyWith(color: AppColorsExt.textDark),
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSizes.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -38,7 +40,7 @@ class SupportScreen extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.s16),
             _buildSupportCard(
               icon: Icons.email_outlined,
               title: 'Email hỗ trợ',
@@ -51,7 +53,7 @@ class SupportScreen extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: 48),
+            const SizedBox(height: AppSizes.s48),
             Center(
               child: Text(
                 'Chúng tôi luôn sẵn sàng hỗ trợ bạn\ntrên mọi hành trình!',
@@ -80,10 +82,10 @@ class SupportScreen extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSizes.s16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppSizes.r16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -100,9 +102,9 @@ class SupportScreen extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: AppSizes.iconLg),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSizes.s16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../features/home/presentation/widgets/notification_drawer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/constants/app_sizes.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_text_styles.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/home/presentation/screens/explore_screen.dart';
 import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
@@ -84,7 +87,7 @@ class SharedBottomNav extends StatelessWidget {
       color: Colors.white,
       elevation: 8,
       padding: EdgeInsets.zero,
-      height: 90, 
+      height: AppSizes.bottomNavHeight, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -116,22 +119,18 @@ class SharedBottomNav extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: AppSizes.fabSize,
+                    height: AppSizes.fabSize,
                     decoration: const BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 24),
+                    child: const Icon(Icons.add, color: Colors.white, size: AppSizes.iconDefault),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSizes.s4),
                   const Text(
                     'Tạo lịch trình',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF9E9E9E),
-                      fontWeight: FontWeight.normal,
-                    ),
+                    style: AppTextStylesExt.captionSmall,
                   ),
                 ],
               ),
@@ -190,15 +189,15 @@ class NavItem extends StatelessWidget {
         children: [
           Icon(
             active ? activeIcon : icon,
-            color: active ? AppColors.primary : const Color(0xFF9E9E9E),
-            size: 24,
+            color: active ? AppColors.primary : AppColorsExt.textHint,
+            size: AppSizes.iconDefault,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSizes.s2),
           Text(
             label,
             style: TextStyle(
               fontSize: 10,
-              color: active ? AppColors.primary : const Color(0xFF9E9E9E),
+              color: active ? AppColors.primary : AppColorsExt.textHint,
               fontWeight: active ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
