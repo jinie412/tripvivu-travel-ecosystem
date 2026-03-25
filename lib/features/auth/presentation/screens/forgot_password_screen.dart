@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_shared_widgets.dart';
 import 'verify_otp_screen.dart';
@@ -41,7 +43,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const AuthBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s32),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -53,19 +55,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEBF5FF),
-                          borderRadius: BorderRadius.circular(32),
+                          color: AppColorsExt.authBgLight,
+                          borderRadius: BorderRadius.circular(AppSizes.r32),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.flight_takeoff_rounded,
-                            size: 48,
+                            size: AppSizes.s48,
                             color: AppColors.primary,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
                     
                     // 2. Title Section
                     const Text(
@@ -77,7 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSizes.s12),
                     const Text(
                       'Nhập email hoặc số điện thoại của bạn để nhận mã khôi phục mật khẩu',
                       style: TextStyle(
@@ -86,7 +88,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: AppSizes.s48),
 
                     // 3. Email Field
                     AuthTextField(
@@ -99,11 +101,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       onFieldSubmitted: (_) => _handleResetPassword(),
                       validator: (v) => (v?.isEmpty ?? true) ? 'Vui lòng nhập email hoặc SĐT' : null,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
 
                     // 4. Send Button
                     SizedBox(
-                      height: 52,
+                      height: AppSizes.buttonHeight,
                       child: ElevatedButton(
                         onPressed: _handleResetPassword,
                         style: ElevatedButton.styleFrom(
@@ -111,7 +113,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppSizes.r12),
                           ),
                         ),
                         child: const Text(
@@ -120,12 +122,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: AppSizes.s48),
 
                     // 5. Footer (Back to login)
                     TextButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.primary),
+                      icon: const Icon(Icons.arrow_back_ios_new, size: AppSizes.iconMd, color: AppColors.primary),
                       label: const Text(
                         'Quay lại Đăng nhập',
                         style: TextStyle(

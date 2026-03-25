@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/constants/app_sizes.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
 import '../widgets/search_header_widget.dart';
@@ -33,7 +34,7 @@ class _SearchView extends StatelessWidget {
           children: [
             // Search Header (Top Nav)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s16, AppSizes.s16, 0),
               child: SearchHeaderWidget(
                 controller: searchController,
                 onClear: () {
@@ -47,7 +48,7 @@ class _SearchView extends StatelessWidget {
             // Main Body: Hint + Recent Searches
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
                 child: BlocBuilder<SearchCubit, SearchState>(
                   builder: (context, state) {
                     return state.when(
