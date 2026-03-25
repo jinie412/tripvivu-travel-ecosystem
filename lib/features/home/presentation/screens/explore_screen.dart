@@ -138,18 +138,9 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-<<<<<<< HEAD
-                const SizedBox(height: 20),
-                // Section Header with View All
-                SectionHeader(
-                  title: 'Lịch trình của bạn', 
-                  onSeeAll: null,
-                ),
-=======
                 const SizedBox(height: 24),
                 SectionHeader(title: 'Lịch trình của bạn', onSeeAll: null),
                 const SizedBox(height: 16),
->>>>>>> 03ad165bfa9b8745fff76edecfa40438f833ed39
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: CurrentItineraryCard(

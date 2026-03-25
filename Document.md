@@ -116,4 +116,17 @@ flutter pub run build_runner watch --delete-conflicting-outputs
 
 ---
 
+## 🌍 7. Môi trường và Bảo mật (Environment Variables)
+
+Dự án sử dụng `flutter_dotenv` để quản lý các biến môi trường và ẩn đi các thông tin nhạy cảm (như API Url, API Keys).
+
+**Quy trình cho thành viên mới (Khi clone dự án về):**
+1. Copy file `.env.example` và đổi tên thành `.env` tại thư mục gốc rễ (root) của dự án.
+2. Mở file `.env` vừa tạo và điền các giá trị thực tế (Ví dụ: `BASE_URL=https://api.gptraveladvisor.com/v1`).
+3. **Tuyệt đối không** commit file `.env` lên Git (file này đã được chặn trong `.gitignore`).
+
+Mọi logic mạng đều tự động đọc biến môi trường thông qua cầu nối `ApiConfig` trong thư mục `core/network`.
+
+---
+
 > **Note:** Nếu bạn cần thay đổi từ dữ liệu ảo (Mock) sang dữ liệu thật (API), bạn chỉ cần sửa trong `injection_container.dart` bằng cách đổi DataSource, toàn bộ UI sẽ không bị ảnh hưởng.
