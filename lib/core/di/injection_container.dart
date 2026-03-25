@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 
 import '../../features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+import '../../features/survey/presentation/cubit/survey_cubit.dart';
 
 import '../../features/auth/data/datasources/auth_datasource.dart';
 import '../../features/auth/data/repositories/mock_auth_repository.dart';
@@ -28,180 +29,130 @@ import '../../features/review/data/repositories/review_repository_impl.dart';
 import '../../features/review/domain/repositories/review_repository.dart';
 import '../../features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 import '../../features/review/presentation/cubit/review_cubit.dart';
+import '../../features/search/data/datasources/search_mock_data_source.dart';
+import '../../features/search/data/repositories/search_repository_impl.dart';
+import '../../features/search/domain/repositories/search_repository.dart';
+import '../../features/search/domain/usecases/get_recent_searches.dart';
+import '../../features/search/domain/usecases/search_locations.dart';
+import '../../features/search/presentation/cubit/search_cubit.dart';
+import '../../features/city_detail/data/datasources/city_detail_mock_data_source.dart';
+import '../../features/city_detail/data/repositories/city_detail_repository_impl.dart';
+import '../../features/city_detail/domain/repositories/city_detail_repository.dart';
+import '../../features/city_detail/domain/usecases/get_city_overview_usecase.dart';
+import '../../features/city_detail/presentation/cubit/city_detail_cubit.dart';
 import '../../features/place/data/datasources/place_datasource.dart';
 import '../../features/place/data/repositories/place_repository_impl.dart';
 import '../../features/place/domain/repositories/place_repository.dart';
 import '../../features/place/domain/usecases/get_place_detail_usecase.dart';
 import '../../features/place/presentation/cubit/place_detail_cubit.dart';
+import '../../features/saved/data/datasources/saved_mock_data_source.dart';
+import '../../features/saved/data/repositories/saved_repository_impl.dart';
+import '../../features/saved/domain/repositories/saved_repository.dart';
+import '../../features/saved/presentation/cubit/saved_cubit.dart';
 import '../network/dio_client.dart';
 
 final sl = GetIt.instance;
 
 /// 🔌 Single registration point for all dependencies.
-///
-/// TO SWITCH TO REAL BACKEND, change only the DataSource lines:
-///   MockAuthDataSource()      → RemoteAuthDataSource(`sl<DioClient>()`)
-///   MockHomeDataSource()      → RemoteHomeDataSource(`sl<DioClient>()`)
-///   MockItineraryDataSource() → RemoteItineraryDataSource(`sl<DioClient>()`)
 Future<void> initDependencies() async {
   // ── Network ────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<DioClient>(() => DioClient());
 
-  // ── Auth DataSources ───────────────────────────────────────────────────────
-  sl.registerLazySingleton<AuthDataSource>(
-    () => MockAuthDataSource(),
-    // TODO: swap → RemoteAuthDataSource(sl<DioClient>())
-  );
-
-  // ── Auth Repository ────────────────────────────────────────────────────────
-  sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(sl<AuthDataSource>()),
-  );
-
-  // ── Auth UseCases ──────────────────────────────────────────────────────────
-  sl.registerLazySingleton(() => LoginUseCase(sl<AuthRepository>()));
-  sl.registerLazySingleton(() => RegisterUseCase(sl<AuthRepository>()));
-
-  // ── Auth Cubit (factory = new instance per screen) ─────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<AuthDataSource>(() => MockAuthDataSource());
+  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterUseCase(sl()));
   sl.registerFactory(
-    () => AuthCubit(
-      loginUseCase: sl<LoginUseCase>(),
-      registerUseCase: sl<RegisterUseCase>(),
-    ),
+    () => AuthCubit(loginUseCase: sl(), registerUseCase: sl()),
   );
 
-  // ── Home DataSources ───────────────────────────────────────────────────────
-  sl.registerLazySingleton<HomeDataSource>(
-    () => MockHomeDataSource(),
-    // TODO: swap → RemoteHomeDataSource(sl<DioClient>())
-  );
-
-  // ── Home Repository ────────────────────────────────────────────────────────
-  sl.registerLazySingleton<HomeRepository>(
-    () => HomeRepositoryImpl(sl<HomeDataSource>()),
-  );
-
-  // ── Home UseCases ──────────────────────────────────────────────────────────
-  sl.registerLazySingleton(() => GetSuggestionsUseCase(sl<HomeRepository>()));
-  sl.registerLazySingleton(
-      () => GetDestinationsUseCase(sl<HomeRepository>()));
-  sl.registerLazySingleton(() => GetHotelsUseCase(sl<HomeRepository>()));
-
-  // ── Explore Cubit ──────────────────────────────────────────────────────────
+  // ── Home ───────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<HomeDataSource>(() => MockHomeDataSource());
+  sl.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetSuggestionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetDestinationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetHotelsUseCase(sl()));
+  sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
   sl.registerFactory(
     () => ExploreCubit(
-      getSuggestions: sl<GetSuggestionsUseCase>(),
-      getDestinations: sl<GetDestinationsUseCase>(),
-      getHotels: sl<GetHotelsUseCase>(),
-      getItineraries: sl<GetItinerariesUseCase>(),
+      getSuggestions: sl(),
+      getDestinations: sl(),
+      getHotels: sl(),
+      getRestaurants: sl(),
+      getItineraries: sl(),
     ),
   );
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ── Itinerary Feature ──────────────────────────────────────────────────────
-  // ══════════════════════════════════════════════════════════════════════════
-
-  // ── Itinerary DataSource ───────────────────────────────────────────────────
-  sl.registerLazySingleton<ItineraryDataSource>(
-    () => MockItineraryDataSource(),
-    // TODO: swap → RemoteItineraryDataSource(sl<DioClient>())
-  );
-
-  // ── Itinerary Repository ───────────────────────────────────────────────────
-  sl.registerLazySingleton<ItineraryRepository>(
-    () => ItineraryRepositoryImpl(sl<ItineraryDataSource>()),
-  );
-
-  // ── Itinerary UseCases ─────────────────────────────────────────────────────
-  sl.registerLazySingleton(
-      () => GetItinerariesUseCase(sl<ItineraryRepository>()));
-  sl.registerLazySingleton(
-      () => GetItinerarySummaryUseCase(sl<ItineraryRepository>()));
-  sl.registerLazySingleton(
-      () => DeleteItineraryUseCase(sl<ItineraryRepository>()));
-  sl.registerLazySingleton(
-      () => GetItineraryDetailUseCase(sl<ItineraryRepository>()));
-
-  // ── Itinerary Cubit ────────────────────────────────────────────────────────
+  // ── Itinerary ──────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<ItineraryDataSource>(() => MockItineraryDataSource());
+  sl.registerLazySingleton<ItineraryRepository>(() => ItineraryRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetItinerariesUseCase(sl()));
+  sl.registerLazySingleton(() => GetItinerarySummaryUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteItineraryUseCase(sl()));
+  sl.registerLazySingleton(() => GetItineraryDetailUseCase(sl()));
   sl.registerFactory(
     () => ItineraryCubit(
-      getItineraries: sl<GetItinerariesUseCase>(),
-      getSummary: sl<GetItinerarySummaryUseCase>(),
-      deleteItinerary: sl<DeleteItineraryUseCase>(),
-      getItineraryDetail: sl<GetItineraryDetailUseCase>(),
+      getItineraries: sl(),
+      getSummary: sl(),
+      deleteItinerary: sl(),
+      getItineraryDetail: sl(),
     ),
   );
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ── Profile Feature ────────────────────────────────────────────────────────
-  // ══════════════════════════════════════════════════════════════════════════
-
-  // ── Profile DataSource ───────────────────────────────────────────────────
-  sl.registerLazySingleton<ProfileDataSource>(
-    () => MockProfileDataSource(),
-  );
-
-  // ── Profile Repository ───────────────────────────────────────────────────
-  sl.registerLazySingleton<ProfileRepository>(
-    () => ProfileRepositoryImpl(sl<ProfileDataSource>()),
-  );
-
-  // ── Profile UseCases ─────────────────────────────────────────────────────
-  sl.registerLazySingleton(
-      () => GetProfileUseCase(sl<ProfileRepository>()));
-  sl.registerLazySingleton(
-      () => GetRecentActivitiesUseCase(sl<ProfileRepository>()));
-
-  // ── Profile Cubit ────────────────────────────────────────────────────────
+  // ── Profile ────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<ProfileDataSource>(() => MockProfileDataSource());
+  sl.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetProfileUseCase(sl()));
+  sl.registerLazySingleton(() => GetRecentActivitiesUseCase(sl()));
   sl.registerFactory(
     () => ProfileCubit(
-      getProfile: sl<GetProfileUseCase>(),
-      getRecentActivities: sl<GetRecentActivitiesUseCase>(),
+      getProfile: sl(),
+      getRecentActivities: sl(),
     ),
   );
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ── Review Feature ────────────────────────────────────────────────────────
-  // ══════════════════════════════════════════════════════════════════════════
-
-  sl.registerLazySingleton<ReviewDataSource>(
-    () => MockReviewDataSource(),
-  );
-
-  sl.registerLazySingleton<ReviewRepository>(
-    () => ReviewRepositoryImpl(sl<ReviewDataSource>()),
-  );
-
-  sl.registerLazySingleton(
-      () => GetItineraryForReviewUseCase(sl<ReviewRepository>()));
-
+  // ── Review ─────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<ReviewDataSource>(() => MockReviewDataSource());
+  sl.registerLazySingleton<ReviewRepository>(() => ReviewRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetItineraryForReviewUseCase(sl()));
   sl.registerFactory(
-    () => ReviewCubit(
-      getItineraryForReview: sl<GetItineraryForReviewUseCase>(),
-    ),
+    () => ReviewCubit(getItineraryForReview: sl()),
   );
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ── Place Feature ──────────────────────────────────────────────────────────
-  // ══════════════════════════════════════════════════════════════════════════
-
-  sl.registerLazySingleton<PlaceDataSource>(
-    () => MockPlaceDataSource(),
+  // ── Search ─────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<SearchMockDataSource>(() => SearchMockDataSourceImpl());
+  sl.registerLazySingleton<SearchRepository>(
+    () => SearchRepositoryImpl(remoteDataSource: sl()),
   );
+  sl.registerLazySingleton(() => GetRecentSearches(sl()));
+  sl.registerLazySingleton(() => SearchLocations(sl()));
+  sl.registerFactory(() => SearchCubit(sl(), sl()));
 
-  sl.registerLazySingleton<PlaceRepository>(
-    () => PlaceRepositoryImpl(sl<PlaceDataSource>()),
-  );
+  // ── City Detail ────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<CityDetailDataSource>(() => CityDetailMockDataSource());
+  sl.registerLazySingleton<CityDetailRepository>(() => CityDetailRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetCityOverviewUseCase(sl()));
+  sl.registerFactory(() => CityDetailCubit(sl()));
 
-  sl.registerLazySingleton(
-    () => GetPlaceDetailUseCase(sl<PlaceRepository>()),
-  );
-
+  // ── Place ──────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<PlaceDataSource>(() => MockPlaceDataSource());
+  sl.registerLazySingleton<PlaceRepository>(() => PlaceRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetPlaceDetailUseCase(sl()));
   sl.registerFactory(
-    () => PlaceDetailCubit(
-      getPlaceDetailUseCase: sl<GetPlaceDetailUseCase>(),
-    ),
+    () => PlaceDetailCubit(getPlaceDetailUseCase: sl()),
   );
-  // ── Trip Planner Cubit ─────────────────────────────────────────────────────
+
+  // ── Saved ──────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton(() => SavedMockDataSource());
+  sl.registerLazySingleton<SavedRepository>(
+    () => SavedRepositoryImpl(dataSource: sl<SavedMockDataSource>()),
+  );
+  sl.registerFactory(() => SavedCubit(repository: sl()));
+
+  // ── Trip Planner ───────────────────────────────────────────────────────────
   sl.registerFactory(() => TripPlannerCubit());
+
+  // ── Survey ─────────────────────────────────────────────────────────────────
+  sl.registerFactory(() => SurveyCubit());
 }

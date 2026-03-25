@@ -6,11 +6,12 @@ import '../../core/di/injection_container.dart';
 import '../../features/home/presentation/screens/explore_screen.dart';
 import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/saved/presentation/screens/saved_screen.dart';
+import '../../features/saved/presentation/cubit/saved_cubit.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import '../../features/trip_planner/presentation/screens/trip_planner_screen.dart';
 import '../../features/profile/presentation/widgets/profile_drawer.dart';
-import '../../features/itinerary/presentation/screens/saved_screen.dart';
 import 'tab_cubit.dart';
 
 /// Shell chính chứa Bottom Navigation Bar + IndexedStack các tab.
@@ -22,15 +23,16 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-
-
   /// Danh sách các trang tương ứng với tab navigation.
   final List<Widget> _pages = [
-    const ExploreScreen(),        // 0 — Khám phá
-    const ItineraryScreen(),      // 1 — Lịch trình
-    const SizedBox.shrink(),      // 2 — placeholder cho FAB
-    const SavedScreen(),          // 3
-    const ProfileScreen(),        // 4 - Cá nhân
+    const ExploreScreen(), // 0 — Khám phá
+    const ItineraryScreen(), // 1 — Lịch trình
+    const SizedBox.shrink(), // 2 — placeholder cho FAB
+    BlocProvider(
+      create: (context) => sl<SavedCubit>(),
+      child: const SavedScreen(),
+    ), // 3 — Đã lưu
+    const ProfileScreen(), // 4 - Cá nhân
   ];
 
   @override
@@ -50,7 +52,7 @@ class _MainShellState extends State<MainShell> {
               index: currentIndex,
               children: _pages,
             ),
-            bottomNavigationBar: _BottomNav(
+            bottomNavigationBar: SharedBottomNav(
               currentIndex: currentIndex,
               onTap: (i) {
                 if (i == 2) {
@@ -71,15 +73,10 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-// ... (Phần code _BottomNav, _NavItem và _PlaceholderTab giữ nguyên như cũ)
-// ═══════════════════════════════════════════════════════════════════════════════
-// ── Bottom Navigation Bar ────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _BottomNav extends StatelessWidget {
+class SharedBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  const _BottomNav({required this.currentIndex, required this.onTap});
+  const SharedBottomNav({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +84,12 @@ class _BottomNav extends StatelessWidget {
       color: Colors.white,
       elevation: 8,
       padding: EdgeInsets.zero,
-      height: 90, // Set height directly on BottomAppBar
+      height: 90, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.explore_outlined,
               activeIcon: Icons.explore,
               label: 'Khám phá',
@@ -102,7 +99,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
               label: 'Lịch trình',
@@ -111,7 +108,6 @@ class _BottomNav extends StatelessWidget {
               onTap: onTap,
             ),
           ),
-          // Nút trung tâm có text ở dưới
           Expanded(
             child: GestureDetector(
               onTap: () => onTap(2),
@@ -142,7 +138,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.favorite_outline,
               activeIcon: Icons.favorite,
               label: 'Đã lưu',
@@ -152,7 +148,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.person_outline,
               activeIcon: Icons.person,
               label: 'Cá nhân',
@@ -167,13 +163,14 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class NavItem extends StatelessWidget {
   final IconData icon, activeIcon;
   final String label;
   final int index, current;
   final ValueChanged<int> onTap;
 
-  const _NavItem({
+  const NavItem({
+    super.key,
     required this.icon,
     required this.activeIcon,
     required this.label,
@@ -210,4 +207,3 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
-

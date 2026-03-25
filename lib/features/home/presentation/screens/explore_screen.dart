@@ -7,11 +7,15 @@ import '../../../../core/widgets/section_header.dart';
 import '../cubit/explore_cubit.dart';
 import '../cubit/explore_state.dart';
 import '../widgets/current_itinerary_card.dart';
-import '../widgets/destination_card.dart';
 import '../widgets/explore_header.dart';
-import '../widgets/hotel_card.dart';
-import '../widgets/trip_card_widget.dart';
-
+import '../../../city_detail/presentation/widgets/city_detail_cards.dart' as city_cards;
+import '../../../city_detail/domain/entities/city_entities.dart';
+import '../widgets/home_itinerary_card.dart';
+import '../../../city_detail/presentation/widgets/itinerary_vertical_card.dart';
+import '../../../city_detail/presentation/widgets/activity_vertical_card.dart';
+import '../../../city_detail/presentation/widgets/restaurant_vertical_card.dart';
+import '../../../city_detail/presentation/widgets/hotel_vertical_card.dart';
+import 'see_all_screen.dart';
 
 import '../../../food/presentation/screens/food_menu_screen.dart';
 import '../../../food/presentation/widgets/pre_order_popup.dart';
@@ -20,8 +24,7 @@ import '../../../review/presentation/widgets/itinerary_rating_popup.dart';
 import '../../../place/presentation/screens/place_detail_screen.dart';
 import '../../../place/presentation/cubit/place_detail_cubit.dart';
 import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../widgets/detailed_place_card.dart';
-import 'see_all_screen.dart';
+import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -44,13 +47,14 @@ class _ExploreView extends StatefulWidget {
 
 class _ExploreViewState extends State<_ExploreView> {
   int _suggestionPage = 0;
-  int _destPage = 0;
+  int _activityPage = 0;
+  int _restaurantPage = 0;
+  int _hotelPage = 0;
   bool _isItineraryStarted = false;
 
   void _onToggleItinerary(bool value) {
     setState(() => _isItineraryStarted = value);
     if (value) {
-      // Simulate proximity trigger after 2 seconds
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Chế độ hành trình đã bật. Hệ thống sẽ tự động gợi ý món ăn khi bạn đến gần điểm dừng.'),
@@ -83,7 +87,6 @@ class _ExploreViewState extends State<_ExploreView> {
       ),
     );
 
-    // Simulate Trip Completion after 10 more seconds for demo
     Future.delayed(const Duration(seconds: 10), () {
       if (!mounted || !_isItineraryStarted) return;
       _showTripCompletionPopup();
@@ -135,12 +138,18 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+<<<<<<< HEAD
                 const SizedBox(height: 20),
                 // Section Header with View All
                 SectionHeader(
                   title: 'Lịch trình của bạn', 
                   onSeeAll: null,
                 ),
+=======
+                const SizedBox(height: 24),
+                SectionHeader(title: 'Lịch trình của bạn', onSeeAll: null),
+                const SizedBox(height: 16),
+>>>>>>> 03ad165bfa9b8745fff76edecfa40438f833ed39
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: CurrentItineraryCard(
@@ -149,84 +158,97 @@ class _ExploreViewState extends State<_ExploreView> {
                     onToggle: _onToggleItinerary,
                   ),
                 ),
-                const SizedBox(height: 12),
               ],
             ),
           ),
-        // ── Gợi ý cho bạn ────────────────────────────────────────────────
+
+        // ── Lịch trình gợi ý ────────────────────────────────────────────────
         if (state.suggestions.isNotEmpty)
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SectionHeader(title: 'Gợi ý cho bạn', onSeeAll: () {
-                  final cubit = context.read<ItineraryCubit>();
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => BlocProvider.value(
-                    value: cubit,
-                    child: SeeAllScreen(
-                      title: 'Gợi ý cho bạn',
-                      items: state.suggestions.map((item) => DetailedPlaceCard(
-                        title: item.title,
-                        rating: 4.8, 
-                        reviews: item.likes,
-                        imageUrl: item.imageUrl ?? '',
-                        placeholderColor: item.placeholderColor,
-                        info: '${item.days} • ${item.location} • Địa điểm du lịch',
+                const SizedBox(height: 24),
+                SectionHeader(title: 'Lịch trình gợi ý', onSeeAll: () {
+                  final items = state.suggestions.map((item) => CityItinerary(
+                    id: item.id,
+                    title: item.title,
+                    authorName: 'Traveler',
+                    authorAvatar: 'https://i.pravatar.cc/100?u=${item.id}',
+                    imageUrl: item.imageUrl ?? '',
+                    duration: item.days.toLowerCase(),
+                    views: item.views,
+                    likes: item.likes,
+                  )).toList();
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => SeeAllScreen(
+                      title: 'Lịch trình gợi ý',
+                      items: items.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (_) => sl<PlaceDetailCubit>(),
-                              child: PlaceDetailScreen(placeId: item.id),
+                            builder: (_) => BlocProvider<ItineraryCubit>(
+                              create: (_) => sl<ItineraryCubit>()..loadData(),
+                              child: ItinerarySummaryScreen(itineraryId: item.id),
                             ),
                           ));
                         },
+                        child: ItineraryVerticalCard(item: item),
                       )).toList(),
                     ),
-                  )));
+                  ));
                 }),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 230,
+                  height: 268,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.88),
                     padEnds: false,
                     clipBehavior: Clip.none,
                     itemCount: state.suggestions.length,
                     onPageChanged: (i) => setState(() => _suggestionPage = i),
-                    itemBuilder: (_, i) => Padding(
-                      padding: EdgeInsets.only(
-                        left: i == 0 ? 16 : 0,
-                        right: 12,
-                      ),
-                      child: TripCardWidget(item: state.suggestions[i]),
-                    ),
+                    itemBuilder: (_, i) {
+                      final item = state.suggestions[i];
+                      return Padding(
+                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => BlocProvider<ItineraryCubit>(
+                                create: (_) => sl<ItineraryCubit>()..loadData(),
+                                child: ItinerarySummaryScreen(itineraryId: item.id),
+                              ),
+                            ));
+                          },
+                          child: HomeItineraryCard(item: item),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 10),
                 PageDots(count: state.suggestions.length, current: _suggestionPage),
               ],
             ),
           ),
+
         // ── Điểm đến nổi bật ─────────────────────────────────────────────
         if (state.destinations.isNotEmpty)
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 SectionHeader(title: 'Điểm đến nổi bật', onSeeAll: () {
-                  final cubit = context.read<ItineraryCubit>();
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => BlocProvider.value(
-                    value: cubit,
-                    child: SeeAllScreen(
+                  final items = state.destinations.map((item) => CityActivity(
+                    id: item.id,
+                    title: item.name,
+                    imageUrl: item.imageUrl ?? '',
+                    rating: 4.5,
+                    reviewCount: 120,
+                  )).toList();
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => SeeAllScreen(
                       title: 'Điểm đến nổi bật',
-                      items: state.destinations.map((item) => DetailedPlaceCard(
-                        title: item.name,
-                        rating: 4.5, 
-                        reviews: '1.2k',
-                        imageUrl: item.imageUrl ?? '',
-                        placeholderColor: item.placeholderColor,
-                        info: 'Việt Nam • Địa điểm du lịch',
+                      items: items.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (_) => BlocProvider(
@@ -235,95 +257,185 @@ class _ExploreViewState extends State<_ExploreView> {
                             ),
                           ));
                         },
+                        child: ActivityVerticalCard(item: item),
                       )).toList(),
                     ),
-                  )));
+                  ));
                 }),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 140,
+                  height: 168,
                   child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.31),
+                    controller: PageController(viewportFraction: 0.35),
                     padEnds: false,
                     clipBehavior: Clip.none,
                     itemCount: state.destinations.length,
-                    onPageChanged: (i) => setState(() => _destPage = i),
-                    itemBuilder: (_, i) => Padding(
-                      padding: EdgeInsets.only(
-                        left: i == 0 ? 16 : 0,
-                        right: 10,
-                      ),
-                      child: DestinationCard(item: state.destinations[i]),
-                    ),
+                    onPageChanged: (i) => setState(() => _activityPage = i),
+                    itemBuilder: (_, i) {
+                      final item = state.destinations[i];
+                      return Padding(
+                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (_) => sl<PlaceDetailCubit>(),
+                                child: PlaceDetailScreen(placeId: item.id),
+                              ),
+                            ));
+                          },
+                          child: city_cards.ActivityCard(
+                            item: CityActivity(
+                              id: item.id,
+                              title: item.name,
+                              imageUrl: item.imageUrl ?? '',
+                              rating: 4.5,
+                              reviewCount: 120,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 8),
-                PageDots(count: state.destinations.length, current: _destPage),
+                PageDots(count: state.destinations.length, current: _activityPage),
               ],
             ),
           ),
+
+        // ── Nhà hàng tiêu biểu ─────────────────────────────────────────────
+        if (state.restaurants.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                SectionHeader(title: 'Nhà hàng tiêu biểu', onSeeAll: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => SeeAllScreen(
+                      title: 'Nhà hàng tiêu biểu',
+                      items: state.restaurants.map((item) => GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => sl<PlaceDetailCubit>(),
+                              child: PlaceDetailScreen(placeId: item.id),
+                            ),
+                          ));
+                        },
+                        child: RestaurantVerticalCard(item: item),
+                      )).toList(),
+                    ),
+                  ));
+                }),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 185,
+                  child: PageView.builder(
+                    controller: PageController(viewportFraction: 0.45),
+                    padEnds: false,
+                    clipBehavior: Clip.none,
+                    itemCount: state.restaurants.length,
+                    onPageChanged: (i) => setState(() => _restaurantPage = i),
+                    itemBuilder: (_, i) {
+                      final item = state.restaurants[i];
+                      return Padding(
+                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (_) => sl<PlaceDetailCubit>(),
+                                child: PlaceDetailScreen(placeId: item.id),
+                              ),
+                            ));
+                          },
+                          child: city_cards.RestaurantCard(item: item),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                PageDots(count: state.restaurants.length, current: _restaurantPage),
+              ],
+            ),
+          ),
+
         // ── Khách sạn nổi bật ─────────────────────────────────────────────
         if (state.hotels.isNotEmpty)
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 SectionHeader(title: 'Khách sạn nổi bật', onSeeAll: () {
-                  final cubit = context.read<ItineraryCubit>();
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => BlocProvider.value(
-                    value: cubit,
-                    child: SeeAllScreen(
+                  final items = state.hotels.map((item) => CityHotel(
+                    id: item.id,
+                    name: item.name,
+                    imageUrl: item.imageUrl ?? '',
+                    rating: item.rating,
+                    reviewCount: 350,
+                    price: item.price,
+                  )).toList();
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => SeeAllScreen(
                       title: 'Khách sạn nổi bật',
-                      items: state.hotels.map((h) => DetailedPlaceCard(
-                        title: h.name,
-                        rating: h.rating,
-                        reviews: '850', 
-                        imageUrl: h.imageUrl ?? '',
-                        placeholderColor: h.placeholderColor,
-                        info: 'Trung tâm • ${h.price} • Khách sạn',
+                      items: items.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (_) => BlocProvider(
                               create: (_) => sl<PlaceDetailCubit>(),
-                              child: PlaceDetailScreen(placeId: h.id),
+                              child: PlaceDetailScreen(placeId: item.id),
                             ),
                           ));
                         },
+                        child: HotelVerticalCard(item: item),
                       )).toList(),
                     ),
-                  )));
+                  ));
                 }),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 SizedBox(
-                  height: 220,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
+                  height: 300,
+                  child: PageView.builder(
+                    controller: PageController(viewportFraction: 0.65),
+                    padEnds: false,
+                    clipBehavior: Clip.none,
                     itemCount: state.hotels.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    onPageChanged: (i) => setState(() => _hotelPage = i),
                     itemBuilder: (_, i) {
-                      final h = state.hotels[i];
-                      return SizedBox(
-                        width: 160,
+                      final item = state.hotels[i];
+                      return Padding(
+                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => BlocProvider(
                                 create: (_) => sl<PlaceDetailCubit>(),
-                                child: PlaceDetailScreen(placeId: h.id),
+                                child: PlaceDetailScreen(placeId: item.id),
                               ),
                             ));
                           },
-                          child: HotelCard(item: h),
+                          child: city_cards.HotelCard(
+                            item: CityHotel(
+                              id: item.id,
+                              name: item.name,
+                              imageUrl: item.imageUrl ?? '',
+                              rating: item.rating,
+                              reviewCount: 350,
+                              price: item.price,
+                            ),
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
+                PageDots(count: state.hotels.length, current: _hotelPage),
               ],
             ),
           ),
+
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
       ],
     );

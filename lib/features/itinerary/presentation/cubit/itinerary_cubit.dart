@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/itinerary_entity.dart';
+import '../../domain/entities/itinerary_summary.dart';
+import '../../domain/entities/itinerary_detail_entity.dart';
 import '../../domain/usecases/itinerary_usecases.dart';
 import 'itinerary_state.dart';
 
@@ -110,6 +112,47 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       } catch (e) {
         emit(ItineraryError('Không thể tải chi tiết: ${e.toString()}'));
       }
+    } else {
+      // Nếu chưa load danh sách (ví dụ đi từ màn hình Saved)
+      emit(const ItineraryLoading());
+      try {
+        // Tải cả summary và detail để có đủ data cho trạng thái Loaded
+        final results = await Future.wait([
+          _getSummary(),
+          _getItineraryDetail(id),
+          _getItineraries(),
+        ]);
+        
+        emit(ItineraryLoaded(
+          itineraries: results[2] as List<ItineraryEntity>,
+          summary: results[0] as ItinerarySummary,
+          selectedItinerary: results[1] as ItineraryDetailEntity,
+        ));
+      } catch (e) {
+        emit(ItineraryError('Không thể tải dữ liệu: ${e.toString()}'));
+      }
+    }
+  }
+
+  void toggleItineraryStatus(String id, bool isOngoing) {
+    if (state is ItineraryLoaded) {
+      final currentState = state as ItineraryLoaded;
+      final updatedList = currentState.itineraries.map((itinerary) {
+        if (itinerary.id == id) {
+          return itinerary.copyWith(
+            status: isOngoing ? ItineraryStatus.ongoing : ItineraryStatus.upcoming,
+          );
+        }
+        return itinerary;
+      }).toList();
+
+      emit(ItineraryLoaded(
+        itineraries: updatedList,
+        summary: currentState.summary,
+        activeFilter: currentState.activeFilter,
+        activeCompletedFilter: currentState.activeCompletedFilter,
+        selectedItinerary: currentState.selectedItinerary,
+      ));
     }
   }
 

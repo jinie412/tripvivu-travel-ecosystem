@@ -6,21 +6,19 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
-        fontFamily: 'Roboto',
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
-          foregroundColor: Color(0xFF1A3C6E),
+          foregroundColor: AppColors.textPrimary,
           elevation: 0,
           centerTitle: true,
           titleTextStyle: TextStyle(
-            fontFamily: 'Roboto',
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A3C6E),
+            color: AppColors.textPrimary,
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -30,7 +28,6 @@ class AppTheme {
             elevation: 0,
             shape: const StadiumBorder(),
             textStyle: const TextStyle(
-              fontFamily: 'Roboto',
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -60,10 +57,10 @@ class AppTheme {
 class AppTextStyles {
   AppTextStyles._();
   static const heading1 = TextStyle(
-      fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A3C6E));
+      fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
   static const heading2 = TextStyle(
-      fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1E));
-  static const body = TextStyle(fontSize: 14, color: Color(0xFF6B7280));
+      fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary);
+  static const body = TextStyle(fontSize: 14, color: AppColors.textSecondary);
   static const caption =
       TextStyle(fontSize: 12, color: Color(0xFF9E9E9E));
 }
