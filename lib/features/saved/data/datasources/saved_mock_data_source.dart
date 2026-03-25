@@ -14,6 +14,7 @@ class SavedMockDataSource {
         duration: '4 ngày',
         views: '1.2k',
         likes: '248',
+        location: 'Quy Nhơn',
       ),
       const CityItinerary(
         id: '2',
@@ -24,6 +25,7 @@ class SavedMockDataSource {
         duration: '3 ngày',
         views: '850',
         likes: '156',
+        location: 'Đà Lạt',
       ),
     ];
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/widgets/page_dots.dart';
 import '../../../../core/widgets/section_header.dart';
@@ -13,6 +13,12 @@ import '../widgets/activity_vertical_card.dart';
 import '../widgets/hotel_vertical_card.dart';
 import '../widgets/itinerary_vertical_card.dart';
 import '../widgets/restaurant_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/core/navigation/main_shell.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 class CityDetailScreen extends StatelessWidget {
   final String cityName;
@@ -57,16 +63,23 @@ class CityDetailScreen extends StatelessWidget {
             );
           },
         ),
-        bottomNavigationBar: const _SharedBottomNav(),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, size: 28),
+        bottomNavigationBar: SharedBottomNav(
+          currentIndex: 0,
+          onTap: (i) {
+            if (i == 2) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const TripPlannerScreen(),
+                ),
+              );
+              return;
+            }
+            // Navigate back to MainShell to let it handle tab changing
+            Navigator.popUntil(context, (route) => route.isFirst);
+            // Ideally we'd set the tab here, but without a global TabCubit Provider,
+            // popping to the root is the closest standard behavior.
+          },
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
     );
   }
@@ -196,7 +209,28 @@ class _OverviewTabContent extends StatelessWidget {
                   left: index == 0 ? 16 : 0,
                   right: 12,
                 ),
-                child: ItineraryCard(item: overview.itineraries[index]),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider<ItineraryCubit>(
+                          create: (_) {
+                            final cubit = sl<ItineraryCubit>();
+                            cubit.loadData().then((_) {
+                              cubit.selectItinerary(overview.itineraries[index].id);
+                            });
+                            return cubit;
+                          },
+                          child: ItinerarySummaryScreen(
+                            itineraryId: overview.itineraries[index].id,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: ItineraryCard(item: overview.itineraries[index]),
+                ),
               );
             },
           ),
@@ -223,7 +257,22 @@ class _OverviewTabContent extends StatelessWidget {
                   left: index == 0 ? 16 : 0,
                   right: 12,
                 ),
-                child: ActivityCard(item: overview.activities[index]),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => sl<PlaceDetailCubit>(),
+                          child: PlaceDetailScreen(
+                            placeId: overview.activities[index].id,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: ActivityCard(item: overview.activities[index]),
+                ),
               );
             },
           ),
@@ -250,7 +299,22 @@ class _OverviewTabContent extends StatelessWidget {
                   left: index == 0 ? 16 : 0,
                   right: 12,
                 ),
-                child: RestaurantCard(item: overview.restaurants[index]),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => sl<PlaceDetailCubit>(),
+                          child: PlaceDetailScreen(
+                            placeId: overview.restaurants[index].id,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: RestaurantCard(item: overview.restaurants[index]),
+                ),
               );
             },
           ),
@@ -277,7 +341,22 @@ class _OverviewTabContent extends StatelessWidget {
                   left: index == 0 ? 16 : 0,
                   right: 12,
                 ),
-                child: HotelCard(item: overview.hotels[index]),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider(
+                          create: (_) => sl<PlaceDetailCubit>(),
+                          child: PlaceDetailScreen(
+                            placeId: overview.hotels[index].id,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: HotelCard(item: overview.hotels[index]),
+                ),
               );
             },
           ),
@@ -303,57 +382,32 @@ class _ItineraryTabContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         const SizedBox(height: 16), // Giữ khoảng cách trên cùng
-        ...itineraries.map((item) => ItineraryVerticalCard(item: item)),
+        ...itineraries.map((item) => GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider<ItineraryCubit>(
+                      create: (_) {
+                        final cubit = sl<ItineraryCubit>();
+                        cubit.loadData().then((_) {
+                          cubit.selectItinerary(item.id);
+                        });
+                        return cubit;
+                      },
+                      child: ItinerarySummaryScreen(itineraryId: item.id),
+                    ),
+                  ),
+                );
+              },
+              child: ItineraryVerticalCard(item: item),
+            )),
         const SizedBox(height: 100),
       ],
     );
   }
 }
 
-class _SharedBottomNav extends StatelessWidget {
-  const _SharedBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomAppBar(
-      color: Colors.white,
-      elevation: 8,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(icon: Icons.explore_outlined, label: 'Khám phá', isActive: true),
-            _buildNavItem(icon: Icons.map_outlined, label: 'Lịch trình', isActive: false),
-            const SizedBox(width: 56), // Notch gap
-            _buildNavItem(icon: Icons.favorite_outline, label: 'Đã lưu', isActive: false),
-            _buildNavItem(icon: Icons.person_outline, label: 'Cá nhân', isActive: false),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({required IconData icon, required String label, bool isActive = false}) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: isActive ? AppColors.primary : Colors.grey, size: 24),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: isActive ? AppColors.primary : Colors.grey,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _ActivityTabContent extends StatelessWidget {
   final List<CityActivity> activities;
@@ -365,7 +419,20 @@ class _ActivityTabContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         const SizedBox(height: 16),
-        ...activities.map((item) => ActivityVerticalCard(item: item)),
+        ...activities.map((item) => GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider(
+                      create: (_) => sl<PlaceDetailCubit>(),
+                      child: PlaceDetailScreen(placeId: item.id),
+                    ),
+                  ),
+                );
+              },
+              child: ActivityVerticalCard(item: item),
+            )),
         const SizedBox(height: 100),
       ],
     );
@@ -382,7 +449,20 @@ class _RestaurantTabContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         const SizedBox(height: 16),
-        ...restaurants.map((item) => RestaurantVerticalCard(item: item)),
+        ...restaurants.map((item) => GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider(
+                      create: (_) => sl<PlaceDetailCubit>(),
+                      child: PlaceDetailScreen(placeId: item.id),
+                    ),
+                  ),
+                );
+              },
+              child: RestaurantVerticalCard(item: item),
+            )),
         const SizedBox(height: 100),
       ],
     );
@@ -399,7 +479,20 @@ class _HotelTabContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         const SizedBox(height: 16),
-        ...hotels.map((item) => HotelVerticalCard(item: item)),
+        ...hotels.map((item) => GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider(
+                      create: (_) => sl<PlaceDetailCubit>(),
+                      child: PlaceDetailScreen(placeId: item.id),
+                    ),
+                  ),
+                );
+              },
+              child: HotelVerticalCard(item: item),
+            )),
         const SizedBox(height: 100),
       ],
     );

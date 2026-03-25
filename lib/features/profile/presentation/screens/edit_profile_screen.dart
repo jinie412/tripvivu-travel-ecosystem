@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -87,7 +89,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               children: [
                 IconButton(
                   icon:
-                      const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                      const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Text(
@@ -115,10 +117,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r32)),
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+                padding: const EdgeInsets.fromLTRB(AppSizes.s24, 60, AppSizes.s24, AppSizes.s40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch children
                   children: [
@@ -140,24 +142,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       isEditing: _isEditing,
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
 
                     // Interests Section
                     Text(
                       'Sở thích du lịch',
                       style: AppTextStyles.heading2.copyWith(
                         fontSize: 20,
-                        color: const Color(0xFF113D3C),
+                        color: AppColorsExt.textDark,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSizes.s8),
                     Text(
                       'Giúp chúng tôi gợi ý chuyến đi phù hợp hơn cho bạn',
                       style: AppTextStyles.body.copyWith(
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSizes.s16),
 
                     // Chips
                     Wrap(
@@ -263,7 +265,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               controller.text,
               style: AppTextStyles.body.copyWith(
                 fontSize: 18,
-                color: const Color(0xFF50B5D9),
+                color: AppColorsExt.profileBlue,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -324,7 +326,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20, vertical: AppSizes.s8),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.grey[100],
           borderRadius: BorderRadius.circular(20),
@@ -397,10 +399,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF14DFBC) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: isSelected ? AppColorsExt.chipActive : Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.r24),
           border: Border.all(
-            color: const Color(0xFF14DFBC),
+            color: AppColorsExt.chipActive,
             width: 1,
           ),
         ),

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../features/home/presentation/widgets/notification_drawer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/constants/app_sizes.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_text_styles.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/home/presentation/screens/explore_screen.dart';
 import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
@@ -52,7 +55,7 @@ class _MainShellState extends State<MainShell> {
               index: currentIndex,
               children: _pages,
             ),
-            bottomNavigationBar: _BottomNav(
+            bottomNavigationBar: SharedBottomNav(
               currentIndex: currentIndex,
               onTap: (i) {
                 if (i == 2) {
@@ -73,10 +76,10 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-class _BottomNav extends StatelessWidget {
+class SharedBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  const _BottomNav({required this.currentIndex, required this.onTap});
+  const SharedBottomNav({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -84,12 +87,12 @@ class _BottomNav extends StatelessWidget {
       color: Colors.white,
       elevation: 8,
       padding: EdgeInsets.zero,
-      height: 90, 
+      height: AppSizes.bottomNavHeight, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.explore_outlined,
               activeIcon: Icons.explore,
               label: 'Khám phá',
@@ -99,7 +102,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
               label: 'Lịch trình',
@@ -116,29 +119,25 @@ class _BottomNav extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: AppSizes.fabSize,
+                    height: AppSizes.fabSize,
                     decoration: const BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 24),
+                    child: const Icon(Icons.add, color: Colors.white, size: AppSizes.iconDefault),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSizes.s4),
                   const Text(
                     'Tạo lịch trình',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF9E9E9E),
-                      fontWeight: FontWeight.normal,
-                    ),
+                    style: AppTextStylesExt.captionSmall,
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.favorite_outline,
               activeIcon: Icons.favorite,
               label: 'Đã lưu',
@@ -148,7 +147,7 @@ class _BottomNav extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _NavItem(
+            child: NavItem(
               icon: Icons.person_outline,
               activeIcon: Icons.person,
               label: 'Cá nhân',
@@ -163,13 +162,14 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class NavItem extends StatelessWidget {
   final IconData icon, activeIcon;
   final String label;
   final int index, current;
   final ValueChanged<int> onTap;
 
-  const _NavItem({
+  const NavItem({
+    super.key,
     required this.icon,
     required this.activeIcon,
     required this.label,
@@ -189,15 +189,15 @@ class _NavItem extends StatelessWidget {
         children: [
           Icon(
             active ? activeIcon : icon,
-            color: active ? AppColors.primary : const Color(0xFF9E9E9E),
-            size: 24,
+            color: active ? AppColors.primary : AppColorsExt.textHint,
+            size: AppSizes.iconDefault,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSizes.s2),
           Text(
             label,
             style: TextStyle(
               fontSize: 10,
-              color: active ? AppColors.primary : const Color(0xFF9E9E9E),
+              color: active ? AppColors.primary : AppColorsExt.textHint,
               fontWeight: active ? FontWeight.w600 : FontWeight.normal,
             ),
           ),

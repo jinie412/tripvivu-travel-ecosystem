@@ -99,29 +99,23 @@ class ItineraryVerticalCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    const Icon(Icons.visibility_outlined, size: 16, color: Colors.grey),
+                    const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(
                       item.views,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.favorite_border, size: 16, color: Colors.grey),
+                    const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
                     const SizedBox(width: 4),
-                    Text(
-                      item.likes,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Xem chi tiết',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary.withOpacity(0.8),
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        item.likes,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ),
+                    const SizedBox(width: 12),
                   ],
                 ),
               ],

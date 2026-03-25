@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
 import '../../domain/entities/search_location.dart';
 import '../../../../features/city_detail/presentation/screens/city_detail_screen.dart';
 import '../../../../features/place/presentation/screens/place_detail_screen.dart';
@@ -21,7 +22,7 @@ class SearchSuggestionWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSizes.s8),
         // Hint Section
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,9 +30,9 @@ class SearchSuggestionWidget extends StatelessWidget {
             const Icon(
               Icons.auto_awesome,
               color: AppColors.primary,
-              size: 24,
+              size: AppSizes.iconDefault,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSizes.s8),
             Expanded(
               child: Text.rich(
                 const TextSpan(
@@ -54,7 +55,7 @@ class SearchSuggestionWidget extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSizes.s32),
 
         // Recent Searches Title
         const Text(
@@ -65,7 +66,7 @@ class SearchSuggestionWidget extends StatelessWidget {
             color: Colors.black,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSizes.s16),
 
         // Recent Searches List
         Expanded(
@@ -108,11 +109,11 @@ class SearchSuggestionWidget extends StatelessWidget {
 
   Widget _buildRecentItem(String title, String imageUrl) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.only(bottom: AppSizes.s20),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSizes.r8),
             child: CachedNetworkImage(
               imageUrl: imageUrl,
               width: 56,
@@ -128,7 +129,7 @@ class SearchSuggestionWidget extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSizes.s16),
           Text(
             title,
             style: const TextStyle(
@@ -190,7 +191,7 @@ class _ShimmerSkeletonState extends State<_ShimmerSkeleton>
           height: widget.height,
           decoration: BoxDecoration(
             color: _colorAnimation.value,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSizes.r8),
           ),
         );
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../home/presentation/widgets/destination_card.dart';
 import '../cubit/saved_cubit.dart';
@@ -47,11 +48,11 @@ class _SavedScreenState extends State<SavedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Padding(
-                      padding: EdgeInsets.fromLTRB(24, 20, 24, 8),
+                      padding: EdgeInsets.fromLTRB(AppSizes.s24, AppSizes.s16, AppSizes.s24, AppSizes.s16),
                       child: Text(
                         'Bộ sưu tập',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                           letterSpacing: -0.5,
@@ -72,20 +73,19 @@ class _SavedScreenState extends State<SavedScreen> {
                       indicatorWeight: 3,
                       dividerColor: Colors.transparent,
                     ),
-                    const SizedBox(height: 8),
                     Expanded(
                       child: TabBarView(
                         children: [
                           // TAB 1: ITINERARIES
                           ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(AppSizes.s16),
                             itemCount: state.itineraries.length,
                             itemBuilder: (context, index) {
                               final item = state.itineraries[index];
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.only(bottom: AppSizes.s16),
                                 child: SizedBox(
-                                  height: 250,
+                                  height: 270,
                                   child: SavedItineraryCard(
                                     item: item,
                                     onTap: () {
@@ -111,8 +111,8 @@ class _SavedScreenState extends State<SavedScreen> {
                             padding: const EdgeInsets.all(16),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
-                              mainAxisSpacing: 16,
-                              crossAxisSpacing: 16,
+                              mainAxisSpacing: AppSizes.s16,
+                              crossAxisSpacing: AppSizes.s16,
                               childAspectRatio: 0.82,
                             ),
                             itemCount: state.places.length,

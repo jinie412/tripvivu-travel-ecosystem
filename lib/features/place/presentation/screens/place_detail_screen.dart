@@ -76,6 +76,16 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     onBack: () => Navigator.pop(context),
                     onFavorite: () {
                       context.read<PlaceDetailCubit>().toggleFavorite();
+                      if (!place.isFavorite) {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã lưu vào danh mục yêu thích'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                   ),
                   

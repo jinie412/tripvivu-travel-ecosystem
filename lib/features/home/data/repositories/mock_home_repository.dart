@@ -3,6 +3,7 @@ import '../../domain/entities/hotel.dart';
 import '../../domain/entities/trip_suggestion.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../datasources/home_datasource.dart';
+import '../../../city_detail/domain/entities/city_entities.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   final HomeDataSource _dataSource;
@@ -24,5 +25,10 @@ class HomeRepositoryImpl implements HomeRepository {
   Future<List<Hotel>> getHotels() async {
     final models = await _dataSource.getHotels();
     return models.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<List<CityRestaurant>> getRestaurants() async {
+    return _dataSource.getRestaurants();
   }
 }

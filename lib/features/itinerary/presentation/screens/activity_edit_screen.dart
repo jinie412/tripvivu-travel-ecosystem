@@ -31,7 +31,7 @@ class ActivityEditScreen extends StatelessWidget {
           ),
           leading: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
+            icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 20),
           ),
         ),
         body: BlocConsumer<ActivityEditCubit, ActivityEditState>(

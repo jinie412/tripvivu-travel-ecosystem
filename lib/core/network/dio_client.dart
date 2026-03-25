@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'api_config.dart';
 
 /// Singleton Dio HTTP client.
 /// Configured with baseUrl, timeouts, and interceptors.
@@ -6,10 +7,10 @@ import 'package:dio/dio.dart';
 class DioClient {
   late final Dio _dio;
 
-  DioClient({String baseUrl = 'https://api.gptraveladvisor.com/v1'}) {
+  DioClient({String? baseUrl}) {
     _dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: baseUrl ?? ApiConfig.baseUrl,
         // connectTimeout: const Duration(seconds: 15),
         // receiveTimeout: const Duration(seconds: 15),
         // sendTimeout: const Duration(seconds: 15),
@@ -38,9 +39,16 @@ class DioClient {
 class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // TODO: attach token from secure storage when auth is implemented
+    // Ví dụ: Lấy token từ local storage hoặc session
     // final token = await secureStorage.read(key: 'access_token');
-    // if (token != null) options.headers['Authorization'] = 'Bearer $token';
+    const token = 'YOUR_ACCESS_TOKEN_HERE'; // Thay thế bằng logic lấy token thực tế
+    
+    // Tự động đính kèm token vào mọi request
+    // ignore: dead_code
+    if (token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    
     handler.next(options);
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_shared_widgets.dart';
 
@@ -55,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const AuthBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s32),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -67,19 +69,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEBF5FF), // Light blue circle
-                          borderRadius: BorderRadius.circular(32), // Rounded corners like image
+                          color: AppColorsExt.authBgLight,
+                          borderRadius: BorderRadius.circular(AppSizes.r32),
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.flight_takeoff_rounded,
-                            size: 48,
+                            size: AppSizes.s48,
                             color: AppColors.primary,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
                     
                     // 2. Title Section
                     const Text(
@@ -91,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSizes.s12),
                     const Text(
                       'Tạo tài khoản để bắt đầu chuyến đi của bạn',
                       style: TextStyle(
@@ -100,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
 
                     // 3. Name Field
                     AuthTextField(
@@ -111,7 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       textInputAction: TextInputAction.next,
                       validator: (v) => (v?.isEmpty ?? true) ? 'Vui lòng nhập họ tên' : null,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSizes.s20),
 
                     // 4. Gender Field
                     Column(
@@ -125,12 +127,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSizes.s8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
                           decoration: BoxDecoration(
                             color: AppColors.inputFill,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppSizes.r12),
                             border: Border.all(color: AppColors.inputBorder),
                           ),
                           child: DropdownButtonHideUnderline(
@@ -198,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           color: AppColors.textSecondary,
-                          size: 20,
+                          size: AppSizes.iconMd,
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
@@ -217,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         icon: Icon(
                           _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                           color: AppColors.textSecondary,
-                          size: 20,
+                          size: AppSizes.iconMd,
                         ),
                         onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                       ),
@@ -226,11 +228,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
 
                     // 9. Register Button
                     SizedBox(
-                      height: 52,
+                      height: AppSizes.buttonHeight,
                       child: ElevatedButton(
                         onPressed: _handleRegister,
                         style: ElevatedButton.styleFrom(
@@ -238,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppSizes.r12),
                           ),
                         ),
                         child: const Text(
@@ -247,20 +249,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
                     
                     const OrDivider(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSizes.s24),
 
                     // 10. Social Buttons
                     Row(
                       children: [
                         Expanded(child: GoogleSignInButton(onPressed: () {})),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: AppSizes.s16),
                         Expanded(child: FacebookSignInButton(onPressed: () {})),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSizes.s32),
 
                     // 11. Footer
                     Row(
@@ -283,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSizes.s24),
                   ],
                 ),
               ),

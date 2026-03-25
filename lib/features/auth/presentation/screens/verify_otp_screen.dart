@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../widgets/auth_shared_widgets.dart';
 import 'reset_password_screen.dart';
 
@@ -60,7 +62,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
           const AuthBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -70,19 +72,19 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEBF5FF),
-                        borderRadius: BorderRadius.circular(32),
+                        color: AppColorsExt.authBgLight,
+                        borderRadius: BorderRadius.circular(AppSizes.r32),
                       ),
                       child: const Center(
                         child: Icon(
                           Icons.mark_email_read_rounded,
-                          size: 48,
+                          size: AppSizes.s48,
                           color: AppColors.primary,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSizes.s32),
 
                   // 2. Title Section
                   const Text(
@@ -94,7 +96,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSizes.s12),
                   Text(
                     'Mã xác minh đã được gửi đến\n${widget.destination}',
                     style: TextStyle(
@@ -104,15 +106,15 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: AppSizes.s48),
 
                   // 3. OTP Input Fields
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) {
                       return SizedBox(
-                        width: 48,
-                        height: 56,
+                        width: AppSizes.s48,
+                        height: AppSizes.appBarHeight,
                         child: TextField(
                           controller: _controllers[index],
                           focusNode: _focusNodes[index],
@@ -130,7 +132,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                             fillColor: AppColors.inputFill,
                             contentPadding: EdgeInsets.zero,
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppSizes.r12),
                               borderSide: const BorderSide(color: AppColors.inputBorder),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -143,11 +145,11 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                       );
                     }),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: AppSizes.s48),
 
                   // 4. Verify Button
                   SizedBox(
-                    height: 52,
+                    height: AppSizes.buttonHeight,
                     child: ElevatedButton(
                       onPressed: _handleVerify,
                       style: ElevatedButton.styleFrom(
@@ -155,7 +157,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppSizes.r12),
                         ),
                       ),
                       child: const Text(
@@ -164,7 +166,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSizes.s32),
 
                   // 5. Resend Section
                   Row(
@@ -189,12 +191,12 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: AppSizes.s48),
 
                   // 6. Footer (Back)
                   TextButton.icon(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.primary),
+                    icon: const Icon(Icons.arrow_back_ios_new, size: AppSizes.iconMd, color: AppColors.primary),
                     label: const Text(
                       'Quay lại',
                       style: TextStyle(

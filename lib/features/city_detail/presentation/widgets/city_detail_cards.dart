@@ -90,6 +90,7 @@ class ItineraryCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 12,
@@ -98,16 +99,23 @@ class ItineraryCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               item.authorName,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
             const Spacer(),
-            const Icon(Icons.visibility_outlined, size: 14, color: Colors.grey),
+            const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
             const SizedBox(width: 4),
-            Text(item.views, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(item.views, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ),
             const SizedBox(width: 8),
-            const Icon(Icons.favorite_border, size: 14, color: Colors.grey),
+            const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
             const SizedBox(width: 4),
-            Text(item.likes, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(item.likes, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ),
+            const SizedBox(width: 12),
           ],
         ),
       ],

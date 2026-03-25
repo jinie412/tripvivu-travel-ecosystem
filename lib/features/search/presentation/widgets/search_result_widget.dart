@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/search_location.dart';
+import '../../../../core/constants/app_sizes.dart';
 import '../../../../features/city_detail/presentation/screens/city_detail_screen.dart';
 import '../../../../features/place/presentation/screens/place_detail_screen.dart';
 import '../../../../features/place/presentation/cubit/place_detail_cubit.dart';
@@ -32,7 +33,7 @@ class SearchResultWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSizes.s16),
         const Text(
           'Tất cả kết quả',
           style: TextStyle(
@@ -41,7 +42,7 @@ class SearchResultWidget extends StatelessWidget {
             color: Colors.black,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSizes.s16),
         Expanded(
           child: ListView.builder(
             itemCount: results.length,
@@ -82,11 +83,11 @@ class SearchResultWidget extends StatelessWidget {
 
   Widget _buildResultItem(String title, String imageUrl) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.only(bottom: AppSizes.s20),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSizes.r8),
             child: CachedNetworkImage(
               imageUrl: imageUrl,
               width: 56,
@@ -105,7 +106,7 @@ class SearchResultWidget extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSizes.s16),
           Expanded(
             child: Text(
               title,

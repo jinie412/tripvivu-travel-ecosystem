@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
 
 /// A reusable text field widget matching the Figma auth screen design.
 /// Shows a label above the field, a prefix icon, and an optional suffix widget.
@@ -45,7 +46,7 @@ class AuthTextField extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSizes.s8),
         ],
         TextFormField(
           controller: controller,
@@ -69,7 +70,7 @@ class AuthTextField extends StatelessWidget {
                 ? Icon(
                     prefixIcon,
                     color: AppColors.textSecondary,
-                    size: 20,
+                    size: AppSizes.iconMd,
                   )
                 : null,
             suffixIcon: suffixIcon,
@@ -77,29 +78,29 @@ class AuthTextField extends StatelessWidget {
             fillColor: AppColors.inputFill,
             contentPadding: const EdgeInsets.symmetric(
               vertical: 14,
-              horizontal: 16,
+              horizontal: AppSizes.s16,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSizes.r12),
               borderSide: const BorderSide(color: AppColors.inputBorder),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSizes.r12),
               borderSide: const BorderSide(color: AppColors.inputBorder),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSizes.r12),
               borderSide: const BorderSide(
                 color: AppColors.primary,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSizes.r12),
               borderSide: const BorderSide(color: Colors.red),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppSizes.r12),
               borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
           ),

@@ -24,6 +24,16 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
     setState(() {
       _isFavorite = !_isFavorite;
     });
+    if (_isFavorite) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã lưu vào danh mục yêu thích'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
