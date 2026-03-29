@@ -37,7 +37,7 @@ class ReviewItineraryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Tổng quan về lịch trình',
             style: TextStyle(
               fontSize: 16,
@@ -115,7 +115,7 @@ class ReviewItineraryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Bạn có cảm nhận như thế nào?',
             style: TextStyle(
               fontSize: 14,
@@ -151,7 +151,7 @@ class ReviewItineraryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'ĐÁNH GIÁ CHUNG',
             style: TextStyle(
               fontSize: 10,

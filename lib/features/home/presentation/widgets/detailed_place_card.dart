@@ -145,7 +145,7 @@ class _DetailedPlaceCardState extends State<DetailedPlaceCard> {
                         ElevatedButton.icon(
                           onPressed: widget.onAddTap,
                           icon: const Icon(Icons.add_location_alt_outlined, size: 16, color: Colors.white),
-                          label: const Text('Thêm địa điểm', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                          label: Text('Thêm địa điểm', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -38,7 +38,7 @@ class WelcomeStep extends StatelessWidget {
               ),
               const SizedBox(height: 48),
               
-              const Text(
+              Text(
                 'Chào mừng bạn đến với\nTravel Advisor',
                 textAlign: TextAlign.center,
                 style: TextStyle(

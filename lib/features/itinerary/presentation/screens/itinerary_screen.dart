@@ -170,7 +170,7 @@ class _ItineraryView extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  const Text(
+                                  Text(
                                     'Đang có chuyến đi khác!',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
@@ -180,7 +180,7 @@ class _ItineraryView extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
+                                  Text(
                                     'Bạn đang có một lịch trình đang diễn ra.\nVui lòng hoàn thành chuyến đi hiện tại để có thể bắt đầu lịch trình mới.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
@@ -202,7 +202,7 @@ class _ItineraryView extends StatelessWidget {
                                         ),
                                         elevation: 0,
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'Đã hiểu',
                                         style: TextStyle(
                                           fontSize: 15,

@@ -31,7 +31,7 @@ class TimePickingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'GIỜ BẮT ĐẦU',
                   style: TextStyle(
                     fontSize: 10,
@@ -73,7 +73,7 @@ class TimePickingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'GIỜ KẾT THÚC',
                   style: TextStyle(
                     fontSize: 10,

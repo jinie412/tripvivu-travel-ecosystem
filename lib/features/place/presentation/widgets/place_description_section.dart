@@ -13,7 +13,7 @@ class PlaceDescriptionSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Mô tả',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),

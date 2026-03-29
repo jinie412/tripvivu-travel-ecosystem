@@ -23,7 +23,7 @@ class InterestsStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Sở thích của bạn',
             style: TextStyle(
               fontSize: 24,

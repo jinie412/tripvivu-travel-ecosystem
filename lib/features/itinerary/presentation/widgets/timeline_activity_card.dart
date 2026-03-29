@@ -9,6 +9,8 @@ class TimelineActivityCard extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final VoidCallback? onAddTap;
+  final VoidCallback? onEditTap;
+  final VoidCallback? onDeleteTap;
 
   const TimelineActivityCard({
     super.key,
@@ -16,6 +18,8 @@ class TimelineActivityCard extends StatelessWidget {
     this.isFirst = false,
     this.isLast = false,
     this.onAddTap,
+    this.onEditTap,
+    this.onDeleteTap,
   });
 
   @override
@@ -126,17 +130,18 @@ class TimelineActivityCard extends StatelessWidget {
 
   Widget _buildActivityCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(right: AppSizes.s12),
+      padding: const EdgeInsets.only(right: AppSizes.s8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F7FF),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.r24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(20),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: Colors.black.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(color: AppColorsExt.divider.withAlpha(40)),
       ),
       child: Row(
         children: [
@@ -157,15 +162,70 @@ class TimelineActivityCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    activity.title,
-                    style: AppTextStyles.heading2.copyWith(
-                      fontSize: 15,
-                      color: AppColorsExt.textDark,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          activity.title,
+                          style: AppTextStyles.heading2.copyWith(
+                            fontSize: 15,
+                            color: AppColorsExt.textDark,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      if (onEditTap != null || onDeleteTap != null)
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                onEditTap?.call();
+                              } else if (value == 'delete') {
+                                onDeleteTap?.call();
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.more_vert,
+                              size: 18,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            splashRadius: 20,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                    const SizedBox(width: 8),
+                                    Text('Chỉnh sửa', style: AppTextStyles.body.copyWith(fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.delete_outline, size: 18, color: AppColorsExt.error),
+                                    const SizedBox(width: 8),
+                                    Text('Xóa', style: AppTextStyles.body.copyWith(fontSize: 14, color: AppColorsExt.error)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSizes.s4),
                   Text(

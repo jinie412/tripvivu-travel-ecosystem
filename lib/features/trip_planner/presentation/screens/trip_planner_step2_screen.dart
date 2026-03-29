@@ -30,7 +30,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
         ),
         title: Column(
           children: [
-            const Text(
+            Text(
               'Tạo lịch trình mới',
               style: TextStyle(
                 color: Colors.white,
@@ -54,7 +54,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: Colors.white,

@@ -25,7 +25,7 @@ class PlaceReviewSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Bài đánh giá',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -36,7 +36,7 @@ class PlaceReviewSection extends StatelessWidget {
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
+                child: Text(
                   'Xem tất cả', 
                   style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold),
                 ),

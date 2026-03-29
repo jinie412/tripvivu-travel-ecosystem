@@ -70,7 +70,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     const SizedBox(height: AppSizes.s32),
                     
                     // 2. Title Section
-                    const Text(
+                    Text(
                       'Quên mật khẩu',
                       style: TextStyle(
                         fontSize: 32,
@@ -80,7 +80,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSizes.s12),
-                    const Text(
+                    Text(
                       'Nhập email hoặc số điện thoại của bạn để nhận mã khôi phục mật khẩu',
                       style: TextStyle(
                         fontSize: 16,
@@ -116,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             borderRadius: BorderRadius.circular(AppSizes.r12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Gửi mã',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
@@ -128,7 +128,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     TextButton.icon(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back_ios_new, size: AppSizes.iconMd, color: AppColors.primary),
-                      label: const Text(
+                      label: Text(
                         'Quay lại Đăng nhập',
                         style: TextStyle(
                           color: AppColors.primary,

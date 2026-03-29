@@ -137,7 +137,7 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Giá mỗi đêm',
                   style: TextStyle(
                     fontSize: 12,

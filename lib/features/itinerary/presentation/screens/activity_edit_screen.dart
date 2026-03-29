@@ -25,7 +25,7 @@ class ActivityEditScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
-          title: const Text(
+          title: Text(
             'Chi tiết địa điểm',
             style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18),
           ),
@@ -136,7 +136,7 @@ class ActivityEditScreen extends StatelessWidget {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
+                child: Text(
                   'Áp dụng thay đổi',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
@@ -174,7 +174,7 @@ class _ActivityNotesField extends StatelessWidget {
           children: [
             const Icon(Icons.edit_note_outlined, size: 22, color: Colors.blue),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Ghi chú cá nhân',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),
@@ -204,7 +204,7 @@ class _ActivityNotesField extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF475569)),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Đã lưu tự động',
                 style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
               ),

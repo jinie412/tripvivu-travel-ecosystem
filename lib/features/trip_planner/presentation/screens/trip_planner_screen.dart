@@ -74,7 +74,7 @@ class _TripPlannerView extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: AppColors.primary,
@@ -106,7 +106,7 @@ class _TripPlannerView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Bạn sẽ đi đâu?',
                             style: TextStyle(
                               fontSize: 24,
@@ -115,7 +115,7 @@ class _TripPlannerView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: AppSizes.s12),
-                          const Text(
+                          Text(
                             'Điền thông tin địa điểm và phương tiện di chuyển của bạn cho chuyến du lịch trong nước.',
                             style: TextStyle(
                               fontSize: 14,

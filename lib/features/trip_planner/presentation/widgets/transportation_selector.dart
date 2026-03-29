@@ -17,7 +17,7 @@ class TransportationSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Phương tiện di chuyển',
           style: TextStyle(
             fontSize: 14,

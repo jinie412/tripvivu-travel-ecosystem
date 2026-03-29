@@ -65,7 +65,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: AppColors.primary,
@@ -97,7 +97,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Sở thích & Ngân sách',
                             style: TextStyle(
                               fontSize: 24,
@@ -106,7 +106,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Tùy chỉnh chuyến đi của bạn để nhận được lịch trình phù hợp nhất.',
                             style: TextStyle(
                               fontSize: 14,

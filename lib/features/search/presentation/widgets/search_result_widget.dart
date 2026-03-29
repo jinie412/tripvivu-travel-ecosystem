@@ -34,7 +34,7 @@ class SearchResultWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppSizes.s16),
-        const Text(
+        Text(
           'Tất cả kết quả',
           style: TextStyle(
             fontSize: 18,

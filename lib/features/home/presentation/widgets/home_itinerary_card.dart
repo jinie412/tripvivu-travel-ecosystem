@@ -82,7 +82,7 @@ class HomeItineraryCard extends StatelessWidget {
             const SizedBox(width: 8),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: const Text(
+              child: Text(
                 'Traveler',
                 style: TextStyle(fontSize: 11, color: Colors.grey),
               ),

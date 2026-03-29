@@ -67,7 +67,7 @@ class ItineraryEmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 48),
             // ── Text Content ────────────────────────────────────────────────────────
-            const Text(
+            Text(
               'Bạn chưa có lịch trình nào',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -78,7 +78,7 @@ class ItineraryEmptyView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Bắt đầu tạo chuyến đi đầu tiên của bạn.',
               textAlign: TextAlign.center,
               style: TextStyle(

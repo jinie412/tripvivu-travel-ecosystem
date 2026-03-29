@@ -27,7 +27,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text('Mới nhất'),
+                title: Text('Mới nhất'),
                 trailing: _currentSort == 'Mới nhất'
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,
@@ -37,7 +37,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 },
               ),
               ListTile(
-                title: const Text('Chưa đọc'),
+                title: Text('Chưa đọc'),
                 trailing: _currentSort == 'Chưa đọc'
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,

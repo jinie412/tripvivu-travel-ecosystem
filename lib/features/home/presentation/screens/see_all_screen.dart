@@ -22,7 +22,7 @@ class SeeAllScreen extends StatelessWidget {
               onPressed: onAddTap,
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
-              label: const Text('Thêm địa điểm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: Text('Thêm địa điểm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             )
           : null,
       body: Column(

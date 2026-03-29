@@ -21,7 +21,7 @@ class FoodMenuScreen extends StatelessWidget {
           centerTitle: true,
           title: Column(
             children: [
-              const Text(
+              Text(
                 'Khám phá ẩm thực',
                 style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18),
               ),
@@ -287,7 +287,7 @@ class _BottomCartBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tổng cộng', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                    Text('Tổng cộng', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
                     Text(
                       '${(state.totalPrice / 1000).toStringAsFixed(0)}.000đ',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
@@ -328,7 +328,7 @@ class _BottomCartBar extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text('Đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ],
           ),

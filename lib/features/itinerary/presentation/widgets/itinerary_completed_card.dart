@@ -84,7 +84,7 @@ class ItineraryCompletedCard extends StatelessWidget {
                             color: const Color(0xFF34A853),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'ĐÃ ĐI',
                             style: TextStyle(
                               color: Colors.white,

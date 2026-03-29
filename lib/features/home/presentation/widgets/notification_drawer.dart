@@ -19,7 +19,7 @@ class NotificationDrawer extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Thông báo',
                     style: TextStyle(
                       fontSize: 20,

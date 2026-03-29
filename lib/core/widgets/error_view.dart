@@ -20,7 +20,7 @@ class ErrorView extends StatelessWidget {
           children: [
             const Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Không thể tải dữ liệu',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -34,7 +34,7 @@ class ErrorView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Thử lại'),
+              label: Text('Thử lại'),
             ),
           ],
         ),

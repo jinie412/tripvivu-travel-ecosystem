@@ -38,21 +38,21 @@ class ExploreHeader extends StatelessWidget {
               ),
               const SizedBox(width: AppSizes.s12),
               // Vị trí
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, color: Colors.white, size: AppSizes.iconXs),
-                        SizedBox(width: AppSizes.s4),
+                        const Icon(Icons.location_on_outlined, color: Colors.white, size: AppSizes.iconXs),
+                        const SizedBox(width: AppSizes.s4),
                         Text(
                           'VỊ TRÍ CỦA BẠN',
                           style: AppTextStylesExt.overline,
                         ),
                       ],
                     ),
-                    SizedBox(height: AppSizes.s2),
+                    const SizedBox(height: AppSizes.s2),
                     Text(
                       'QUẬN 1, HỒ CHÍ MINH',
                       style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),

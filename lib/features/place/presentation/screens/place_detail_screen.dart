@@ -57,7 +57,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context.read<PlaceDetailCubit>().loadPlaceDetail(widget.placeId),
-                    child: const Text('Thử lại'),
+                    child: Text('Thử lại'),
                   ),
                 ],
               ),

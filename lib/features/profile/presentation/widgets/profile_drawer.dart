@@ -326,7 +326,7 @@ class _ActivityTile extends StatelessWidget {
                           decoration: const BoxDecoration(
                               color: Colors.green, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
-                      const Text('Chờ bạn chia sẻ',
+                      Text('Chờ bạn chia sẻ',
                           style: TextStyle(
                               fontSize: 11, color: AppColors.primary)),
                     ],
@@ -342,7 +342,7 @@ class _ActivityTile extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
-                        const Text('•',
+                        Text('•',
                             style: TextStyle(fontSize: 11, color: Colors.grey)),
                         const SizedBox(width: 8),
                       ],

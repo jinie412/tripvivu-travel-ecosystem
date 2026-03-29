@@ -91,7 +91,7 @@ class GoogleSignInButton extends StatelessWidget {
           children: [
             const _GoogleGLogo(),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Google',
               style: TextStyle(
                 fontSize: 16,
@@ -145,7 +145,7 @@ class FacebookSignInButton extends StatelessWidget {
           children: [
             const _FacebookIcon(),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Facebook',
               style: TextStyle(
                 fontSize: 16,

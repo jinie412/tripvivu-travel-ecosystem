@@ -13,7 +13,7 @@ class ReplaceLocationSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Thay thế hoặc thêm địa điểm',
               style: TextStyle(
                 fontSize: 18, 

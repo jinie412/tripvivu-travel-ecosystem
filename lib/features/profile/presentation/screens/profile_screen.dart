@@ -73,13 +73,13 @@ class ProfileScreen extends StatelessWidget {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Chọn ngôn ngữ'),
+                      title: Text('Chọn ngôn ngữ'),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ListTile(
                             leading: const Icon(Icons.check, color: AppColors.primary),
-                            title: const Text('Tiếng Việt'),
+                            title: Text('Tiếng Việt'),
                             onTap: () => Navigator.pop(context),
                           ),
                         ],

@@ -22,7 +22,7 @@ class ReviewMediaList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Thêm hình ảnh & video',
           style: TextStyle(
             fontSize: 12,

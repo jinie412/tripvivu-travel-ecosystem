@@ -34,7 +34,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Một chút về bạn',
             style: TextStyle(
               fontSize: 24,
@@ -54,7 +54,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
           const SizedBox(height: 24),
 
           // Age Section
-          const Text(
+          Text(
             'Độ tuổi của bạn',
             style: TextStyle(
               fontSize: 16,
@@ -78,7 +78,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
           const SizedBox(height: 32),
 
           // Gender Section
-          const Text(
+          Text(
             'Giới tính',
             style: TextStyle(
               fontSize: 16,

@@ -37,7 +37,7 @@ class _RateItineraryView extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA), // Nền màu xám cực nhạt như Figma
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Đánh giá lịch trình',
           style: TextStyle(
               fontSize: 16,
@@ -101,7 +101,7 @@ class _RateItineraryView extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Đánh giá địa điểm',
                               style: TextStyle(
                                 fontSize: 16,

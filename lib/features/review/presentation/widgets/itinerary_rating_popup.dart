@@ -65,7 +65,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
               const SizedBox(height: 16),
               
               // Title
-              const Text(
+              Text(
                 'Chuyến đi của bạn đã hoàn thành!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -78,7 +78,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
               const SizedBox(height: 8),
               
               // Subtitle
-              const Text(
+              Text(
                 'Hãy chia sẻ trải nghiệm của bạn về lịch trình này',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -145,7 +145,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Đánh giá chi tiết',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
@@ -190,7 +190,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
               // "Để sau" link
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Để sau',
                   style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
                 ),

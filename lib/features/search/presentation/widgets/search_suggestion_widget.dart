@@ -58,7 +58,7 @@ class SearchSuggestionWidget extends StatelessWidget {
         const SizedBox(height: AppSizes.s32),
 
         // Recent Searches Title
-        const Text(
+        Text(
           'Các tìm kiếm gần đây',
           style: TextStyle(
             fontSize: 18,

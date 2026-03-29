@@ -15,7 +15,7 @@ class PlaceGallerySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Hình ảnh',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),

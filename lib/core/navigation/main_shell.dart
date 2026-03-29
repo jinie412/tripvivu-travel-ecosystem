@@ -128,7 +128,7 @@ class SharedBottomNav extends StatelessWidget {
                     child: const Icon(Icons.add, color: Colors.white, size: AppSizes.iconDefault),
                   ),
                   const SizedBox(height: AppSizes.s4),
-                  const Text(
+                  Text(
                     'Tạo lịch trình',
                     style: AppTextStylesExt.captionSmall,
                   ),

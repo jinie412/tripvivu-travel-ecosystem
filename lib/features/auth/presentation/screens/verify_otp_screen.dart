@@ -87,7 +87,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                   const SizedBox(height: AppSizes.s32),
 
                   // 2. Title Section
-                  const Text(
+                  Text(
                     'Xác minh mã',
                     style: TextStyle(
                       fontSize: 32,
@@ -160,7 +160,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                           borderRadius: BorderRadius.circular(AppSizes.r12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Xác nhận',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -172,7 +172,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         'Không nhận được mã? ',
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                       ),
@@ -180,7 +180,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                         onTap: () {
                           // Resend logic
                         },
-                        child: const Text(
+                        child: Text(
                           'Gửi lại mã',
                           style: TextStyle(
                             color: AppColors.primary,
@@ -197,7 +197,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
                   TextButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.arrow_back_ios_new, size: AppSizes.iconMd, color: AppColors.primary),
-                    label: const Text(
+                    label: Text(
                       'Quay lại',
                       style: TextStyle(
                         color: AppColors.primary,

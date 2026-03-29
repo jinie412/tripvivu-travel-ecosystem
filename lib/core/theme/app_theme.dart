@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
 class AppTheme {
@@ -6,16 +7,17 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
+        textTheme: GoogleFonts.interTextTheme(),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           brightness: Brightness.light,
         ),
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           backgroundColor: Colors.white,
           foregroundColor: AppColors.textPrimary,
           elevation: 0,
           centerTitle: true,
-          titleTextStyle: TextStyle(
+          titleTextStyle: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -27,7 +29,7 @@ class AppTheme {
             foregroundColor: Colors.white,
             elevation: 0,
             shape: const StadiumBorder(),
-            textStyle: const TextStyle(
+            textStyle: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),

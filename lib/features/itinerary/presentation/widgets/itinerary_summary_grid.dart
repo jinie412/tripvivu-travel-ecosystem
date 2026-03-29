@@ -16,7 +16,7 @@ class ItinerarySummaryGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Thống kê của lịch trình',
             style: TextStyle(
               fontSize: 16,
