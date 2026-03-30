@@ -1,87 +1,88 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_sizes.dart';
+import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/net_image.dart';
 
 class EditActivityHeader extends StatelessWidget {
   final String title;
   final String imageUrl;
-  final String initialDuration;
-
+  
   const EditActivityHeader({
     super.key,
     required this.title,
     required this.imageUrl,
-    this.initialDuration = '1.5 giờ',
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Color(0xFFEFF6FF), // Light blue background
-        borderRadius: BorderRadius.all(Radius.circular(32)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _statusBadge('ĐANG CHỈNH SỬA'),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 24, 
-                    fontWeight: FontWeight.bold, 
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time_outlined, size: 14, color: AppColors.textSecondary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Dự kiến ban đầu: $initialDuration',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: NetImage(
-              url: imageUrl, 
-              width: 80, 
-              height: 80,
-              fit: BoxFit.cover,
-            ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSizes.r24),
+        border: Border.all(color: AppColorsExt.divider.withAlpha(50)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _statusBadge(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 10, 
-          fontWeight: FontWeight.bold, 
-          color: Color(0xFF2563EB),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.s20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.place_rounded, size: 14, color: AppColors.primary),
+                        const SizedBox(width: AppSizes.s4),
+                        Text(
+                          'ĐIỂM ĐẾN',
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Text(
+                      title,
+                      style: AppTextStyles.heading2.copyWith(fontSize: 20, height: 1.3),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSizes.s20, top: AppSizes.s20, bottom: AppSizes.s20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppSizes.r16),
+                child: NetImage(
+                  url: imageUrl, 
+                  width: 88, 
+                  height: 88,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+

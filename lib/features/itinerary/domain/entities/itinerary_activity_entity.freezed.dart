@@ -32,7 +32,10 @@ mixin _$ItineraryActivityEntity {
       throw _privateConstructorUsedError; // e.g. "Cà phê", "Tham quan"
   // Geographical coordinates
   double? get latitude => throw _privateConstructorUsedError;
-  double? get longitude => throw _privateConstructorUsedError; // Status
+  double? get longitude =>
+      throw _privateConstructorUsedError; // Rating and Reviews
+  double? get rating => throw _privateConstructorUsedError;
+  int? get reviewCount => throw _privateConstructorUsedError; // Status
   ActivityStatus get status => throw _privateConstructorUsedError;
 
   /// Create a copy of ItineraryActivityEntity
@@ -64,6 +67,8 @@ abstract class $ItineraryActivityEntityCopyWith<$Res> {
     String? category,
     double? latitude,
     double? longitude,
+    double? rating,
+    int? reviewCount,
     ActivityStatus status,
   });
 }
@@ -100,6 +105,8 @@ class _$ItineraryActivityEntityCopyWithImpl<
     Object? category = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? rating = freezed,
+    Object? reviewCount = freezed,
     Object? status = null,
   }) {
     return _then(
@@ -160,6 +167,14 @@ class _$ItineraryActivityEntityCopyWithImpl<
                 ? _value.longitude
                 : longitude // ignore: cast_nullable_to_non_nullable
                       as double?,
+            rating: freezed == rating
+                ? _value.rating
+                : rating // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            reviewCount: freezed == reviewCount
+                ? _value.reviewCount
+                : reviewCount // ignore: cast_nullable_to_non_nullable
+                      as int?,
             status: null == status
                 ? _value.status
                 : status // ignore: cast_nullable_to_non_nullable
@@ -194,6 +209,8 @@ abstract class _$$ItineraryActivityEntityImplCopyWith<$Res>
     String? category,
     double? latitude,
     double? longitude,
+    double? rating,
+    int? reviewCount,
     ActivityStatus status,
   });
 }
@@ -230,6 +247,8 @@ class __$$ItineraryActivityEntityImplCopyWithImpl<$Res>
     Object? category = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? rating = freezed,
+    Object? reviewCount = freezed,
     Object? status = null,
   }) {
     return _then(
@@ -290,6 +309,14 @@ class __$$ItineraryActivityEntityImplCopyWithImpl<$Res>
             ? _value.longitude
             : longitude // ignore: cast_nullable_to_non_nullable
                   as double?,
+        rating: freezed == rating
+            ? _value.rating
+            : rating // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        reviewCount: freezed == reviewCount
+            ? _value.reviewCount
+            : reviewCount // ignore: cast_nullable_to_non_nullable
+                  as int?,
         status: null == status
             ? _value.status
             : status // ignore: cast_nullable_to_non_nullable
@@ -317,6 +344,8 @@ class _$ItineraryActivityEntityImpl implements _ItineraryActivityEntity {
     this.category,
     this.latitude,
     this.longitude,
+    this.rating,
+    this.reviewCount,
     this.status = ActivityStatus.chuaDi,
   });
 
@@ -353,6 +382,11 @@ class _$ItineraryActivityEntityImpl implements _ItineraryActivityEntity {
   final double? latitude;
   @override
   final double? longitude;
+  // Rating and Reviews
+  @override
+  final double? rating;
+  @override
+  final int? reviewCount;
   // Status
   @override
   @JsonKey()
@@ -360,7 +394,7 @@ class _$ItineraryActivityEntityImpl implements _ItineraryActivityEntity {
 
   @override
   String toString() {
-    return 'ItineraryActivityEntity(id: $id, title: $title, startTime: $startTime, endTime: $endTime, locationName: $locationName, address: $address, imageUrl: $imageUrl, price: $price, currency: $currency, transportInfo: $transportInfo, isFree: $isFree, category: $category, latitude: $latitude, longitude: $longitude, status: $status)';
+    return 'ItineraryActivityEntity(id: $id, title: $title, startTime: $startTime, endTime: $endTime, locationName: $locationName, address: $address, imageUrl: $imageUrl, price: $price, currency: $currency, transportInfo: $transportInfo, isFree: $isFree, category: $category, latitude: $latitude, longitude: $longitude, rating: $rating, reviewCount: $reviewCount, status: $status)';
   }
 
   @override
@@ -390,6 +424,9 @@ class _$ItineraryActivityEntityImpl implements _ItineraryActivityEntity {
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
                 other.longitude == longitude) &&
+            (identical(other.rating, rating) || other.rating == rating) &&
+            (identical(other.reviewCount, reviewCount) ||
+                other.reviewCount == reviewCount) &&
             (identical(other.status, status) || other.status == status));
   }
 
@@ -410,6 +447,8 @@ class _$ItineraryActivityEntityImpl implements _ItineraryActivityEntity {
     category,
     latitude,
     longitude,
+    rating,
+    reviewCount,
     status,
   );
 
@@ -441,6 +480,8 @@ abstract class _ItineraryActivityEntity implements ItineraryActivityEntity {
     final String? category,
     final double? latitude,
     final double? longitude,
+    final double? rating,
+    final int? reviewCount,
     final ActivityStatus status,
   }) = _$ItineraryActivityEntityImpl;
 
@@ -472,7 +513,11 @@ abstract class _ItineraryActivityEntity implements ItineraryActivityEntity {
   @override
   double? get latitude;
   @override
-  double? get longitude; // Status
+  double? get longitude; // Rating and Reviews
+  @override
+  double? get rating;
+  @override
+  int? get reviewCount; // Status
   @override
   ActivityStatus get status;
 

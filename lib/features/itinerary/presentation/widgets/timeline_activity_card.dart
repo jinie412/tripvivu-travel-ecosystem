@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_text_styles.dart';
@@ -11,6 +12,8 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onAddTap;
   final VoidCallback? onEditTap;
   final VoidCallback? onDeleteTap;
+  final VoidCallback? onReplaceTap;
+  final VoidCallback? onCardTap;
 
   const TimelineActivityCard({
     super.key,
@@ -20,7 +23,21 @@ class TimelineActivityCard extends StatelessWidget {
     this.onAddTap,
     this.onEditTap,
     this.onDeleteTap,
+    this.onReplaceTap,
+    this.onCardTap,
   });
+
+  String _formatReviewCount(int? count) {
+    if (count == null) return '0';
+    if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k';
+    }
+    return count.toString();
+  }
+
+  String _formatCurrency(double amount) {
+    return NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(amount);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +51,7 @@ class TimelineActivityCard extends StatelessWidget {
           icon: Icons.location_on,
           content: _buildActivityCard(context),
           showLine: true,
+          isCompleted: activity.status == ActivityStatus.daDi,
         ),
         
         // 2. Transition Item (if exists)
@@ -50,7 +68,6 @@ class TimelineActivityCard extends StatelessWidget {
       ],
     );
   }
-
   Widget _buildItem(
     BuildContext context, {
     required String time,
@@ -59,6 +76,7 @@ class TimelineActivityCard extends StatelessWidget {
     required Widget content,
     required bool showLine,
     bool isTransition = false,
+    bool isCompleted = false,
   }) {
     return IntrinsicHeight(
       child: Row(
@@ -78,14 +96,23 @@ class TimelineActivityCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSizes.s8),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColorsExt.profileBlue.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 18, color: AppColorsExt.profileBlue),
-                ),
+                isCompleted
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 5), // padding 5 + size 20 = 30 height
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: AppColorsExt.success,
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColorsExt.profileBlue.withAlpha(25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, size: 18, color: AppColorsExt.profileBlue),
+                      ),
                 if (showLine)
                   Expanded(
                     child: Center(
@@ -129,20 +156,23 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   Widget _buildActivityCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(right: AppSizes.s8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSizes.r24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: AppColorsExt.divider.withAlpha(40)),
-      ),
+    return InkWell(
+      onTap: onCardTap,
+      borderRadius: BorderRadius.circular(AppSizes.r24),
+      child: Container(
+        padding: const EdgeInsets.only(right: AppSizes.s8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.r24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: AppColorsExt.divider.withAlpha(40)),
+        ),
       child: Row(
         children: [
           ClipRRect(
@@ -150,16 +180,17 @@ class TimelineActivityCard extends StatelessWidget {
             child: Image.network(
               activity.imageUrl,
               width: 100,
-              height: 110,
+              height: 125,
               fit: BoxFit.cover,
             ),
           ),
           const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.s8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                    Row(
@@ -186,6 +217,8 @@ class TimelineActivityCard extends StatelessWidget {
                             onSelected: (value) {
                               if (value == 'edit') {
                                 onEditTap?.call();
+                              } else if (value == 'replace') {
+                                onReplaceTap?.call();
                               } else if (value == 'delete') {
                                 onDeleteTap?.call();
                               }
@@ -203,12 +236,12 @@ class TimelineActivityCard extends StatelessWidget {
                             ),
                             itemBuilder: (context) => [
                               PopupMenuItem(
-                                value: 'edit',
+                                value: 'replace',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                    const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColorsExt.profileBlue),
                                     const SizedBox(width: 8),
-                                    Text('Chỉnh sửa', style: AppTextStyles.body.copyWith(fontSize: 14)),
+                                    Text('Thay thế', style: AppTextStyles.body.copyWith(fontSize: 14)),
                                   ],
                                 ),
                               ),
@@ -233,21 +266,60 @@ class TimelineActivityCard extends StatelessWidget {
                     style: AppTextStylesExt.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 11,
+                      height: 1.2,
                     ),
-                    maxLines: 1,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: AppSizes.s4),
+                  // Price Tag
+                  if (activity.isFree)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColorsExt.success.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'MIỄN PHÍ',
+                        style: AppTextStylesExt.captionSmall.copyWith(
+                          color: AppColorsExt.success,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Text(
+                          _formatCurrency(activity.price),
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Vé vào cửa',
+                          style: AppTextStylesExt.captionSmall.copyWith(
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: AppSizes.s8),
                   Row(
                     children: [
                       const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        '3.679 (102)',
+                        '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
                         style: AppTextStylesExt.bodySmall.copyWith(
                           color: AppColors.textSecondary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -258,6 +330,7 @@ class TimelineActivityCard extends StatelessWidget {
           ),
         ],
       ),
+     ),
     );
   }
 
@@ -288,7 +361,7 @@ class TimelineActivityCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.s8),
-          Icon(Icons.chevron_right, size: 16, color: AppColors.textSecondary),
+          const Icon(Icons.directions, size: 16, color: AppColors.primary),
         ],
       ),
     );

@@ -11,30 +11,36 @@ class ActivityEditCubit extends Cubit<ActivityEditState> {
       startTime: activity.startTime,
       endTime: activity.endTime,
       notes: 'Mua quà lưu niệm cho gia đình ở đây. Nhớ mặc cả giá xuống 30-50%.', // Mock note
+      actualCost: 150000.0, // Mock initial actual cost
+      isEditing: false,
     ));
+  }
+
+  void toggleEditMode() {
+    if (state is ActivityEditInitial) {
+      final s = state as ActivityEditInitial;
+      emit(s.copyWith(isEditing: !s.isEditing));
+    }
+  }
+
+  void updateActualCost(double cost) {
+    if (state is ActivityEditInitial) {
+      final s = state as ActivityEditInitial;
+      emit(s.copyWith(actualCost: cost));
+    }
   }
 
   void updateTime(String start, String end) {
     if (state is ActivityEditInitial) {
       final s = state as ActivityEditInitial;
-      emit(ActivityEditInitial(
-        activity: s.activity,
-        notes: s.notes,
-        startTime: start,
-        endTime: end,
-      ));
+      emit(s.copyWith(startTime: start, endTime: end));
     }
   }
 
   void updateNotes(String notes) {
     if (state is ActivityEditInitial) {
       final s = state as ActivityEditInitial;
-      emit(ActivityEditInitial(
-        activity: s.activity,
-        notes: notes,
-        startTime: s.startTime,
-        endTime: s.endTime,
-      ));
+      emit(s.copyWith(notes: notes));
     }
   }
 
@@ -43,11 +49,13 @@ class ActivityEditCubit extends Cubit<ActivityEditState> {
     if (currentState is! ActivityEditInitial) return;
 
     final endTime = currentState.endTime;
+    final actualCost = currentState.actualCost;
     emit(const ActivityEditLoading());
     
     try {
       // Mock network delay
       await Future.delayed(const Duration(milliseconds: 800));
+      print('Applying changes with Actual Cost: $actualCost');
       
       // Simulating a potential conflict for demo purposes if end time is 11:00 or later
       if (endTime.startsWith('11:') || endTime.startsWith('12:')) {

@@ -25,6 +25,9 @@ class ItineraryActivityModel {
   final String? category;
   final double? latitude;
   final double? longitude;
+  final double? rating;
+  @JsonKey(name: 'review_count')
+  final int? reviewCount;
   final String? status; // chuaDi, dangDi, daDi, diQua
 
   const ItineraryActivityModel({
@@ -42,6 +45,8 @@ class ItineraryActivityModel {
     this.category,
     this.latitude,
     this.longitude,
+    this.rating,
+    this.reviewCount,
     this.status,
   });
 
@@ -71,6 +76,8 @@ class ItineraryActivityModel {
       category: category,
       latitude: latitude,
       longitude: longitude,
+      rating: rating,
+      reviewCount: reviewCount,
       status: entityStatus,
     );
   }

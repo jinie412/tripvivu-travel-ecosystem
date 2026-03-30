@@ -13,16 +13,38 @@ class ActivityEditInitial extends ActivityEditState {
   final String notes;
   final String startTime;
   final String endTime;
+  final double actualCost;
+  final bool isEditing;
 
   const ActivityEditInitial({
     required this.activity,
     this.notes = '',
     required this.startTime,
     required this.endTime,
+    this.actualCost = 0.0,
+    this.isEditing = false,
   });
 
   @override
-  List<Object?> get props => [activity, notes, startTime, endTime];
+  List<Object?> get props => [activity, notes, startTime, endTime, actualCost, isEditing];
+
+  ActivityEditInitial copyWith({
+    ItineraryActivityEntity? activity,
+    String? notes,
+    String? startTime,
+    String? endTime,
+    double? actualCost,
+    bool? isEditing,
+  }) {
+    return ActivityEditInitial(
+      activity: activity ?? this.activity,
+      notes: notes ?? this.notes,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      actualCost: actualCost ?? this.actualCost,
+      isEditing: isEditing ?? this.isEditing,
+    );
+  }
 }
 
 class ActivityEditLoading extends ActivityEditState {
@@ -39,6 +61,8 @@ class ActivityEditConflictDetected extends ActivityEditState {
   final String notes;
   final String startTime;
   final String endTime;
+  final double actualCost;
+  final bool isEditing;
 
   const ActivityEditConflictDetected({
     required this.message,
@@ -46,10 +70,12 @@ class ActivityEditConflictDetected extends ActivityEditState {
     required this.notes,
     required this.startTime,
     required this.endTime,
+    this.actualCost = 0.0,
+    this.isEditing = true,
   });
 
   @override
-  List<Object?> get props => [message, activity, notes, startTime, endTime];
+  List<Object?> get props => [message, activity, notes, startTime, endTime, actualCost, isEditing];
 }
 
 class ActivityEditError extends ActivityEditState {

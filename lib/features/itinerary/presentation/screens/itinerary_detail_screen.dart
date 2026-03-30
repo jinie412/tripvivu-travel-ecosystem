@@ -5,8 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/constants/app_text_styles.dart';
-import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all_screen.dart';
-import 'package:travel_advisor_mobile/features/home/presentation/widgets/detailed_place_card.dart';
+import '../../../home/presentation/screens/see_all_screen.dart';
+import '../../../home/presentation/widgets/detailed_place_card.dart';
 import '../cubit/itinerary_cubit.dart';
 import '../cubit/itinerary_state.dart';
 import '../../domain/entities/itinerary_detail_entity.dart';
@@ -19,6 +19,7 @@ import '../../../place/presentation/screens/place_detail_screen.dart';
 import '../../../place/presentation/cubit/place_detail_cubit.dart';
 import '../../../food/presentation/screens/food_menu_screen.dart';
 import '../../../food/presentation/widgets/pre_order_popup.dart';
+import 'activity_edit_screen.dart';
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -136,72 +137,21 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onEditActivity(ItineraryActivityEntity activity) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r16)),
-        backgroundColor: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSizes.s20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Tùy chọn địa điểm',
-                style: AppTextStyles.heading2.copyWith(fontSize: 18),
-              ),
-              const SizedBox(height: AppSizes.s24),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.edit_note_rounded, color: AppColors.primary),
-                ),
-                title: Text('Chỉnh sửa thông tin địa điểm', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(context);
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    builder: (context) => Padding(
-                      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                      child: EditTimeBottomSheet(activity: activity),
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 24, color: AppColorsExt.divider),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColorsExt.profileBlue.withAlpha(25),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.swap_horiz_rounded, color: AppColorsExt.profileBlue),
-                ),
-                title: Text('Thay thế địa điểm', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Tính năng thay thế địa điểm sẽ sớm ra mắt!'),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActivityEditScreen(activity: activity),
+      ),
+    );
+  }
+
+  void _onReplaceActivity(ItineraryActivityEntity activity) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Tính năng thay thế địa điểm đang được phát triển!'),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
       ),
     );
   }
@@ -366,6 +316,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         activityKeys: _activityKeys,
         onActivityTap: _zoomToActivity,
         onEditActivity: _onEditActivity,
+        onReplaceActivity: _onReplaceActivity,
         onDeleteActivity: _onDeleteActivity,
         onShareTap: _showShareSheet,
         onMarkerTap: (id) => _scrollToActivity(id),
@@ -392,6 +343,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final Map<String, GlobalKey> activityKeys;
   final Function(ItineraryActivityEntity) onActivityTap;
   final Function(ItineraryActivityEntity) onEditActivity;
+  final Function(ItineraryActivityEntity) onReplaceActivity;
   final Function(ItineraryActivityEntity) onDeleteActivity;
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
@@ -408,6 +360,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.activityKeys,
     required this.onActivityTap,
     required this.onEditActivity,
+    required this.onReplaceActivity,
     required this.onDeleteActivity,
     required this.onShareTap,
     required this.onMarkerTap,
@@ -541,6 +494,8 @@ class _ItineraryDetailView extends StatelessWidget {
           endTime: '10:30',
           imageUrl: 'https://images.unsplash.com/photo-1599708153386-62e200399066?w=600&q=80',
           transportInfo: '15 phút di chuyển',
+          rating: 4.6,
+          reviewCount: 15400,
         ),
         ItineraryActivityEntity(
           id: 'mock_2_2',
@@ -551,6 +506,8 @@ class _ItineraryDetailView extends StatelessWidget {
           endTime: '12:45',
           imageUrl: 'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=600&q=80',
           transportInfo: '10 phút di chuyển',
+          rating: 4.4,
+          reviewCount: 3800,
         ),
       ];
 
@@ -564,6 +521,8 @@ class _ItineraryDetailView extends StatelessWidget {
           endTime: '11:00',
           imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
           transportInfo: '20 phút di chuyển',
+          rating: 4.2,
+          reviewCount: 25000,
         ),
       ];
 
@@ -622,7 +581,7 @@ class _ItineraryDetailView extends StatelessWidget {
           Text(
             '${currentDayData.locationsCount} điểm tham quan du lịch',
             style: AppTextStylesExt.bodySmall.copyWith(
-              color: const Color(0xFF94A3B8),
+              color: AppColors.textSecondary,
               fontSize: 13,
             ),
           ),
@@ -631,17 +590,16 @@ class _ItineraryDetailView extends StatelessWidget {
             final activity = entry.value;
             final key = activityKeys.putIfAbsent(activity.id, () => GlobalKey());
             
-            return GestureDetector(
+            return TimelineActivityCard(
               key: key,
-              onTap: () => onActivityTap(activity),
-              child: TimelineActivityCard(
-                activity: activity,
-                isFirst: entry.key == 0,
-                isLast: entry.key == currentDayData.activities.length - 1,
-                onAddTap: onAddPlaceTap,
-                onEditTap: () => onEditActivity(activity),
-                onDeleteTap: () => onDeleteActivity(activity),
-              ),
+              activity: activity,
+              isFirst: entry.key == 0,
+              isLast: entry.key == currentDayData.activities.length - 1,
+              onAddTap: onAddPlaceTap,
+              onEditTap: () => onEditActivity(activity),
+              onReplaceTap: () => onReplaceActivity(activity),
+              onDeleteTap: () => onDeleteActivity(activity),
+              onCardTap: () => onEditActivity(activity),
             );
           }),
           const SizedBox(height: AppSizes.s24),
@@ -665,266 +623,17 @@ class _ItineraryDetailView extends StatelessWidget {
   }
 
   Widget _floatingCircleButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(120),
-          shape: BoxShape.circle,
+    return Material(
+      color: Colors.black.withAlpha(120),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(icon, size: 18, color: Colors.white),
         ),
-        child: Icon(icon, size: 16, color: Colors.white),
-      ),
-    );
-  }
-}
-
-class EditTimeBottomSheet extends StatefulWidget {
-  final ItineraryActivityEntity activity;
-
-  const EditTimeBottomSheet({super.key, required this.activity});
-
-  @override
-  State<EditTimeBottomSheet> createState() => _EditTimeBottomSheetState();
-}
-
-class _EditTimeBottomSheetState extends State<EditTimeBottomSheet> {
-  late int _durationMinutes;
-  late TextEditingController _hourController;
-  late TextEditingController _minuteController;
-  late FocusNode _hourFocus;
-  late FocusNode _minuteFocus;
-
-  TimeOfDay? _parseTime(String timeStr) {
-    try {
-      final parts = timeStr.split(':');
-      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-    } catch (e) {
-      return null;
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    final arrival = _parseTime(widget.activity.startTime) ?? const TimeOfDay(hour: 8, minute: 0);
-    _hourController = TextEditingController(text: arrival.hour.toString().padLeft(2, '0'));
-    _minuteController = TextEditingController(text: arrival.minute.toString().padLeft(2, '0'));
-    _hourFocus = FocusNode();
-    _minuteFocus = FocusNode();
-
-    final end = _parseTime(widget.activity.endTime) ?? const TimeOfDay(hour: 9, minute: 0);
-    int startMins = arrival.hour * 60 + arrival.minute;
-    int endMins = end.hour * 60 + end.minute;
-    if (endMins < startMins) endMins += 24 * 60;
-    _durationMinutes = endMins - startMins;
-    if (_durationMinutes <= 0) _durationMinutes = 60;
-  }
-
-  @override
-  void dispose() {
-    _hourController.dispose();
-    _minuteController.dispose();
-    _hourFocus.dispose();
-    _minuteFocus.dispose();
-    super.dispose();
-  }
-
-  void _validateAndFormat() {
-    int h = int.tryParse(_hourController.text) ?? 8;
-    int m = int.tryParse(_minuteController.text) ?? 0;
-    if (h > 23) h = 23;
-    if (m > 59) m = 59;
-    _hourController.text = h.toString().padLeft(2, '0');
-    _minuteController.text = m.toString().padLeft(2, '0');
-  }
-
-  String _formatDuration(int minutes) {
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    if (h > 0 && m > 0) return '${h}h ${m}p';
-    if (h > 0) return '${h}h';
-    return '${m}p';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSizes.r24)),
-      ),
-      padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24, top: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColorsExt.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Chỉnh sửa thông tin địa điểm',
-            style: AppTextStyles.heading2.copyWith(fontSize: 18),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Text('Thời gian đến', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _timeInputBox(_hourController, _hourFocus, 23, (val) {
-                    if (val.length == 2) _minuteFocus.requestFocus();
-                  }),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(':', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                  ),
-                  _timeInputBox(_minuteController, _minuteFocus, 59, (val) {
-                    if (val.length == 2) FocusScope.of(context).unfocus();
-                  }),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Text('Thời gian tham quan', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColorsExt.searchBarBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.remove_circle_outline, size: 24),
-                      color: _durationMinutes > 15 ? AppColors.textPrimary : AppColorsExt.divider,
-                      onPressed: () {
-                        if (_durationMinutes > 15) {
-                          setState(() => _durationMinutes -= 15);
-                        }
-                      },
-                    ),
-                    Container(
-                      width: 75,
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      alignment: Alignment.center,
-                      child: Text(
-                        _formatDuration(_durationMinutes),
-                        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold, fontSize: 15),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.add_circle_outline, size: 24),
-                      color: AppColors.textPrimary,
-                      onPressed: () {
-                        setState(() => _durationMinutes += 15);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: AppSizes.buttonHeight,
-            child: ElevatedButton(
-              onPressed: () {
-                _validateAndFormat();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Đã cập nhật thời gian tham quan!'),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.r12),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Lưu thay đổi',
-                style: AppTextStyles.heading2.copyWith(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _timeInputBox(
-    TextEditingController controller,
-    FocusNode focusNode,
-    int maxValue,
-    Function(String) onChanged,
-  ) {
-    return Container(
-      width: 40,
-      height: 32,
-      decoration: BoxDecoration(
-        color: AppColorsExt.searchBarBg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextFormField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        style: AppTextStyles.body.copyWith(
-          fontWeight: FontWeight.bold,
-          color: AppColors.primary,
-          fontSize: 15,
-        ),
-        maxLength: 2,
-        decoration: const InputDecoration(
-          counterText: '',
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
-        onChanged: (val) {
-          if (val.isNotEmpty) {
-            final num = int.tryParse(val);
-            if (num != null && num > maxValue) {
-              controller.text = maxValue.toString();
-              controller.selection = TextSelection.fromPosition(
-                TextPosition(offset: controller.text.length),
-              );
-            }
-          }
-          onChanged(val);
-        },
       ),
     );
   }

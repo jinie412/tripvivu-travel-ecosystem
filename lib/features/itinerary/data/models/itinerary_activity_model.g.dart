@@ -23,6 +23,8 @@ ItineraryActivityModel _$ItineraryActivityModelFromJson(
   category: json['category'] as String?,
   latitude: (json['latitude'] as num?)?.toDouble(),
   longitude: (json['longitude'] as num?)?.toDouble(),
+  rating: (json['rating'] as num?)?.toDouble(),
+  reviewCount: (json['review_count'] as num?)?.toInt(),
   status: json['status'] as String?,
 );
 
@@ -43,5 +45,7 @@ Map<String, dynamic> _$ItineraryActivityModelToJson(
   'category': instance.category,
   'latitude': instance.latitude,
   'longitude': instance.longitude,
+  'rating': instance.rating,
+  'review_count': instance.reviewCount,
   'status': instance.status,
 };

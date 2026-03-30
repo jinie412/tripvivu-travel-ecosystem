@@ -24,6 +24,10 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     double? latitude,
     double? longitude,
     
+    // Rating and Reviews
+    double? rating,
+    int? reviewCount,
+    
     // Status
     @Default(ActivityStatus.chuaDi) ActivityStatus status,
   }) = _ItineraryActivityEntity;
