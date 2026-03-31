@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 abstract class ActivityEditState extends Equatable {
   const ActivityEditState();

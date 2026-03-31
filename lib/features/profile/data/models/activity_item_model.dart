@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/activity_item_entity.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
 
 part 'activity_item_model.g.dart';
 

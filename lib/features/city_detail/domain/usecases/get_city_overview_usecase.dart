@@ -1,5 +1,5 @@
-import '../entities/city_entities.dart';
-import '../repositories/city_detail_repository.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/repositories/city_detail_repository.dart';
 
 class GetCityOverviewUseCase {
   final CityDetailRepository repository;

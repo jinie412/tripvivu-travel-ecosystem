@@ -1,7 +1,7 @@
-import '../models/destination_model.dart';
-import '../models/hotel_model.dart';
-import '../models/trip_suggestion_model.dart';
-import '../../../city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/destination_model.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/hotel_model.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/trip_suggestion_model.dart';
 
 /// Contract for home screen data.
 abstract class HomeDataSource {

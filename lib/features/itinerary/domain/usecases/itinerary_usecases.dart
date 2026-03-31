@@ -1,7 +1,7 @@
-import '../entities/itinerary_entity.dart';
-import '../repositories/itinerary_repository.dart';
-import '../entities/itinerary_summary.dart';
-import '../entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 
 /// UseCase: Lấy danh sách lịch trình (có thể lọc theo status).
 class GetItinerariesUseCase {

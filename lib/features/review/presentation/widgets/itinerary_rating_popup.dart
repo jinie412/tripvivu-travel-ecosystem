@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import 'star_rating_input.dart';
-import '../screens/rate_itinerary_screen.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
 class ItineraryRatingPopup extends StatefulWidget {
   final String itineraryId;

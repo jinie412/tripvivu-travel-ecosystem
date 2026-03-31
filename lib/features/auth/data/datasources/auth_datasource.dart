@@ -1,4 +1,4 @@
-import '../models/user_model.dart';
+import 'package:travel_advisor_mobile/features/auth/data/models/user_model.dart';
 
 /// Contract for auth data operations.
 /// [MockAuthDataSource] implements this now.

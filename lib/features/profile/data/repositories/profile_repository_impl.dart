@@ -1,7 +1,7 @@
-import '../../domain/entities/activity_item_entity.dart';
-import '../../domain/entities/profile_entity.dart';
-import '../../domain/repositories/profile_repository.dart';
-import '../datasources/profile_datasource.dart';
+import 'package:travel_advisor_mobile/features/profile/data/datasources/profile_datasource.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/repositories/profile_repository.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileDataSource dataSource;

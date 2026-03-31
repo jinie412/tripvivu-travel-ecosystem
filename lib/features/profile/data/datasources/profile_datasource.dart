@@ -1,6 +1,6 @@
-import '../models/activity_item_model.dart';
-import '../models/profile_model.dart';
-import '../../domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/data/models/activity_item_model.dart';
+import 'package:travel_advisor_mobile/features/profile/data/models/profile_model.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
 
 abstract class ProfileDataSource {
   Future<ProfileModel> getProfile();

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:intl/intl.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 class TimelineActivityCard extends StatelessWidget {
   final ItineraryActivityEntity activity;
@@ -14,6 +16,8 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onDeleteTap;
   final VoidCallback? onReplaceTap;
   final VoidCallback? onCardTap;
+  final VoidCallback? onStartTimeTap;
+  final VoidCallback? onEndTimeTap;
 
   const TimelineActivityCard({
     super.key,
@@ -25,6 +29,8 @@ class TimelineActivityCard extends StatelessWidget {
     this.onDeleteTap,
     this.onReplaceTap,
     this.onCardTap,
+    this.onStartTimeTap,
+    this.onEndTimeTap,
   });
 
   String _formatReviewCount(int? count) {
@@ -83,16 +89,26 @@ class TimelineActivityCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Timeline Indicator
-          SizedBox(
-            width: 45,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 50), // Co dãn theo nội dung, tối thiểu 50
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  time,
-                  style: AppTextStylesExt.bodySmall.copyWith(
-                    color: AppColorsExt.textDark,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                InkWell(
+                  onTap: label.contains('Tham quan') ? onStartTimeTap : onEndTimeTap,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                    child: Text(
+                      time,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.primary, // Đổi màu để nhận diện có thể bấm
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        decoration: TextDecoration.underline, // Gạch chân gợi ý
+                        decorationStyle: TextDecorationStyle.dashed,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSizes.s8),

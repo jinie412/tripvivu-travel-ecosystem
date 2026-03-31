@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
-import '../cubit/activity_edit_cubit.dart';
-import '../cubit/activity_edit_state.dart';
-import '../widgets/edit_activity_header.dart';
-import '../widgets/conflict_resolution_sheet.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_text_styles.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/activity_edit_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/activity_edit_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/conflict_resolution_sheet.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/edit_activity_header.dart';
 
 class ActivityEditScreen extends StatelessWidget {
   final ItineraryActivityEntity activity;

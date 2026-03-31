@@ -1,6 +1,7 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../domain/entities/itinerary_review_entity.dart';
 import 'location_review_model.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
 
 part 'itinerary_review_model.freezed.dart';
 part 'itinerary_review_model.g.dart';

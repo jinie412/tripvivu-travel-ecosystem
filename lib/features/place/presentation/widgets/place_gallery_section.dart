@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 class PlaceGallerySection extends StatelessWidget {
   final List<String> images;

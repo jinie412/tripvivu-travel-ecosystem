@@ -1,7 +1,7 @@
-import '../models/itinerary_model.dart';
-import '../models/itinerary_detail_model.dart';
-import '../models/itinerary_day_model.dart';
-import '../models/itinerary_activity_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_activity_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_day_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 
 /// Hợp đồng cho nguồn dữ liệu lịch trình.
 abstract class ItineraryDataSource {

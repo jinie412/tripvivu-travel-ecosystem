@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/di/injection_container.dart';
-import '../cubit/review_cubit.dart';
-import '../cubit/review_state.dart';
-import '../widgets/location_review_list_tile.dart';
-import '../widgets/review_itinerary_card.dart';
 import 'place_review_screen.dart';
+
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/location_review_list_tile.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/review_itinerary_card.dart';
 
 class RateItineraryScreen extends StatelessWidget {
   final String itineraryId;

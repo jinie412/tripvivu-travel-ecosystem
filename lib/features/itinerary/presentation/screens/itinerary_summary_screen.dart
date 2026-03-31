@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../widgets/itinerary_stat_card.dart';
-import '../widgets/short_itinerary_item.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
-import '../../../../core/widgets/section_header.dart';
 import 'itinerary_detail_screen.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_stat_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
 
 class ItinerarySummaryScreen extends StatelessWidget {
   final String itineraryId;

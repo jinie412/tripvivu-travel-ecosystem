@@ -1,5 +1,5 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'itinerary_activity_entity.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'itinerary_day_entity.freezed.dart';
 

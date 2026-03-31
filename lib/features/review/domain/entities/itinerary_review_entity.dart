@@ -1,5 +1,5 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'location_review_entity.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'itinerary_review_entity.freezed.dart';
 

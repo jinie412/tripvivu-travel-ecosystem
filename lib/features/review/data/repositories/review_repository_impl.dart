@@ -1,6 +1,6 @@
-import '../../domain/entities/itinerary_review_entity.dart';
-import '../../domain/repositories/review_repository.dart';
-import '../datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 
 class ReviewRepositoryImpl implements ReviewRepository {
   final ReviewDataSource dataSource;

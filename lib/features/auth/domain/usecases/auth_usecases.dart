@@ -1,5 +1,5 @@
-import '../entities/user_entity.dart';
-import '../repositories/auth_repository.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 
 /// Use-case: Login. Presentation calls this — not the repository directly.
 class LoginUseCase {

@@ -1,5 +1,5 @@
-import '../entities/profile_entity.dart';
-import '../entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
 
 abstract class ProfileRepository {
   Future<ProfileEntity> getProfile();

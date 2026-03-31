@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/itinerary_entity.dart';
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../widgets/itinerary_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_card.dart';
 
-import '../widgets/itinerary_empty_view.dart';
-import '../widgets/itinerary_filter_chips.dart';
-import '../widgets/itinerary_summary_grid.dart';
-import '../../../../core/widgets/error_view.dart';
 import 'itinerary_summary_screen.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_empty_view.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_filter_chips.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_summary_grid.dart';
 
 /// Màn hình chính "Lịch trình của tôi".
 class ItineraryScreen extends StatelessWidget {

@@ -1,6 +1,7 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/auth_usecases.dart';
 import 'auth_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final LoginUseCase _loginUseCase;

@@ -1,5 +1,5 @@
-import '../entities/itinerary_review_entity.dart';
-import '../repositories/review_repository.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 
 class GetItineraryForReviewUseCase {
   final ReviewRepository repository;

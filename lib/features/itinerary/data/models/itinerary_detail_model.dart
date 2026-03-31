@@ -1,5 +1,6 @@
-import '../../domain/entities/itinerary_detail_entity.dart';
 import 'itinerary_day_model.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 
 class ItineraryDetailModel {
   final String id;

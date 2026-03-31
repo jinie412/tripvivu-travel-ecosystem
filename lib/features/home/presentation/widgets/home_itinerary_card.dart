@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../city_detail/presentation/widgets/city_detail_cards.dart';
-import '../../domain/entities/trip_suggestion.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 
 class HomeItineraryCard extends StatelessWidget {
   final TripSuggestion item;

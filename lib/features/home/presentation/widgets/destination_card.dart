@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/destination.dart';
 
-import '../../../../core/widgets/net_image.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../place/presentation/screens/place_detail_screen.dart';
-import '../../../place/presentation/cubit/place_detail_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 class DestinationCard extends StatelessWidget {
   final Destination item;

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
-import '../cubit/food_cubit.dart';
-import '../../domain/entities/food_item_entity.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/cubit/food_cubit.dart';
 
 class FoodMenuScreen extends StatelessWidget {
   final String restaurantName;

@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../home/presentation/screens/see_all_screen.dart';
-import '../../../home/presentation/widgets/detailed_place_card.dart';
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
-import '../../domain/entities/itinerary_day_entity.dart';
-import '../widgets/day_selector_chip.dart';
-import '../widgets/timeline_activity_card.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../place/presentation/screens/place_detail_screen.dart';
-import '../../../place/presentation/cubit/place_detail_cubit.dart';
-import '../../../food/presentation/screens/food_menu_screen.dart';
-import '../../../food/presentation/widgets/pre_order_popup.dart';
 import 'activity_edit_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/detailed_place_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/day_selector_chip.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/timeline_activity_card.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -143,6 +145,41 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         builder: (_) => ActivityEditScreen(activity: activity),
       ),
     );
+  }
+
+  void _onEditTime(ItineraryActivityEntity activity, bool isStart) async {
+    final initialTimeStr = isStart ? activity.startTime : activity.endTime;
+    final parts = initialTimeStr.split(':');
+    final initialTime = TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColorsExt.textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null && mounted) {
+      final newTime = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+      context.read<ItineraryCubit>().updateActivityTime(
+            activity.id,
+            startTime: isStart ? newTime : null,
+            endTime: isStart ? null : newTime,
+          );
+    }
   }
 
   void _onReplaceActivity(ItineraryActivityEntity activity) {
@@ -318,6 +355,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         onEditActivity: _onEditActivity,
         onReplaceActivity: _onReplaceActivity,
         onDeleteActivity: _onDeleteActivity,
+        onEditTime: _onEditTime,
         onShareTap: _showShareSheet,
         onMarkerTap: (id) => _scrollToActivity(id),
       ),
@@ -345,6 +383,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity) onEditActivity;
   final Function(ItineraryActivityEntity) onReplaceActivity;
   final Function(ItineraryActivityEntity) onDeleteActivity;
+  final Function(ItineraryActivityEntity, bool) onEditTime;
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
 
@@ -362,6 +401,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onEditActivity,
     required this.onReplaceActivity,
     required this.onDeleteActivity,
+    required this.onEditTime,
     required this.onShareTap,
     required this.onMarkerTap,
   });
@@ -397,10 +437,9 @@ class _ItineraryDetailView extends StatelessWidget {
           }
           if (state is ItineraryLoaded && state.selectedItinerary != null) {
             final itin = state.selectedItinerary!;
-            final displayDays = _getDisplayDays(itin);
-            final currentDayData = displayDays.firstWhere(
+            final currentDayData = itin.days.firstWhere(
               (d) => d.dayNumber == selectedDay, 
-              orElse: () => displayDays.first,
+              orElse: () => itin.days.first,
             );
 
             return Stack(
@@ -439,7 +478,7 @@ class _ItineraryDetailView extends StatelessWidget {
                   child: Column(
                     children: [
                       const SizedBox(height: 280),
-                      _buildContentCard(context, itin, currentDayData, displayDays),
+                      _buildContentCard(context, itin, currentDayData, itin.days),
                     ],
                   ),
                 ),
@@ -477,68 +516,6 @@ class _ItineraryDetailView extends StatelessWidget {
         },
       ),
     );
-  }
-
-  List<ItineraryDayEntity> _getDisplayDays(ItineraryDetailEntity itin) {
-    final List<ItineraryDayEntity> displayDays = List.from(itin.days);
-    if (displayDays.length < 3) {
-      final firstDayDate = displayDays.isNotEmpty ? displayDays.first.date : DateTime.now();
-      
-      final mockActivitiesDay2 = [
-        ItineraryActivityEntity(
-          id: 'mock_2_1',
-          title: 'Bảo tàng Chứng tích Chiến tranh',
-          locationName: 'Quận 3',
-          address: '28 Võ Văn Tần, Phường Võ Thị Sáu, Quận 3, TP. HCM',
-          startTime: '08:30',
-          endTime: '10:30',
-          imageUrl: 'https://images.unsplash.com/photo-1599708153386-62e200399066?w=600&q=80',
-          transportInfo: '15 phút di chuyển',
-          rating: 4.6,
-          reviewCount: 15400,
-        ),
-        ItineraryActivityEntity(
-          id: 'mock_2_2',
-          title: 'Dinh Độc Lập',
-          locationName: 'Quận 1',
-          address: '135 Nam Kỳ Khởi Nghĩa, Phường Bến Thành, Quận 1, TP. HCM',
-          startTime: '10:45',
-          endTime: '12:45',
-          imageUrl: 'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=600&q=80',
-          transportInfo: '10 phút di chuyển',
-          rating: 4.4,
-          reviewCount: 3800,
-        ),
-      ];
-
-      final mockActivitiesDay3 = [
-        ItineraryActivityEntity(
-          id: 'mock_3_1',
-          title: 'Chợ Bến Thành',
-          locationName: 'Quận 1',
-          address: 'Đường Lê Lợi, Phường Bến Thành, Quận 1, TP. HCM',
-          startTime: '09:00',
-          endTime: '11:00',
-          imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
-          transportInfo: '20 phút di chuyển',
-          rating: 4.2,
-          reviewCount: 25000,
-        ),
-      ];
-
-      for (int i = displayDays.length + 1; i <= 3; i++) {
-        displayDays.add(ItineraryDayEntity(
-          dayNumber: i,
-          date: firstDayDate.add(Duration(days: i - 1)),
-          temperature: 28 + i,
-          totalDuration: i == 2 ? '8 giờ 15 phút' : '6 giờ 30 phút',
-          locationsCount: i == 2 ? 2 : 1,
-          dayBudget: 350000.0 * i,
-          activities: i == 2 ? mockActivitiesDay2 : mockActivitiesDay3,
-        ));
-      }
-    }
-    return displayDays;
   }
 
   Widget _buildContentCard(
@@ -600,6 +577,8 @@ class _ItineraryDetailView extends StatelessWidget {
               onReplaceTap: () => onReplaceActivity(activity),
               onDeleteTap: () => onDeleteActivity(activity),
               onCardTap: () => onEditActivity(activity),
+              onStartTimeTap: () => onEditTime(activity, true),
+              onEndTimeTap: () => onEditTime(activity, false),
             );
           }),
           const SizedBox(height: AppSizes.s24),

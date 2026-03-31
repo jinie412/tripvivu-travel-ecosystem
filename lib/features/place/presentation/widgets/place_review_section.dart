@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/place_review_entity.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import 'review_card.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/place/domain/entities/place_review_entity.dart';
 
 class PlaceReviewSection extends StatelessWidget {
   final double rating;

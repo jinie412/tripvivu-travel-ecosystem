@@ -1,7 +1,7 @@
-import '../../domain/entities/city_entities.dart';
-import '../../domain/repositories/city_detail_repository.dart';
-import '../datasources/city_detail_mock_data_source.dart' show CityDetailDataSource;
-import '../models/city_models.dart';
+import 'package:travel_advisor_mobile/features/city_detail/data/datasources/city_detail_mock_data_source.dart' show CityDetailDataSource;
+import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/repositories/city_detail_repository.dart';
 
 class CityDetailRepositoryImpl implements CityDetailRepository {
   final CityDetailDataSource dataSource;

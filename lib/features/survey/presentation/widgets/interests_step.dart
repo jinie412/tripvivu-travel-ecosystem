@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/survey_cubit.dart';
+
+import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
 
 class InterestsStep extends StatelessWidget {
   const InterestsStep({super.key});

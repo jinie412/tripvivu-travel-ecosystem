@@ -1,6 +1,7 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/get_city_overview_usecase.dart';
 import 'city_detail_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/city_detail/domain/usecases/get_city_overview_usecase.dart';
 
 class CityDetailCubit extends Cubit<CityDetailState> {
   final GetCityOverviewUseCase _getCityOverview;

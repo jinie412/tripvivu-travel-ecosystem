@@ -1,6 +1,7 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
 import 'activity_edit_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 class ActivityEditCubit extends Cubit<ActivityEditState> {
   ActivityEditCubit() : super(const ActivityEditLoading());

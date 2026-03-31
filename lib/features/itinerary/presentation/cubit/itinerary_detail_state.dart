@@ -1,4 +1,4 @@
-import '../../domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 
 abstract class ItineraryDetailState {}
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 /// Trạng thái rỗng — hiển thị khi chưa có lịch trình nào.
 class ItineraryEmptyView extends StatelessWidget {

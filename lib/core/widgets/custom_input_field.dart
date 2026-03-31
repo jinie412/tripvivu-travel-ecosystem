@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 
 /// Input field chuẩn cho toàn bộ ứng dụng.
 /// Hỗ trợ label, hint, icon, obscure text và validation.

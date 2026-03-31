@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/profile_entity.dart';
-import '../../domain/entities/activity_item_entity.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
 
 abstract class ProfileState extends Equatable {
   const ProfileState();

@@ -1,8 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
-import '../../domain/entities/itinerary_entity.dart';
 
 /// Card lịch trình "Đã đi" — có badge "ĐÃ ĐI" + rating ⭐ thay cho progress bar.
 class ItineraryCompletedCard extends StatelessWidget {

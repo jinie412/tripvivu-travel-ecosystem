@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../domain/entities/survey_entity.dart';
+
+import 'package:travel_advisor_mobile/features/survey/domain/entities/survey_entity.dart';
 
 part 'survey_cubit.freezed.dart';
 

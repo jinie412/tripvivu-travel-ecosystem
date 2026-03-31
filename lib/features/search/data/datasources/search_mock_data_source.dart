@@ -1,4 +1,4 @@
-import '../models/search_location_model.dart';
+import 'package:travel_advisor_mobile/features/search/data/models/search_location_model.dart';
 
 abstract class SearchMockDataSource {
   Future<List<SearchLocationModel>> getRecentSearches();

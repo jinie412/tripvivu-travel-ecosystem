@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
-import '../cubit/review_cubit.dart';
-import '../cubit/review_state.dart';
-import '../widgets/star_rating_input.dart';
-import '../widgets/review_media_list.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/review_media_list.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/star_rating_input.dart';
 
 class PlaceReviewScreen extends StatefulWidget {
   final String locationId;

@@ -2,7 +2,8 @@
 export '../theme/app_theme.dart' show AppTextStyles;
 
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 /// Bổ sung các TextStyle chưa có trong AppTextStyles gốc.
 /// Sử dụng class riêng để không xung đột với class hiện tại.

@@ -1,7 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/get_profile_usecase.dart';
-import '../../domain/usecases/get_recent_activities_usecase.dart';
 import 'profile_state.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_profile_usecase.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_recent_activities_usecase.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   final GetProfileUseCase _getProfile;
