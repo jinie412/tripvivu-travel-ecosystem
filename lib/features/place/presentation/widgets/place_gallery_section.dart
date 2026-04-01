@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 class PlaceGallerySection extends StatelessWidget {
   final List<String> images;
@@ -15,7 +16,7 @@ class PlaceGallerySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Hình ảnh',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),

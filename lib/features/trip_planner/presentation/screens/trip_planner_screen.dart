@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/di/injection_container.dart';
-import '../cubit/trip_planner_cubit.dart';
-import '../cubit/trip_planner_state.dart';
-import '../widgets/location_selector_card.dart';
-import '../widgets/step_progress_bar.dart';
-import '../widgets/transportation_selector.dart';
-import '../widgets/trip_type_selector.dart';
 import 'trip_planner_step2_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/location_selector_card.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/step_progress_bar.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/transportation_selector.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/trip_type_selector.dart';
 
 class TripPlannerScreen extends StatelessWidget {
   const TripPlannerScreen({super.key});
@@ -74,7 +76,7 @@ class _TripPlannerView extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: AppColors.primary,
@@ -106,7 +108,7 @@ class _TripPlannerView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Bạn sẽ đi đâu?',
                             style: TextStyle(
                               fontSize: 24,
@@ -115,7 +117,7 @@ class _TripPlannerView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: AppSizes.s12),
-                          const Text(
+                          Text(
                             'Điền thông tin địa điểm và phương tiện di chuyển của bạn cho chuyến du lịch trong nước.',
                             style: TextStyle(
                               fontSize: 14,

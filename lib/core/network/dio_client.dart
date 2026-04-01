@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
 import 'api_config.dart';
+import 'package:dio/dio.dart';
 
 /// Singleton Dio HTTP client.
 /// Configured with baseUrl, timeouts, and interceptors.

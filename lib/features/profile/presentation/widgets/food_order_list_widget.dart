@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/activity_item_entity.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
 
 class FoodOrderListWidget extends StatelessWidget {
   final List<ActivityItemEntity> items;

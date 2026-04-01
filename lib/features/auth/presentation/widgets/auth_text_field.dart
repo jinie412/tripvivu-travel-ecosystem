@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 /// A reusable text field widget matching the Figma auth screen design.
 /// Shows a label above the field, a prefix icon, and an optional suffix widget.

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../widgets/auth_text_field.dart';
-import '../widgets/auth_shared_widgets.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -49,12 +50,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: AppSizes.s48),
               ),
               const SizedBox(height: AppSizes.s24),
-              const Text(
+              Text(
                 'Thành công!',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSizes.s12),
-              const Text(
+              Text(
                 'Mật khẩu của bạn đã được thay đổi thành công. Vui lòng đăng nhập lại.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
@@ -72,7 +73,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
                   ),
-                  child: const Text('Đăng nhập ngay'),
+                  child: Text('Đăng nhập ngay'),
                 ),
               ),
             ],
@@ -118,7 +119,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     const SizedBox(height: AppSizes.s32),
 
                     // 2. Title Section
-                    const Text(
+                    Text(
                       'Đặt lại mật khẩu',
                       style: TextStyle(
                         fontSize: 32,
@@ -128,7 +129,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSizes.s12),
-                    const Text(
+                    Text(
                       'Tạo mật khẩu mới cho tài khoản của bạn để hoàn tất việc khôi phục',
                       style: TextStyle(
                         fontSize: 16,
@@ -192,7 +193,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             borderRadius: BorderRadius.circular(AppSizes.r12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Cập nhật',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),

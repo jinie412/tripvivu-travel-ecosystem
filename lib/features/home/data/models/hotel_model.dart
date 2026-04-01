@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/hotel.dart';
+
+import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
 
 part 'hotel_model.g.dart';
 

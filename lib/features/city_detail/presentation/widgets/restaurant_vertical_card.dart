@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../domain/entities/city_entities.dart';
+
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 
 class RestaurantVerticalCard extends StatefulWidget {
   final CityRestaurant item;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class DaySelectorChip extends StatelessWidget {
   final int dayNumber;
@@ -17,62 +16,40 @@ class DaySelectorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Teal color from the image (Roughly AppColors.primary or teal)
+    final activeColor = isSelected ? const Color(0xFF4FB3BF) : const Color(0xFF94A3B8);
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 85,
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFF3F4F6)),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ] : null,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '12/06', // Mock date
+              'Ngày $dayNumber',
               style: TextStyle(
-                fontSize: 10,
-                color: isSelected ? Colors.white70 : const Color(0xFF9CA3AF),
+                fontSize: 18,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: activeColor,
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Ngày $dayNumber',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : const Color(0xFF1C1C1E),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white24 : const Color(0xFFF3F4FB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$locationCount',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 2),
+            Text(
+              '${15 + dayNumber}/6', // Simplified mock date logic from image
+              style: TextStyle(
+                fontSize: 12,
+                color: activeColor.withAlpha(isSelected ? 255 : 180),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 24,
+              height: 3,
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ],
         ),

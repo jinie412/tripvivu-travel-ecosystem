@@ -1,7 +1,7 @@
-import '../models/itinerary_model.dart';
-import '../models/itinerary_detail_model.dart';
-import '../models/itinerary_day_model.dart';
-import '../models/itinerary_activity_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_activity_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_day_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 
 /// Hợp đồng cho nguồn dữ liệu lịch trình.
 abstract class ItineraryDataSource {
@@ -283,9 +283,9 @@ class MockItineraryDataSource implements ItineraryDataSource {
           locationsCount: 4,
           dayBudget: 1200000,
           activities: [
-            _activity('act-001', 'Chợ Hoa Hồ Thị Kỷ', '08:00', '09:30', 'Quận 10', true, lat: 10.7675, lng: 106.6783, status: 'daDi'),
-            _activity('act-002', 'Bảo tàng Mỹ thuật', '10:00', '11:30', 'Quận 1', false, price: 30000, lat: 10.7725, lng: 106.6980, status: 'dangDi'),
-            _activity('act-003', 'Cơm tấm Ba Ghiền', '11:30', '12:30', 'Phú Nhuận', false, price: 85000, lat: 10.7937, lng: 106.6750, status: 'chuaDi'),
+            _activity('act-001', 'Chợ Hoa Hồ Thị Kỷ', '08:00', '09:30', 'Hẻm 52 Hồ Thị Kỷ, P. 1, Q. 10, TP.HCM', true, lat: 10.7675, lng: 106.6783, status: 'daDi', rating: 4.5, reviewCount: 3679),
+            _activity('act-002', 'Bảo tàng Mỹ thuật', '10:00', '11:30', '97A Phó Đức Chính, P. Nguyễn Thái Bình, Q. 1, TP.HCM', false, price: 30000, lat: 10.7725, lng: 106.6980, status: 'dangDi', rating: 4.2, reviewCount: 850),
+            _activity('act-003', 'Cơm tấm Ba Ghiền', '11:30', '12:30', '84 Đặng Văn Ngữ, P. 10, Q. Phú Nhuận, TP.HCM', false, price: 85000, lat: 10.7937, lng: 106.6750, status: 'chuaDi', rating: 4.7, reviewCount: 12500),
           ],
         ),
       ],
@@ -333,8 +333,8 @@ class MockItineraryDataSource implements ItineraryDataSource {
           locationsCount: 3,
           dayBudget: 2500000,
           activities: [
-            _activity('pq-001', 'Bãi Sao', '09:00', '12:00', 'Nam đảo', true, lat: 10.0538, lng: 104.0375, status: 'daDi'),
-            _activity('pq-002', 'Sunset Sanato', '16:30', '18:30', 'Dương Tơ', false, price: 100000, lat: 10.1837, lng: 103.9680, status: 'daDi'),
+            _activity('pq-001', 'Bãi Sao', '09:00', '12:00', 'Bãi Sao, An Thới, TP. Phú Quốc, Kiên Giang', true, lat: 10.0538, lng: 104.0375, status: 'daDi', rating: 4.8, reviewCount: 5200),
+            _activity('pq-002', 'Sunset Sanato', '16:30', '18:30', 'Bắc Bãi Trường, Dương Tơ, TP. Phú Quốc, Kiên Giang', false, price: 100000, lat: 10.1837, lng: 103.9680, status: 'daDi', rating: 4.3, reviewCount: 1200),
           ],
         ),
       ],
@@ -382,8 +382,8 @@ class MockItineraryDataSource implements ItineraryDataSource {
           locationsCount: 2,
           dayBudget: 800000,
           activities: [
-            _activity('dl-001', 'Hồ Tuyền Lâm', '08:00', '10:00', 'Lâm Đồng', true, lat: 11.8942, lng: 108.4358, status: 'daDi'),
-            _activity('dl-002', 'Làng Cù Lần', '14:00', '17:00', 'Lạc Dương', false, price: 60000, lat: 12.0125, lng: 108.3450, status: 'daDi'),
+            _activity('dl-001', 'Hồ Tuyền Lâm', '08:00', '10:00', 'P. 4, TP. Đà Lạt, Lâm Đồng', true, lat: 11.8942, lng: 108.4358, status: 'daDi', rating: 4.9, reviewCount: 3500),
+            _activity('dl-002', 'Làng Cù Lần', '14:00', '17:00', 'Lát, Lạc Dương, Lâm Đồng', false, price: 60000, lat: 12.0125, lng: 108.3450, status: 'daDi', rating: 4.4, reviewCount: 1800),
           ],
         ),
       ],
@@ -412,20 +412,33 @@ class MockItineraryDataSource implements ItineraryDataSource {
           locationsCount: 1,
           dayBudget: 500000,
           totalDuration: '2 tiếng',
-          activities: [_activity('d-001', 'Địa điểm tham quan', '09:00', '10:00', 'Khu vực trung tâm', true, lat: 21.0285, lng: 105.8542, status: 'chuaDi')],
+          activities: [_activity('d-001', 'Địa điểm tham quan', '09:00', '10:00', 'Địa chỉ cụ thể, TP.HCM', true, lat: 21.0285, lng: 105.8542, status: 'chuaDi', rating: 4.0, reviewCount: 100)],
         ),
       ],
     );
   }
 
-  ItineraryActivityModel _activity(String id, String title, String start, String end, String addr, bool free, {double price = 0, double? lat, double? lng, String? status}) {
+  ItineraryActivityModel _activity(
+    String id, 
+    String title, 
+    String start, 
+    String end, 
+    String specificAddr, 
+    bool free, {
+    double price = 0, 
+    double? lat, 
+    double? lng, 
+    String? status,
+    double? rating,
+    int? reviewCount,
+  }) {
     return ItineraryActivityModel(
       id: id,
       title: title,
       startTime: start,
       endTime: end,
       locationName: title,
-      address: addr,
+      address: specificAddr,
       imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400&q=80',
       isFree: free,
       price: price,
@@ -433,6 +446,8 @@ class MockItineraryDataSource implements ItineraryDataSource {
       latitude: lat,
       longitude: lng,
       status: status,
+      rating: rating,
+      reviewCount: reviewCount,
     );
   }
 }

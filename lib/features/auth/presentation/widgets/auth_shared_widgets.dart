@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../../core/theme/app_colors.dart';
+
 import '../../../../../core/constants/app_sizes.dart';
+import '../../../../../core/theme/app_colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// Shared decorative background blobs used across auth screens.
 class AuthBackground extends StatelessWidget {
@@ -91,7 +92,7 @@ class GoogleSignInButton extends StatelessWidget {
           children: [
             const _GoogleGLogo(),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Google',
               style: TextStyle(
                 fontSize: 16,
@@ -145,7 +146,7 @@ class FacebookSignInButton extends StatelessWidget {
           children: [
             const _FacebookIcon(),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Facebook',
               style: TextStyle(
                 fontSize: 16,

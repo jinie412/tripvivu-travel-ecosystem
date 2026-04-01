@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../auth/presentation/widgets/auth_text_field.dart';
-import '../../../auth/presentation/widgets/auth_shared_widgets.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -50,12 +51,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 48),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Thành công!',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Mật khẩu của bạn đã được thay đổi thành công.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
@@ -73,7 +74,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Đóng'),
+                  child: Text('Đóng'),
                 ),
               ),
             ],
@@ -94,7 +95,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Đổi mật khẩu',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
         ),
@@ -131,7 +132,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     const SizedBox(height: 32),
                     
-                    const Text(
+                    Text(
                       'Bảo mật tài khoản',
                       style: TextStyle(
                         fontSize: 20,
@@ -141,7 +142,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để thay đổi',
                       style: TextStyle(
                         fontSize: 14,
@@ -224,7 +225,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Cập nhật mật khẩu',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),

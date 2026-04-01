@@ -1,6 +1,7 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/food_item_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
 
 class FoodState extends Equatable {
   final String restaurantName;

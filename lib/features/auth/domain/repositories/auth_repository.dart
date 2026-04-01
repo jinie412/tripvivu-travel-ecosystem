@@ -1,4 +1,4 @@
-import '../entities/user_entity.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 
 /// Contract for auth operations.
 /// Presentation layer depends ONLY on this interface — never on implementation.

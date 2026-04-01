@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/get_place_detail_usecase.dart';
 import 'place_detail_state.dart';
+
+import 'package:travel_advisor_mobile/features/place/domain/usecases/get_place_detail_usecase.dart';
 
 class PlaceDetailCubit extends Cubit<PlaceDetailState> {
   final GetPlaceDetailUseCase getPlaceDetailUseCase;

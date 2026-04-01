@@ -1,6 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import '../../domain/entities/profile_entity.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
 
 class ProfileHeader extends StatelessWidget {
   final ProfileEntity profile;

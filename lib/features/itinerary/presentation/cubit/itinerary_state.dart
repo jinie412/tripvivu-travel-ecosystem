@@ -1,7 +1,8 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/itinerary_entity.dart';
-import '../../domain/entities/itinerary_summary.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 
 /// Trạng thái của màn hình "Lịch trình của tôi".
 ///

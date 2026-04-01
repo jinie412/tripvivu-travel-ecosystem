@@ -1,6 +1,6 @@
-import '../../domain/entities/user_entity.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../datasources/auth_datasource.dart';
+import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 
 /// Concrete implementation of [AuthRepository].
 /// Depends on [AuthDataSource] — swap Mock ↔ Remote in injection_container.dart.

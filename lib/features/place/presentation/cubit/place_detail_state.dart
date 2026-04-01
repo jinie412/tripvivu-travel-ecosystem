@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/place_detail_entity.dart';
+
+import 'package:travel_advisor_mobile/features/place/domain/entities/place_detail_entity.dart';
 
 abstract class PlaceDetailState extends Equatable {
   const PlaceDetailState();

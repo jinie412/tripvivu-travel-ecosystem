@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/di/injection_container.dart';
-import '../../../../core/widgets/page_dots.dart';
-import '../../../../core/widgets/section_header.dart';
-import '../../domain/entities/city_entities.dart';
-import '../cubit/city_detail_cubit.dart';
-import '../cubit/city_detail_state.dart';
-import '../widgets/city_detail_cards.dart';
-import '../widgets/city_detail_tab_bar.dart';
-import '../widgets/activity_vertical_card.dart';
-import '../widgets/hotel_vertical_card.dart';
-import '../widgets/itinerary_vertical_card.dart';
-import '../widgets/restaurant_vertical_card.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
-import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
-import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/navigation/main_shell.dart';
+import 'package:travel_advisor_mobile/core/widgets/page_dots.dart';
+import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_state.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_tab_bar.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 class CityDetailScreen extends StatelessWidget {

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../widgets/survey_background.dart';
-import '../cubit/survey_cubit.dart';
-import '../widgets/welcome_step.dart';
-import '../widgets/basic_info_step.dart';
-import '../widgets/interests_step.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/widgets/basic_info_step.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/widgets/interests_step.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/widgets/survey_background.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/widgets/welcome_step.dart';
 
 class SurveyScreen extends StatefulWidget {
   const SurveyScreen({super.key});

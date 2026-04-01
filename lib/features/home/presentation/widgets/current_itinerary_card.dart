@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import 'package:intl/intl.dart';
-import '../../../itinerary/domain/entities/itinerary_entity.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:intl/intl.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class CurrentItineraryCard extends StatelessWidget {
   final ItineraryEntity? item;
@@ -92,7 +94,7 @@ class CurrentItineraryCard extends StatelessWidget {
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
+                          child: Text(
                             'BẮT ĐẦU LỊCH TRÌNH',
                             style: TextStyle(
                               fontSize: 10,
@@ -132,7 +134,7 @@ class CurrentItineraryCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.access_time, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),
-                      const Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
+                      Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
                       const SizedBox(width: 12),
                       const Icon(Icons.people_outline, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),

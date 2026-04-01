@@ -1,12 +1,13 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/home_usecases.dart';
-import '../../../itinerary/domain/usecases/itinerary_usecases.dart';
-import '../../../itinerary/domain/entities/itinerary_entity.dart';
-import '../../domain/entities/destination.dart';
-import '../../domain/entities/hotel.dart';
-import '../../domain/entities/trip_suggestion.dart';
-import '../../../city_detail/domain/entities/city_entities.dart';
 import 'explore_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
+import 'package:travel_advisor_mobile/features/home/domain/usecases/home_usecases.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 
 class ExploreCubit extends Cubit<ExploreState> {
   final GetSuggestionsUseCase _getSuggestions;

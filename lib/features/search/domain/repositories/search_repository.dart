@@ -1,4 +1,4 @@
-import '../entities/search_location.dart';
+import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
 
 abstract class SearchRepository {
   Future<List<SearchLocation>> getRecentSearches();

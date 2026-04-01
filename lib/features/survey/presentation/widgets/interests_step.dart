@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/survey_cubit.dart';
+
+import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
 
 class InterestsStep extends StatelessWidget {
   const InterestsStep({super.key});
@@ -23,7 +25,7 @@ class InterestsStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Sở thích của bạn',
             style: TextStyle(
               fontSize: 24,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/city_entities.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 
 class HotelVerticalCard extends StatefulWidget {
   final CityHotel item;
@@ -137,7 +139,7 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Giá mỗi đêm',
                   style: TextStyle(
                     fontSize: 12,

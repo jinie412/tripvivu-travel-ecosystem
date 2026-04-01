@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/get_recent_searches.dart';
-import '../../domain/usecases/search_locations.dart';
 import 'search_state.dart';
+
+import 'package:travel_advisor_mobile/features/search/domain/usecases/get_recent_searches.dart';
+import 'package:travel_advisor_mobile/features/search/domain/usecases/search_locations.dart';
 
 class SearchCubit extends Cubit<SearchState> {
   final GetRecentSearches _getRecentSearches;

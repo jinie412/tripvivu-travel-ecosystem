@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
-import '../../features/home/presentation/widgets/notification_drawer.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/constants/app_sizes.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_text_styles.dart';
-import '../../core/di/injection_container.dart';
-import '../../features/home/presentation/screens/explore_screen.dart';
-import '../../features/itinerary/presentation/screens/itinerary_screen.dart';
-import '../../features/profile/presentation/screens/profile_screen.dart';
-import '../../features/saved/presentation/screens/saved_screen.dart';
-import '../../features/saved/presentation/cubit/saved_cubit.dart';
-import '../../features/profile/presentation/cubit/profile_cubit.dart';
-import '../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../features/trip_planner/presentation/screens/trip_planner_screen.dart';
-import '../../features/profile/presentation/widgets/profile_drawer.dart';
 import 'tab_cubit.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/screens/explore_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/notification_drawer.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_screen.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/screens/profile_screen.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/widgets/profile_drawer.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/screens/saved_screen.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 /// Shell chính chứa Bottom Navigation Bar + IndexedStack các tab.
 class MainShell extends StatefulWidget {
@@ -128,7 +130,7 @@ class SharedBottomNav extends StatelessWidget {
                     child: const Icon(Icons.add, color: Colors.white, size: AppSizes.iconDefault),
                   ),
                   const SizedBox(height: AppSizes.s4),
-                  const Text(
+                  Text(
                     'Tạo lịch trình',
                     style: AppTextStylesExt.captionSmall,
                   ),

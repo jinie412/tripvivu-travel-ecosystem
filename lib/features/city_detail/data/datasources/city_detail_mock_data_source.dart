@@ -1,4 +1,4 @@
-import '../models/city_models.dart';
+import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
 
 abstract class CityDetailDataSource {
   Future<List<CityItineraryModel>> getItineraries(String cityId);

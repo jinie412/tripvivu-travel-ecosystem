@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/itinerary_review_entity.dart';
-import '../../../../core/widgets/net_image.dart';
-import 'star_rating_input.dart';
 import 'review_media_list.dart';
+import 'star_rating_input.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
 
 class ReviewItineraryCard extends StatelessWidget {
   final ItineraryReviewEntity itinerary;
@@ -37,7 +38,7 @@ class ReviewItineraryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Tổng quan về lịch trình',
             style: TextStyle(
               fontSize: 16,
@@ -115,7 +116,7 @@ class ReviewItineraryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Bạn có cảm nhận như thế nào?',
             style: TextStyle(
               fontSize: 14,
@@ -151,7 +152,7 @@ class ReviewItineraryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'ĐÁNH GIÁ CHUNG',
             style: TextStyle(
               fontSize: 10,

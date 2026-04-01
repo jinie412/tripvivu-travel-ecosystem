@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../domain/entities/trip_form.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_form.dart';
 
 part 'trip_planner_state.freezed.dart';
 

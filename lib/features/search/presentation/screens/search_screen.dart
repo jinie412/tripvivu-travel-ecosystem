@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../cubit/search_cubit.dart';
-import '../cubit/search_state.dart';
-import '../widgets/search_header_widget.dart';
-import '../widgets/search_suggestion_widget.dart';
-import '../widgets/search_result_widget.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_cubit.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_state.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_header_widget.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_result_widget.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_suggestion_widget.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});

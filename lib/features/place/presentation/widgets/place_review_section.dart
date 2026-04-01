@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/place_review_entity.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import 'review_card.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/place/domain/entities/place_review_entity.dart';
 
 class PlaceReviewSection extends StatelessWidget {
   final double rating;
@@ -25,7 +27,7 @@ class PlaceReviewSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Bài đánh giá',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -36,7 +38,7 @@ class PlaceReviewSection extends StatelessWidget {
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
+                child: Text(
                   'Xem tất cả', 
                   style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold),
                 ),

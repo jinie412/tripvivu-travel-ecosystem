@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../auth/presentation/widgets/auth_text_field.dart';
-import '../cubit/survey_cubit.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
 
 class BasicInfoStep extends StatefulWidget {
   const BasicInfoStep({super.key});
@@ -34,7 +36,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Một chút về bạn',
             style: TextStyle(
               fontSize: 24,
@@ -54,7 +56,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
           const SizedBox(height: 24),
 
           // Age Section
-          const Text(
+          Text(
             'Độ tuổi của bạn',
             style: TextStyle(
               fontSize: 16,
@@ -78,7 +80,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
           const SizedBox(height: 32),
 
           // Gender Section
-          const Text(
+          Text(
             'Giới tính',
             style: TextStyle(
               fontSize: 16,

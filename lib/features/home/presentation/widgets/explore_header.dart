@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../search/presentation/screens/search_screen.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_text_styles.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/screens/search_screen.dart';
 
 class ExploreHeader extends StatelessWidget {
   const ExploreHeader({super.key});
@@ -38,21 +39,21 @@ class ExploreHeader extends StatelessWidget {
               ),
               const SizedBox(width: AppSizes.s12),
               // Vị trí
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, color: Colors.white, size: AppSizes.iconXs),
-                        SizedBox(width: AppSizes.s4),
+                        const Icon(Icons.location_on_outlined, color: Colors.white, size: AppSizes.iconXs),
+                        const SizedBox(width: AppSizes.s4),
                         Text(
                           'VỊ TRÍ CỦA BẠN',
                           style: AppTextStylesExt.overline,
                         ),
                       ],
                     ),
-                    SizedBox(height: AppSizes.s2),
+                    const SizedBox(height: AppSizes.s2),
                     Text(
                       'QUẬN 1, HỒ CHÍ MINH',
                       style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),

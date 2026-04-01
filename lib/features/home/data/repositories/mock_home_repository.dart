@@ -1,9 +1,9 @@
-import '../../domain/entities/destination.dart';
-import '../../domain/entities/hotel.dart';
-import '../../domain/entities/trip_suggestion.dart';
-import '../../domain/repositories/home_repository.dart';
-import '../datasources/home_datasource.dart';
-import '../../../city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/data/datasources/home_datasource.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
+import 'package:travel_advisor_mobile/features/home/domain/repositories/home_repository.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   final HomeDataSource _dataSource;

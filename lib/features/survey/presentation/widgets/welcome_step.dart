@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class WelcomeStep extends StatelessWidget {
   const WelcomeStep({super.key});
@@ -38,7 +39,7 @@ class WelcomeStep extends StatelessWidget {
               ),
               const SizedBox(height: 48),
               
-              const Text(
+              Text(
                 'Chào mừng bạn đến với\nTravel Advisor',
                 textAlign: TextAlign.center,
                 style: TextStyle(

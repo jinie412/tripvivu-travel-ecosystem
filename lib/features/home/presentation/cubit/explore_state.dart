@@ -1,9 +1,10 @@
 import 'package:equatable/equatable.dart';
-import '../../domain/entities/destination.dart';
-import '../../domain/entities/hotel.dart';
-import '../../domain/entities/trip_suggestion.dart';
-import '../../../itinerary/domain/entities/itinerary_entity.dart';
-import '../../../city_detail/domain/entities/city_entities.dart';
+
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 
 abstract class ExploreState extends Equatable {
   const ExploreState();

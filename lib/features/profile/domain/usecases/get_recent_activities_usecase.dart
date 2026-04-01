@@ -1,5 +1,5 @@
-import '../entities/activity_item_entity.dart';
-import '../repositories/profile_repository.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/repositories/profile_repository.dart';
 
 class GetRecentActivitiesUseCase {
   final ProfileRepository repository;

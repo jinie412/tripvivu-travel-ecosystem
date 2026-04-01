@@ -1,6 +1,6 @@
-import '../models/place_model.dart';
-import '../models/place_detail_model.dart';
-import '../models/place_review_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_detail_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_review_model.dart';
 
 abstract class PlaceDataSource {
   Future<PlaceDetailModel> getPlaceDetail(String id);

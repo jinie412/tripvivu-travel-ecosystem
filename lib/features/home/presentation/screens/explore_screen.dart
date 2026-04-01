@@ -1,30 +1,32 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../../core/widgets/error_view.dart';
-import '../../../../core/widgets/page_dots.dart';
-import '../../../../core/widgets/section_header.dart';
-import '../cubit/explore_cubit.dart';
-import '../cubit/explore_state.dart';
-import '../widgets/current_itinerary_card.dart';
-import '../widgets/explore_header.dart';
-import '../../../city_detail/presentation/widgets/city_detail_cards.dart' as city_cards;
-import '../../../city_detail/domain/entities/city_entities.dart';
-import '../widgets/home_itinerary_card.dart';
-import '../../../city_detail/presentation/widgets/itinerary_vertical_card.dart';
-import '../../../city_detail/presentation/widgets/activity_vertical_card.dart';
-import '../../../city_detail/presentation/widgets/restaurant_vertical_card.dart';
-import '../../../city_detail/presentation/widgets/hotel_vertical_card.dart';
 import 'see_all_screen.dart';
 
-import '../../../food/presentation/screens/food_menu_screen.dart';
-import '../../../food/presentation/widgets/pre_order_popup.dart';
-import '../../../review/presentation/widgets/itinerary_rating_popup.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/core/widgets/page_dots.dart';
+import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart' as city_cards;
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/current_itinerary_card.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/explore_header.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_itinerary_card.dart';
 
-import '../../../place/presentation/screens/place_detail_screen.dart';
-import '../../../place/presentation/cubit/place_detail_cubit.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -432,6 +434,5 @@ class _ExploreViewState extends State<_ExploreView> {
     );
   }
 }
-
 
 

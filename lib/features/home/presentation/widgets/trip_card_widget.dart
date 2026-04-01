@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/trip_suggestion.dart';
-import '../../../../core/widgets/net_image.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class TripCardWidget extends StatefulWidget {
   final TripSuggestion item;

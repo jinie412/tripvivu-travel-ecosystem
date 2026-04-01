@@ -1,6 +1,7 @@
-import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/itinerary_day_entity.dart';
 import 'itinerary_activity_model.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 
 part 'itinerary_day_model.g.dart';
 

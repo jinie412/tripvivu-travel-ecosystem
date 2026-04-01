@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class PreOrderPopup extends StatelessWidget {
   final String restaurantName;
@@ -69,7 +70,7 @@ class PreOrderPopup extends StatelessWidget {
           const SizedBox(height: 24),
           
           // Text Content
-          const Text(
+          Text(
             'GỢI Ý CHO BẠN',
             style: TextStyle(
               fontSize: 12,
@@ -98,7 +99,7 @@ class PreOrderPopup extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -150,7 +151,7 @@ class PreOrderPopup extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: const Text(
+              child: Text(
                 'Bỏ qua',
                 style: TextStyle(
                   fontSize: 16,
@@ -174,7 +175,7 @@ class PreOrderPopup extends StatelessWidget {
               children: [
                 const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Tiết kiệm 20p',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
@@ -183,7 +184,7 @@ class PreOrderPopup extends StatelessWidget {
                 const SizedBox(width: 12),
                 const Icon(Icons.star, size: 14, color: Colors.amber),
                 const SizedBox(width: 4),
-                const Text(
+                Text(
                   '4.8/5 (2.3k+)',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),

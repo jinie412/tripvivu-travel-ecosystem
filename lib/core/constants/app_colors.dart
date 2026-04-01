@@ -37,4 +37,9 @@ class AppColorsExt {
 
   /// Auth background blobs
   static const Color authBgLight = Color(0xFFEBF5FF);
+
+  /// Semantic colors
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color placeholder = Color(0xFFE2E8F0);
 }

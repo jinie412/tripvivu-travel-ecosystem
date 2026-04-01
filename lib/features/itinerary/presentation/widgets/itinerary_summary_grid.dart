@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 
 /// Lưới thống kê 2×2 — Tổng số · Đã đi · Sắp đi · Đang tạo
 ///
@@ -16,7 +16,7 @@ class ItinerarySummaryGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Thống kê của lịch trình',
             style: TextStyle(
               fontSize: 16,

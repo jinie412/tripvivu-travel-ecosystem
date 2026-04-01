@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../domain/entities/search_location.dart';
+
+import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
 
 part 'search_state.freezed.dart';
 

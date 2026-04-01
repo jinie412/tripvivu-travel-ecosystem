@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/widgets/error_view.dart';
-import '../../../home/presentation/widgets/destination_card.dart';
-import '../cubit/saved_cubit.dart';
-import '../cubit/saved_state.dart';
-import '../widgets/saved_itinerary_card.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/destination_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_state.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/widgets/saved_itinerary_card.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});

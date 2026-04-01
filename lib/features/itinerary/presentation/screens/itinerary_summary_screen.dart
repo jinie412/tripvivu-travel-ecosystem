@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../widgets/itinerary_stat_card.dart';
-import '../widgets/short_itinerary_item.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
-import '../../../../core/widgets/section_header.dart';
 import 'itinerary_detail_screen.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_stat_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
 
 class ItinerarySummaryScreen extends StatelessWidget {
   final String itineraryId;
@@ -35,7 +37,7 @@ class _ItinerarySummaryView extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1C1C1E), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Tóm tắt lịch trình',
           style: TextStyle(
             color: Color(0xFF1C1C1E),
@@ -72,7 +74,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                         _buildDestinationCard(itin.destination, dateRange),
                         
                         const SizedBox(height: 32),
-                        const Text(
+                        Text(
                           'Tổng quan chuyến đi',
                           style: TextStyle(
                             fontSize: 18, 
@@ -138,7 +140,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Xem chi tiết lịch trình',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -281,7 +283,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: () {},
                         icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text('Xem bản đồ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        label: Text('Xem bản đồ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: const Color(0xFF1E3A8A),
@@ -355,7 +357,7 @@ class _ItinerarySummaryView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Ngân sách',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
@@ -365,7 +367,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                   color: const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
+                child: Text(
                   'Bình ổn',
                   style: TextStyle(fontSize: 10, color: Color(0xFF166534), fontWeight: FontWeight.bold),
                 ),
@@ -379,7 +381,7 @@ class _ItinerarySummaryView extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Đã chi', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Text('Đã chi', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   const SizedBox(height: 4),
                   Text('${formatter.format(itin.spentBudget)} đ', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A))),
                 ],
@@ -387,7 +389,7 @@ class _ItinerarySummaryView extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('Dự kiến', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Text('Dự kiến', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                   const SizedBox(height: 4),
                   Text('${formatter.format(itin.estimatedBudget)} đ', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 ],

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -27,7 +28,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text('Mới nhất'),
+                title: Text('Mới nhất'),
                 trailing: _currentSort == 'Mới nhất'
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,
@@ -37,7 +38,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 },
               ),
               ListTile(
-                title: const Text('Chưa đọc'),
+                title: Text('Chưa đọc'),
                 trailing: _currentSort == 'Chưa đọc'
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,

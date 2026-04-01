@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../cubit/trip_planner_cubit.dart';
-import '../cubit/trip_planner_state.dart';
-import '../widgets/date_picking_field.dart';
-import '../widgets/member_counter_card.dart';
-import '../widgets/time_picking_card.dart';
-import '../widgets/topic_selector.dart';
 import 'trip_planner_step3_screen.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/date_picking_field.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/member_counter_card.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/time_picking_card.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/topic_selector.dart';
 
 class TripPlannerStep2Screen extends StatelessWidget {
   const TripPlannerStep2Screen({super.key});
@@ -30,7 +32,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
         ),
         title: Column(
           children: [
-            const Text(
+            Text(
               'Tạo lịch trình mới',
               style: TextStyle(
                 color: Colors.white,
@@ -54,7 +56,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: Colors.white,

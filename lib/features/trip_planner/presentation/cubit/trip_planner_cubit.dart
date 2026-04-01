@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/trip_form.dart';
 import 'trip_planner_state.dart';
+
+import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_form.dart';
 
 class TripPlannerCubit extends Cubit<TripPlannerState> {
   TripPlannerCubit() : super(const TripPlannerState.loaded(tripForm: TripForm()));

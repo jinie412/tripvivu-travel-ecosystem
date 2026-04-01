@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import 'activity_edit_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all_screen.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/detailed_place_card.dart';
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
-import '../../domain/entities/itinerary_activity_entity.dart';
-import '../widgets/day_selector_chip.dart';
-import '../widgets/timeline_activity_card.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../place/presentation/screens/place_detail_screen.dart';
-import '../../../place/presentation/cubit/place_detail_cubit.dart';
-import '../../../food/presentation/screens/food_menu_screen.dart';
-import '../../../food/presentation/widgets/pre_order_popup.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/day_selector_chip.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/timeline_activity_card.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -44,11 +49,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã thêm $name vào lịch trình thành công!'),
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: AppColorsExt.success,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
         ),
       );
-      Navigator.pop(context); // Go back to itinerary detail
+      if (mounted) Navigator.pop(context);
     }
 
     Navigator.push(
@@ -62,7 +68,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               rating: 4.5,
               reviews: '1.2k',
               imageUrl: 'https://images.unsplash.com/photo-1503506046705-f6a745409929?w=800&q=80',
-              placeholderColor: 0xFFE2E8F0,
+              placeholderColor: AppColorsExt.placeholder.value,
               info: 'Việt Nam • Địa điểm du lịch',
               onTap: () {},
               onAddTap: () => onAdd('Sapa'),
@@ -72,7 +78,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               rating: 4.8,
               reviews: '2.5k',
               imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80',
-              placeholderColor: 0xFFF1F5F9,
+              placeholderColor: AppColorsExt.searchBarBg.value,
               info: 'Việt Nam • Phố cổ du lịch',
               onTap: () {},
               onAddTap: () => onAdd('Hội An'),
@@ -82,7 +88,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               rating: 4.7,
               reviews: '1.8k',
               imageUrl: 'https://images.unsplash.com/photo-1559592471-744e99c1586e?w=800&q=80',
-              placeholderColor: 0xFFCBD5E1,
+              placeholderColor: AppColorsExt.divider.value,
               info: 'Việt Nam • Thành phố biển',
               onTap: () {},
               onAddTap: () => onAdd('Đà Nẵng'),
@@ -95,7 +101,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
 
   void _onDayChanged(int day) {
     setState(() => _selectedDay = day);
-    // Reset camera or update markers logic will be handled in build
   }
 
   void _scrollToActivity(String activityId) {
@@ -110,7 +115,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _zoomToActivity(ItineraryActivityEntity activity) {
-    // 1. Zoom map if available
     if (activity.latitude != null && activity.longitude != null) {
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(
@@ -120,7 +124,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       );
     }
     
-    // 2. Navigate to Place Detail
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -131,6 +134,91 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             showRelatedPlaces: false,
           ),
         ),
+      ),
+    );
+  }
+
+  void _onEditActivity(ItineraryActivityEntity activity) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActivityEditScreen(activity: activity),
+      ),
+    );
+  }
+
+  void _onEditTime(ItineraryActivityEntity activity, bool isStart) async {
+    final initialTimeStr = isStart ? activity.startTime : activity.endTime;
+    final parts = initialTimeStr.split(':');
+    final initialTime = TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColorsExt.textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null && mounted) {
+      final newTime = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+      context.read<ItineraryCubit>().updateActivityTime(
+            activity.id,
+            startTime: isStart ? newTime : null,
+            endTime: isStart ? null : newTime,
+          );
+    }
+  }
+
+  void _onReplaceActivity(ItineraryActivityEntity activity) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Tính năng thay thế địa điểm đang được phát triển!'),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+      ),
+    );
+  }
+
+  void _onDeleteActivity(ItineraryActivityEntity activity) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa địa điểm'),
+        content: Text('Bạn có chắc chắn muốn xóa "${activity.title}" khỏi lịch trình không?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã xóa ${activity.title}'),
+                  backgroundColor: AppColorsExt.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Xóa', style: TextStyle(color: AppColorsExt.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
@@ -146,30 +234,30 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         builder: (context, setModalState) {
           return Container(
             height: MediaQuery.of(context).size.height * 0.6,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSizes.r32)),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s16),
             child: Column(
               children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 24),
-                const Text('Chia sẻ lịch trình', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Text('Mời bạn bè cùng tham gia và chỉnh sửa lịch trình chung cho chuyến đi này.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(height: 24),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColorsExt.divider, borderRadius: BorderRadius.circular(AppSizes.s2))),
+                const SizedBox(height: AppSizes.s24),
+                Text('Chia sẻ lịch trình', style: AppTextStyles.heading2),
+                const SizedBox(height: AppSizes.s8),
+                Text('Mời bạn bè cùng tham gia và chỉnh sửa lịch trình chung cho chuyến đi này.', textAlign: TextAlign.center, style: AppTextStyles.body.copyWith(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(height: AppSizes.s24),
                 TextField(
                   decoration: InputDecoration(
                     hintText: 'Tìm kiếm qua tên hoặc email...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
+                    prefixIcon: const Icon(Icons.search, size: AppSizes.iconMd),
                     filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    fillColor: AppColorsExt.searchBarBg,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppSizes.r16), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.s16),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSizes.s24),
                 Expanded(
                   child: ListView(
                     children: [
@@ -198,27 +286,27 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          CircleAvatar(backgroundImage: NetworkImage(avatar)),
-          const SizedBox(width: 12),
+          CircleAvatar(backgroundImage: NetworkImage(avatar), radius: AppSizes.iconMd),
+          const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Text(email, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.bold)),
+                Text(email, style: AppTextStylesExt.bodySmall.copyWith(color: AppColors.textSecondary)),
               ],
             ),
           ),
           ElevatedButton(
             onPressed: isInvited ? null : onInvite,
             style: ElevatedButton.styleFrom(
-              backgroundColor: isInvited ? Colors.grey.shade300 : AppColors.primary,
-              foregroundColor: isInvited ? Colors.grey : Colors.white,
+              backgroundColor: isInvited ? AppColorsExt.divider : AppColors.primary,
+              foregroundColor: isInvited ? AppColors.textSecondary : AppColors.surface,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
             ),
-            child: Text(isInvited ? 'Đã gửi' : 'Gửi lời mời', style: const TextStyle(fontSize: 12)),
+            child: Text(isInvited ? 'Đã gửi' : 'Gửi lời mời', style: AppTextStylesExt.bodySmall.copyWith(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -264,15 +352,16 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         scrollController: _scrollController,
         activityKeys: _activityKeys,
         onActivityTap: _zoomToActivity,
+        onEditActivity: _onEditActivity,
+        onReplaceActivity: _onReplaceActivity,
+        onDeleteActivity: _onDeleteActivity,
+        onEditTime: _onEditTime,
         onShareTap: _showShareSheet,
-        onMarkerTap: (id) {
-          // Find activity by id and scroll to it
-          _scrollToActivity(id);
-        },
+        onMarkerTap: (id) => _scrollToActivity(id),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showPreOrderDemo,
-        label: const Text('Demo Đặt món'),
+        label: Text('Demo Đặt món'),
         icon: const Icon(Icons.restaurant),
         backgroundColor: AppColors.primary,
       ),
@@ -291,6 +380,10 @@ class _ItineraryDetailView extends StatelessWidget {
   final ScrollController scrollController;
   final Map<String, GlobalKey> activityKeys;
   final Function(ItineraryActivityEntity) onActivityTap;
+  final Function(ItineraryActivityEntity) onEditActivity;
+  final Function(ItineraryActivityEntity) onReplaceActivity;
+  final Function(ItineraryActivityEntity) onDeleteActivity;
+  final Function(ItineraryActivityEntity, bool) onEditTime;
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
 
@@ -305,6 +398,10 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.scrollController,
     required this.activityKeys,
     required this.onActivityTap,
+    required this.onEditActivity,
+    required this.onReplaceActivity,
+    required this.onDeleteActivity,
+    required this.onEditTime,
     required this.onShareTap,
     required this.onMarkerTap,
   });
@@ -312,7 +409,7 @@ class _ItineraryDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: BlocBuilder<ItineraryCubit, ItineraryState>(
         builder: (context, state) {
           if (state is ItineraryLoading) {
@@ -321,17 +418,17 @@ class _ItineraryDetailView extends StatelessWidget {
           if (state is ItineraryError) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSizes.s24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(state.message, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
+                    const Icon(Icons.error_outline, size: AppSizes.s48, color: AppColorsExt.error),
+                    const SizedBox(height: AppSizes.s16),
+                    Text(state.message, textAlign: TextAlign.center, style: AppTextStyles.body),
+                    const SizedBox(height: AppSizes.s16),
                     ElevatedButton(
                       onPressed: () => context.read<ItineraryCubit>().loadData(),
-                      child: const Text('Thử lại'),
+                      child: Text('Thử lại'),
                     ),
                   ],
                 ),
@@ -342,15 +439,11 @@ class _ItineraryDetailView extends StatelessWidget {
             final itin = state.selectedItinerary!;
             final currentDayData = itin.days.firstWhere(
               (d) => d.dayNumber == selectedDay, 
-              orElse: () => itin.days.isNotEmpty ? itin.days.first : throw Exception('No days data'),
+              orElse: () => itin.days.first,
             );
-
-            // Create markers
-            // final markers = _buildMarkers(currentDayData.activities);
 
             return Stack(
               children: [
-                // 1. Google Map at the top
                 Positioned(
                   top: 0,
                   left: 0,
@@ -361,15 +454,15 @@ class _ItineraryDetailView extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                        colors: [AppColors.primary, AppColorsExt.profileBlue],
                       ),
                     ),
                     child: const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.map_outlined, size: 64, color: Colors.white70),
-                          SizedBox(height: 12),
+                          Icon(Icons.map_outlined, size: AppSizes.s64, color: Colors.white70),
+                          SizedBox(height: AppSizes.s12),
                           Text(
                             'Map is temporarily disabled',
                             style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500),
@@ -378,44 +471,40 @@ class _ItineraryDetailView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // child: GoogleMap(
-                  //   initialCameraPosition: CameraPosition(
-                  //     target: markers.isNotEmpty 
-                  //       ? markers.first.position 
-                  //       : const LatLng(10.7769, 106.7009),
-                  //     zoom: 14,
-                  //   ),
-                  //   markers: markers,
-                  //   onMapCreated: (controller) {
-                  //     onMapCreated(controller);
-                  //     _fitBounds(controller, markers);
-                  //   },
-                  //   zoomControlsEnabled: false,
-                  //   mapToolbarEnabled: false,
-                  //   myLocationButtonEnabled: false,
-                  // ),
                 ),
                 
-                // 2. Main Content (Scrollable list)
                 SingleChildScrollView(
                   controller: scrollController,
                   child: Column(
                     children: [
                       const SizedBox(height: 280),
-                      _buildContentCard(context, itin, currentDayData),
+                      _buildContentCard(context, itin, currentDayData, itin.days),
                     ],
                   ),
                 ),
                 
-                // 3. AppBar Buttons
                 Positioned(
-                  top: MediaQuery.of(context).padding.top + 10,
-                  left: 20,
-                  right: 20,
+                  top: MediaQuery.of(context).padding.top + AppSizes.s12,
+                  left: AppSizes.s20,
+                  right: AppSizes.s20,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _floatingCircleButton(Icons.arrow_back_ios_new, () => Navigator.pop(context)),
+                      const SizedBox(width: AppSizes.s16),
+                      Expanded(
+                        child: Text(
+                          itin.title,
+                          style: AppTextStyles.body.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.s16),
                       _floatingCircleButton(Icons.share_outlined, onShareTap),
                     ],
                   ),
@@ -429,277 +518,101 @@ class _ItineraryDetailView extends StatelessWidget {
     );
   }
 
-  // Set<Marker> _buildMarkers(List<ItineraryActivityEntity> activities) {
-  //   return activities
-  //       .where((a) => a.latitude != null && a.longitude != null)
-  //       .map((a) {
-  //     return Marker(
-  //       markerId: MarkerId(a.id),
-  //       position: LatLng(a.latitude!, a.longitude!),
-  //       infoWindow: InfoWindow(title: a.title, snippet: a.locationName),
-  //       icon: _getMarkerIcon(a.status),
-  //       onTap: () => onMarkerTap(a.id),
-  //     );
-  //   }).toSet();
-  // }
-
-  // BitmapDescriptor _getMarkerIcon(ActivityStatus status) {
-  //   // Ideally use custom marker images, but for now we'll use default colors
-  //   switch (status) {
-  //     case ActivityStatus.daDi:
-  //       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-  //     case ActivityStatus.dangDi:
-  //       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-  //     case ActivityStatus.diQua:
-  //       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
-  //     case ActivityStatus.chuaDi:
-  //       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-  //   }
-  // }
-
-  // void _fitBounds(GoogleMapController controller, Set<Marker> markers) {
-  //   if (markers.isEmpty) return;
-  //   
-  //   double? minLat, maxLat, minLng, maxLng;
-  //   for (final marker in markers) {
-  //     final lat = marker.position.latitude;
-  //     final lng = marker.position.longitude;
-  //     if (minLat == null || lat < minLat) minLat = lat;
-  //     if (maxLat == null || lat > maxLat) maxLat = lat;
-  //     if (minLng == null || lng < minLng) minLng = lng;
-  //     if (maxLng == null || lng > maxLng) maxLng = lng;
-  //   }
-
-  //   controller.animateCamera(
-  //     CameraUpdate.newLatLngBounds(
-  //       LatLngBounds(
-  //         southwest: LatLng(minLat!, minLng!),
-  //         northeast: LatLng(maxLat!, maxLng!),
-  //       ),
-  //       50.0,
-  //     ),
-  //   );
-  // }
-
-  Widget _buildContentCard(BuildContext context, ItineraryDetailEntity itin, dynamic currentDayData) {
-    final currencyFormatter = NumberFormat('#,###', 'vi_VN');
-
+  Widget _buildContentCard(
+    BuildContext context, 
+    ItineraryDetailEntity itin, 
+    ItineraryDayEntity currentDayData,
+    List<ItineraryDayEntity> displayDays,
+  ) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r32)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20, vertical: AppSizes.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _statusBadge(itin.status),
-              const Spacer(),
-              Row(
-                children: [
-                  const Text('CÔNG KHAI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6B7280))),
-                  const SizedBox(width: 4),
-                  Transform.scale(
-                    scale: 0.7,
-                    child: Switch(
-                      value: isPublic, 
-                      onChanged: onPublicChanged, 
-                      activeThumbColor: AppColors.primary,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+          const SizedBox(height: AppSizes.s12),
+          Align(
+            alignment: Alignment.center,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: displayDays.map<Widget>((day) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: DaySelectorChip(
+                    dayNumber: day.dayNumber,
+                    locationCount: day.locationsCount,
+                    isSelected: selectedDay == day.dayNumber,
+                    onTap: () => onDayChanged(day.dayNumber),
                   ),
-                ],
+                )).toList(),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.s12),
           Text(
-            itin.title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1C1C1E)),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.calendar_month_outlined, size: 14, color: Color(0xFF6B7280)),
-              const SizedBox(width: 6),
-              Text(
-                '${DateFormat('dd/MM').format(itin.startDate)} - ${DateFormat('dd/MM').format(itin.endDate)}, ${itin.startDate.year}',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 24),
-          // Stats summary
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _metaItem('Ngân sách', '${currencyFormatter.format(itin.estimatedBudget)} đ'),
-              _metaItem('Thời gian', '${itin.durationDays} ngày'),
-              _metaItem('Địa điểm', '${itin.activitiesCount} điểm'),
-            ],
-          ),
-          
-          const SizedBox(height: 32),
-          // Day selector
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            child: Row(
-              children: itin.days.map<Widget>((day) => Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: DaySelectorChip(
-                  dayNumber: day.dayNumber,
-                  locationCount: day.locationsCount,
-                  isSelected: selectedDay == day.dayNumber,
-                  onTap: () => onDayChanged(day.dayNumber),
-                ),
-              )).toList(),
+            '${currentDayData.locationsCount} điểm tham quan du lịch',
+            style: AppTextStylesExt.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 13,
             ),
           ),
-          
-          const SizedBox(height: 24),
-          // Day details container
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: _dayMetaItem(Icons.sunny, '${currentDayData.temperature}°C', const Color(0xFFF59E0B))),
-                    const SizedBox(width: 12),
-                    Expanded(child: _dayMetaItem(Icons.access_time, currentDayData.totalDuration, const Color(0xFF3B82F6))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${currentDayData.locationsCount} Địa điểm tham quan',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'DT: ${currencyFormatter.format(currentDayData.dayBudget)} đ',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          const Text(
-            'Lịch chi tiết',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSizes.s16),
           ...currentDayData.activities.asMap().entries.map((entry) {
             final activity = entry.value;
-            // Create a key for this activity if it doesn't exist
             final key = activityKeys.putIfAbsent(activity.id, () => GlobalKey());
             
-            return GestureDetector(
+            return TimelineActivityCard(
               key: key,
-              onTap: () => onActivityTap(activity),
-              child: TimelineActivityCard(
-                activity: activity,
-                isFirst: entry.key == 0,
-                isLast: entry.key == currentDayData.activities.length - 1,
-                onAddTap: onAddPlaceTap,
-              ),
+              activity: activity,
+              isFirst: entry.key == 0,
+              isLast: entry.key == currentDayData.activities.length - 1,
+              onAddTap: onAddPlaceTap,
+              onEditTap: () => onEditActivity(activity),
+              onReplaceTap: () => onReplaceActivity(activity),
+              onDeleteTap: () => onDeleteActivity(activity),
+              onCardTap: () => onEditActivity(activity),
+              onStartTimeTap: () => onEditTime(activity, true),
+              onEndTimeTap: () => onEditTime(activity, false),
             );
           }),
-          
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSizes.s24),
           Center(
             child: OutlinedButton.icon(
               onPressed: onAddPlaceTap,
-              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-              label: const Text('THÊM ĐỊA ĐIỂM'),
+              icon: const Icon(Icons.add_location_alt_outlined, size: AppSizes.iconSm),
+              label: Text('THÊM ĐỊA ĐIỂM'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF6B7280),
-                side: const BorderSide(color: Color(0xFFE5E7EB)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                foregroundColor: AppColors.textSecondary,
+                side: const BorderSide(color: AppColorsExt.divider),
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
               ),
             ),
           ),
-          const SizedBox(height: 60),
+          const SizedBox(height: AppSizes.s64),
         ],
       ),
     );
   }
 
-  Widget _statusBadge(String status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
-      ),
-    );
-  }
-
-  Widget _metaItem(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-        const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-      ],
-    );
-  }
-
-  Widget _dayMetaItem(IconData icon, String value, Color iconColor) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: iconColor),
-        const SizedBox(width: 8),
-        Flexible(child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)), overflow: TextOverflow.ellipsis, maxLines: 1)),
-      ],
-    );
-  }
-
   Widget _floatingCircleButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ],
+    return Material(
+      color: Colors.black.withAlpha(120),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(icon, size: 18, color: Colors.white),
         ),
-        child: Icon(icon, size: 22, color: const Color(0xFF1E293B)),
       ),
     );
   }

@@ -1,8 +1,8 @@
-import '../../domain/entities/itinerary_entity.dart';
-import '../../domain/entities/itinerary_summary.dart';
-import '../../domain/entities/itinerary_detail_entity.dart';
-import '../../domain/repositories/itinerary_repository.dart';
-import '../datasources/itinerary_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/datasources/itinerary_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 
 /// Implementation cụ thể của [ItineraryRepository].
 ///

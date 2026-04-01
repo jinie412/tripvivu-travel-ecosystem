@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../widgets/auth_text_field.dart';
-import '../widgets/auth_shared_widgets.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -84,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: AppSizes.s32),
                     
                     // 2. Title Section
-                    const Text(
+                    Text(
                       'Đăng ký',
                       style: TextStyle(
                         fontSize: 32,
@@ -94,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: AppSizes.s12),
-                    const Text(
+                    Text(
                       'Tạo tài khoản để bắt đầu chuyến đi của bạn',
                       style: TextStyle(
                         fontSize: 16,
@@ -119,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Giới tính',
                           style: TextStyle(
                             fontSize: 14,
@@ -139,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: DropdownButton<String>(
                               value: _selectedGender,
                               isExpanded: true,
-                              hint: const Text(
+                              hint: Text(
                                 'Chọn giới tính',
                                 style: TextStyle(
                                   color: AppColors.textSecondary,
@@ -243,7 +244,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(AppSizes.r12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Đăng ký',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
@@ -268,13 +269,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Đã có tài khoản? ',
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Text(
+                          child: Text(
                             'Đăng nhập',
                             style: TextStyle(
                               color: AppColors.primary,

@@ -1,5 +1,5 @@
-import '../entities/search_location.dart';
-import '../repositories/search_repository.dart';
+import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
+import 'package:travel_advisor_mobile/features/search/domain/repositories/search_repository.dart';
 
 class SearchLocations {
   final SearchRepository repository;

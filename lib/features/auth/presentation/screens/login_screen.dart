@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/di/injection_container.dart';
-import '../widgets/auth_text_field.dart';
-import '../widgets/auth_shared_widgets.dart';
-import 'register_screen.dart';
+
 import 'forgot_password_screen.dart';
-import '../cubit/auth_cubit.dart';
-import '../cubit/auth_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'register_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -97,14 +99,14 @@ class _LoginViewState extends State<_LoginView> {
                       ),
                     ),
                     const SizedBox(height: AppSizes.s24),
-                    const Text('Đăng nhập',
+                    Text('Đăng nhập',
                         style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A3C6E)),
                         textAlign: TextAlign.center),
                     const SizedBox(height: AppSizes.s8),
-                    const Text('Sẵn sàng cho chuyến đi tiếp theo?',
+                    Text('Sẵn sàng cho chuyến đi tiếp theo?',
                         style: TextStyle(
                             fontSize: 14, color: AppColors.textSecondary),
                         textAlign: TextAlign.center),
@@ -149,7 +151,7 @@ class _LoginViewState extends State<_LoginView> {
                           context,
                           MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                         ),
-                        child: const Text('Quên mật khẩu?',
+                        child: Text('Quên mật khẩu?',
                             style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 14,
@@ -183,7 +185,7 @@ class _LoginViewState extends State<_LoginView> {
                                     child: CircularProgressIndicator(
                                         color: Colors.white, strokeWidth: 2.5),
                                   )
-                                : const Text('Đăng nhập',
+                                : Text('Đăng nhập',
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold)),
@@ -214,7 +216,7 @@ class _LoginViewState extends State<_LoginView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Chưa có tài khoản? ',
+                        Text('Chưa có tài khoản? ',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 14)),
                         GestureDetector(
@@ -223,7 +225,7 @@ class _LoginViewState extends State<_LoginView> {
                             MaterialPageRoute(
                                 builder: (_) => const RegisterScreen()),
                           ),
-                          child: const Text('Đăng ký',
+                          child: Text('Đăng ký',
                               style: TextStyle(
                                   color: AppColors.primary,
                                   fontSize: 14,

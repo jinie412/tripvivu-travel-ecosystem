@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../domain/entities/location_review_entity.dart';
+
+import 'package:travel_advisor_mobile/features/review/domain/entities/location_review_entity.dart';
 
 part 'location_review_model.freezed.dart';
 part 'location_review_model.g.dart';
