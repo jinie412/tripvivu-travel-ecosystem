@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/core/utils/input_formatter.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/activity_edit_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/activity_edit_state.dart';
@@ -409,7 +410,7 @@ class ActivityEditScreen extends StatelessWidget {
                           textAlign: TextAlign.right,
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
-                            ThousandsSeparatorFormatter(),
+                            CurrencyInputFormatter(),
                           ],
                           onChanged: (val) {
                             final numStr = val.replaceAll('.', '');
@@ -495,30 +496,6 @@ class ActivityEditScreen extends StatelessWidget {
   }
 }
 
-class ThousandsSeparatorFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) {
-      return newValue.copyWith(text: '');
-    }
-
-    // Xóa tất cả dấu chấm cũ
-    String trimmedText = newValue.text.replaceAll('.', '');
-
-    // Định dạng lại theo chuẩn VN
-    final formatter = NumberFormat.decimalPattern('vi');
-    String formattedText = formatter.format(int.parse(trimmedText));
-
-    // Đảm bảo dấu cách/chấm đúng kiểu VN (vi_VN dùng dấu chấm làm ngăn cách hàng nghìn)
-    return TextEditingValue(
-      text: formattedText,
-      selection: TextSelection.collapsed(offset: formattedText.length),
-    );
-  }
-}
 
 class _ActivityNotesField extends StatelessWidget {
   final String initialNotes;

@@ -72,6 +72,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 1200,
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
       ),
       CityActivityModel(
         id: 'a2',
@@ -83,6 +87,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
         isFavorite: true,
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
       ),
       CityActivityModel(
         id: 'a3',
@@ -93,6 +101,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 2800,
         address: 'Quận 1, TP.HCM',
         status: 'Đã đóng cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'paid',
+        district: 'Quận 1',
       ),
       CityActivityModel(
         id: 'a4',
@@ -103,6 +115,38 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 1900,
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a5',
+        title: 'Thảo Cầm Viên',
+        imageUrl:
+            'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=500',
+        rating: 4.2,
+        reviewCount: 950,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'nature',
+        priceType: 'paid',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a6',
+        title: 'Đầm Sen Park',
+        imageUrl:
+            'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=500',
+        rating: 4.0,
+        reviewCount: 680,
+        address: 'Quận 11, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'entertainment',
+        priceType: 'paid',
+        district: 'Quận 11',
       ),
     ];
   }
@@ -120,6 +164,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 1240,
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'mid_range',
+        amenities: ['air_con'],
       ),
       CityRestaurantModel(
         id: 'r2',
@@ -130,6 +178,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 3500,
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'foreign',
+        priceLevel: 'mid_range',
+        amenities: ['air_con', 'kid_friendly'],
       ),
       CityRestaurantModel(
         id: 'r3',
@@ -140,6 +192,10 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 850,
         address: 'Quận 1, TP.HCM',
         status: 'Đã đóng cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'budget',
+        amenities: ['parking', 'air_con'],
       ),
       CityRestaurantModel(
         id: 'r4',
@@ -150,6 +206,24 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         reviewCount: 420,
         address: 'Quận 1, TP.HCM',
         status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'premium',
+        amenities: ['air_con', 'parking'],
+      ),
+      CityRestaurantModel(
+        id: 'r5',
+        name: 'Hum Vegetarian',
+        imageUrl:
+            'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500',
+        rating: 4.6,
+        reviewCount: 310,
+        address: 'Quận 3, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vegetarian',
+        priceLevel: 'mid_range',
+        amenities: ['air_con'],
       ),
     ];
   }
@@ -165,7 +239,12 @@ class CityDetailMockDataSource implements CityDetailDataSource {
             'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500',
         rating: 5.0,
         reviewCount: 1250,
-        price: '1.500.000đ',
+        price: '5.450.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 5450000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
       ),
       CityHotelModel(
         id: 'h2',
@@ -174,7 +253,12 @@ class CityDetailMockDataSource implements CityDetailDataSource {
             'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=500',
         rating: 4.8,
         reviewCount: 850,
-        price: '1.200.000đ',
+        price: '4.200.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 4200000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
       ),
       CityHotelModel(
         id: 'h3',
@@ -184,6 +268,11 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         rating: 4.6,
         reviewCount: 620,
         price: '1.500.000đ',
+        // === Filter fields ===
+        starRating: 4,
+        priceValue: 1500000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast'],
       ),
       CityHotelModel(
         id: 'h4',
@@ -193,6 +282,39 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         rating: 4.7,
         reviewCount: 940,
         price: '1.800.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 1800000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
+      ),
+      CityHotelModel(
+        id: 'h5',
+        name: 'Saigon Homestay Cozy',
+        imageUrl:
+            'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=500',
+        rating: 4.3,
+        reviewCount: 180,
+        price: '450.000đ',
+        // === Filter fields ===
+        starRating: 2,
+        priceValue: 450000,
+        accommodationType: 'homestay',
+        amenities: ['wifi'],
+      ),
+      CityHotelModel(
+        id: 'h6',
+        name: 'Fusion Resort Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=500',
+        rating: 4.9,
+        reviewCount: 520,
+        price: '3.200.000đ',
+        // === Filter fields ===
+        starRating: 4,
+        priceValue: 3200000,
+        accommodationType: 'resort',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
       ),
     ];
   }

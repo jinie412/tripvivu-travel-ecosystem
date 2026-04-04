@@ -46,6 +46,10 @@ class CityActivityModel with _$CityActivityModel {
     @Default('') String address,
     @Default('') String status,
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default('') String category,
+    @Default('') String priceType,
+    @Default('') String district,
   }) = _CityActivityModel;
 
   factory CityActivityModel.fromJson(Map<String, dynamic> json) =>
@@ -62,6 +66,9 @@ extension CityActivityModelX on CityActivityModel {
         address: address,
         status: status,
         isFavorite: isFavorite,
+        category: category,
+        priceType: priceType,
+        district: district,
       );
 }
 
@@ -76,6 +83,10 @@ class CityRestaurantModel with _$CityRestaurantModel {
     @Default('') String address,
     @Default('') String status,
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default('') String cuisine,
+    @Default('') String priceLevel,
+    @Default([]) List<String> amenities,
   }) = _CityRestaurantModel;
 
   factory CityRestaurantModel.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +103,9 @@ extension CityRestaurantModelX on CityRestaurantModel {
         address: address,
         status: status,
         isFavorite: isFavorite,
+        cuisine: cuisine,
+        priceLevel: priceLevel,
+        amenities: amenities,
       );
 }
 
@@ -105,6 +119,11 @@ class CityHotelModel with _$CityHotelModel {
     required int reviewCount,
     required String price,
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default(0) int starRating,
+    @Default(0) double priceValue,
+    @Default('') String accommodationType,
+    @Default([]) List<String> amenities,
   }) = _CityHotelModel;
 
   factory CityHotelModel.fromJson(Map<String, dynamic> json) =>
@@ -121,6 +140,10 @@ extension CityHotelModelX on CityHotelModel {
       reviewCount: reviewCount,
       price: price,
       isFavorite: isFavorite,
+      starRating: starRating,
+      priceValue: priceValue,
+      accommodationType: accommodationType,
+      amenities: amenities,
     );
   }
 }

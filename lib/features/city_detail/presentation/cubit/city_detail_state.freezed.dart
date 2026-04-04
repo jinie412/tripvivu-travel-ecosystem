@@ -21,21 +21,51 @@ mixin _$CityDetailState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CityOverview overview, int activeTab) loaded,
+    required TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )
+    loaded,
     required TResult Function(String message) error,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CityOverview overview, int activeTab)? loaded,
+    TResult? Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult? Function(String message)? error,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CityOverview overview, int activeTab)? loaded,
+    TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) => throw _privateConstructorUsedError;
@@ -130,7 +160,17 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CityOverview overview, int activeTab) loaded,
+    required TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )
+    loaded,
     required TResult Function(String message) error,
   }) {
     return initial();
@@ -141,7 +181,17 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CityOverview overview, int activeTab)? loaded,
+    TResult? Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult? Function(String message)? error,
   }) {
     return initial?.call();
@@ -152,7 +202,17 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CityOverview overview, int activeTab)? loaded,
+    TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -249,7 +309,17 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CityOverview overview, int activeTab) loaded,
+    required TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )
+    loaded,
     required TResult Function(String message) error,
   }) {
     return loading();
@@ -260,7 +330,17 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CityOverview overview, int activeTab)? loaded,
+    TResult? Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult? Function(String message)? error,
   }) {
     return loading?.call();
@@ -271,7 +351,17 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CityOverview overview, int activeTab)? loaded,
+    TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
@@ -330,9 +420,21 @@ abstract class _$$LoadedImplCopyWith<$Res> {
     $Res Function(_$LoadedImpl) then,
   ) = __$$LoadedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CityOverview overview, int activeTab});
+  $Res call({
+    CityOverview overview,
+    int activeTab,
+    ActivityFilter activityFilter,
+    RestaurantFilter restaurantFilter,
+    HotelFilter hotelFilter,
+    List<CityActivity> filteredActivities,
+    List<CityRestaurant> filteredRestaurants,
+    List<CityHotel> filteredHotels,
+  });
 
   $CityOverviewCopyWith<$Res> get overview;
+  $ActivityFilterCopyWith<$Res> get activityFilter;
+  $RestaurantFilterCopyWith<$Res> get restaurantFilter;
+  $HotelFilterCopyWith<$Res> get hotelFilter;
 }
 
 /// @nodoc
@@ -348,7 +450,16 @@ class __$$LoadedImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? overview = null, Object? activeTab = null}) {
+  $Res call({
+    Object? overview = null,
+    Object? activeTab = null,
+    Object? activityFilter = null,
+    Object? restaurantFilter = null,
+    Object? hotelFilter = null,
+    Object? filteredActivities = null,
+    Object? filteredRestaurants = null,
+    Object? filteredHotels = null,
+  }) {
     return _then(
       _$LoadedImpl(
         null == overview
@@ -359,6 +470,30 @@ class __$$LoadedImplCopyWithImpl<$Res>
             ? _value.activeTab
             : activeTab // ignore: cast_nullable_to_non_nullable
                   as int,
+        activityFilter: null == activityFilter
+            ? _value.activityFilter
+            : activityFilter // ignore: cast_nullable_to_non_nullable
+                  as ActivityFilter,
+        restaurantFilter: null == restaurantFilter
+            ? _value.restaurantFilter
+            : restaurantFilter // ignore: cast_nullable_to_non_nullable
+                  as RestaurantFilter,
+        hotelFilter: null == hotelFilter
+            ? _value.hotelFilter
+            : hotelFilter // ignore: cast_nullable_to_non_nullable
+                  as HotelFilter,
+        filteredActivities: null == filteredActivities
+            ? _value._filteredActivities
+            : filteredActivities // ignore: cast_nullable_to_non_nullable
+                  as List<CityActivity>,
+        filteredRestaurants: null == filteredRestaurants
+            ? _value._filteredRestaurants
+            : filteredRestaurants // ignore: cast_nullable_to_non_nullable
+                  as List<CityRestaurant>,
+        filteredHotels: null == filteredHotels
+            ? _value._filteredHotels
+            : filteredHotels // ignore: cast_nullable_to_non_nullable
+                  as List<CityHotel>,
       ),
     );
   }
@@ -372,21 +507,102 @@ class __$$LoadedImplCopyWithImpl<$Res>
       return _then(_value.copyWith(overview: value));
     });
   }
+
+  /// Create a copy of CityDetailState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $ActivityFilterCopyWith<$Res> get activityFilter {
+    return $ActivityFilterCopyWith<$Res>(_value.activityFilter, (value) {
+      return _then(_value.copyWith(activityFilter: value));
+    });
+  }
+
+  /// Create a copy of CityDetailState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $RestaurantFilterCopyWith<$Res> get restaurantFilter {
+    return $RestaurantFilterCopyWith<$Res>(_value.restaurantFilter, (value) {
+      return _then(_value.copyWith(restaurantFilter: value));
+    });
+  }
+
+  /// Create a copy of CityDetailState
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $HotelFilterCopyWith<$Res> get hotelFilter {
+    return $HotelFilterCopyWith<$Res>(_value.hotelFilter, (value) {
+      return _then(_value.copyWith(hotelFilter: value));
+    });
+  }
 }
 
 /// @nodoc
 
 class _$LoadedImpl implements _Loaded {
-  const _$LoadedImpl(this.overview, this.activeTab);
+  const _$LoadedImpl(
+    this.overview,
+    this.activeTab, {
+    this.activityFilter = const ActivityFilter(),
+    this.restaurantFilter = const RestaurantFilter(),
+    this.hotelFilter = const HotelFilter(),
+    final List<CityActivity> filteredActivities = const [],
+    final List<CityRestaurant> filteredRestaurants = const [],
+    final List<CityHotel> filteredHotels = const [],
+  }) : _filteredActivities = filteredActivities,
+       _filteredRestaurants = filteredRestaurants,
+       _filteredHotels = filteredHotels;
 
   @override
   final CityOverview overview;
   @override
   final int activeTab;
+  // === Filter state cho từng tab ===
+  @override
+  @JsonKey()
+  final ActivityFilter activityFilter;
+  @override
+  @JsonKey()
+  final RestaurantFilter restaurantFilter;
+  @override
+  @JsonKey()
+  final HotelFilter hotelFilter;
+  // === Danh sách đã được lọc/sắp xếp (UI đọc từ đây) ===
+  final List<CityActivity> _filteredActivities;
+  // === Danh sách đã được lọc/sắp xếp (UI đọc từ đây) ===
+  @override
+  @JsonKey()
+  List<CityActivity> get filteredActivities {
+    if (_filteredActivities is EqualUnmodifiableListView)
+      return _filteredActivities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_filteredActivities);
+  }
+
+  final List<CityRestaurant> _filteredRestaurants;
+  @override
+  @JsonKey()
+  List<CityRestaurant> get filteredRestaurants {
+    if (_filteredRestaurants is EqualUnmodifiableListView)
+      return _filteredRestaurants;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_filteredRestaurants);
+  }
+
+  final List<CityHotel> _filteredHotels;
+  @override
+  @JsonKey()
+  List<CityHotel> get filteredHotels {
+    if (_filteredHotels is EqualUnmodifiableListView) return _filteredHotels;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_filteredHotels);
+  }
 
   @override
   String toString() {
-    return 'CityDetailState.loaded(overview: $overview, activeTab: $activeTab)';
+    return 'CityDetailState.loaded(overview: $overview, activeTab: $activeTab, activityFilter: $activityFilter, restaurantFilter: $restaurantFilter, hotelFilter: $hotelFilter, filteredActivities: $filteredActivities, filteredRestaurants: $filteredRestaurants, filteredHotels: $filteredHotels)';
   }
 
   @override
@@ -397,11 +613,39 @@ class _$LoadedImpl implements _Loaded {
             (identical(other.overview, overview) ||
                 other.overview == overview) &&
             (identical(other.activeTab, activeTab) ||
-                other.activeTab == activeTab));
+                other.activeTab == activeTab) &&
+            (identical(other.activityFilter, activityFilter) ||
+                other.activityFilter == activityFilter) &&
+            (identical(other.restaurantFilter, restaurantFilter) ||
+                other.restaurantFilter == restaurantFilter) &&
+            (identical(other.hotelFilter, hotelFilter) ||
+                other.hotelFilter == hotelFilter) &&
+            const DeepCollectionEquality().equals(
+              other._filteredActivities,
+              _filteredActivities,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._filteredRestaurants,
+              _filteredRestaurants,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._filteredHotels,
+              _filteredHotels,
+            ));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, overview, activeTab);
+  int get hashCode => Object.hash(
+    runtimeType,
+    overview,
+    activeTab,
+    activityFilter,
+    restaurantFilter,
+    hotelFilter,
+    const DeepCollectionEquality().hash(_filteredActivities),
+    const DeepCollectionEquality().hash(_filteredRestaurants),
+    const DeepCollectionEquality().hash(_filteredHotels),
+  );
 
   /// Create a copy of CityDetailState
   /// with the given fields replaced by the non-null parameter values.
@@ -416,10 +660,29 @@ class _$LoadedImpl implements _Loaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CityOverview overview, int activeTab) loaded,
+    required TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )
+    loaded,
     required TResult Function(String message) error,
   }) {
-    return loaded(overview, activeTab);
+    return loaded(
+      overview,
+      activeTab,
+      activityFilter,
+      restaurantFilter,
+      hotelFilter,
+      filteredActivities,
+      filteredRestaurants,
+      filteredHotels,
+    );
   }
 
   @override
@@ -427,10 +690,29 @@ class _$LoadedImpl implements _Loaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CityOverview overview, int activeTab)? loaded,
+    TResult? Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult? Function(String message)? error,
   }) {
-    return loaded?.call(overview, activeTab);
+    return loaded?.call(
+      overview,
+      activeTab,
+      activityFilter,
+      restaurantFilter,
+      hotelFilter,
+      filteredActivities,
+      filteredRestaurants,
+      filteredHotels,
+    );
   }
 
   @override
@@ -438,12 +720,31 @@ class _$LoadedImpl implements _Loaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CityOverview overview, int activeTab)? loaded,
+    TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
     if (loaded != null) {
-      return loaded(overview, activeTab);
+      return loaded(
+        overview,
+        activeTab,
+        activityFilter,
+        restaurantFilter,
+        hotelFilter,
+        filteredActivities,
+        filteredRestaurants,
+        filteredHotels,
+      );
     }
     return orElse();
   }
@@ -487,11 +788,26 @@ class _$LoadedImpl implements _Loaded {
 }
 
 abstract class _Loaded implements CityDetailState {
-  const factory _Loaded(final CityOverview overview, final int activeTab) =
-      _$LoadedImpl;
+  const factory _Loaded(
+    final CityOverview overview,
+    final int activeTab, {
+    final ActivityFilter activityFilter,
+    final RestaurantFilter restaurantFilter,
+    final HotelFilter hotelFilter,
+    final List<CityActivity> filteredActivities,
+    final List<CityRestaurant> filteredRestaurants,
+    final List<CityHotel> filteredHotels,
+  }) = _$LoadedImpl;
 
   CityOverview get overview;
-  int get activeTab;
+  int get activeTab; // === Filter state cho từng tab ===
+  ActivityFilter get activityFilter;
+  RestaurantFilter get restaurantFilter;
+  HotelFilter
+  get hotelFilter; // === Danh sách đã được lọc/sắp xếp (UI đọc từ đây) ===
+  List<CityActivity> get filteredActivities;
+  List<CityRestaurant> get filteredRestaurants;
+  List<CityHotel> get filteredHotels;
 
   /// Create a copy of CityDetailState
   /// with the given fields replaced by the non-null parameter values.
@@ -572,7 +888,17 @@ class _$ErrorImpl implements _Error {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CityOverview overview, int activeTab) loaded,
+    required TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )
+    loaded,
     required TResult Function(String message) error,
   }) {
     return error(message);
@@ -583,7 +909,17 @@ class _$ErrorImpl implements _Error {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CityOverview overview, int activeTab)? loaded,
+    TResult? Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult? Function(String message)? error,
   }) {
     return error?.call(message);
@@ -594,7 +930,17 @@ class _$ErrorImpl implements _Error {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CityOverview overview, int activeTab)? loaded,
+    TResult Function(
+      CityOverview overview,
+      int activeTab,
+      ActivityFilter activityFilter,
+      RestaurantFilter restaurantFilter,
+      HotelFilter hotelFilter,
+      List<CityActivity> filteredActivities,
+      List<CityRestaurant> filteredRestaurants,
+      List<CityHotel> filteredHotels,
+    )?
+    loaded,
     TResult Function(String message)? error,
     required TResult orElse(),
   }) {
