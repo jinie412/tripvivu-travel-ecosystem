@@ -14,6 +14,7 @@ export const LocationDetail: React.FC = () => {
   const navigate = useNavigate();
   const [location, setLocation] = useState<LocationDetailInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -49,6 +50,34 @@ export const LocationDetail: React.FC = () => {
   };
 
   const statusColor = getStatusColor(location.status);
+
+  const handleApprove = async () => {
+    if (!id) {
+      return;
+    }
+    try {
+      await locationAPI.approveLocation(id);
+      const refreshed = await locationAPI.getLocationById(id);
+      setLocation(refreshed);
+    } catch (error) {
+      console.error('Failed to approve location', error);
+      window.alert('Không thể duyệt địa điểm. Vui lòng thử lại.');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!id) {
+      return;
+    }
+    try {
+      await locationAPI.rejectLocation(id, rejectReason);
+      const refreshed = await locationAPI.getLocationById(id);
+      setLocation(refreshed);
+    } catch (error) {
+      console.error('Failed to reject location', error);
+      window.alert('Không thể từ chối địa điểm. Vui lòng thử lại.');
+    }
+  };
 
   return (
     <div className="location-detail-page">
@@ -113,14 +142,16 @@ export const LocationDetail: React.FC = () => {
               <input 
                 type="text" 
                 placeholder="Nhập lý do từ chối (bắt buộc nếu từ chối)..." 
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
               />
             </div>
             <div className="ld-action-buttons">
-              <button className="btn-reject-action">
+              <button className="btn-reject-action" onClick={() => void handleReject()}>
                 <X size={16} />
                 <span>Từ chối</span>
               </button>
-              <button className="btn-approve-action">
+              <button className="btn-approve-action" onClick={() => void handleApprove()}>
                 <Check size={16} />
                 <span>Duyệt địa điểm</span>
               </button>

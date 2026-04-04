@@ -1,7 +1,8 @@
 import React from 'react';
 import { Location } from '../../../../types/location';
-import { Pencil, Check, X, Image as ImageIcon } from 'lucide-react';
+import { Pencil, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import defaultLocationImage from '../../../../assets/images/location-default.svg';
 
 interface LocationTableProps {
   locations: Location[];
@@ -13,6 +14,8 @@ interface LocationTableProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  onApprove: (id: string) => Promise<void>;
+  onReject: (id: string, reason?: string) => Promise<void>;
 }
 
 export const LocationTable: React.FC<LocationTableProps> = ({
@@ -24,7 +27,9 @@ export const LocationTable: React.FC<LocationTableProps> = ({
   currentPage,
   totalItems,
   itemsPerPage,
-  onPageChange
+  onPageChange,
+  onApprove,
+  onReject,
 }) => {
   const navigate = useNavigate();
 
@@ -99,11 +104,14 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                 </td>
                 <td className="td-image" data-label="Hình ảnh">
                   <div className="location-image-wrapper bg-placeholder">
-                    {loc.id === '5' || loc.id === '6' || loc.id === '7' || loc.id === '10' ? (
-                      <ImageIcon size={20} />
-                    ) : (
-                      <img src={`https://picsum.photos/seed/${loc.id}/40/40`} alt={loc.name} />
-                    )}
+                    <img
+                      src={loc.image || defaultLocationImage}
+                      alt={loc.name}
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = defaultLocationImage;
+                      }}
+                    />
                   </div>
                 </td>
                 <td className="td-name" data-label="Tên địa điểm">
@@ -131,10 +139,23 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                   <div className="action-buttons">
                     {loc.status === 'Chờ duyệt' && (
                       <>
-                        <button className="action-btn btn-approve" title="Duyệt">
+                        <button
+                          className="action-btn btn-approve"
+                          title="Duyệt"
+                          onClick={() => {
+                            void onApprove(loc.id);
+                          }}
+                        >
                           <Check size={16} />
                         </button>
-                        <button className="action-btn btn-reject" title="Từ chối">
+                        <button
+                          className="action-btn btn-reject"
+                          title="Từ chối"
+                          onClick={() => {
+                            const reason = window.prompt('Nhập lý do từ chối địa điểm (không bắt buộc):') || undefined;
+                            void onReject(loc.id, reason);
+                          }}
+                        >
                           <X size={16} />
                         </button>
                       </>

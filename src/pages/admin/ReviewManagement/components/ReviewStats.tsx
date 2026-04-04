@@ -37,7 +37,7 @@ export const ReviewStats: React.FC<ReviewStatsProps> = ({ stats, loading }) => {
           <Clock size={24} className="text-orange" />
         </div>
         <div className="stat-info">
-          <span className="stat-label">CHƯA XỬ LÝ</span>
+          <span className="stat-label">CHỜ DUYỆT</span>
           <span className="stat-value">{stats.pendingReviews}</span>
         </div>
       </div>
