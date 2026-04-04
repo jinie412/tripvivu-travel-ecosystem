@@ -28,6 +28,10 @@ class CityActivity with _$CityActivity {
     @Default('') String address,
     @Default('') String status, // e.g., "Đang mở cửa"
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default('') String category,   // 'cultural_history', 'nature', 'entertainment'
+    @Default('') String priceType,  // 'free', 'paid'
+    @Default('') String district,   // 'Quận 1', 'Quận 3'...
   }) = _CityActivity;
 }
 
@@ -42,6 +46,10 @@ class CityRestaurant with _$CityRestaurant {
     @Default('') String address,
     @Default('') String status, // e.g., "Đang mở cửa"
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default('') String cuisine,          // 'vietnamese', 'foreign', 'vegetarian'
+    @Default('') String priceLevel,       // 'budget', 'mid_range', 'premium'
+    @Default([]) List<String> amenities,  // ['parking', 'air_con', 'kid_friendly']
   }) = _CityRestaurant;
 }
 
@@ -55,6 +63,11 @@ class CityHotel with _$CityHotel {
     required int reviewCount,
     required String price, // e.g., "5.450.000đ"
     @Default(false) bool isFavorite,
+    // === Filter fields ===
+    @Default(0) int starRating,               // 1-5
+    @Default(0) double priceValue,            // Số tiền thực tế (dùng cho filter/sort)
+    @Default('') String accommodationType,    // 'hotel','homestay','resort','apartment','guesthouse'
+    @Default([]) List<String> amenities,      // ['pool','wifi','breakfast','gym']
   }) = _CityHotel;
 }
 

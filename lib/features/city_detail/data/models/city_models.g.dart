@@ -43,6 +43,9 @@ _$CityActivityModelImpl _$$CityActivityModelImplFromJson(
   address: json['address'] as String? ?? '',
   status: json['status'] as String? ?? '',
   isFavorite: json['isFavorite'] as bool? ?? false,
+  category: json['category'] as String? ?? '',
+  priceType: json['priceType'] as String? ?? '',
+  district: json['district'] as String? ?? '',
 );
 
 Map<String, dynamic> _$$CityActivityModelImplToJson(
@@ -56,6 +59,9 @@ Map<String, dynamic> _$$CityActivityModelImplToJson(
   'address': instance.address,
   'status': instance.status,
   'isFavorite': instance.isFavorite,
+  'category': instance.category,
+  'priceType': instance.priceType,
+  'district': instance.district,
 };
 
 _$CityRestaurantModelImpl _$$CityRestaurantModelImplFromJson(
@@ -69,6 +75,11 @@ _$CityRestaurantModelImpl _$$CityRestaurantModelImplFromJson(
   address: json['address'] as String? ?? '',
   status: json['status'] as String? ?? '',
   isFavorite: json['isFavorite'] as bool? ?? false,
+  cuisine: json['cuisine'] as String? ?? '',
+  priceLevel: json['priceLevel'] as String? ?? '',
+  amenities:
+      (json['amenities'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$$CityRestaurantModelImplToJson(
@@ -82,6 +93,9 @@ Map<String, dynamic> _$$CityRestaurantModelImplToJson(
   'address': instance.address,
   'status': instance.status,
   'isFavorite': instance.isFavorite,
+  'cuisine': instance.cuisine,
+  'priceLevel': instance.priceLevel,
+  'amenities': instance.amenities,
 };
 
 _$CityHotelModelImpl _$$CityHotelModelImplFromJson(Map<String, dynamic> json) =>
@@ -93,6 +107,14 @@ _$CityHotelModelImpl _$$CityHotelModelImplFromJson(Map<String, dynamic> json) =>
       reviewCount: (json['reviewCount'] as num).toInt(),
       price: json['price'] as String,
       isFavorite: json['isFavorite'] as bool? ?? false,
+      starRating: (json['starRating'] as num?)?.toInt() ?? 0,
+      priceValue: (json['priceValue'] as num?)?.toDouble() ?? 0,
+      accommodationType: json['accommodationType'] as String? ?? '',
+      amenities:
+          (json['amenities'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$$CityHotelModelImplToJson(
@@ -105,4 +127,8 @@ Map<String, dynamic> _$$CityHotelModelImplToJson(
   'reviewCount': instance.reviewCount,
   'price': instance.price,
   'isFavorite': instance.isFavorite,
+  'starRating': instance.starRating,
+  'priceValue': instance.priceValue,
+  'accommodationType': instance.accommodationType,
+  'amenities': instance.amenities,
 };

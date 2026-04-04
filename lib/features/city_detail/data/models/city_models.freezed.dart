@@ -348,7 +348,11 @@ mixin _$CityActivityModel {
   int get reviewCount => throw _privateConstructorUsedError;
   String get address => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
-  bool get isFavorite => throw _privateConstructorUsedError;
+  bool get isFavorite =>
+      throw _privateConstructorUsedError; // === Filter fields ===
+  String get category => throw _privateConstructorUsedError;
+  String get priceType => throw _privateConstructorUsedError;
+  String get district => throw _privateConstructorUsedError;
 
   /// Serializes this CityActivityModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -376,6 +380,9 @@ abstract class $CityActivityModelCopyWith<$Res> {
     String address,
     String status,
     bool isFavorite,
+    String category,
+    String priceType,
+    String district,
   });
 }
 
@@ -402,6 +409,9 @@ class _$CityActivityModelCopyWithImpl<$Res, $Val extends CityActivityModel>
     Object? address = null,
     Object? status = null,
     Object? isFavorite = null,
+    Object? category = null,
+    Object? priceType = null,
+    Object? district = null,
   }) {
     return _then(
       _value.copyWith(
@@ -437,6 +447,18 @@ class _$CityActivityModelCopyWithImpl<$Res, $Val extends CityActivityModel>
                 ? _value.isFavorite
                 : isFavorite // ignore: cast_nullable_to_non_nullable
                       as bool,
+            category: null == category
+                ? _value.category
+                : category // ignore: cast_nullable_to_non_nullable
+                      as String,
+            priceType: null == priceType
+                ? _value.priceType
+                : priceType // ignore: cast_nullable_to_non_nullable
+                      as String,
+            district: null == district
+                ? _value.district
+                : district // ignore: cast_nullable_to_non_nullable
+                      as String,
           )
           as $Val,
     );
@@ -461,6 +483,9 @@ abstract class _$$CityActivityModelImplCopyWith<$Res>
     String address,
     String status,
     bool isFavorite,
+    String category,
+    String priceType,
+    String district,
   });
 }
 
@@ -486,6 +511,9 @@ class __$$CityActivityModelImplCopyWithImpl<$Res>
     Object? address = null,
     Object? status = null,
     Object? isFavorite = null,
+    Object? category = null,
+    Object? priceType = null,
+    Object? district = null,
   }) {
     return _then(
       _$CityActivityModelImpl(
@@ -521,6 +549,18 @@ class __$$CityActivityModelImplCopyWithImpl<$Res>
             ? _value.isFavorite
             : isFavorite // ignore: cast_nullable_to_non_nullable
                   as bool,
+        category: null == category
+            ? _value.category
+            : category // ignore: cast_nullable_to_non_nullable
+                  as String,
+        priceType: null == priceType
+            ? _value.priceType
+            : priceType // ignore: cast_nullable_to_non_nullable
+                  as String,
+        district: null == district
+            ? _value.district
+            : district // ignore: cast_nullable_to_non_nullable
+                  as String,
       ),
     );
   }
@@ -538,6 +578,9 @@ class _$CityActivityModelImpl implements _CityActivityModel {
     this.address = '',
     this.status = '',
     this.isFavorite = false,
+    this.category = '',
+    this.priceType = '',
+    this.district = '',
   });
 
   factory _$CityActivityModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -564,10 +607,20 @@ class _$CityActivityModelImpl implements _CityActivityModel {
   @override
   @JsonKey()
   final bool isFavorite;
+  // === Filter fields ===
+  @override
+  @JsonKey()
+  final String category;
+  @override
+  @JsonKey()
+  final String priceType;
+  @override
+  @JsonKey()
+  final String district;
 
   @override
   String toString() {
-    return 'CityActivityModel(id: $id, title: $title, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite)';
+    return 'CityActivityModel(id: $id, title: $title, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, category: $category, priceType: $priceType, district: $district)';
   }
 
   @override
@@ -585,7 +638,13 @@ class _$CityActivityModelImpl implements _CityActivityModel {
             (identical(other.address, address) || other.address == address) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.isFavorite, isFavorite) ||
-                other.isFavorite == isFavorite));
+                other.isFavorite == isFavorite) &&
+            (identical(other.category, category) ||
+                other.category == category) &&
+            (identical(other.priceType, priceType) ||
+                other.priceType == priceType) &&
+            (identical(other.district, district) ||
+                other.district == district));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -600,6 +659,9 @@ class _$CityActivityModelImpl implements _CityActivityModel {
     address,
     status,
     isFavorite,
+    category,
+    priceType,
+    district,
   );
 
   /// Create a copy of CityActivityModel
@@ -629,6 +691,9 @@ abstract class _CityActivityModel implements CityActivityModel {
     final String address,
     final String status,
     final bool isFavorite,
+    final String category,
+    final String priceType,
+    final String district,
   }) = _$CityActivityModelImpl;
 
   factory _CityActivityModel.fromJson(Map<String, dynamic> json) =
@@ -649,7 +714,13 @@ abstract class _CityActivityModel implements CityActivityModel {
   @override
   String get status;
   @override
-  bool get isFavorite;
+  bool get isFavorite; // === Filter fields ===
+  @override
+  String get category;
+  @override
+  String get priceType;
+  @override
+  String get district;
 
   /// Create a copy of CityActivityModel
   /// with the given fields replaced by the non-null parameter values.
@@ -672,7 +743,11 @@ mixin _$CityRestaurantModel {
   int get reviewCount => throw _privateConstructorUsedError;
   String get address => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
-  bool get isFavorite => throw _privateConstructorUsedError;
+  bool get isFavorite =>
+      throw _privateConstructorUsedError; // === Filter fields ===
+  String get cuisine => throw _privateConstructorUsedError;
+  String get priceLevel => throw _privateConstructorUsedError;
+  List<String> get amenities => throw _privateConstructorUsedError;
 
   /// Serializes this CityRestaurantModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -700,6 +775,9 @@ abstract class $CityRestaurantModelCopyWith<$Res> {
     String address,
     String status,
     bool isFavorite,
+    String cuisine,
+    String priceLevel,
+    List<String> amenities,
   });
 }
 
@@ -726,6 +804,9 @@ class _$CityRestaurantModelCopyWithImpl<$Res, $Val extends CityRestaurantModel>
     Object? address = null,
     Object? status = null,
     Object? isFavorite = null,
+    Object? cuisine = null,
+    Object? priceLevel = null,
+    Object? amenities = null,
   }) {
     return _then(
       _value.copyWith(
@@ -761,6 +842,18 @@ class _$CityRestaurantModelCopyWithImpl<$Res, $Val extends CityRestaurantModel>
                 ? _value.isFavorite
                 : isFavorite // ignore: cast_nullable_to_non_nullable
                       as bool,
+            cuisine: null == cuisine
+                ? _value.cuisine
+                : cuisine // ignore: cast_nullable_to_non_nullable
+                      as String,
+            priceLevel: null == priceLevel
+                ? _value.priceLevel
+                : priceLevel // ignore: cast_nullable_to_non_nullable
+                      as String,
+            amenities: null == amenities
+                ? _value.amenities
+                : amenities // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
           )
           as $Val,
     );
@@ -785,6 +878,9 @@ abstract class _$$CityRestaurantModelImplCopyWith<$Res>
     String address,
     String status,
     bool isFavorite,
+    String cuisine,
+    String priceLevel,
+    List<String> amenities,
   });
 }
 
@@ -810,6 +906,9 @@ class __$$CityRestaurantModelImplCopyWithImpl<$Res>
     Object? address = null,
     Object? status = null,
     Object? isFavorite = null,
+    Object? cuisine = null,
+    Object? priceLevel = null,
+    Object? amenities = null,
   }) {
     return _then(
       _$CityRestaurantModelImpl(
@@ -845,6 +944,18 @@ class __$$CityRestaurantModelImplCopyWithImpl<$Res>
             ? _value.isFavorite
             : isFavorite // ignore: cast_nullable_to_non_nullable
                   as bool,
+        cuisine: null == cuisine
+            ? _value.cuisine
+            : cuisine // ignore: cast_nullable_to_non_nullable
+                  as String,
+        priceLevel: null == priceLevel
+            ? _value.priceLevel
+            : priceLevel // ignore: cast_nullable_to_non_nullable
+                  as String,
+        amenities: null == amenities
+            ? _value._amenities
+            : amenities // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
       ),
     );
   }
@@ -862,7 +973,10 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
     this.address = '',
     this.status = '',
     this.isFavorite = false,
-  });
+    this.cuisine = '',
+    this.priceLevel = '',
+    final List<String> amenities = const [],
+  }) : _amenities = amenities;
 
   factory _$CityRestaurantModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$CityRestaurantModelImplFromJson(json);
@@ -886,10 +1000,25 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
   @override
   @JsonKey()
   final bool isFavorite;
+  // === Filter fields ===
+  @override
+  @JsonKey()
+  final String cuisine;
+  @override
+  @JsonKey()
+  final String priceLevel;
+  final List<String> _amenities;
+  @override
+  @JsonKey()
+  List<String> get amenities {
+    if (_amenities is EqualUnmodifiableListView) return _amenities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_amenities);
+  }
 
   @override
   String toString() {
-    return 'CityRestaurantModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite)';
+    return 'CityRestaurantModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, cuisine: $cuisine, priceLevel: $priceLevel, amenities: $amenities)';
   }
 
   @override
@@ -907,7 +1036,14 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
             (identical(other.address, address) || other.address == address) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.isFavorite, isFavorite) ||
-                other.isFavorite == isFavorite));
+                other.isFavorite == isFavorite) &&
+            (identical(other.cuisine, cuisine) || other.cuisine == cuisine) &&
+            (identical(other.priceLevel, priceLevel) ||
+                other.priceLevel == priceLevel) &&
+            const DeepCollectionEquality().equals(
+              other._amenities,
+              _amenities,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -922,6 +1058,9 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
     address,
     status,
     isFavorite,
+    cuisine,
+    priceLevel,
+    const DeepCollectionEquality().hash(_amenities),
   );
 
   /// Create a copy of CityRestaurantModel
@@ -951,6 +1090,9 @@ abstract class _CityRestaurantModel implements CityRestaurantModel {
     final String address,
     final String status,
     final bool isFavorite,
+    final String cuisine,
+    final String priceLevel,
+    final List<String> amenities,
   }) = _$CityRestaurantModelImpl;
 
   factory _CityRestaurantModel.fromJson(Map<String, dynamic> json) =
@@ -971,7 +1113,13 @@ abstract class _CityRestaurantModel implements CityRestaurantModel {
   @override
   String get status;
   @override
-  bool get isFavorite;
+  bool get isFavorite; // === Filter fields ===
+  @override
+  String get cuisine;
+  @override
+  String get priceLevel;
+  @override
+  List<String> get amenities;
 
   /// Create a copy of CityRestaurantModel
   /// with the given fields replaced by the non-null parameter values.
@@ -993,7 +1141,12 @@ mixin _$CityHotelModel {
   double get rating => throw _privateConstructorUsedError;
   int get reviewCount => throw _privateConstructorUsedError;
   String get price => throw _privateConstructorUsedError;
-  bool get isFavorite => throw _privateConstructorUsedError;
+  bool get isFavorite =>
+      throw _privateConstructorUsedError; // === Filter fields ===
+  int get starRating => throw _privateConstructorUsedError;
+  double get priceValue => throw _privateConstructorUsedError;
+  String get accommodationType => throw _privateConstructorUsedError;
+  List<String> get amenities => throw _privateConstructorUsedError;
 
   /// Serializes this CityHotelModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1020,6 +1173,10 @@ abstract class $CityHotelModelCopyWith<$Res> {
     int reviewCount,
     String price,
     bool isFavorite,
+    int starRating,
+    double priceValue,
+    String accommodationType,
+    List<String> amenities,
   });
 }
 
@@ -1045,6 +1202,10 @@ class _$CityHotelModelCopyWithImpl<$Res, $Val extends CityHotelModel>
     Object? reviewCount = null,
     Object? price = null,
     Object? isFavorite = null,
+    Object? starRating = null,
+    Object? priceValue = null,
+    Object? accommodationType = null,
+    Object? amenities = null,
   }) {
     return _then(
       _value.copyWith(
@@ -1076,6 +1237,22 @@ class _$CityHotelModelCopyWithImpl<$Res, $Val extends CityHotelModel>
                 ? _value.isFavorite
                 : isFavorite // ignore: cast_nullable_to_non_nullable
                       as bool,
+            starRating: null == starRating
+                ? _value.starRating
+                : starRating // ignore: cast_nullable_to_non_nullable
+                      as int,
+            priceValue: null == priceValue
+                ? _value.priceValue
+                : priceValue // ignore: cast_nullable_to_non_nullable
+                      as double,
+            accommodationType: null == accommodationType
+                ? _value.accommodationType
+                : accommodationType // ignore: cast_nullable_to_non_nullable
+                      as String,
+            amenities: null == amenities
+                ? _value.amenities
+                : amenities // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
           )
           as $Val,
     );
@@ -1099,6 +1276,10 @@ abstract class _$$CityHotelModelImplCopyWith<$Res>
     int reviewCount,
     String price,
     bool isFavorite,
+    int starRating,
+    double priceValue,
+    String accommodationType,
+    List<String> amenities,
   });
 }
 
@@ -1123,6 +1304,10 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
     Object? reviewCount = null,
     Object? price = null,
     Object? isFavorite = null,
+    Object? starRating = null,
+    Object? priceValue = null,
+    Object? accommodationType = null,
+    Object? amenities = null,
   }) {
     return _then(
       _$CityHotelModelImpl(
@@ -1154,6 +1339,22 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
             ? _value.isFavorite
             : isFavorite // ignore: cast_nullable_to_non_nullable
                   as bool,
+        starRating: null == starRating
+            ? _value.starRating
+            : starRating // ignore: cast_nullable_to_non_nullable
+                  as int,
+        priceValue: null == priceValue
+            ? _value.priceValue
+            : priceValue // ignore: cast_nullable_to_non_nullable
+                  as double,
+        accommodationType: null == accommodationType
+            ? _value.accommodationType
+            : accommodationType // ignore: cast_nullable_to_non_nullable
+                  as String,
+        amenities: null == amenities
+            ? _value._amenities
+            : amenities // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
       ),
     );
   }
@@ -1170,7 +1371,11 @@ class _$CityHotelModelImpl implements _CityHotelModel {
     required this.reviewCount,
     required this.price,
     this.isFavorite = false,
-  });
+    this.starRating = 0,
+    this.priceValue = 0,
+    this.accommodationType = '',
+    final List<String> amenities = const [],
+  }) : _amenities = amenities;
 
   factory _$CityHotelModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$CityHotelModelImplFromJson(json);
@@ -1190,10 +1395,28 @@ class _$CityHotelModelImpl implements _CityHotelModel {
   @override
   @JsonKey()
   final bool isFavorite;
+  // === Filter fields ===
+  @override
+  @JsonKey()
+  final int starRating;
+  @override
+  @JsonKey()
+  final double priceValue;
+  @override
+  @JsonKey()
+  final String accommodationType;
+  final List<String> _amenities;
+  @override
+  @JsonKey()
+  List<String> get amenities {
+    if (_amenities is EqualUnmodifiableListView) return _amenities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_amenities);
+  }
 
   @override
   String toString() {
-    return 'CityHotelModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, price: $price, isFavorite: $isFavorite)';
+    return 'CityHotelModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, price: $price, isFavorite: $isFavorite, starRating: $starRating, priceValue: $priceValue, accommodationType: $accommodationType, amenities: $amenities)';
   }
 
   @override
@@ -1210,7 +1433,17 @@ class _$CityHotelModelImpl implements _CityHotelModel {
                 other.reviewCount == reviewCount) &&
             (identical(other.price, price) || other.price == price) &&
             (identical(other.isFavorite, isFavorite) ||
-                other.isFavorite == isFavorite));
+                other.isFavorite == isFavorite) &&
+            (identical(other.starRating, starRating) ||
+                other.starRating == starRating) &&
+            (identical(other.priceValue, priceValue) ||
+                other.priceValue == priceValue) &&
+            (identical(other.accommodationType, accommodationType) ||
+                other.accommodationType == accommodationType) &&
+            const DeepCollectionEquality().equals(
+              other._amenities,
+              _amenities,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1224,6 +1457,10 @@ class _$CityHotelModelImpl implements _CityHotelModel {
     reviewCount,
     price,
     isFavorite,
+    starRating,
+    priceValue,
+    accommodationType,
+    const DeepCollectionEquality().hash(_amenities),
   );
 
   /// Create a copy of CityHotelModel
@@ -1252,6 +1489,10 @@ abstract class _CityHotelModel implements CityHotelModel {
     required final int reviewCount,
     required final String price,
     final bool isFavorite,
+    final int starRating,
+    final double priceValue,
+    final String accommodationType,
+    final List<String> amenities,
   }) = _$CityHotelModelImpl;
 
   factory _CityHotelModel.fromJson(Map<String, dynamic> json) =
@@ -1270,7 +1511,15 @@ abstract class _CityHotelModel implements CityHotelModel {
   @override
   String get price;
   @override
-  bool get isFavorite;
+  bool get isFavorite; // === Filter fields ===
+  @override
+  int get starRating;
+  @override
+  double get priceValue;
+  @override
+  String get accommodationType;
+  @override
+  List<String> get amenities;
 
   /// Create a copy of CityHotelModel
   /// with the given fields replaced by the non-null parameter values.
