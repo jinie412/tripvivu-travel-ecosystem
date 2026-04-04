@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Input from '../../../../components/UI/Input';
 import Button from '../../../../components/UI/Button';
 import {
@@ -19,83 +19,149 @@ import {
   Waves,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { mockLocations } from '../../../../mocks/locations';
+import { businessLocationAPI } from '../../../../services/businessLocationAPI';
+import { businessReviewAPI } from '../../../../services/businessReviewAPI';
+import type { Location } from '../../../../types/location';
 
 const LocationEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const userInfo = localStorage.getItem('userInfo');
+  const parsedUser = userInfo ? JSON.parse(userInfo) : null;
+  const vendorId = parsedUser?.businessId || parsedUser?.id || '';
   const [activeTab, setActiveTab] = useState('Thông tin chung');
   const [isActive, setIsActive] = useState(true);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState<number | undefined>(undefined);
+  const [reviewSort, setReviewSort] = useState<'newest' | 'oldest' | 'highest_rating' | 'lowest_rating'>('newest');
+  const [reviewHasImages, setReviewHasImages] = useState(false);
+  const [reviewData, setReviewData] = useState<{
+    stats: {
+      averageRating: number;
+      totalReviews: number;
+      breakdown: Record<1 | 2 | 3 | 4 | 5, { count: number; percent: number }>;
+      aiInsight: string;
+    };
+    reviews: Array<{ id: string; userName: string; rating: number; content: string; topic: string | null; images: string[]; createdAt: string }>;
+    availableTopics: string[];
+  } | null>(null);
 
-  // Get location data from mock
-  const loc = mockLocations.find((l) => l.id === id) || mockLocations[0];
+  useEffect(() => {
+    const fetchLocation = async () => {
+      if (!id) {
+        return;
+      }
+      if (!vendorId) {
+        setError('Không tìm thấy thông tin business. Vui lòng đăng nhập lại.');
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const locationRes = await businessLocationAPI.getLocations(
+          {
+            vendorId,
+            search: id,
+          },
+          { page: 1, limit: 50 },
+        );
+        const matchedLocation = locationRes.locations.find((item) => item.id === id) || locationRes.locations[0] || null;
+        setLocation(matchedLocation);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể tải thông tin địa điểm');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const locationData = {
-    ...loc,
-    gallery:
-      loc.gallery.length > 0
-        ? loc.gallery
-        : [
-            'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&h=200&fit=crop',
-            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=200&fit=crop',
-            'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=200&h=200&fit=crop',
-          ],
-    services: loc.services.map((s) => {
-      const icons: Record<string, React.ReactNode> = {
-        Wifi: <Wifi size={16} />,
-        Car: <Car size={16} />,
-        Wind: <Wind size={16} />,
-        CreditCard: <CreditCard size={16} />,
-        Waves: <Waves size={16} />,
-      };
-      return { ...s, icon: icons[s.iconName] || <Plus size={16} /> };
-    }),
-    reviews: {
-      average: 4.8,
-      total: 1250,
-      distribution: [
-        { score: 5, percentage: 75 },
-        { score: 4, percentage: 15 },
-        { score: 3, percentage: 6 },
-        { score: 2, percentage: 3 },
-        { score: 1, percentage: 1 },
+    fetchLocation();
+  }, [id, vendorId]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id || activeTab !== 'Đánh giá') {
+        return;
+      }
+      try {
+        const response = await businessReviewAPI.getReviews(
+          {
+            vendorId,
+            placeId: id,
+            rating: reviewRating,
+            sort: reviewSort,
+            hasImages: reviewHasImages || undefined,
+          },
+          1,
+          20,
+        );
+        setReviewData({
+          stats: response.stats,
+          reviews: response.reviews,
+          availableTopics: response.availableTopics,
+        });
+      } catch {
+        setReviewData(null);
+      }
+    };
+
+    fetchReviews();
+  }, [activeTab, id, reviewRating, reviewSort, reviewHasImages, vendorId]);
+
+  const locationData = useMemo(() => {
+    const status = location?.status || 'Chờ duyệt';
+    const statusColor = status === 'Đã duyệt' ? '#22c55e' : status === 'Từ chối' ? '#ef4444' : '#f59e0b';
+    return {
+      id: location?.id || '',
+      name: location?.name || 'Đang tải...',
+      address: location?.address || 'Chưa có địa chỉ',
+      city: '',
+      district: '',
+      type: location?.category || 'Địa điểm',
+      typeColor: '#3b82f6',
+      rating: location?.rating || 0,
+      reviewsCount: location?.review_count || 0,
+      status,
+      statusColor,
+      image: location?.image || 'https://picsum.photos/seed/location/400/400',
+      openTime: '08:00 AM',
+      closeTime: '10:00 PM',
+      description: '',
+      lat: '',
+      lng: '',
+      gallery: [location?.image || 'https://picsum.photos/seed/location/200/200'],
+      services: [
+        { id: '1', name: 'Wifi miễn phí', icon: <Wifi size={16} /> },
+        { id: '2', name: 'Chỗ đậu xe', icon: <Car size={16} /> },
+        { id: '3', name: 'Máy lạnh', icon: <Wind size={16} /> },
+        { id: '4', name: 'Thanh toán thẻ', icon: <CreditCard size={16} /> },
+        { id: '5', name: 'Hồ bơi', icon: <Waves size={16} /> },
       ],
-      aiInsight: 'Hầu hết khách hàng đánh giá cao Hải sản tươi sống và Dịch vụ nhanh. Có vài nhận xét về độ ồn vào giờ cao điểm.',
-      list: [
-        {
-          id: '1',
-          user: 'Trần Thị B',
-          date: '12/10/2023',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
-          rating: 5,
-          content:
-            'Đồ ăn chất lượng nhưng thời gian chờ món hơi lâu một chút, chắc do mình đi vào tối cuối tuần nên quán khá đông khách. Nhân viên lễ phép.',
-          tags: [
-            { name: 'Phục vụ chậm', color: '#ea580c' },
-            { name: 'Chất lượng cao', color: '#16a34a' },
-          ],
-        },
-        {
-          id: '2',
-          user: 'Lê Minh',
-          date: '12/10/2023',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-          rating: 5,
-          content:
-            'Nhà hàng nằm ngay mặt biển nên cực kỳ thoáng. Ngồi ăn tối nghe tiếng sóng vỗ rất chill. Giá cả hợp lý so với chất lượng dịch vụ ở khu vực này.',
-          images: [
-            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&h=150&fit=crop',
-            'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=200&h=150&fit=crop',
-          ],
-          tags: [
-            { name: 'View biển đẹp', color: '#3b82f6' },
-            { name: 'Giá cả hợp lý', color: '#16a34a' },
-          ],
-        },
-      ],
-    },
-  };
+      menu: [] as Array<{ id: string; name: string; desc: string; category: string; price: string; image: string }>,
+      reviews: {
+        average: reviewData?.stats.averageRating || 0,
+        total: reviewData?.stats.totalReviews || 0,
+        distribution: [5, 4, 3, 2, 1].map((score) => ({
+          score,
+          percentage: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.percent || 0,
+        })),
+        aiInsight: reviewData?.stats.aiInsight || 'Chưa có dữ liệu phân tích AI.',
+        list: (reviewData?.reviews || []).map((review) => ({
+          id: review.id,
+          user: review.userName,
+          date: new Date(review.createdAt).toLocaleDateString('vi-VN'),
+          avatar: 'https://picsum.photos/seed/user/100/100',
+          rating: review.rating,
+          content: review.content,
+          images: review.images,
+          tags: review.topic ? [{ name: review.topic, color: '#3b82f6' }] : [],
+        })),
+      },
+    };
+  }, [location, reviewData]);
 
   const renderGeneralInfo = () => (
     <div
@@ -722,23 +788,42 @@ const LocationEditPage: React.FC = () => {
       <div>
         <h5 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '20px' }}>Bộ lọc đánh giá</h5>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', background: 'white' }}>
-            <option>Tất cả sao</option>
+          <select
+            value={reviewRating ?? ''}
+            onChange={(e) => setReviewRating(e.target.value ? Number(e.target.value) : undefined)}
+            style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', background: 'white' }}>
+            <option value="">Tất cả sao</option>
+            <option value="5">5 sao</option>
+            <option value="4">4 sao</option>
+            <option value="3">3 sao</option>
+            <option value="2">2 sao</option>
+            <option value="1">1 sao</option>
           </select>
           <Button
             variant="outline"
+            onClick={() => setReviewSort('newest')}
             style={{
               borderRadius: '10px',
               fontSize: '13px',
               padding: '8px 20px',
-              background: '#EFF6FF',
-              borderColor: '#3b82f6',
-              color: '#3b82f6',
+              background: reviewSort === 'newest' ? '#EFF6FF' : 'white',
+              borderColor: reviewSort === 'newest' ? '#3b82f6' : '#E2E8F0',
+              color: reviewSort === 'newest' ? '#3b82f6' : '#64748b',
               fontWeight: '700',
             }}>
             Mới nhất
           </Button>
-          <Button variant="outline" style={{ borderRadius: '10px', fontSize: '13px', padding: '8px 20px', color: '#64748b' }}>
+          <Button
+            variant="outline"
+            onClick={() => setReviewHasImages((prev) => !prev)}
+            style={{
+              borderRadius: '10px',
+              fontSize: '13px',
+              padding: '8px 20px',
+              color: reviewHasImages ? '#3b82f6' : '#64748b',
+              borderColor: reviewHasImages ? '#3b82f6' : '#E2E8F0',
+              background: reviewHasImages ? '#EFF6FF' : 'white',
+            }}>
             Có hình ảnh
           </Button>
         </div>
@@ -860,7 +945,12 @@ const LocationEditPage: React.FC = () => {
   );
 
   return (
-    <ProviderLayout>
+    <>
+      {loading ? (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Đang tải dữ liệu địa điểm...</div>
+      ) : error ? (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>
+      ) : (
       <div style={{ padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
           <div>
@@ -945,7 +1035,8 @@ const LocationEditPage: React.FC = () => {
 
         {activeTab === 'Dịch vụ' ? renderServicesMenu() : activeTab === 'Đánh giá' ? renderReviews() : renderGeneralInfo()}
       </div>
-    </ProviderLayout>
+      )}
+    </>
   );
 };
 

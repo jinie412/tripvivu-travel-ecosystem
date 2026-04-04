@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT || 15000);
 
 export const USE_MOCK_API = false;
@@ -14,7 +14,8 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const tokenKey = import.meta.env.VITE_TOKEN_KEY || "access_token";
+  const token = localStorage.getItem(tokenKey) || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

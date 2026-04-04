@@ -9,6 +9,8 @@ export interface Location {
   publishDate: string;
   status: 'Đã duyệt' | 'Chờ duyệt' | 'Từ chối';
   rejectionReason?: string;
+  rating?: number;
+  review_count?: number;
 }
 
 export interface LocationStatsInfo {
