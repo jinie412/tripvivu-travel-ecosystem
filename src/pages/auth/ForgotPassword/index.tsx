@@ -137,17 +137,6 @@ const ForgotPasswordPage: React.FC = () => {
           </Link>
         </div>
       </form>
-
-      {/* Nút mock để tiện test chuyển hướng tới reset-password */}
-      {success && (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <Link
-            to="/reset-password?token=mock_token_123"
-            style={{ fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'underline' }}>
-            [Test] Nhấn vào đây để giả lập click vào link trong email
-          </Link>
-        </div>
-      )}
     </AuthLayout>
   );
 };

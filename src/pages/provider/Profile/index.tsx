@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Input from '../../../components/UI/Input';
 import Button from '../../../components/UI/Button';
-import { Upload, Eye, EyeOff } from 'lucide-react';
+import { Upload, Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
+import Swal from 'sweetalert2';
 
 const ProfilePage: React.FC = () => {
   const [isPasswordChangeEnabled, setIsPasswordChangeEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [passwords, setPasswords] = useState({
     oldPassword: '',
     newPassword: '',
+    confirmNewPassword: '',
   });
 
   const [showOldPassword, setShowOldPassword] = useState(false);
@@ -27,7 +31,8 @@ const ProfilePage: React.FC = () => {
     address: '',
     avatarUrl: '',
   });
-  const defaultAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=240&h=240&fit=crop';
+  const defaultAvatar =
+    'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
 
   // 2. Gọi API khi trang vừa render
   useEffect(() => {
@@ -35,11 +40,25 @@ const ProfilePage: React.FC = () => {
       try {
         // apiClient sẽ tự động gắn Token vào header
         const response = await apiClient.get('/business/profile/me');
-        // Đổ dữ liệu từ BE vào State
-        setProfileData(response.data);
+        const data = response.data;
+
+        // Làm sạch dữ liệu: Nếu giá trị là null hoặc undefined, ép thành chuỗi rỗng ''
+        setProfileData({
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          identityCard: data.identityCard || '',
+          dob: data.dob || '',
+          address: data.address || '',
+          avatarUrl: data.avatarUrl || '',
+        });
       } catch (error) {
         console.error('Lỗi khi lấy thông tin hồ sơ:', error);
-        alert('Không thể tải thông tin. Phiên đăng nhập có thể đã hết hạn.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: 'Không thể tải thông tin. Phiên đăng nhập có thể đã hết hạn.',
+        });
       } finally {
         setIsLoading(false);
       }
@@ -47,6 +66,65 @@ const ProfilePage: React.FC = () => {
 
     fetchProfile();
   }, []);
+
+  // Xử lý khi người dùng chọn file ảnh mới
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Tính năng Preview: Hiển thị ngay ảnh vừa chọn
+    const previewUrl = URL.createObjectURL(file);
+    setProfileData((prev) => ({ ...prev, avatarUrl: previewUrl }));
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const storedUser = localStorage.getItem('userInfo');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.id) formData.append('userId', parsedUser.id);
+      }
+
+      // Gửi FormData lên NestJS, trình duyệt tự sinh boundary multipart/form-data
+      const response = await apiClient.post('/upload/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Nhận URL trả về và cập nhật lại Avatar (để đảm bảo lấy URL xịn từ Cloudflare)
+      const newAvatarUrl = response.data.url || response.data;
+      setProfileData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
+
+      // Update localStorage (tuỳ chọn) để Header cũng được cập nhật ngay ảnh mới
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        parsedUser.avatarUrl = newAvatarUrl;
+        localStorage.setItem('userInfo', JSON.stringify(parsedUser));
+        window.dispatchEvent(new Event('userUpdated'));
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công',
+        text: 'Tải ảnh đại diện lên thành công!',
+        timer: 1000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error('Lỗi khi tải ảnh:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: 'Có lỗi xảy ra khi tải ảnh lên. Khôi phục lại ảnh cũ.',
+      });
+      // Nếu muốn bạn có thể khôi phục lại previewUrl về avatar mặc định ở đây
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Hàm xử lý khi người dùng gõ vào ô Input
   const handleInputChange = (field: string, value: string) => {
@@ -65,8 +143,32 @@ const ProfilePage: React.FC = () => {
     setIsSaving(true);
     setFormErrors([]); // Xóa các lỗi cũ trên màn hình mỗi khi bắt đầu gửi request mới
 
+    const localErrors: string[] = [];
+
+    // Kiểm tra khớp mật khẩu
+    if (isPasswordChangeEnabled && (passwords.newPassword || passwords.confirmNewPassword)) {
+      if (passwords.newPassword !== passwords.confirmNewPassword) {
+        localErrors.push('Mật khẩu mới và Xác nhận mật khẩu không khớp!');
+      }
+      if (passwords.oldPassword && passwords.oldPassword === passwords.newPassword) {
+        localErrors.push('Mật khẩu mới không được trùng với mật khẩu hiện tại!');
+      }
+      // Bạn có thể thêm validation độ dài mật khẩu ở đây nếu muốn
+      if (passwords.newPassword.length < 6) {
+        localErrors.push('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      }
+    }
+
+    // Nếu có lỗi ở Frontend thì dừng lại và hiển thị
+    if (localErrors.length > 0) {
+      setFormErrors(localErrors);
+      setIsSaving(false);
+      // Scroll lên đầu trang để người dùng thấy lỗi
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     try {
-      // Khai báo kiểu any hoặc type tương ứng để tránh lỗi TypeScript khi thêm key mới
       const updatePayload: any = {
         fullName: profileData.fullName,
         phone: profileData.phone,
@@ -75,8 +177,7 @@ const ProfilePage: React.FC = () => {
         address: profileData.address,
       };
 
-      // NẾU BẬT TOGGLE VÀ CÓ NHẬP MẬT KHẨU THÌ MỚI GỬI XUỐNG BE
-      if ((isPasswordChangeEnabled && passwords.oldPassword) || passwords.newPassword) {
+      if (isPasswordChangeEnabled && passwords.oldPassword && passwords.newPassword) {
         updatePayload.oldPassword = passwords.oldPassword;
         updatePayload.newPassword = passwords.newPassword;
       }
@@ -94,29 +195,31 @@ const ProfilePage: React.FC = () => {
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
       }
 
-      // XỬ LÝ SAU KHI THÀNH CÔNG
       if (updatePayload.newPassword) {
-        alert('Cập nhật hồ sơ và đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
-        // Xóa token hiện tại để bắt đăng nhập lại
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('userInfo');
-        window.location.href = '/login'; // Chuyển về trang đăng nhập
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công',
+          text: 'Cập nhật hồ sơ và đổi mật khẩu thành công! Vui lòng đăng nhập lại.',
+          confirmButtonColor: '#3b82f6',
+        }).then(() => {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('userInfo');
+          window.location.href = '/login';
+        });
       } else {
-        alert('Cập nhật hồ sơ thành công!');
-        window.location.reload();
+        Swal.fire({
+          icon: 'success',
+          title: 'Thành công',
+          text: 'Cập nhật hồ sơ thành công!',
+          confirmButtonColor: '#3b82f6',
+        });
       }
     } catch (error: any) {
       console.error('Lỗi khi cập nhật hồ sơ:', error);
-
-      // BẮT CHI TIẾT LỖI TỪ DTO CỦA BACKEND
       if (error.response?.data?.message) {
         const backendMessages = error.response.data.message;
-        // Kiểm tra xem BE trả về mảng hay 1 chuỗi chữ đơn lẻ
-        if (Array.isArray(backendMessages)) {
-          setFormErrors(backendMessages); // Đổ mảng lỗi vào State
-        } else {
-          setFormErrors([backendMessages]); // Bọc thành mảng nếu chỉ có 1 lỗi
-        }
+        setFormErrors(Array.isArray(backendMessages) ? backendMessages : [backendMessages]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setFormErrors(['Có lỗi xảy ra khi kết nối. Vui lòng kiểm tra lại.']);
       }
@@ -154,8 +257,14 @@ const ProfilePage: React.FC = () => {
                 <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
                   Tải lên ảnh mới để thay đổi diện mạo hồ sơ của bạn.
                 </p>
-                <Button variant="outline" style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '10px', gap: '8px' }}>
-                  <Upload size={16} /> Thay đổi ảnh
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '10px', gap: '8px' }}>
+                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  {isUploading ? 'Đang tải lên...' : 'Thay đổi ảnh'}
                 </Button>
               </div>
             </div>
@@ -185,7 +294,7 @@ const ProfilePage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                 <Input label="Họ và tên" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} />
                 <div style={{ opacity: 0.7 }}>
-                  <Input label="Email (Không thể thay đổi)" value={profileData.email} disabled style={{ background: '#F8FAFC' }} />
+                  <Input label="Email" value={profileData.email} disabled style={{ background: '#F8FAFC' }} />
                 </div>
                 <Input label="Số điện thoại" value={profileData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
                 <Input
@@ -193,7 +302,7 @@ const ProfilePage: React.FC = () => {
                   value={profileData.identityCard}
                   onChange={(e) => handleInputChange('identityCard', e.target.value)}
                 />
-                <Input label="Ngày sinh" value={profileData.dob} onChange={(e) => handleInputChange('dob', e.target.value)} />
+                <Input type="date" label="Ngày sinh" value={profileData.dob} onChange={(e) => handleInputChange('dob', e.target.value)} />
                 <Input label="Địa chỉ" value={profileData.address} onChange={(e) => handleInputChange('address', e.target.value)} />
               </div>
             </div>
@@ -228,7 +337,7 @@ const ProfilePage: React.FC = () => {
               </div>
 
               {isPasswordChangeEnabled && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
                   <Input
                     label="Mật khẩu hiện tại"
                     placeholder="********"
@@ -247,6 +356,18 @@ const ProfilePage: React.FC = () => {
                     type={showNewPassword ? 'text' : 'password'}
                     value={passwords.newPassword}
                     onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                    rightIcon={
+                      <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => setShowNewPassword(!showNewPassword)}>
+                        {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </div>
+                    }
+                  />
+                  <Input
+                    label="Xác nhận mật khẩu mới"
+                    placeholder="Nhập mật khẩu mới"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={passwords.confirmNewPassword}
+                    onChange={(e) => setPasswords({ ...passwords, confirmNewPassword: e.target.value })}
                     rightIcon={
                       <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => setShowNewPassword(!showNewPassword)}>
                         {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}

@@ -6,6 +6,7 @@ import { ReviewFilter } from './components/ReviewFilter';
 import { ReviewTable } from './components/ReviewTable';
 import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './ReviewManagement.css';
 
 export const ReviewManagement: React.FC = () => {
@@ -51,9 +52,7 @@ export const ReviewManagement: React.FC = () => {
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          <div className="user-avatar-small">
-            <span className="avatar-text">AD</span>
-          </div>
+          <AdminHeaderProfile />
         </div>
       </header>
 

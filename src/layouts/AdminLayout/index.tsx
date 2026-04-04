@@ -1,12 +1,39 @@
 import React from 'react';
 import './AdminLayout.css';
 import { LayoutDashboard, Users, MapPin, Star, LogOut } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-
-
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import authAPI from '../../services/authService';
+import Swal from 'sweetalert2';
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    // Gọi màn hình xác nhận thay thế cho confirm gốc của trình duyệt
+    const result = await Swal.fire({
+      title: 'Đăng xuất?',
+      text: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Đăng xuất',
+      cancelButtonText: 'Hủy',
+    });
+
+    if (!result.isConfirmed) return;
+
+    // 1. Clear dữ liệu LocalStorage (Tokens, User Info)
+    authAPI.logout();
+
+    // (Tuỳ chọn) Gọi API Backend nếu Backend của bạn yêu cầu thu hồi token (Revoke Token)
+    // await apiClient.post('/auth/logout');
+
+    // 2. Điều hướng người dùng về trang Login
+    navigate('/login');
+  };
+
   const isUserActive = location.pathname.startsWith('/admin/users');
   const isLocationActive = location.pathname.startsWith('/admin/locations');
   const isReviewActive = location.pathname.startsWith('/admin/reviews');
@@ -24,7 +51,9 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         <div className="sidebar-menu">
           <div className="menu-group">
             <h4 className="menu-title">TỔNG QUAN</h4>
-            <Link to="/admin" className={`menu-item ${location.pathname === '/admin' || location.pathname === '/admin/users' ? 'active' : ''}`}>
+            <Link
+              to="/admin"
+              className={`menu-item ${location.pathname === '/admin' || location.pathname === '/admin/users' ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </Link>
@@ -51,16 +80,23 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
 
         <div className="sidebar-footer">
-          <Link to="/auth/login" className="menu-item logout">
+          <button
+            onClick={handleLogout}
+            className="menu-item logout"
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}>
             <LogOut size={20} />
             <span>Đăng xuất</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
-      <main className="main-content">
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
     </div>
   );
 };

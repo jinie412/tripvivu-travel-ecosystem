@@ -6,6 +6,7 @@ import { LocationFilter } from './components/LocationFilter';
 import { LocationTable } from './components/LocationTable';
 import { Bell, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './LocationManagement.css';
 
 export const LocationManagement: React.FC = () => {
@@ -69,9 +70,7 @@ export const LocationManagement: React.FC = () => {
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          <div className="user-avatar-small">
-            <span className="avatar-text">AD</span>
-          </div>
+          <AdminHeaderProfile />
           <Link to="/admin/locations/add" className="btn-primary">
             <Plus size={18} />
             <span>Thêm địa điểm</span>

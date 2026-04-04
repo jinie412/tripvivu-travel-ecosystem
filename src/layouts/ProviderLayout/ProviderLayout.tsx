@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'; // 1. Thêm useState, useEffect
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Building2, ShoppingBag, Settings, LogOut, Bell, HelpCircle, Search } from 'lucide-react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 
-// 2. Import apiClient (Lưu ý đường dẫn có thể cần chỉnh lại số lượng ../ cho đúng cấu trúc thư mục của bạn)
 import apiClient from '../../utils/apiClient';
 
 interface SidebarItemProps {
@@ -48,29 +47,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, to, badge }) => 
     )}
   </NavLink>
 );
+const defaultAvatar =
+  'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
 
 const ProviderLayout: React.FC = () => {
   const navigate = useNavigate();
 
-  // 3. Khởi tạo State lưu thông tin Header
   const [headerInfo, setHeaderInfo] = useState(() => {
-    // Ngay khi vừa render khung, lục túi xem có thông tin user cất lúc Login không
     const storedUser = localStorage.getItem('userInfo');
 
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       return {
-        // Lấy tên thật ra dùng luôn
-        fullName: parsedUser.fullName || parsedUser.full_name || 'Đối tác',
-        // Lấy ảnh thật (nếu có lưu lúc login), không thì dùng ảnh mặc định
-        avatar: parsedUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop',
+        fullName: parsedUser.fullName || 'Đối tác',
+        avatar: parsedUser.avatar_url || defaultAvatar,
       };
     }
 
-    // Nếu túi rỗng mới đành chịu hiện chữ "Đang tải"
     return {
       fullName: 'Đang tải...',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop',
+      avatar: defaultAvatar,
     };
   });
 
@@ -80,34 +76,48 @@ const ProviderLayout: React.FC = () => {
       try {
         const response = await apiClient.get('/business/profile/me');
         setHeaderInfo({
-          fullName: response.data.fullName || response.data.full_name,
-          avatar: response.data.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop',
+          fullName: response.data.fullName,
+          avatar: response.data.avatarUrl || defaultAvatar,
         });
       } catch (error) {
         console.error('Lỗi lấy dữ liệu Header:', error);
-        // Phương án dự phòng: Nếu API lỗi, lôi tạm tên từ localStorage ra hiển thị
+
         const storedUser = localStorage.getItem('userInfo');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setHeaderInfo((prev) => ({
             ...prev,
-            fullName: parsedUser.fullName || parsedUser.full_name || 'Đối tác',
+            fullName: parsedUser.fullName,
           }));
         }
       }
     };
 
     fetchHeaderInfo();
+
+    // 5. Lắng nghe sự kiện cập nhật profile để đổi Avatar/Tên ngay lập tức
+    const handleUserUpdate = () => {
+      const storedUser = localStorage.getItem('userInfo');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setHeaderInfo((prev) => ({
+          ...prev,
+          fullName: parsedUser.fullName || prev.fullName,
+          avatar: parsedUser.avatarUrl || parsedUser.avatar_url || defaultAvatar,
+        }));
+      }
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdate);
+    return () => window.removeEventListener('userUpdated', handleUserUpdate);
   }, []);
 
   // 5. Hàm xử lý Đăng xuất chuẩn xác
   const handleLogout = () => {
-    // Xóa Token và thông tin
     const tokenKey = import.meta.env.VITE_TOKEN_KEY || 'access_token';
     localStorage.removeItem(tokenKey);
     localStorage.removeItem('userInfo');
 
-    // Đá về trang login
     navigate('/login');
   };
 
@@ -281,7 +291,7 @@ const ProviderLayout: React.FC = () => {
                 borderLeft: '1px solid #F1F5F9',
               }}>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>Nguyễn Văn A</p>
+                <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{headerInfo.fullName}</p>
               </div>
               <div
                 onClick={() => navigate('/profile')}

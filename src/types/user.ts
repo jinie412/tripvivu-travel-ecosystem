@@ -1,15 +1,21 @@
-export type Role = 'Admin' | 'Nhà cung cấp' | 'Khách du lịch';
+export type Role = 'ADMIN' | 'BUSINESS' | 'TOURIST';
 
-export type Status = 'Hoạt động' | 'Đã khóa';
+export type activeStatus = 'ACTIVE' | 'LOCKED';
 
 export interface User {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   avatar: string;
   role: Role;
-  status: Status;
+  activeStatus: activeStatus;
+  deleteStatus: string;
   joinedDate: string;
+  avatarUrl: string;
+  address: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  gender: string;
 }
 
 export interface UserStatsInfo {

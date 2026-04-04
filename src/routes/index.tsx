@@ -4,6 +4,7 @@ import LoginPage from '../pages/auth/Login';
 import RegisterPage from '../pages/auth/Register';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword';
 import ResetPasswordPage from '../pages/auth/ResetPassword';
+import AuthCallback from '../pages/auth/Callback';
 import DashboardPage from '../pages/provider/Dashboard';
 import LocationsPage from '../pages/provider/Locations';
 import LocationEditPage from '../pages/provider/Locations/[id]';
@@ -32,6 +33,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Provider Routes */}
       <Route element={<ProviderLayout />}>

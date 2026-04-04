@@ -11,11 +11,13 @@ const authAPI = {
   
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('userInfo');
     localStorage.removeItem('user');
   },
   
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem('userInfo') || localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   }
 };
