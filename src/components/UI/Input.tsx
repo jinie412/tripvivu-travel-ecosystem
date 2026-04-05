@@ -5,6 +5,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   icon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  readOnly?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(

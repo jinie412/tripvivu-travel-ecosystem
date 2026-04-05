@@ -1,6 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProviderLayout from '../../../layouts/ProviderLayout/ProviderLayout';
 import { Building2, Utensils, BookOpen, Star, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { getDashboardStats } from '@/services/order.service';
+
+// Fix cứng vendor ID - sẽ chỉnh sửa sau
+const VENDOR_ID = 'b7ea8833-6fff-4302-8d1b-4424676cb299';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -59,6 +63,24 @@ const DashboardPage: React.FC = () => {
     key: 'orders',
     direction: 'desc',
   });
+
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const data = await getDashboardStats(VENDOR_ID);
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
 
   const allData = [
     {
@@ -268,10 +290,10 @@ const DashboardPage: React.FC = () => {
     <>
       {/* Stats Grid */}
       <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '40px' }}>
-        <StatCard icon={<Building2 size={24} />} label="Địa điểm đã đăng ký" value={allData.length} change="+2%" />
-        <StatCard icon={<Utensils size={24} />} label="Đơn đặt món mới" value="12" change="+12%" badge="CẦN XỬ LÝ" color="#f59e0b" />
-        <StatCard icon={<BookOpen size={24} />} label="Món ăn đang bán" value="45" change="+5" color="#6366f1" />
-        <StatCard icon={<Star size={24} />} label="Đánh giá trung bình" value="4.8" change="★★★★★" color="#eab308" />
+        <StatCard icon={<Building2 size={24} />} label="Địa điểm đã đăng ký" value={dashboardData?.total_places || 0} change="+2%" />
+        <StatCard icon={<Utensils size={24} />} label="Đơn đặt món mới" value={dashboardData?.total_orders || 0} change="+12%" badge="CẦN XỬ LÝ" color="#f59e0b" />
+        <StatCard icon={<BookOpen size={24} />} label="Món ăn đang bán" value={dashboardData?.total_food_items || 0} change="+5" color="#6366f1" />
+        <StatCard icon={<Star size={24} />} label="Đánh giá trung bình" value={(dashboardData?.average_rating * 5).toFixed(1) || 0} change="★★★★★" color="#eab308" />
       </div>
 
       {/* Main Section Header */}

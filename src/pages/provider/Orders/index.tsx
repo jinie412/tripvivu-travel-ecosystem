@@ -1,33 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../../../components/UI/Button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockOrders } from '../../../mocks/orders';
+import { getOrdersByPlace } from '@/services/order.service';
+import { Order } from '@/types/order.types';
+
+const PLACE_ID = 'eb4b7590-b55a-4162-9dd8-9a70229d4c9f';
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Tất cả');
   const [statusFilter, setStatusFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
-  
-  const pendingCount = mockOrders.filter(o => o.status === 'confirm').length;
+
+
+  // --- State mới cho API ---
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleViewDetail = (orderId: string) => {
+    navigate(`/orders/${orderId}`);
+  };
+  // --- Fetch data khi component mount ---
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getOrdersByPlace(PLACE_ID);
+        setOrders(data); // điều chỉnh nếu API trả về { orders: [...] }
+      } catch (err) {
+        setError('Không thể tải danh sách đơn hàng.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
+  const pendingCount = orders.filter(o => o.status === 'processing').length;
   const tabs = ['Tất cả', `Chờ xác nhận (${pendingCount})`, 'Đang chuẩn bị'];
 
-  const filteredOrders = mockOrders.filter(order => {
+  const filteredOrders = orders.filter(order => {
     // Tab filtering
-    if (activeTab.includes('Chờ xác nhận') && order.status !== 'confirm') return false;
+    if (activeTab.includes('Chờ xác nhận') && order.status !== 'processing') return false;
     if (activeTab === 'Đang chuẩn bị' && order.status !== 'cooking') return false;
-    
+
     // Status dropdown filtering
     if (statusFilter !== 'all' && order.status !== statusFilter) return false;
 
     // Restaurant dropdown filtering
-    if (restaurantFilter !== 'all' && order.restaurantName !== restaurantFilter) return false;
-    
+    if (restaurantFilter !== 'all' && String(order.place_name || '').trim() !== restaurantFilter) return false;
+    console.log('orders:', orders);
     return true;
   });
 
-  const restaurants = Array.from(new Set(mockOrders.map(o => o.restaurantName)));
+  const restaurants = Array.from(new Set(orders.map(o => o.place_name).filter(Boolean)));
 
   return (
     <>
@@ -62,13 +93,13 @@ const OrdersPage: React.FC = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '8px' }}>
             <div style={{ position: 'relative' }}>
-              <select 
+              <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ padding: '8px 32px 8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', outline: 'none', fontSize: '13px', color: '#475569', appearance: 'none', minWidth: '140px' }}
               >
                 <option value="all">Mọi trạng thái</option>
-                <option value="confirm">Chờ xác nhận</option>
+                <option value="processing">Chờ xác nhận</option>
                 <option value="cooking">Đang chuẩn bị</option>
                 <option value="completed">Hoàn thành</option>
               </select>
@@ -77,7 +108,7 @@ const OrdersPage: React.FC = () => {
               </div>
             </div>
             <div style={{ position: 'relative' }}>
-              <select 
+              <select
                 value={restaurantFilter}
                 onChange={(e) => setRestaurantFilter(e.target.value)}
                 style={{ padding: '8px 32px 8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', outline: 'none', fontSize: '13px', color: '#475569', appearance: 'none', minWidth: '160px' }}
@@ -107,11 +138,11 @@ const OrdersPage: React.FC = () => {
             </thead>
             <tbody>
               {filteredOrders.map((order, idx) => (
-                <tr 
-                  key={idx} 
-                  onClick={() => navigate(`/orders/${order.id}`)}
-                  style={{ 
-                    borderBottom: idx < filteredOrders.length - 1 ? '1px solid #F1F5F9' : 'none', 
+                <tr
+                  key={order.order_id || idx}
+                  onClick={() => handleViewDetail(order.order_id)}
+                  style={{
+                    borderBottom: idx < filteredOrders.length - 1 ? '1px solid #F1F5F9' : 'none',
                     fontSize: '14px',
                     cursor: 'pointer',
                     transition: 'background 0.2s'
@@ -119,21 +150,44 @@ const OrdersPage: React.FC = () => {
                   onMouseEnter={(e) => (e.currentTarget.style.background = '#F8FAFC')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <td style={{ padding: '24px', color: '#3b82f6', fontWeight: '700' }}>#{order.id}</td>
-                  <td style={{ padding: '24px', color: '#64748b' }}>{order.time}</td>
-                  <td style={{ padding: '24px' }}>
-                    <span style={{ fontWeight: '600', color: '#475569', fontSize: '13px' }}>{order.restaurantName}</span>
+                  <td style={{ padding: '24px', color: '#3b82f6', fontWeight: '700' }}>
+                    #{order.order_id?.slice(0, 8)}...
                   </td>
-                  <td style={{ padding: '24px' }}>
-                    <p style={{ fontWeight: '700', color: '#1e293b' }}>{order.customer.name}</p>
+
+                  <td style={{ padding: '24px', color: '#64748b' }}>
+                    {order.ordered_time ? new Date(order.ordered_time).toLocaleString('vi-VN') : '-'}
                   </td>
-                  <td style={{ padding: '24px', color: '#64748b', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {order.items.map(i => i.name).join(', ')}...
-                  </td>
-                  <td style={{ padding: '24px', fontWeight: '800', color: '#1e293b' }}>{order.total}</td>
+
                   <td style={{ padding: '24px' }}>
-                    {order.status === 'confirm' ? (
-                      <Button style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}>Xác nhận</Button>
+                    <span style={{ fontWeight: '600', color: '#475569', fontSize: '13px' }}>
+                      {order.place_name}
+                    </span>
+                  </td>
+
+                  <td style={{ padding: '24px' }}>
+                    <p style={{ fontWeight: '700', color: '#1e293b' }}>{order.customer_name}</p>
+                  </td>
+
+                  <td style={{
+                    padding: '24px',
+                    color: '#64748b',
+                    maxWidth: '200px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {order.foods || 'Không có thông tin món'}
+                  </td>
+
+                  <td style={{ padding: '24px', fontWeight: '800', color: '#1e293b' }}>
+                    {order.total_amount?.toLocaleString('vi-VN')} ₫
+                  </td>
+
+                  <td style={{ padding: '24px' }}>
+                    {order.status === 'confirm' || order.status === 'processing' ? (
+                      <Button style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}>
+                        Xác nhận
+                      </Button>
                     ) : order.status === 'completed' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '12px', fontWeight: '700' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
@@ -148,11 +202,6 @@ const OrdersPage: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {filteredOrders.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>Không có đơn hàng nào phù hợp với bộ lọc.</td>
-                </tr>
-              )}
             </tbody>
           </table>
           <div style={{ padding: '20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
