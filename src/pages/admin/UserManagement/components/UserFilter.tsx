@@ -1,47 +1,97 @@
-import { Search, Download, ChevronDown, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Trash2, Download } from 'lucide-react';
 
 interface UserFilterProps {
   selectedCount: number;
   onBulkDelete: () => void;
+  onSearch: (term: string) => void;
+  onRoleChange: (role: string) => void;
+
+  // Nhận các Props mới từ cha
+  onActiveStatusChange: (status: string) => void;
+  onDeleteStatusChange: (status: string) => void;
+  currentRole: string;
+  currentActiveStatus: string;
+  currentDeleteStatus: string;
 }
 
-export const UserFilter: React.FC<UserFilterProps> = ({ selectedCount, onBulkDelete }) => {
+export const UserFilter: React.FC<UserFilterProps> = ({
+  selectedCount,
+  onBulkDelete,
+  onSearch,
+  onRoleChange,
+  onActiveStatusChange,
+  onDeleteStatusChange,
+  currentRole,
+  currentActiveStatus,
+  currentDeleteStatus,
+}) => {
+  const [localSearch, setLocalSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearch(localSearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSearch, onSearch]);
+
   return (
-    <div className="table-filter-bar">
-      <div className="search-box">
-        <Search size={18} className="search-icon" />
+    <div className="filter-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+      <div className="search-box" style={{ flex: '1 1 200px', minWidth: '200px', position: 'relative' }}>
+        <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
         <input
           type="text"
           placeholder="Tìm kiếm theo tên, email..."
-          className="search-input"
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '8px', border: '0px solid #e2e8f0' }}
         />
       </div>
 
-      <div className="filter-actions">
-        <button 
-          className={`btn-bulk-delete ${selectedCount > 0 ? 'active' : ''}`}
-          onClick={onBulkDelete}
-          disabled={selectedCount === 0}
-        >
-          <Trash2 size={16} />
-          <span>Xóa tất cả ({selectedCount})</span>
-        </button>
-        
-        <div className="dropdown">
-          <span>Tất cả vai trò</span>
-          <ChevronDown size={16} />
-        </div>
+      <button
+        onClick={onBulkDelete}
+        disabled={selectedCount === 0}
+        style={{
+          padding: '8px 16px',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          opacity: selectedCount === 0 ? 0.5 : 1,
+        }}>
+        <Trash2 size={16} /> Xóa tất cả ({selectedCount})
+      </button>
 
-        <div className="dropdown">
-          <span>Trạng thái</span>
-          <ChevronDown size={16} />
-        </div>
+      <select
+        value={currentRole}
+        onChange={(e) => onRoleChange(e.target.value)}
+        style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <option value="">Tất cả vai trò</option>
+        <option value="ADMIN">Admin</option>
+        <option value="BUSINESS">Nhà cung cấp</option>
+        <option value="TOURIST">Khách du lịch</option>
+      </select>
 
-        <button className="btn-export">
-          <Download size={16} />
-          <span>Xuất</span>
-        </button>
-      </div>
+      {/* Lọc theo Active / Locked */}
+      <select
+        value={currentActiveStatus}
+        onChange={(e) => onActiveStatusChange(e.target.value)}
+        style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <option value="">Tất cả trạng thái HĐ</option>
+        <option value="ACTIVE">Hoạt động</option>
+        <option value="LOCKED">Đã khóa</option>
+      </select>
+
+      {/* Lọc theo Trạng thái Xóa
+      <select
+        value={currentDeleteStatus}
+        onChange={(e) => onDeleteStatusChange(e.target.value)}
+        style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <option value="">Tất cả trạng thái xóa</option>
+        <option value="UNDELETED">Chưa xóa</option>
+        <option value="DELETED">Đã xóa</option>
+      </select> */}
     </div>
   );
 };

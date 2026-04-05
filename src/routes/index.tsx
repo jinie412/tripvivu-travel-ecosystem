@@ -2,6 +2,9 @@ import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginPage from '../pages/auth/Login';
 import RegisterPage from '../pages/auth/Register';
+import ForgotPasswordPage from '../pages/auth/ForgotPassword';
+import ResetPasswordPage from '../pages/auth/ResetPassword';
+import AuthCallback from '../pages/auth/Callback';
 import DashboardPage from '../pages/provider/Dashboard';
 import LocationsPage from '../pages/provider/Locations';
 import LocationEditPage from '../pages/provider/Locations/[id]';
@@ -9,6 +12,7 @@ import AddLocationPage from '../pages/provider/AddLocation';
 import ProfilePage from '../pages/provider/Profile';
 import OrdersPage from '../pages/provider/Orders';
 import OrderDetailPage from '../pages/provider/Orders/[id]';
+import ProviderLayout from '../layouts/ProviderLayout/ProviderLayout';
 
 // Admin imports
 import { AdminLayout } from '../layouts/AdminLayout';
@@ -27,15 +31,20 @@ const AppRoutes: React.FC = () => {
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Provider Routes */}
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/locations" element={<LocationsPage />} />
-      <Route path="/locations/:id" element={<LocationEditPage />} />
-      <Route path="/add-location" element={<AddLocationPage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/orders" element={<OrdersPage />} />
-      <Route path="/orders/:id" element={<OrderDetailPage />} />
+      <Route element={<ProviderLayout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/locations" element={<LocationsPage />} />
+        <Route path="/locations/:id" element={<LocationEditPage />} />
+        <Route path="/add-location" element={<AddLocationPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/orders/:id" element={<OrderDetailPage />} />
+      </Route>
 
       {/* Admin Routes */}
       <Route element={<AdminLayout><Outlet /></AdminLayout>}>

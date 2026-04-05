@@ -10,11 +10,13 @@ interface ReviewTableProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  onStatusChange: (id: string, status: Review['status']) => Promise<void>;
 }
 
-const STATUS_OPTIONS: Review['status'][] = ['Đã duyệt', 'Vi phạm'];
+const STATUS_OPTIONS: Review['status'][] = ['Chờ duyệt', 'Đã duyệt', 'Vi phạm'];
 
 const statusConfig: Record<Review['status'], { bg: string; text: string; dot: string; icon: React.ReactNode }> = {
+  'Chờ duyệt': { bg: '#fef3c7', text: '#b45309', dot: '#b45309', icon: <AlertTriangle size={13} /> },
   'Đã duyệt': { bg: '#ccfbf1', text: '#0f766e', dot: '#0f766e', icon: <CheckCircle size={13} /> },
   'Vi phạm':  { bg: '#fef2f2', text: '#ef4444', dot: '#ef4444', icon: <AlertTriangle size={13} /> },
 };
@@ -103,16 +105,23 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
   currentPage,
   totalItems,
   itemsPerPage,
-  onPageChange
+  onPageChange,
+  onStatusChange,
 }) => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
 
   useEffect(() => { setReviews(initialReviews); }, [initialReviews]);
 
-  const handleStatusChange = (id: string, newStatus: Review['status']) => {
+  const handleStatusChange = async (id: string, newStatus: Review['status']) => {
     setReviews(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
-    console.log(`[Mock] Cập nhật trạng thái đánh giá ${id} → ${newStatus}`);
+    try {
+      await onStatusChange(id, newStatus);
+    } catch (error) {
+      setReviews(initialReviews);
+      console.error('Failed to update review status', error);
+      window.alert('Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.');
+    }
   };
 
   const renderStars = (rating: number) => (
@@ -190,11 +199,13 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                   <td data-label="Đánh giá">{renderStars(review.rating)}</td>
                   <td data-label="Ngày gửi"><span className="rv-date">{review.date}</span></td>
                   <td data-label="Phân loại">{renderClassification(review.classification)}</td>
-                  <td data-label="Trạng thái">
+                  <td data-label="Trạng thái" onClick={(event) => event.stopPropagation()}>
                     <StatusDropdown
                       reviewId={review.id}
                       current={review.status}
-                      onChange={handleStatusChange}
+                      onChange={(id, nextStatus) => {
+                        void handleStatusChange(id, nextStatus);
+                      }}
                     />
                   </td>
                 </tr>

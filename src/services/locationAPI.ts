@@ -1,94 +1,240 @@
-import { Location, LocationStatsInfo, LocationDetailInfo } from '../types/location';
+import { apiClient, extractResponseData } from './apiClient';
+import { Location, LocationDetailInfo, LocationStatsInfo } from '../types/location';
 
-const categories = ['Khách sạn', 'Nhà hàng', 'Cafe', 'Di tích', 'Giải trí', 'Ẩm thực', 'Mua sắm', 'Du lịch', 'Khác'];
-const statuses: ('Đã duyệt' | 'Chờ duyệt' | 'Từ chối')[] = ['Đã duyệt', 'Chờ duyệt', 'Từ chối'];
-const users = ['Metro Group', 'Sen Group', 'Le Van C', 'Admin System', 'Minh Hoang', 'Hoang Anh', 'Viet Tourist', 'Linh Dan', 'Travel Corp'];
+type BackendPlaceStatus = 'pending' | 'approved' | 'rejected';
 
-const mockLocations: Location[] = Array.from({ length: 2540 }).map((_, i) => ({
-  id: `${i + 1}`,
-  image: `L${i % 5 + 1}`, // Mocks an image or icon
-  name: `Địa điểm Mẫu số ${i + 1}`,
-  address: `${Math.floor(Math.random() * 100) + 1} Đường Mẫu, Quận C, HN`,
-  category: categories[i % categories.length],
-  userName: users[i % users.length],
-  userAvatar: users[i % users.length][0].toUpperCase(),
-  publishDate: i < 5 ? 'Hôm nay' : `1${Math.floor(i % 9) + 1}/03/2023`,
-  status: statuses[i % statuses.length],
-  rejectionReason: statuses[i % statuses.length] === 'Từ chối' ? 'Thông tin hình ảnh không rõ ràng và thiếu minh bạch về giá cả.' : undefined,
-}));
+interface BackendPlaceItem {
+  id: string;
+  image_url?: string | null;
+  name: string;
+  address: string;
+  category: string;
+  vendor_name: string;
+  status: BackendPlaceStatus;
+  registered_date: string;
+}
 
-// Set fixed entries for the first 10 for consistency with the design
-const initialData: Partial<Location>[] = [
-  { name: 'Khách sạn Metropole', address: '15 Ngô Quyền, Hoàn Kiếm, HN', category: 'Khách sạn', userName: 'Metro Group', publishDate: '12/01/2023', status: 'Đã duyệt' },
-  { name: 'Nhà hàng Sen Tây Hồ', address: '614 Lạc Long Quân, Tây Hồ, HN', category: 'Nhà hàng', userName: 'Sen Group', publishDate: 'Hôm nay', status: 'Chờ duyệt' },
-  { name: 'Quán Cà phê Cũ', address: 'Ngõ nhỏ, Phố nhỏ, HN', category: 'Cafe', userName: 'Le Van C', publishDate: '20/05/2023', status: 'Từ chối', rejectionReason: 'Địa điểm đã ngừng hoạt động hoặc thông tin cung cấp bị sai lệch so với thực tế.' },
-  { name: 'Bảo tàng Dân tộc học', address: 'Nguyễn Văn Huyên, Cầu Giấy', category: 'Di tích', userName: 'Admin System', publishDate: '22/06/2023', status: 'Đã duyệt' },
-  { name: 'Homestay Đà Lạt Phố', address: 'Phường 3, Đà Lạt, Lâm Đồng', category: 'Khách sạn', userName: 'Minh Hoang', publishDate: 'Hôm qua', status: 'Chờ duyệt' },
-  { name: 'Công viên Thống Nhất', address: 'Trần Nhân Tông, Hai Bà Trưng', category: 'Giải trí', userName: 'Admin System', publishDate: '10/02/2023', status: 'Đã duyệt' },
-  { name: 'Tiệm Bánh Mì Dân Tổ', address: 'Cao Thắng, Hoàn Kiếm, HN', category: 'Ẩm thực', userName: 'Hoang Anh', publishDate: '01/07/2023', status: 'Đã duyệt' },
-  { name: 'Test Location #99', address: 'N/A', category: 'Khác', userName: 'Viet Tourist', publishDate: '14/06/2023', status: 'Từ chối', rejectionReason: 'Thiếu thông tin liên hệ và hình ảnh minh họa thực tế.' },
-  { name: 'Lotte Center Hanoi', address: '54 Liễu Giai, Ba Đình', category: 'Mua sắm', userName: 'Linh Dan', publishDate: '18/06/2023', status: 'Đã duyệt' },
-  { name: 'Phố đi bộ Hồ Gươm', address: 'Hoàn Kiếm, Hà Nội', category: 'Du lịch', userName: 'Travel Corp', publishDate: 'Vừa xong', status: 'Chờ duyệt' },
-];
+interface BackendPlaceListResponse {
+  data: BackendPlaceItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
 
-initialData.forEach((data, i) => {
-  mockLocations[i] = { ...mockLocations[i], ...data };
-});
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface BackendPlaceCategoriesResponse {
+  categories: SelectOption[];
+}
+
+interface BackendPlaceDetailResponse {
+  id: string;
+  name: string;
+  description: string;
+  address: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+  registered_date: string;
+  status: BackendPlaceStatus;
+  contact_phone: string;
+  contact_email: string;
+  vendor: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    total_places: number;
+    created_at?: string | null;
+  } | null;
+  images: string[];
+}
+
+export interface LocationFilterParams {
+  search?: string;
+  status?: 'all' | 'pending' | 'approved' | 'rejected';
+  categoryName?: string;
+}
+
+export interface LocationCategoryOptions {
+  categories: SelectOption[];
+}
+
+const toUiStatus = (status: BackendPlaceStatus): Location['status'] => {
+  if (status === 'approved') {
+    return 'Đã duyệt';
+  }
+  if (status === 'rejected') {
+    return 'Từ chối';
+  }
+  return 'Chờ duyệt';
+};
+
+const toApiStatus = (
+  status?: 'all' | 'pending' | 'approved' | 'rejected',
+): 'all' | 'pending' | 'approved' | 'rejected' => {
+  if (!status) {
+    return 'all';
+  }
+  return status;
+};
+
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+};
+
+const formatDate = (value?: string): string => {
+  if (!value) {
+    return 'N/A';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString('vi-VN');
+};
+
+const mapLocation = (item: BackendPlaceItem): Location => {
+  return {
+    id: item.id,
+    image: item.image_url || '',
+    name: item.name,
+    address: item.address,
+    category: item.category,
+    userName: item.vendor_name,
+    userAvatar: getInitials(item.vendor_name || 'N A'),
+    publishDate: formatDate(item.registered_date),
+    status: toUiStatus(item.status),
+  };
+};
+
+const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo => {
+  const vendorName = item.vendor?.name || 'N/A';
+  return {
+    id: item.id,
+    image: '',
+    name: item.name,
+    address: item.address,
+    category: item.category,
+    userName: vendorName,
+    userAvatar: getInitials(vendorName),
+    publishDate: formatDate(item.registered_date),
+    status: toUiStatus(item.status),
+    rejectionReason: item.status === 'rejected' ? 'Địa điểm đã bị từ chối bởi quản trị viên.' : undefined,
+    description: item.description || 'Không có mô tả.',
+    phone: item.contact_phone,
+    email: item.contact_email,
+    lat: item.latitude,
+    lng: item.longitude,
+    photos: item.images || [],
+    senderStats: {
+      totalLocations: item.vendor?.total_places || 0,
+      joinedDate: formatDate(item.vendor?.created_at || undefined),
+      role: 'Nhà cung cấp',
+    },
+  };
+};
+
+const getLocationCountByStatus = async (
+  status: 'all' | 'pending' | 'approved' | 'rejected',
+): Promise<number> => {
+  const response = await apiClient.get<BackendPlaceListResponse>('/admin/places', {
+    params: {
+      status,
+      page: 1,
+      limit: 1,
+    },
+  });
+  return response.data.pagination.total;
+};
 
 export const locationAPI = {
-  getLocations: async (page = 1, limit = 10): Promise<{ data: Location[], total: number }> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        resolve({
-          data: mockLocations.slice(startIndex, endIndex),
-          total: mockLocations.length
-        });
-      }, 500);
+  getLocations: async (
+    page = 1,
+    limit = 10,
+    filters: LocationFilterParams = {},
+  ): Promise<{ data: Location[]; total: number }> => {
+    const response = await apiClient.get<BackendPlaceListResponse>('/admin/places', {
+      params: {
+        page,
+        limit,
+        status: toApiStatus(filters.status),
+        search: filters.search || undefined,
+        category_name: filters.categoryName || undefined,
+      },
     });
+
+    return {
+      data: response.data.data.map(mapLocation),
+      total: response.data.pagination.total,
+    };
   },
 
   getLocationStats: async (): Promise<LocationStatsInfo> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          totalLocations: mockLocations.length,
-          pendingApproval: mockLocations.filter(loc => loc.status === 'Chờ duyệt').length,
-          newThisMonth: 15
-        });
-      }, 500);
-    });
+    const [totalLocations, pendingApproval, newestPage] = await Promise.all([
+      getLocationCountByStatus('all'),
+      getLocationCountByStatus('pending'),
+      apiClient.get<BackendPlaceListResponse>('/admin/places', {
+        params: { status: 'all', page: 1, limit: 100, sort: 'newest' },
+      }),
+    ]);
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const newThisMonth = newestPage.data.data.filter((item) => {
+      if (!item.registered_date) {
+        return false;
+      }
+      const date = new Date(item.registered_date);
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.getMonth() === currentMonth &&
+        date.getFullYear() === currentYear
+      );
+    }).length;
+
+    return {
+      totalLocations,
+      pendingApproval,
+      newThisMonth,
+    };
   },
 
   getLocationById: async (id: string): Promise<LocationDetailInfo | null> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const baseLocation = mockLocations.find(loc => loc.id === id);
-        if (!baseLocation) return resolve(null);
-        
-        const detail: LocationDetailInfo = {
-          ...baseLocation,
-          description: 'Tọa lạc tại trung tâm Quận 1, Spa Hoa Sen mang đến một không gian thư giãn tuyệt vời, tách biệt khỏi sự ồn ào náo nhiệt của thành phố. Với thiết kế lấy cảm hứng từ thiên nhiên và hương thơm thảo mộc dịu nhẹ, chúng tôi cam kết mang lại trải nghiệm phục hồi sức khỏe và tinh thần tốt nhất cho quý khách. Các dịch vụ bao gồm massage toàn thân, trị liệu da mặt, và xông hơi thảo dược.',
-          phone: '0901234567',
-          email: 'contact@hoasenspa.vn',
-          lat: 10.7769,
-          lng: 106.7009,
-          photos: [
-            'https://picsum.photos/seed/loc_1/800/400',
-            'https://picsum.photos/seed/loc_2/200/200',
-            'https://picsum.photos/seed/loc_3/200/200',
-            'https://picsum.photos/seed/loc_4/200/200',
-            'https://picsum.photos/seed/loc_5/200/200'
-          ],
-          senderStats: {
-            totalLocations: 3,
-            joinedDate: '12/05/2023',
-            role: 'Nhà cung cấp'
-          }
-        };
-        resolve(detail);
-      }, 500);
+    try {
+      const response = await apiClient.get<BackendPlaceDetailResponse>(`/admin/places/${id}`);
+      return mapLocationDetail(extractResponseData(response));
+    } catch {
+      return null;
+    }
+  },
+
+  getLocationCategories: async (): Promise<LocationCategoryOptions> => {
+    const response = await apiClient.get<BackendPlaceCategoriesResponse>('/admin/places/categories');
+    return extractResponseData(response);
+  },
+
+  approveLocation: async (id: string): Promise<void> => {
+    await apiClient.patch(`/admin/places/${id}/approve`);
+  },
+
+  rejectLocation: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.patch(`/admin/places/${id}/reject`, {
+      note: reason || undefined,
     });
-  }
+  },
 };

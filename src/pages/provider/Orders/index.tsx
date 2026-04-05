@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ProviderLayout from '../../../layouts/ProviderLayout/ProviderLayout';
 import Button from '../../../components/UI/Button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -62,7 +61,7 @@ const OrdersPage: React.FC = () => {
   const restaurants = Array.from(new Set(orders.map(o => o.place_name).filter(Boolean)));
 
   return (
-    <ProviderLayout>
+    <>
       <div style={{ padding: '0 20px' }}>
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', fontFamily: "'Times New Roman', Times, serif" }}>Đơn đặt món</h2>
@@ -217,7 +216,7 @@ const OrdersPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </ProviderLayout>
+    </>
   );
 };
 

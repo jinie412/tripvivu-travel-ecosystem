@@ -43,10 +43,26 @@ export const ReviewDetail: React.FC = () => {
   };
 
   /** Xử lý cập nhật trạng thái (Đã duyệt / Vi phạm) */
-  const handleUpdateStatus = (newStatus: 'Đã duyệt' | 'Vi phạm') => {
+  const handleUpdateStatus = async (newStatus: 'Đã duyệt' | 'Vi phạm' | 'Chờ duyệt') => {
     if (!review) return;
-    setReview({ ...review, status: newStatus });
-    console.log(`Cập nhật trạng thái cho ${id}: ${newStatus}`);
+    if (!id) return;
+    if (newStatus === 'Chờ duyệt') {
+      window.alert('Không thể chuyển trạng thái về Chờ duyệt.');
+      return;
+    }
+
+    const reason =
+      newStatus === 'Vi phạm'
+        ? window.prompt('Nhập lý do đánh dấu vi phạm:') || undefined
+        : undefined;
+
+    try {
+      await reviewAPI.updateReviewStatus(id, newStatus, reason);
+      setReview({ ...review, status: newStatus });
+    } catch (error) {
+      console.error('Failed to update review status', error);
+      window.alert('Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -87,7 +103,9 @@ export const ReviewDetail: React.FC = () => {
                 status={review.status || 'Đã duyệt'}
                 classification={review.classification}
                 onUpdateClassification={handleUpdateClassification}
-                onUpdateStatus={handleUpdateStatus}
+                onUpdateStatus={(status) => {
+                  void handleUpdateStatus(status);
+                }}
               />
             </div>
           </div>

@@ -1,8 +1,25 @@
 import React, { useState } from 'react';
-import ProviderLayout from '../../../layouts/ProviderLayout/ProviderLayout';
 import Input from '../../../components/UI/Input';
 import Button from '../../../components/UI/Button';
-import { Clock, ArrowRight, ArrowLeft, MapPin, Plus, Trash2, Edit2, Upload, Wifi, Car, Utensils, FileSpreadsheet, Eye, CheckCircle, Info, ChevronDown, RefreshCw } from 'lucide-react';
+import {
+  Clock,
+  ArrowRight,
+  ArrowLeft,
+  MapPin,
+  Plus,
+  Trash2,
+  Edit2,
+  Upload,
+  Wifi,
+  Car,
+  Utensils,
+  FileSpreadsheet,
+  Eye,
+  CheckCircle,
+  Info,
+  ChevronDown,
+  RefreshCw,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { addNewPlace } from '@/services/order.service';
 import * as XLSX from 'xlsx';
@@ -30,7 +47,7 @@ const AddLocationPage: React.FC = () => {
     types: [] as string[],
     openingHours: '',
     amenities: [] as { id: string; name: string; description: string; icon: React.ReactNode }[],
-    menu: [] as { id: string; name: string; description: string; price: string; img: string }[]
+    menu: [] as { id: string; name: string; description: string; price: string; img: string }[],
   });
 
   const businessTypes = [
@@ -41,11 +58,9 @@ const AddLocationPage: React.FC = () => {
   ];
 
   const handleTypeToggle = (typeId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      types: prev.types.includes(typeId) 
-        ? prev.types.filter(t => t !== typeId) 
-        : [...prev.types, typeId]
+      types: prev.types.includes(typeId) ? prev.types.filter((t) => t !== typeId) : [...prev.types, typeId],
     }));
   };
 
@@ -269,7 +284,7 @@ const AddLocationPage: React.FC = () => {
 
   const handleNext = () => {
     if (step < 3) {
-      setStep(prev => prev + 1);
+      setStep((prev) => prev + 1);
     } else if (step === 3) {
       handleSubmitForm();
     }
@@ -277,35 +292,96 @@ const AddLocationPage: React.FC = () => {
 
   const handleBack = () => {
     if (fileUploaded) {
-        setFileUploaded(false);
+      setFileUploaded(false);
     } else if (step > 1) {
-      setStep(prev => prev - 1);
+      setStep((prev) => prev - 1);
     }
   };
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', gap: '48px' }}>
       <div style={{ flex: 1 }}>
-        <Input label="Tên địa điểm" placeholder="Ví dụ: Khách sạn Marriott Hà Nội" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
-        <Input label="Địa chỉ chi tiết" placeholder="Số nhà, tên đường..." value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
+        <Input
+          label="Tên địa điểm"
+          placeholder="Ví dụ: Khách sạn Marriott Hà Nội"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+        <Input
+          label="Địa chỉ chi tiết"
+          placeholder="Số nhà, tên đường..."
+          value={formData.address}
+          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+        />
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>Tỉnh/Thành</label>
-            <select style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: '#fcfcfc', outline: 'none', fontSize: '15px' }} value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+              Tỉnh/Thành
+            </label>
+            <select
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                background: '#fcfcfc',
+                outline: 'none',
+                fontSize: '15px',
+              }}
+              value={formData.city}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}>
               <option value="Hà Nội">Hà Nội</option>
               <option value="Hồ Chí Minh">TP. Hồ Chí Minh</option>
               <option value="Đà Nẵng">Đà Nẵng</option>
             </select>
           </div>
-          <div style={{ flex: 1 }}><Input label="SĐT Liên hệ" placeholder="09xx xxx xxx" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="SĐT Liên hệ"
+              placeholder="09xx xxx xxx"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              style={{ marginBottom: 0 }}
+            />
+          </div>
         </div>
         <div>
-          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>Loại hình kinh doanh</label>
+          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
+            Loại hình kinh doanh
+          </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            {businessTypes.map(type => (
-              <div key={type.id} onClick={() => handleTypeToggle(type.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
-                <div style={{ width: '20px', height: '20px', border: '2px solid #e2e8f0', borderRadius: '6px', background: formData.types.includes(type.id) ? '#3b82f6' : 'white', borderColor: formData.types.includes(type.id) ? '#3b82f6' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', transition: 'all 0.15s ease' }}>
-                  {formData.types.includes(type.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+            {businessTypes.map((type) => (
+              <div
+                key={type.id}
+                onClick={() => handleTypeToggle(type.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '6px',
+                    background: formData.types.includes(type.id) ? '#3b82f6' : 'white',
+                    borderColor: formData.types.includes(type.id) ? '#3b82f6' : '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    transition: 'all 0.15s ease',
+                  }}>
+                  {formData.types.includes(type.id) && (
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
                 </div>
                 <span style={{ fontSize: '14px', color: '#64748b' }}>{type.label}</span>
               </div>
@@ -314,11 +390,42 @@ const AddLocationPage: React.FC = () => {
         </div>
       </div>
       <div style={{ flex: 1 }}>
-        <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>Xác vị trí trên bản đồ</label>
-        <div style={{ width: '100%', height: '240px', background: '#f8fafc', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '1px solid #F1F5F9', marginBottom: '24px' }}>
-          <img src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&h=400&fit=crop" alt="Map" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', color: '#ef4444' }}><MapPin size={32} fill="#ef444433" /></div>
-          <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', color: '#64748b' }}>Kéo thả ghim để chọn vị trí chính xác nhất.</div>
+        <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
+          Xác vị trí trên bản đồ
+        </label>
+        <div
+          style={{
+            width: '100%',
+            height: '240px',
+            background: '#f8fafc',
+            borderRadius: '16px',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid #F1F5F9',
+            marginBottom: '24px',
+          }}>
+          <img
+            src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&h=400&fit=crop"
+            alt="Map"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
+          />
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', color: '#ef4444' }}>
+            <MapPin size={32} fill="#ef444433" />
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              background: 'white',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              color: '#64748b',
+            }}>
+            Kéo thả ghim để chọn vị trí chính xác nhất.
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
           <div style={{ flex: 1 }}><Input label="Kinh độ (Latitude)" type="number" value={formData.latitude} onChange={(e) => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ marginBottom: 0 }} /></div>
@@ -346,10 +453,33 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
         <div>
-          <label style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px', display: 'block', letterSpacing: '0.5px' }}>Dịch vụ đã thêm</label>
+          <label
+            style={{
+              fontSize: '12px',
+              fontWeight: '800',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginBottom: '12px',
+              display: 'block',
+              letterSpacing: '0.5px',
+            }}>
+            Dịch vụ đã thêm
+          </label>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {formData.amenities.map(item => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '12px', fontSize: '14px', color: '#475569' }}>
+            {formData.amenities.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  background: 'white',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  color: '#475569',
+                }}>
                 <span style={{ color: '#3b82f6' }}>{item.icon}</span>
                 <span>{item.name}</span>
                 <span style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '16px', marginLeft: '4px' }} onClick={() => handleRemoveService(item.id)}>×</span>
@@ -367,14 +497,46 @@ const AddLocationPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#3b82f6' }}>Đăng ký thực đơn</span>
-            <div style={{ width: '44px', height: '24px', background: '#3b82f6', borderRadius: '12px', position: 'relative', cursor: 'pointer' }}>
-               <div style={{ position: 'absolute', right: '4px', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%' }}></div>
+            <div
+              style={{
+                width: '44px',
+                height: '24px',
+                background: '#3b82f6',
+                borderRadius: '12px',
+                position: 'relative',
+                cursor: 'pointer',
+              }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  right: '4px',
+                  top: '4px',
+                  width: '16px',
+                  height: '16px',
+                  background: 'white',
+                  borderRadius: '50%',
+                }}></div>
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
-          <div style={{ width: '100px', height: '100px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #E2E8F0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', gap: '4px', cursor: 'pointer' }}>
+          <div
+            style={{
+              width: '100px',
+              height: '100px',
+              background: '#f8fafc',
+              borderRadius: '16px',
+              border: '2px dashed #E2E8F0',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#94a3b8',
+              fontSize: '10px',
+              gap: '4px',
+              cursor: 'pointer',
+            }}>
             <Upload size={24} /> Tải lên
           </div>
           <div style={{ flex: 1 }}><Input label="Tên món ăn" placeholder="VD: Cơm Gà Hải Nam" value={menuInput.name} onChange={(e) => setMenuInput({...menuInput, name: e.target.value})} /></div>
@@ -387,10 +549,32 @@ const AddLocationPage: React.FC = () => {
         </div>
 
         <div>
-          <label style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '16px', display: 'block', letterSpacing: '0.5px' }}>Danh sách món ăn</label>
+          <label
+            style={{
+              fontSize: '12px',
+              fontWeight: '800',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginBottom: '16px',
+              display: 'block',
+              letterSpacing: '0.5px',
+            }}>
+            Danh sách món ăn
+          </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            {formData.menu.map(item => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            {formData.menu.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '12px',
+                  background: 'white',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                }}>
                 <img src={item.img} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>{item.name}</span>
@@ -468,16 +652,26 @@ const AddLocationPage: React.FC = () => {
             justifyContent: 'center',
             gap: '16px',
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
-        }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
-                <Upload size={24} />
-            </div>
-            <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
-                <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
-            </div>
-            <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
+            transition: 'all 0.2s ease',
+          }}>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              background: '#F0F9FF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#3b82f6',
+            }}>
+            <Upload size={24} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
+            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
         </div>
       </div>
 
@@ -499,25 +693,66 @@ const AddLocationPage: React.FC = () => {
   const renderStep3Mapping = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b' }}>
-        <button onClick={handleBack} style={{ background: 'transparent', color: '#64748b', cursor: 'pointer', border: 'none' }}><ArrowLeft size={20} /></button>
+        <button onClick={handleBack} style={{ background: 'transparent', color: '#64748b', cursor: 'pointer', border: 'none' }}>
+          <ArrowLeft size={20} />
+        </button>
         <h4 style={{ fontSize: '18px', fontWeight: '800' }}>Mapping Dữ liệu Thủ công</h4>
       </div>
 
       {/* Guide Section */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ padding: '20px', background: '#F0F9FF', borderRadius: '16px', border: '1px solid #DBEAFE', display: 'flex', gap: '16px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+        <div
+          style={{
+            padding: '20px',
+            background: '#F0F9FF',
+            borderRadius: '16px',
+            border: '1px solid #DBEAFE',
+            display: 'flex',
+            gap: '16px',
+          }}>
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#3b82f6',
+            }}>
             <Info size={18} />
           </div>
           <div>
             <h5 style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Hướng dẫn nhập liệu</h5>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>Dữ liệu đã được tải lên thành công. Vui lòng kiểm tra lại ánh xạ các trường dữ liệu bên dưới.</p>
+            <p style={{ fontSize: '13px', color: '#64748b' }}>
+              Dữ liệu đã được tải lên thành công. Vui lòng kiểm tra lại ánh xạ các trường dữ liệu bên dưới.
+            </p>
           </div>
         </div>
 
-        <div style={{ padding: '20px', background: '#F0FDF4', borderRadius: '16px', border: '1px solid #DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div
+          style={{
+            padding: '20px',
+            background: '#F0FDF4',
+            borderRadius: '16px',
+            border: '1px solid #DCFCE7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#22c55e',
+              }}>
               <FileSpreadsheet size={20} />
             </div>
             <div>
@@ -538,7 +773,15 @@ const AddLocationPage: React.FC = () => {
 
       {/* Mapping Section */}
       <div style={{ border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', background: 'white' }}>
-        <div style={{ padding: '20px 24px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            padding: '20px 24px',
+            background: '#F8FAFC',
+            borderBottom: '1px solid #F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
           <RefreshCw size={18} color="#3b82f6" />
           <h5 style={{ fontSize: '15px', fontWeight: '800' }}>Thiết lập ánh xạ trường dữ liệu</h5>
         </div>
@@ -561,7 +804,15 @@ const AddLocationPage: React.FC = () => {
 
       {/* Preview Section */}
       <div style={{ border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', background: 'white' }}>
-        <div style={{ padding: '20px 24px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            padding: '20px 24px',
+            background: '#F8FAFC',
+            borderBottom: '1px solid #F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
           <Eye size={18} color="#3b82f6" />
           <h5 style={{ fontSize: '15px', fontWeight: '800' }}>Xem trước dữ liệu (3 dòng đầu)</h5>
         </div>
@@ -584,46 +835,104 @@ const AddLocationPage: React.FC = () => {
           </div>
         )}
         <div style={{ padding: '12px 24px', color: '#94a3b8', fontSize: '11px', borderTop: '1px solid #F1F5F9' }}>
-           ⓘ Dữ liệu xem trước giúp bạn xác nhận ánh xạ trường đã chính xác.
+          ⓘ Dữ liệu xem trước giúp bạn xác nhận ánh xạ trường đã chính xác.
         </div>
       </div>
     </div>
   );
 
   return (
-    <ProviderLayout>
+    <>
       <div style={{ maxWidth: step === 3 ? '1200px' : '1000px', margin: '0 auto', paddingBottom: step === 3 ? '120px' : '40px' }}>
         {step !== 3 && (
-            <div style={{ marginBottom: '32px' }}>
-                <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Thêm địa điểm mới</h2>
-                <p style={{ fontSize: '15px', color: '#64748b' }}>Vui lòng điền thông tin chi tiết về địa điểm kinh doanh của bạn để bắt đầu.</p>
-            </div>
+          <div style={{ marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Thêm địa điểm mới</h2>
+            <p style={{ fontSize: '15px', color: '#64748b' }}>
+              Vui lòng điền thông tin chi tiết về địa điểm kinh doanh của bạn để bắt đầu.
+            </p>
+          </div>
         )}
 
-        <div style={{ background: step === 3 ? 'transparent' : 'white', borderRadius: '24px', padding: step === 3 ? '0' : '32px', boxShadow: step === 3 ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)', border: step === 3 ? 'none' : '1px solid #F1F5F9' }}>
+        <div
+          style={{
+            background: step === 3 ? 'transparent' : 'white',
+            borderRadius: '24px',
+            padding: step === 3 ? '0' : '32px',
+            boxShadow: step === 3 ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            border: step === 3 ? 'none' : '1px solid #F1F5F9',
+          }}>
           {step !== 3 && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '48px', marginBottom: '40px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 1 ? '#3b82f6' : '#94a3b8' }}>
-                    <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: step >= 1 ? '#3b82f6' : '#f1f5f9', color: step >= 1 ? 'white' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700' }}>1</span>
-                    <span style={{ fontWeight: '700', fontSize: '14px' }}>Thông tin</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 2 ? '#3b82f6' : '#94a3b8' }}>
-                    <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: step >= 2 ? '#3b82f6' : '#f1f5f9', color: step >= 2 ? 'white' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700' }}>2</span>
-                    <span style={{ fontWeight: '700', fontSize: '14px' }}>Dịch vụ</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 3 ? '#3b82f6' : '#94a3b8' }}>
-                    <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: step >= 3 ? '#3b82f6' : '#f1f5f9', color: step >= 3 ? 'white' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700' }}>3</span>
-                    <span style={{ fontWeight: '700', fontSize: '14px' }}>Xác nhận</span>
-                    </div>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '48px', marginBottom: '40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 1 ? '#3b82f6' : '#94a3b8' }}>
+                  <span
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: step >= 1 ? '#3b82f6' : '#f1f5f9',
+                      color: step >= 1 ? 'white' : '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                    }}>
+                    1
+                  </span>
+                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Thông tin</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 2 ? '#3b82f6' : '#94a3b8' }}>
+                  <span
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: step >= 2 ? '#3b82f6' : '#f1f5f9',
+                      color: step >= 2 ? 'white' : '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                    }}>
+                    2
+                  </span>
+                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Dịch vụ</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 3 ? '#3b82f6' : '#94a3b8' }}>
+                  <span
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: step >= 3 ? '#3b82f6' : '#f1f5f9',
+                      color: step >= 3 ? 'white' : '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                    }}>
+                    3
+                  </span>
+                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Xác nhận</span>
+                </div>
+              </div>
 
-                <div style={{ marginBottom: '40px' }}>
-                    <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ width: step === 1 ? '33%' : step === 2 ? '66%' : '100%', height: '100%', background: '#3b82f6', borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
-                    </div>
+              <div style={{ marginBottom: '40px' }}>
+                <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: step === 1 ? '33%' : step === 2 ? '66%' : '100%',
+                      height: '100%',
+                      background: '#3b82f6',
+                      borderRadius: '3px',
+                      transition: 'width 0.3s ease',
+                    }}></div>
                 </div>
-              </>
+              </div>
+            </>
           )}
 
           {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3Initial()}
@@ -663,35 +972,65 @@ const AddLocationPage: React.FC = () => {
                     </Button>
                 </div>
             ) : (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px', width: '100%' }}>
-                    {step === 1 ? (
-                        <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', color: '#64748b', fontSize: '14px', fontWeight: '700', padding: '12px 24px', cursor: 'pointer' }}>Hủy bỏ</button>
-                    ) : (
-                        <button onClick={handleBack} style={{ background: '#F1F5F9', color: '#475569', fontSize: '14px', fontWeight: '700', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                            <ArrowLeft size={18} /> Quay lại
-                        </button>
-                    )}
-                    
-                    {step === 2 && (
-                        <button style={{ background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Lưu tạm</button>
-                    )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px', width: '100%' }}>
+                {step === 1 ? (
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    style={{
+                      background: 'transparent',
+                      color: '#64748b',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      padding: '12px 24px',
+                      cursor: 'pointer',
+                    }}>
+                    Hủy bỏ
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleBack}
+                    style={{
+                      background: '#F1F5F9',
+                      color: '#475569',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                    }}>
+                    <ArrowLeft size={18} /> Quay lại
+                  </button>
+                )}
 
-                    <Button onClick={handleNext} style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
-                        {step === 1 ? 'Tiếp theo' : 'Tiếp tục'}
-                        <ArrowRight size={18} />
-                    </Button>
-                </div>
+                {step === 2 && (
+                  <button style={{ background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+                    Lưu tạm
+                  </button>
+                )}
+
+                <Button onClick={handleNext} style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
+                  {step === 1 ? 'Tiếp theo' : 'Tiếp tục'}
+                  <ArrowRight size={18} />
+                </Button>
+              </div>
             )}
           </div>
         </div>
-        
+
         {step !== 3 && (
-            <p style={{ textAlign: 'center', marginTop: '32px', fontSize: '13px', color: '#94a3b8' }}>
-                Bằng cách nhấn tiếp tục, bạn đồng ý với <a href="#" style={{ textDecoration: 'underline' }}>Điều khoản & Chính sách</a> của Travel Portal.
-            </p>
+          <p style={{ textAlign: 'center', marginTop: '32px', fontSize: '13px', color: '#94a3b8' }}>
+            Bằng cách nhấn tiếp tục, bạn đồng ý với{' '}
+            <a href="#" style={{ textDecoration: 'underline' }}>
+              Điều khoản & Chính sách
+            </a>{' '}
+            của Travel Portal.
+          </p>
         )}
       </div>
-    </ProviderLayout>
+    </>
   );
 };
 

@@ -6,6 +6,9 @@ import { UserFilter } from './components/UserFilter';
 import { UserTable } from './components/UserTable';
 import { Bell, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import apiClient from '../../../utils/apiClient';
+import Swal from 'sweetalert2';
+import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './UserManagement.css';
 
 export const UserManagement: React.FC = () => {
@@ -14,14 +17,24 @@ export const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
-  // Pagination state
+  // --- PAGINATION STATE ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
   const itemsPerPage = 10;
 
+  // --- FILTER STATE ---
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string>('');
+  const [deleteStatusFilter, setDeleteStatusFilter] = useState<string>('');
+
+  // Thêm State này để kích hoạt load lại bảng
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // --- HANDLERS ---
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedRows(users.map(u => u.id));
+      setSelectedRows(users.map((u) => u.id));
     } else {
       setSelectedRows([]);
     }
@@ -29,57 +42,165 @@ export const UserManagement: React.FC = () => {
 
   const handleSelectRow = (id: string, checked: boolean) => {
     if (checked) {
-      setSelectedRows(prev => [...prev, id]);
+      setSelectedRows((prev) => [...prev, id]);
     } else {
-      setSelectedRows(prev => prev.filter(r => r !== id));
+      setSelectedRows((prev) => prev.filter((r) => r !== id));
     }
   };
 
-  const handleBulkDelete = () => {
-    if (window.confirm(`Bạn có chắc muốn xóa ${selectedRows.length} người dùng đã chọn?`)) {
-      alert(`Đã xóa thành công ${selectedRows.length} tài khoản.`);
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  };
+
+  const handleRoleChange = (role: string) => {
+    setRoleFilter(role);
+    setCurrentPage(1);
+  };
+
+  const handleActiveStatusChange = (status: string) => {
+    setActiveStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  const handleDeleteStatusChange = (status: string) => {
+    setDeleteStatusFilter(status);
+    setCurrentPage(1);
+  };
+
+  // 2. Hàm xử lý Xóa 1 User (Truyền hàm này xuống UserTable)
+  const handleSingleDelete = async (id: string, name: string) => {
+    const result = await Swal.fire({
+      title: 'Xóa tài khoản?',
+      text: `Bạn có chắc chắn muốn xóa tài khoản "${name}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await apiClient.delete(`/admin/users/${id}`);
+
+      await Swal.fire({
+        title: 'Thành công!',
+        text: 'Đã xóa tài khoản thành công.',
+        icon: 'success',
+        confirmButtonColor: '#3b82f6',
+      });
+      // Nếu ID vừa xóa đang nằm trong danh sách đang chọn, gỡ nó ra
+      setSelectedRows((prev) => prev.filter((rowId) => rowId !== id));
+      setRefreshKey((old) => old + 1); // Kích hoạt load lại bảng
+    } catch (error) {
+      console.error('Lỗi khi xóa tài khoản:', error);
+      await Swal.fire({
+        title: 'Lỗi!',
+        text: 'Có lỗi xảy ra khi xóa tài khoản.',
+        icon: 'error',
+        confirmButtonColor: '#3b82f6',
+      });
+    }
+  };
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return;
+
+    const result = await Swal.fire({
+      title: 'Xóa hàng loạt?',
+      text: `Bạn có chắc chắn muốn xóa ${selectedRows.length} tài khoản đã chọn?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Đồng ý',
+      cancelButtonText: 'Hủy',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      // Lưu ý: Với Axios, truyền body cho method DELETE phải bọc trong config "data"
+      await apiClient.delete('/admin/users/bulk', {
+        data: { userIds: selectedRows },
+      });
+
+      await Swal.fire({
+        title: 'Thành công!',
+        text: `Đã xóa thành công ${selectedRows.length} tài khoản.`,
+        icon: 'success',
+        confirmButtonColor: '#3b82f6',
+      });
+
       setSelectedRows([]);
+      setRefreshKey((old) => old + 1);
+    } catch (error) {
+      console.error('Lỗi khi xóa hàng loạt:', error);
+      await Swal.fire({
+        title: 'Lỗi!',
+        text: 'Có lỗi xảy ra khi xóa dữ liệu.',
+        icon: 'error',
+        confirmButtonColor: '#3b82f6',
+      });
     }
   };
 
-  // Using useEffect to mimic React Query/RTK query per conventions for fetching mock data
+  // --- API CALL ---
   useEffect(() => {
     const fetchUserPageData = async () => {
       setLoading(true);
       try {
-        const [statsData, usersData] = await Promise.all([
-          userAPI.getUserStats(),
-          userAPI.getUsers(currentPage, itemsPerPage)
+        const [statsResponse, usersResponse] = await Promise.all([
+          // Sửa chỗ này: Thay userAPI.getUserStats() bằng apiClient
+          apiClient.get('/admin/users/stats'),
+          apiClient.get('/admin/users', {
+            params: {
+              page: currentPage,
+              limit: itemsPerPage,
+              ...(searchTerm && { search: searchTerm }),
+              ...(roleFilter && { role: roleFilter }),
+              ...(activeStatusFilter && { activeStatus: activeStatusFilter }),
+              ...(deleteStatusFilter && { deleteStatus: deleteStatusFilter }),
+            },
+          }),
         ]);
-        setStats(statsData);
-        setUsers(usersData.data);
-        setTotalItems(usersData.total);
+
+        // Xử lý việc Backend có thể bọc response trong .data hay không
+        const statsData = statsResponse.data?.data || statsResponse.data;
+        setStats(statsData); // Gán data vào state stats
+        setUsers(usersResponse.data.data);
+        setTotalItems(usersResponse.data.meta.totalItems);
       } catch (error) {
-        console.error('Failed to load user data', error);
+        console.error('Lỗi khi tải dữ liệu:', error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchUserPageData();
-  }, [currentPage]);
+  }, [currentPage, searchTerm, roleFilter, activeStatusFilter, deleteStatusFilter, refreshKey]);
 
   return (
     <div className="page-container">
-      {/* Top Header */}
       <header className="page-header">
         <div className="header-titles">
           <h1 className="page-title">Quản lý người dùng</h1>
           <div className="breadcrumb">
-            <span className="text-muted">Quản lý</span> / <Link to="/admin/users" className="active-bread">Người dùng</Link>
+            <span className="text-muted">Quản lý</span> /{' '}
+            <Link to="/admin/users" className="active-bread">
+              Người dùng
+            </Link>
           </div>
         </div>
         <div className="header-actions">
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          <div className="user-avatar-small">
-            <span className="avatar-text">AD</span>
-          </div>
+
+          <AdminHeaderProfile />
+
           <Link to="/admin/users/add" className="btn-primary">
             <Plus size={18} />
             <span>Thêm người dùng</span>
@@ -91,14 +212,24 @@ export const UserManagement: React.FC = () => {
         <UserStats stats={stats} loading={loading} />
 
         <div className="card tab-container">
+          {/* TRUYỀN CÁC HÀM VÀ STATE XUỐNG USERFILTER */}
           <UserFilter
             selectedCount={selectedRows.length}
             onBulkDelete={handleBulkDelete}
+            onSearch={handleSearch}
+            onRoleChange={handleRoleChange}
+            onActiveStatusChange={handleActiveStatusChange}
+            onDeleteStatusChange={handleDeleteStatusChange}
+            currentRole={roleFilter}
+            currentActiveStatus={activeStatusFilter}
+            currentDeleteStatus={deleteStatusFilter}
           />
+
           <UserTable
             users={users}
             loading={loading}
             selectedRows={selectedRows}
+            onSingleDelete={handleSingleDelete}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
             currentPage={currentPage}

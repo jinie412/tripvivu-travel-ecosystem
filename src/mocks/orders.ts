@@ -38,7 +38,7 @@ export const mockOrders: Order[] = [
       email: 'nguyvana@email.com',
       location: 'Khu vực TP. Hồ Chí Minh',
       avatar: 'https://images.unsplash.com/photo-1543132220-3ce99c5ae497?w=120&h=120&fit=crop',
-      detail: 'Bàn số 5'
+      detail: 'Bàn số 5',
     },
     items: [
       { name: 'Phở bò Đặc Biệt', quantity: 1, price: '65.000đ' },
@@ -49,11 +49,11 @@ export const mockOrders: Order[] = [
     note: '"Không hành"',
     timeInfo: {
       ordered: '11:30, 24/05/2024',
-      expected: '12:00, 24/05/2024'
+      expected: '12:00, 24/05/2024',
     },
     status: 'confirm',
     statusText: 'Chờ xác nhận',
-    restaurantName: 'Nhà hàng Biển Đông'
+    restaurantName: 'Nhà hàng Biển Đông',
   },
   {
     id: 'ORD-002',
@@ -64,7 +64,7 @@ export const mockOrders: Order[] = [
       email: 'tranthib@email.com',
       location: 'Khu vực Hà Nội',
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop',
-      detail: 'Mang về'
+      detail: 'Mang về',
     },
     items: [
       { name: 'Lẩu thái đặc biệt (L)', quantity: 1, price: '350.000đ' },
@@ -74,11 +74,11 @@ export const mockOrders: Order[] = [
     note: '"Cho nhiều ớt"',
     timeInfo: {
       ordered: '12:00, 24/05/2024',
-      expected: '12:30, 24/05/2024'
+      expected: '12:30, 24/05/2024',
     },
     status: 'cooking',
     statusText: 'Đang chuẩn bị',
-    restaurantName: 'Nhà hàng Biển Đông'
+    restaurantName: 'Nhà hàng Biển Đông',
   },
   {
     id: 'ORD-003',
@@ -89,7 +89,7 @@ export const mockOrders: Order[] = [
       email: 'leminhc@email.com',
       location: 'Khu vực Đà Nẵng',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop',
-      detail: 'Bàn số 12'
+      detail: 'Bàn số 12',
     },
     items: [
       { name: 'Bún bò Huế ngự uyển', quantity: 1, price: '75.000đ' },
@@ -99,11 +99,11 @@ export const mockOrders: Order[] = [
     note: '"Ít bún nhiều thịt"',
     timeInfo: {
       ordered: '12:15, 24/05/2024',
-      expected: '12:45, 24/05/2024'
+      expected: '12:45, 24/05/2024',
     },
     status: 'confirm',
     statusText: 'Chờ xác nhận',
-    restaurantName: 'Nhà hàng Biển Đông'
+    restaurantName: 'Nhà hàng Biển Đông',
   },
   {
     id: 'ORD-004',
@@ -114,7 +114,7 @@ export const mockOrders: Order[] = [
       email: 'vothid@email.com',
       location: 'Khu vực Cần Thơ',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop',
-      detail: 'Bàn số 8'
+      detail: 'Bàn số 8',
     },
     items: [
       { name: 'Cơm tấm Sườn Bì Chả', quantity: 2, price: '110.000đ' },
@@ -124,10 +124,10 @@ export const mockOrders: Order[] = [
     note: '"Nhiều mỡ hành"',
     timeInfo: {
       ordered: '12:30, 24/05/2024',
-      expected: '13:00, 24/05/2024'
+      expected: '13:00, 24/05/2024',
     },
     status: 'completed',
     statusText: 'Hoàn thành',
-    restaurantName: 'Khách sạn Mường Thanh'
-  }
+    restaurantName: 'Khách sạn Mường Thanh',
+  },
 ];

@@ -1,41 +1,81 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Eye, EyeOff, Camera, ChevronDown } from 'lucide-react';
+import apiClient from '../../../utils/apiClient'; // Import thư viện gọi API
+import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './AddUser.css';
 
 export const AddUser: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // State quản lý loading khi submit
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
-    role: '',
+    role: '', // Chú ý: Value select đang dùng Tiếng Việt, cần map sang Enum trước khi gửi
     password: '',
     isActive: true,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleToggleActive = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      isActive: !prev.isActive
+      isActive: !prev.isActive,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to save user would go here
-    console.log('Form data:', formData);
-    alert('Thêm người dùng mới thành công!');
-    navigate('/admin/users');
+    setIsSubmitting(true);
+
+    try {
+      // 1. Chuẩn bị dữ liệu (Map về đúng Enum Backend mong đợi)
+      let mappedRole = '';
+      if (formData.role === 'Admin') mappedRole = 'ADMIN';
+      else if (formData.role === 'Nhà cung cấp') mappedRole = 'BUSINESS';
+      else if (formData.role === 'Khách du lịch') mappedRole = 'TOURIST';
+
+      if (!mappedRole) {
+        alert('Vui lòng chọn vai trò!');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const payload = {
+        fullName: formData.fullName,
+        email: formData.email,
+        phoneNumber: formData.phone,
+        password: formData.password,
+        role: mappedRole,
+        status: formData.isActive ? 'ACTIVE' : 'LOCKED',
+        // avatarUrl: ... (Tính năng upload ảnh xử lý riêng sau)
+      };
+
+      // 2. Gọi API POST để tạo người dùng
+      await apiClient.post('/admin/users', payload);
+
+      // 3. Hiển thị thông báo và điều hướng về trang danh sách
+      alert('Thêm người dùng mới thành công!');
+      navigate('/admin/users');
+    } catch (error: any) {
+      console.error('Lỗi khi thêm người dùng:', error);
+
+      // Xử lý hiển thị lỗi từ Backend (ví dụ: Email đã tồn tại)
+      const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi tạo người dùng.';
+      alert(`Thêm người dùng thất bại: ${Array.isArray(errorMessage) ? errorMessage[0] : errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -44,7 +84,9 @@ export const AddUser: React.FC = () => {
       <header className="page-header">
         <div className="header-titles">
           <div className="breadcrumb">
-            <Link to="/admin/users" className="text-muted">Quản lý người dùng</Link>
+            <Link to="/admin/users" className="text-muted">
+              Quản lý người dùng
+            </Link>
             <span className="separator">/</span>
             <span className="active-bread">Thêm người dùng</span>
           </div>
@@ -53,18 +95,14 @@ export const AddUser: React.FC = () => {
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          <div className="user-avatar-small">
-            <span className="avatar-text">AD</span>
-          </div>
+          <AdminHeaderProfile />
         </div>
       </header>
 
       <main className="add-user-content">
         <div className="content-header">
           <h1 className="content-title">Thêm người dùng mới</h1>
-          <p className="content-subtitle">
-            Vui lòng điền đầy đủ các thông tin cần thiết để tạo tài khoản mới trên hệ thống.
-          </p>
+          <p className="content-subtitle">Vui lòng điền đầy đủ các thông tin cần thiết để tạo tài khoản mới trên hệ thống.</p>
         </div>
 
         <form className="add-user-form card" onSubmit={handleSubmit}>
@@ -111,14 +149,10 @@ export const AddUser: React.FC = () => {
             <div className="form-group">
               <label htmlFor="role">Vai trò</label>
               <div className="select-wrapper">
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="" disabled>Chọn vai trò</option>
+                <select id="role" name="role" value={formData.role} onChange={handleChange} required>
+                  <option value="" disabled>
+                    Chọn vai trò
+                  </option>
                   <option value="Admin">Admin</option>
                   <option value="Nhà cung cấp">Nhà cung cấp</option>
                   <option value="Khách du lịch">Khách du lịch</option>
@@ -139,11 +173,7 @@ export const AddUser: React.FC = () => {
                   onChange={handleChange}
                   required
                 />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
+                <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -152,13 +182,10 @@ export const AddUser: React.FC = () => {
             <div className="form-group">
               <label>Trạng thái</label>
               <div className="status-toggle-wrapper">
-                <div 
-                  className={`status-switch ${formData.isActive ? 'active' : ''}`}
-                  onClick={handleToggleActive}
-                >
+                <div className={`status-switch ${formData.isActive ? 'active' : ''}`} onClick={handleToggleActive}>
                   <div className="switch-handle"></div>
                 </div>
-                <span className="status-label">Hoạt động</span>
+                <span className="status-label">{formData.isActive ? 'Hoạt động' : 'Bị khóa'}</span>
               </div>
             </div>
           </div>
@@ -171,16 +198,18 @@ export const AddUser: React.FC = () => {
               <div className="avatar-placeholder">
                 <Camera size={24} className="text-muted" />
               </div>
-              <button type="button" className="upload-link">Tải ảnh lên</button>
+              <button type="button" className="upload-link">
+                Tải ảnh lên
+              </button>
             </div>
           </div>
 
           <div className="form-footer">
-            <button type="button" className="btn-secondary" onClick={() => navigate('/admin/users')}>
+            <button type="button" className="btn-secondary" onClick={() => navigate('/admin/users')} disabled={isSubmitting}>
               Hủy
             </button>
-            <button type="submit" className="btn-primary-large">
-              Lưu người dùng
+            <button type="submit" className="btn-primary-large" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang lưu...' : 'Lưu người dùng'}
             </button>
           </div>
         </form>

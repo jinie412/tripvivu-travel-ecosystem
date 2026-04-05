@@ -114,3 +114,38 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+.review-date-dropdown {
+  gap: 8px;
+}
+
+.review-date-trigger {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.review-date-trigger:hover {
+  background: #f1f5f9;
+  color: var(--text-primary);
+}
+
+.review-date-trigger.active {
+  color: var(--primary-blue);
+  background: #eff6ff;
+}
+
+.review-date-hidden-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}

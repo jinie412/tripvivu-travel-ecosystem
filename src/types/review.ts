@@ -6,7 +6,7 @@ export interface Review {
   content: string;
   rating: number;
   date: string;
-  status: 'Đã duyệt' | 'Vi phạm';
+  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
 }
 
@@ -26,7 +26,7 @@ export interface ReviewDetailInfo {
   content: string;
   images: string[];
   // Báo cáo vi phạm từ người dùng
-  status?: 'Đã duyệt' | 'Vi phạm';
+  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
   reportCount: number;
   reportReasons: string[];
