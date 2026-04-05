@@ -1,31 +1,117 @@
-import api from './api'
+import { apiClient, extractResponseData } from './apiClient';
 
-export const getOrdersByPlace = async (placeId: string) => {
-  const res = await api.get('/business/orders', { params: { placeId } });
-  
-  console.log('1 order sample:', JSON.stringify(res.data[0], null, 2)); // 👈
-  return res.data;
+export interface PlaceDetailResponse {
+  id?: string;
+  place_id?: string;
+  placeId?: string;
+  name?: string;
+  place_name?: string;
+  title?: string;
+  address?: string;
+  place_address?: string;
+  city?: string;
+  place_city?: string;
+  province?: string;
+  district?: string;
+  district_name?: string;
+  description?: string;
+  place_description?: string;
+  latitude?: number | string;
+  lat?: number | string;
+  p_lat?: number | string;
+  longitude?: number | string;
+  lng?: number | string;
+  p_lng?: number | string;
+  open_time?: string;
+  openTime?: string;
+  opening_time?: string;
+  close_time?: string;
+  closeTime?: string;
+  closing_time?: string;
+  category?: string;
+  type?: string;
+  place_type?: string;
+  status?: string;
+  is_active?: boolean;
+  active?: boolean;
+  rating?: number;
+  average_rating?: number;
+  review_count?: number;
+  reviews_count?: number;
+  total_reviews?: number;
+  image_url?: string | null;
+  images?: string[];
+  gallery?: string[];
+  image_urls?: string[];
+}
+
+export interface PlaceServiceItemResponse {
+  id?: string | number;
+  service_id?: string | number;
+  serviceId?: string | number;
+  name?: string;
+  service_name?: string;
+  title?: string;
+  description?: string;
+  service_description?: string;
+  price?: number | string | null;
+  service_price?: number | string | null;
+  amount?: number | string | null;
+  is_active?: boolean | number | string;
+  active?: boolean | number | string;
+  status?: boolean | number | string;
+}
+
+export interface PlaceServicesResponse {
+  freeServices?: PlaceServiceItemResponse[];
+  paidServices?: PlaceServiceItemResponse[];
+  total?: number;
+  data?: {
+    freeServices?: PlaceServiceItemResponse[];
+    paidServices?: PlaceServiceItemResponse[];
+    total?: number;
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
 };
 
-export const getOrderDetail = async (orderId: string) => {
-  const res = await api.get('/business/order-detail', {
+export const getOrdersByPlace = async (placeId: string): Promise<any[]> => {
+  const res = await apiClient.get('/business/orders', { params: { placeId } });
+  const payload = extractResponseData<any[]>(res as any);
+  return Array.isArray(payload) ? payload : [];
+};
+
+export const getOrderDetail = async (orderId: string): Promise<any> => {
+  const res = await apiClient.get('/business/order-detail', {
     params: { orderId }
   });
-  return res.data;
+  return extractResponseData<any>(res as any);
 };
 
-export const getDashboardStats = async (vendorId: string) => {
-  const res = await api.get('/business/dashboard', {
+export const getDashboardStats = async (vendorId: string): Promise<any> => {
+  const res = await apiClient.get('/business/dashboard', {
     params: { vendorId }
   });
-  return res.data;
+  return extractResponseData<any>(res as any);
 };
 
 export const getPlaceDetail = async (placeId: string) => {
-  const res = await api.get('/business/place-detail', {
+  const res = await apiClient.get('/business/place-detail', {
     params: { placeId }
   });
-  return res.data[0]; // API returns array, we take first element
+  const payload = extractResponseData(res as any);
+
+  if (Array.isArray(payload)) {
+    return payload[0] as PlaceDetailResponse | undefined;
+  }
+
+  if (isRecord(payload) && Array.isArray(payload.data)) {
+    return payload.data[0] as PlaceDetailResponse | undefined;
+  }
+
+  return payload as PlaceDetailResponse | undefined;
 };
 
 export const addNewPlace = async (payload: {
@@ -37,10 +123,10 @@ export const addNewPlace = async (payload: {
   p_categories: string[];
   p_services: Array<{ name: string; description: string }>;
   p_menu: Array<{ name: string; description: string; price: number }>;
-}) => {
+}): Promise<any> => {
   try {
-    const res = await api.post('/business/add-new-place', payload);
-    return res.data;
+    const res = await apiClient.post('/business/add-new-place', payload);
+    return extractResponseData<any>(res as any);
   } catch (error) {
     console.error('Error in addNewPlace:', error);
     throw error;
@@ -49,10 +135,16 @@ export const addNewPlace = async (payload: {
 
 export const getPlaceServicesByType = async (placeId: string) => {
   try {
-    const res = await api.get('/business/place-services-by-type', {
+    const res = await apiClient.get('/business/place-services-by-type', {
       params: { placeId }
     });
-    return res.data; // Returns { freeServices: [...], paidServices: [...], total: number }
+    const payload = extractResponseData(res as any);
+
+    if (isRecord(payload) && isRecord(payload.data)) {
+      return payload.data as PlaceServicesResponse;
+    }
+
+    return payload as PlaceServicesResponse;
   } catch (error) {
     console.error('Error fetching place services by type:', error);
     throw error;

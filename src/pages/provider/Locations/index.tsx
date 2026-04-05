@@ -7,6 +7,16 @@ import defaultLocationImage from '../../../assets/images/location-default.svg';
 import { businessLocationAPI } from '../../../services/businessLocationAPI';
 import type { Location } from '../../../types/location';
 
+const normalizeVietnameseText = (value: string): string => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
 interface LocationsPageState {
   locations: Location[];
   loading: boolean;
@@ -48,20 +58,39 @@ const LocationsPage: React.FC = () => {
         }
 
         setState(prev => ({ ...prev, loading: true, error: null }));
+
+        const searchKeyword = state.search.trim();
+        const shouldUseAccentInsensitiveSearch = searchKeyword.length > 0;
+
         const response = await businessLocationAPI.getLocations({
           vendorId,
-          search: state.search,
+          search: shouldUseAccentInsensitiveSearch ? undefined : searchKeyword,
           status: state.statusFilter || undefined,
           sort: state.sortOrder
         }, {
-          page: currentPage,
-          limit: 10
+          page: shouldUseAccentInsensitiveSearch ? 1 : currentPage,
+          limit: shouldUseAccentInsensitiveSearch ? 500 : 10
         });
+
+        let nextLocations = response.locations;
+        let nextTotal = response.total;
+
+        if (shouldUseAccentInsensitiveSearch) {
+          const normalizedKeyword = normalizeVietnameseText(searchKeyword);
+          const filteredLocations = response.locations.filter((location) => {
+            const searchableText = normalizeVietnameseText(`${location.name} ${location.address} ${location.id} ${location.category}`);
+            return searchableText.includes(normalizedKeyword);
+          });
+
+          const offset = (currentPage - 1) * 10;
+          nextLocations = filteredLocations.slice(offset, offset + 10);
+          nextTotal = filteredLocations.length;
+        }
         
         setState(prev => ({
           ...prev,
-          locations: response.locations,
-          totalItems: response.total,
+          locations: nextLocations,
+          totalItems: nextTotal,
           loading: false
         }));
       } catch (error) {
@@ -80,7 +109,10 @@ const LocationsPage: React.FC = () => {
     const statusColors: { [key: string]: string } = {
       'pending': '#f59e0b',
       'approved': '#10b981',
-      'rejected': '#ef4444'
+      'rejected': '#ef4444',
+      'Chờ duyệt': '#f59e0b',
+      'Đã duyệt': '#10b981',
+      'Từ chối': '#ef4444',
     };
     return statusColors[status] || '#94a3b8';
   };
@@ -98,7 +130,7 @@ const LocationsPage: React.FC = () => {
     <>
       <div style={{ padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Danh sách địa điểm quản lý</h2>
+          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Danh sách địa điểm quản lý</h2>
           <Button onClick={() => navigate('/add-location')} style={{ gap: '8px', padding: '10px 24px', borderRadius: '12px' }}>
             <Plus size={18} /> Thêm địa điểm
           </Button>
@@ -110,7 +142,7 @@ const LocationsPage: React.FC = () => {
             <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text" 
-              placeholder="Tìm kiếm tên địa điểm, mã số..." 
+              placeholder="Tìm kiếm tên địa điểm..." 
               value={state.search}
               onChange={(e) => {
                 setState(prev => ({ ...prev, search: e.target.value }));
@@ -148,11 +180,11 @@ const LocationsPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                <th style={{ padding: '20px 24px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Tên địa điểm</th>
-                <th style={{ padding: '20px 24px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Loại hình</th>
-                <th style={{ padding: '20px 24px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Đánh giá</th>
-                <th style={{ padding: '20px 24px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Trạng thái</th>
-                <th style={{ padding: '20px 24px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>Thao tác</th>
+                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>TÊN ĐỊA ĐIỂM</th>
+                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>LOẠI HÌNH</th>
+                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>ĐÁNH GIÁ</th>
+                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>TRẠNG THÁI</th>
+                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, AlertCircle } from 'lucide-react';
-import { getPlaceServicesByType } from '../../services/order.service';
+import { getPlaceServicesByType, type PlaceServiceItemResponse } from '../../services/order.service';
 
 interface Service {
   id: string;
@@ -12,6 +12,22 @@ interface Service {
 interface PlaceServicesProps {
   placeId: string;
 }
+
+const toService = (item: PlaceServiceItemResponse): Service => {
+  const rawPrice = item.price ?? item.service_price ?? item.amount;
+  const numericPrice = typeof rawPrice === 'number'
+    ? rawPrice
+    : rawPrice === null || rawPrice === undefined || rawPrice === ''
+      ? null
+      : Number(String(rawPrice).replace(/[^\d.-]/g, ''));
+
+  return {
+    id: String(item.id ?? item.service_id ?? item.serviceId ?? `${Date.now()}`),
+    name: item.name ?? item.service_name ?? item.title ?? 'Dịch vụ',
+    description: item.description ?? item.service_description ?? '',
+    price: Number.isFinite(numericPrice as number) ? (numericPrice as number) : null,
+  };
+};
 
 export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
   const [freeServices, setFreeServices] = useState<Service[]>([]);
@@ -25,8 +41,8 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
         setLoading(true);
         setError(null);
         const data = await getPlaceServicesByType(placeId);
-        setFreeServices(data.freeServices || []);
-        setPaidServices(data.paidServices || []);
+        setFreeServices((data.freeServices || []).map(toService));
+        setPaidServices((data.paidServices || []).map(toService));
       } catch (err) {
         console.error('Error loading services:', err);
         setError('Không thể tải dữ liệu dịch vụ');
