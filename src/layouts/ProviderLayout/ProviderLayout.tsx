@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Building2, ShoppingBag, Settings, LogOut, Bell, HelpCircle, Search } from 'lucide-react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
+import authAPI from '../../services/authService';
+import Swal from 'sweetalert2';
 
 import apiClient from '../../utils/apiClient';
 
@@ -113,11 +115,28 @@ const ProviderLayout: React.FC = () => {
   }, []);
 
   // 5. Hàm xử lý Đăng xuất chuẩn xác
-  const handleLogout = () => {
-    const tokenKey = import.meta.env.VITE_TOKEN_KEY || 'access_token';
-    localStorage.removeItem(tokenKey);
-    localStorage.removeItem('userInfo');
+  const handleLogout = async () => {
+    // Gọi màn hình xác nhận thay thế cho confirm gốc của trình duyệt
+    const result = await Swal.fire({
+      title: 'Đăng xuất?',
+      text: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Đăng xuất',
+      cancelButtonText: 'Hủy',
+    });
 
+    if (!result.isConfirmed) return;
+
+    // 1. Clear dữ liệu LocalStorage (Tokens, User Info)
+    authAPI.logout();
+
+    // (Tuỳ chọn) Gọi API Backend nếu Backend của bạn yêu cầu thu hồi token (Revoke Token)
+    // await apiClient.post('/auth/logout');
+
+    // 2. Điều hướng người dùng về trang Login
     navigate('/login');
   };
 

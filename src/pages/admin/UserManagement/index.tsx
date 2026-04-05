@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { User, UserStatsInfo } from '../../../types/user';
 import { userAPI } from '../../../services/userAPI';
 import { UserStats } from './components/UserStats';
@@ -48,10 +48,10 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const handleSearch = (term: string) => {
+  const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
     setCurrentPage(1);
-  };
+  }, []);
 
   const handleRoleChange = (role: string) => {
     setRoleFilter(role);

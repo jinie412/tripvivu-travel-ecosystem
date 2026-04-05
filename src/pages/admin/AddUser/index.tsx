@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Eye, EyeOff, Camera, ChevronDown } from 'lucide-react';
 import apiClient from '../../../utils/apiClient'; // Import thư viện gọi API
+import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './AddUser.css';
 
@@ -9,6 +10,8 @@ export const AddUser: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // State quản lý loading khi submit
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -17,6 +20,7 @@ export const AddUser: React.FC = () => {
     role: '', // Chú ý: Value select đang dùng Tiếng Việt, cần map sang Enum trước khi gửi
     password: '',
     isActive: true,
+    avatarUrl: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -34,6 +38,46 @@ export const AddUser: React.FC = () => {
     }));
   };
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, avatarUrl: previewUrl }));
+
+    setIsUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+
+      const response = await apiClient.post('/upload/avatar', formDataUpload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const newAvatarUrl = response.data.url || response.data;
+      setFormData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công',
+        text: 'Tải ảnh đại diện lên thành công!',
+        timer: 1000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error('Lỗi khi tải ảnh:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Lỗi',
+        text: 'Có lỗi xảy ra khi tải ảnh lên. Các thay đổi sẽ không được lưu.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -46,7 +90,13 @@ export const AddUser: React.FC = () => {
       else if (formData.role === 'Khách du lịch') mappedRole = 'TOURIST';
 
       if (!mappedRole) {
-        alert('Vui lòng chọn vai trò!');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Thiếu thông tin',
+          text: 'Vui lòng chọn vai trò!',
+          timer: 1500,
+          showConfirmButton: false,
+        });
         setIsSubmitting(false);
         return;
       }
@@ -58,21 +108,34 @@ export const AddUser: React.FC = () => {
         password: formData.password,
         role: mappedRole,
         status: formData.isActive ? 'ACTIVE' : 'LOCKED',
-        // avatarUrl: ... (Tính năng upload ảnh xử lý riêng sau)
+        avatarUrl: formData.avatarUrl,
       };
 
       // 2. Gọi API POST để tạo người dùng
       await apiClient.post('/admin/users', payload);
 
       // 3. Hiển thị thông báo và điều hướng về trang danh sách
-      alert('Thêm người dùng mới thành công!');
-      navigate('/admin/users');
+      Swal.fire({
+        icon: 'success',
+        title: 'Thành công',
+        text: 'Thêm người dùng mới thành công!',
+        timer: 1500,
+        showConfirmButton: false,
+      }).then(() => {
+        navigate('/admin/users');
+      });
     } catch (error: any) {
       console.error('Lỗi khi thêm người dùng:', error);
 
       // Xử lý hiển thị lỗi từ Backend (ví dụ: Email đã tồn tại)
       const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi tạo người dùng.';
-      alert(`Thêm người dùng thất bại: ${Array.isArray(errorMessage) ? errorMessage[0] : errorMessage}`);
+      Swal.fire({
+        icon: 'error',
+        title: 'Thêm thất bại',
+        text: Array.isArray(errorMessage) ? errorMessage[0] : errorMessage,
+        timer: 2000,
+        showConfirmButton: false,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -195,11 +258,16 @@ export const AddUser: React.FC = () => {
           <div className="avatar-section">
             <label>Ảnh đại diện</label>
             <div className="avatar-upload-container">
-              <div className="avatar-placeholder">
-                <Camera size={24} className="text-muted" />
+              <div className="avatar-placeholder" style={{ overflow: 'hidden' }}>
+                {formData.avatarUrl ? (
+                  <img src={formData.avatarUrl} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <Camera size={24} className="text-muted" />
+                )}
               </div>
-              <button type="button" className="upload-link">
-                Tải ảnh lên
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+              <button type="button" className="upload-link" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                {isUploading ? 'Đang tải lên...' : 'Tải ảnh lên'}
               </button>
             </div>
           </div>
