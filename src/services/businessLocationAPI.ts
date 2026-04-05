@@ -3,7 +3,7 @@ import { Location } from '../types/location';
 
 interface BackendBusinessPlaceItem {
   id: string;
-  image_url?: string | null;
+  image_url?: string[] | string | null;
   name: string;
   address: string;
   categories: string[];
@@ -41,10 +41,20 @@ const toUiStatus = (status: 'pending' | 'approved' | 'rejected'): Location['stat
   return 'Chờ duyệt';
 };
 
+const getPrimaryImage = (imageUrl: string[] | string | null | undefined): string => {
+  if (Array.isArray(imageUrl)) {
+    return imageUrl.find((item) => typeof item === 'string' && item.trim().length > 0) || '';
+  }
+  if (typeof imageUrl === 'string' && imageUrl.trim().length > 0) {
+    return imageUrl;
+  }
+  return '';
+};
+
 const mapLocation = (item: BackendBusinessPlaceItem): Location => {
   return {
     id: item.id,
-    image: item.image_url || '',
+    image: getPrimaryImage(item.image_url),
     name: item.name,
     address: item.address,
     category: item.categories.join(', ') || 'Khác',

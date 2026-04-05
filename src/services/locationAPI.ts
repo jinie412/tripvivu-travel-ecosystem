@@ -5,7 +5,7 @@ type BackendPlaceStatus = 'pending' | 'approved' | 'rejected';
 
 interface BackendPlaceItem {
   id: string;
-  image_url?: string | null;
+  image_url?: string[] | string | null;
   name: string;
   address: string;
   category: string;
@@ -54,7 +54,8 @@ interface BackendPlaceDetailResponse {
     total_places: number;
     created_at?: string | null;
   } | null;
-  images: string[];
+  image_url?: unknown;
+  images?: unknown;
 }
 
 export interface LocationFilterParams {
@@ -106,10 +107,66 @@ const formatDate = (value?: string): string => {
   return date.toLocaleDateString('vi-VN');
 };
 
+const normalizeImageUrls = (value: unknown): string[] => {
+  const urls: string[] = [];
+
+  const collect = (input: unknown): void => {
+    if (Array.isArray(input)) {
+      input.forEach((item) => collect(item));
+      return;
+    }
+
+    if (typeof input === 'string') {
+      const text = input.trim();
+      if (!text) {
+        return;
+      }
+
+      // Support Postgres array string format: {"url1","url2"}
+      if (text.startsWith('{') && text.endsWith('}')) {
+        const inner = text.slice(1, -1).trim();
+        if (!inner) {
+          return;
+        }
+        inner.split(',').forEach((part) => {
+          const cleaned = part.trim().replace(/^"|"$/g, '');
+          if (cleaned) {
+            urls.push(cleaned);
+          }
+        });
+        return;
+      }
+
+      urls.push(text);
+      return;
+    }
+
+    if (input && typeof input === 'object') {
+      const record = input as Record<string, unknown>;
+      if ('url' in record) {
+        collect(record.url);
+      }
+      if ('image_url' in record) {
+        collect(record.image_url);
+      }
+      if ('images' in record) {
+        collect(record.images);
+      }
+    }
+  };
+
+  collect(value);
+  return urls.filter((url, index) => urls.indexOf(url) === index);
+};
+
+const getPrimaryImage = (value: string[] | string | null | undefined): string => {
+  return normalizeImageUrls(value)[0] || '';
+};
+
 const mapLocation = (item: BackendPlaceItem): Location => {
   return {
     id: item.id,
-    image: item.image_url || '',
+    image: getPrimaryImage(item.image_url),
     name: item.name,
     address: item.address,
     category: item.category,
@@ -122,9 +179,12 @@ const mapLocation = (item: BackendPlaceItem): Location => {
 
 const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo => {
   const vendorName = item.vendor?.name || 'N/A';
+  const imageUrlPhotos = normalizeImageUrls(item.image_url);
+  const photos = imageUrlPhotos.length > 0 ? imageUrlPhotos : normalizeImageUrls(item.images);
+
   return {
     id: item.id,
-    image: '',
+    image: photos[0] || '',
     name: item.name,
     address: item.address,
     category: item.category,
@@ -138,7 +198,7 @@ const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo
     email: item.contact_email,
     lat: item.latitude,
     lng: item.longitude,
-    photos: item.images || [],
+    photos,
     senderStats: {
       totalLocations: item.vendor?.total_places || 0,
       joinedDate: formatDate(item.vendor?.created_at || undefined),
