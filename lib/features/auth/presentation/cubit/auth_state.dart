@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -16,11 +16,30 @@ class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
+/// Login thành công — chứa user info và tokens
 class AuthSuccess extends AuthState {
-  final UserEntity user;
-  const AuthSuccess(this.user);
+  final LoginResult result;
+  const AuthSuccess(this.result);
   @override
-  List<Object?> get props => [user];
+  List<Object?> get props => [result];
+}
+
+/// Đăng ký thành công (cần xác thực email)
+class RegisterSuccess extends AuthState {
+  const RegisterSuccess();
+}
+
+/// Gửi email quên mật khẩu thành công
+class ForgotPasswordSuccess extends AuthState {
+  final String message;
+  const ForgotPasswordSuccess(this.message);
+  @override
+  List<Object?> get props => [message];
+}
+
+/// Đặt lại mật khẩu thành công
+class UpdatePasswordSuccess extends AuthState {
+  const UpdatePasswordSuccess();
 }
 
 class AuthError extends AuthState {

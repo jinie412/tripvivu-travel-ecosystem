@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:app_links/app_links.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/auth/presentation/screens/reset_password_screen.dart';
 import 'features/survey/presentation/screens/survey_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -19,12 +21,69 @@ void main() async {
   runApp(const TravelAdvisorApp());
 }
 
-class TravelAdvisorApp extends StatelessWidget {
+class TravelAdvisorApp extends StatefulWidget {
   const TravelAdvisorApp({super.key});
+
+  @override
+  State<TravelAdvisorApp> createState() => _TravelAdvisorAppState();
+}
+
+class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  late final AppLinks _appLinks;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  void _initDeepLinks() {
+    _appLinks = AppLinks();
+
+    // Lắng nghe deeplink khi app đang chạy
+    _appLinks.uriLinkStream.listen((uri) {
+      _handleDeepLink(uri);
+    });
+
+    // Kiểm tra deeplink khi app khởi động cold (vừa bị tắt)
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
+    });
+  }
+
+  /// Xử lý deeplink từ email Supabase reset-password.
+  /// URL sẽ có dạng: gptraveladvisor://reset-password?access_token=xxx&...
+  void _handleDeepLink(Uri uri) {
+    if (uri.host == 'reset-password') {
+      // Lấy access_token từ query params hoặc fragment (#access_token=...)
+      String? accessToken = uri.queryParameters['access_token'];
+
+      // Supabase đôi khi đặt token trong fragment (#)
+      if (accessToken == null && uri.fragment.isNotEmpty) {
+        final fragmentParams = Uri.splitQueryString(uri.fragment);
+        accessToken = fragmentParams['access_token'];
+      }
+
+      if (accessToken != null && accessToken.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  ResetPasswordScreen(accessToken: accessToken!),
+            ),
+          );
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'GP Travel Advisor',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,

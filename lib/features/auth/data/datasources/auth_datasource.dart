@@ -1,80 +1,140 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/auth/data/models/user_model.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
 /// Contract for auth data operations.
-/// [MockAuthDataSource] implements this now.
-/// [RemoteAuthDataSource] will implement this when backend is ready.
+// ─────────────────────────────────────────────────────────────────────────────
 abstract class AuthDataSource {
-  Future<UserModel> login({
+  Future<LoginResult> login({
     required String emailOrPhone,
     required String password,
   });
 
-  Future<UserModel> register({
-    required String emailOrPhone,
+  Future<void> registerTourist({
+    required String fullName,
+    required String gender,
+    required String email,
+    required String phoneNumber,
     required String password,
   });
 
-  Future<void> logout();
+  Future<String> forgotPassword(String email);
+
+  Future<void> updatePassword({
+    required String accessToken,
+    required String newPassword,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-/// Mock implementation — simulates API with hardcoded credentials.
-/// Replace with [RemoteAuthDataSource] in injection_container.dart.
+/// Remote implementation — calls the real NestJS backend.
 // ─────────────────────────────────────────────────────────────────────────────
-class MockAuthDataSource implements AuthDataSource {
-  static const _mockEmail = 'demo@gp.com';
-  static const _mockPassword = '123456';
+class RemoteAuthDataSource implements AuthDataSource {
+  final DioClient _client;
+  final FlutterSecureStorage _storage;
+
+  RemoteAuthDataSource(this._client,
+      {FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage();
 
   @override
-  Future<UserModel> login({
+  Future<LoginResult> login({
     required String emailOrPhone,
     required String password,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (emailOrPhone.trim() != _mockEmail || password != _mockPassword) {
-      throw Exception('Email hoặc mật khẩu không đúng');
+    try {
+      final res = await _client.dio.post(
+        '/auth/login',
+        data: {
+          'emailOrPhone': emailOrPhone,
+          'password': password,
+        },
+      );
+      // Response: { message, accessToken, refreshToken, user: {...} }
+      final data = res.data as Map<String, dynamic>;
+
+      final accessToken = data['accessToken'] as String;
+      final refreshToken = data['refreshToken'] as String;
+
+      // Lưu tokens vào SecureStorage
+      await _storage.write(key: 'access_token', value: accessToken);
+      await _storage.write(key: 'refresh_token', value: refreshToken);
+
+      final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+
+      return LoginResult(
+        user: user.toEntity(),
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Đăng nhập thất bại';
+      throw Exception(msg);
     }
-    return const UserModel(
-      id: 'mock-001',
-      email: _mockEmail,
-      displayName: 'Người dùng Demo',
-    );
   }
 
   @override
-  Future<UserModel> register({
-    required String emailOrPhone,
+  Future<void> registerTourist({
+    required String fullName,
+    required String gender,
+    required String email,
+    required String phoneNumber,
     required String password,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return UserModel(
-      id: 'mock-${DateTime.now().millisecondsSinceEpoch}',
-      email: emailOrPhone.trim(),
-      displayName: 'Người dùng mới',
-    );
+    try {
+      await _client.dio.post(
+        '/auth/register/tourist',
+        data: {
+          'fullName': fullName,
+          'gender': gender,
+          'email': email,
+          'phoneNumber': phoneNumber,
+          'password': password,
+        },
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Đăng ký thất bại';
+      throw Exception(msg);
+    }
   }
 
   @override
-  Future<void> logout() async {
-    await Future.delayed(const Duration(milliseconds: 200));
+Future<String> forgotPassword(String email) async {
+  try {
+    final res = await _client.dio.post(
+      '/auth/forgot-password',
+      data: {
+        'email': email,
+        'returnUrl': 'gptraveladvisor://reset-password', 
+      },
+    );
+    return (res.data['message'] as String?) ??
+        'Vui lòng kiểm tra hộp thư email';
+  } on DioException catch (e) {
+    final msg =
+        e.response?.data?['message'] ?? 'Không thể gửi email khôi phục';
+    throw Exception(msg);
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-/// Remote implementation placeholder — activate when backend is ready.
-/// Uncomment and inject [DioClient] in injection_container.dart.
-// ─────────────────────────────────────────────────────────────────────────────
-// class RemoteAuthDataSource implements AuthDataSource {
-//   final DioClient _client;
-//   RemoteAuthDataSource(this._client);
-//
-//   @override
-//   Future<UserModel> login({required String emailOrPhone, required String password}) async {
-//     final res = await _client.dio.post('/auth/login', data: {
-//       'email_or_phone': emailOrPhone,
-//       'password': password,
-//     });
-//     return UserModel.fromJson(res.data['user']);
-//   }
-//   ...
-// }
+  @override
+  Future<void> updatePassword({
+    required String accessToken,
+    required String newPassword,
+  }) async {
+    try {
+      await _client.dio.post(
+        '/auth/update-password',
+        data: {
+          'accessToken': accessToken,
+          'newPassword': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? 'Đổi mật khẩu thất bại';
+      throw Exception(msg);
+    }
+  }
+}

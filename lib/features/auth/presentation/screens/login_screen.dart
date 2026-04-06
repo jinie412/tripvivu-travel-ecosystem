@@ -54,12 +54,14 @@ class _LoginViewState extends State<_LoginView> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is AuthSuccess) {
           FocusScope.of(context).unfocus();
+          // Lưu tokens sau khi login thành công
+          // Token được parse bởi datasource và lưu vào SecureStorage
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
-              Navigator.pushReplacementNamed(context, '/survey');
+              Navigator.pushReplacementNamed(context, '/home');
             }
           });
         } else if (state is AuthError) {
@@ -203,9 +205,6 @@ class _LoginViewState extends State<_LoginView> {
                         return Row(
                           children: [
                             Expanded(child: GoogleSignInButton(
-                                onPressed: isLoading ? () {} : () => _submit(context))),
-                            const SizedBox(width: 16),
-                            Expanded(child: FacebookSignInButton(
                                 onPressed: isLoading ? () {} : () => _submit(context))),
                           ],
                         );

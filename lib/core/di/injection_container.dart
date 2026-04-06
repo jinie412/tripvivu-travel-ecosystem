@@ -5,7 +5,7 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
-import 'package:travel_advisor_mobile/features/auth/data/repositories/mock_auth_repository.dart';
+import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
@@ -59,12 +59,19 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DioClient>(() => DioClient());
 
   // ── Auth ───────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<AuthDataSource>(() => MockAuthDataSource());
+  sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
   sl.registerLazySingleton(() => LoginUseCase(sl()));
-  sl.registerLazySingleton(() => RegisterUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterTouristUseCase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => UpdatePasswordUseCase(sl()));
   sl.registerFactory(
-    () => AuthCubit(loginUseCase: sl(), registerUseCase: sl()),
+    () => AuthCubit(
+      loginUseCase: sl(),
+      registerTouristUseCase: sl(),
+      forgotPasswordUseCase: sl(),
+      updatePasswordUseCase: sl(),
+    ),
   );
 
   // ── Home ───────────────────────────────────────────────────────────────────

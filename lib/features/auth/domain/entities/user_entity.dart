@@ -10,5 +10,8 @@ class UserEntity with _$UserEntity {
     required String email,
     required String displayName,
     String? avatarUrl,
+    String? role,
+    String? phone,
+    String? gender,
   }) = _UserEntity;
 }

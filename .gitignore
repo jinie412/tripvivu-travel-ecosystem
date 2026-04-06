@@ -1,3 +1,8 @@
+# Auto generated files
+*.g.dart
+*.freezed.dart
+*.config.dart
+
 # Miscellaneous
 *.class
 *.log

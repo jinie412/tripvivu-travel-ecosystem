@@ -1,19 +1,30 @@
-import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
 
 /// Contract for auth operations.
 /// Presentation layer depends ONLY on this interface — never on implementation.
-/// Swap mock → real API by changing only the data layer.
 abstract class AuthRepository {
-  /// Returns [UserEntity] on success, throws [Exception] on failure.
-  Future<UserEntity> login({
+  /// Đăng nhập bằng email/SĐT + password.
+  /// Token được lưu tự động vào SecureStorage trong datasource.
+  Future<LoginResult> login({
     required String emailOrPhone,
     required String password,
   });
 
-  Future<UserEntity> register({
-    required String emailOrPhone,
+  /// Đăng ký tài khoản du khách.
+  Future<void> registerTourist({
+    required String fullName,
+    required String gender,
+    required String email,
+    required String phoneNumber,
     required String password,
   });
 
-  Future<void> logout();
+  /// Gửi email magic link khôi phục mật khẩu. Trả về message thành công.
+  Future<String> forgotPassword(String email);
+
+  /// Đặt lại mật khẩu mới bằng accessToken từ deeplink email.
+  Future<void> updatePassword({
+    required String accessToken,
+    required String newPassword,
+  });
 }
