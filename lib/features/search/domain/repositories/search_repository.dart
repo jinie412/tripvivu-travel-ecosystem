@@ -3,4 +3,5 @@ import 'package:travel_advisor_mobile/features/search/domain/entities/search_loc
 abstract class SearchRepository {
   Future<List<SearchLocation>> getRecentSearches();
   Future<List<SearchLocation>> searchLocations(String query);
+   Future<void> saveRecentSearch(SearchLocation location);
 }

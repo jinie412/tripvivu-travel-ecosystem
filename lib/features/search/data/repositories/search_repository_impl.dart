@@ -1,31 +1,40 @@
-import 'package:travel_advisor_mobile/features/search/data/datasources/search_mock_data_source.dart';
-import 'package:travel_advisor_mobile/features/search/data/models/search_location_model.dart';
+// lib/features/search/data/repositories/search_repository_impl.dart
+
+import 'package:travel_advisor_mobile/features/search/data/datasources/search_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
 import 'package:travel_advisor_mobile/features/search/domain/repositories/search_repository.dart';
+import 'package:travel_advisor_mobile/features/search/data/datasources/search_local_datasource.dart';
+import 'package:travel_advisor_mobile/features/search/data/models/search_location_model.dart';
 
 class SearchRepositoryImpl implements SearchRepository {
-  final SearchMockDataSource remoteDataSource;
+  final SearchRemoteDataSource remoteDataSource;
+  final SearchLocalDataSource localDataSource;
 
-  SearchRepositoryImpl({required this.remoteDataSource});
+  SearchRepositoryImpl({
+    required this.remoteDataSource,
+    required this.localDataSource,
+  });
 
   @override
   Future<List<SearchLocation>> getRecentSearches() async {
-    try {
-      final models = await remoteDataSource.getRecentSearches();
-      return models.map((model) => model.toEntity()).toList();
-    } catch (e) {
-      // Return empty list if mock fails
-      return [];
-    }
+    final models = await localDataSource.getRecentSearches();
+    return models.map((m) => m.toEntity()).toList();
   }
 
   @override
   Future<List<SearchLocation>> searchLocations(String query) async {
-    try {
-      final models = await remoteDataSource.searchLocations(query);
-      return models.map((model) => model.toEntity()).toList();
-    } catch (e) {
-      return [];
-    }
+    final models = await remoteDataSource.searchAutocomplete(query);
+    return models.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<void> saveRecentSearch(SearchLocation location) async {
+    final model = SearchLocationModel(
+      id: location.id,
+      name: location.name,
+      imageUrl: location.imageUrl,
+      type: location.type,
+    );
+    await localDataSource.saveRecentSearch(model);
   }
 }

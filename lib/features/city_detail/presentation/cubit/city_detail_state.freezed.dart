@@ -30,6 +30,7 @@ mixin _$CityDetailState {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )
     loaded,
     required TResult Function(String message) error,
@@ -47,6 +48,7 @@ mixin _$CityDetailState {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult? Function(String message)? error,
@@ -64,6 +66,7 @@ mixin _$CityDetailState {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult Function(String message)? error,
@@ -169,6 +172,7 @@ class _$InitialImpl implements _Initial {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )
     loaded,
     required TResult Function(String message) error,
@@ -190,6 +194,7 @@ class _$InitialImpl implements _Initial {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult? Function(String message)? error,
@@ -211,6 +216,7 @@ class _$InitialImpl implements _Initial {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult Function(String message)? error,
@@ -318,6 +324,7 @@ class _$LoadingImpl implements _Loading {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )
     loaded,
     required TResult Function(String message) error,
@@ -339,6 +346,7 @@ class _$LoadingImpl implements _Loading {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult? Function(String message)? error,
@@ -360,6 +368,7 @@ class _$LoadingImpl implements _Loading {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult Function(String message)? error,
@@ -429,6 +438,7 @@ abstract class _$$LoadedImplCopyWith<$Res> {
     List<CityActivity> filteredActivities,
     List<CityRestaurant> filteredRestaurants,
     List<CityHotel> filteredHotels,
+    List<CityItinerary> itineraries,
   });
 
   $CityOverviewCopyWith<$Res> get overview;
@@ -459,6 +469,7 @@ class __$$LoadedImplCopyWithImpl<$Res>
     Object? filteredActivities = null,
     Object? filteredRestaurants = null,
     Object? filteredHotels = null,
+    Object? itineraries = null,
   }) {
     return _then(
       _$LoadedImpl(
@@ -494,6 +505,10 @@ class __$$LoadedImplCopyWithImpl<$Res>
             ? _value._filteredHotels
             : filteredHotels // ignore: cast_nullable_to_non_nullable
                   as List<CityHotel>,
+        itineraries: null == itineraries
+            ? _value._itineraries
+            : itineraries // ignore: cast_nullable_to_non_nullable
+                  as List<CityItinerary>,
       ),
     );
   }
@@ -551,9 +566,11 @@ class _$LoadedImpl implements _Loaded {
     final List<CityActivity> filteredActivities = const [],
     final List<CityRestaurant> filteredRestaurants = const [],
     final List<CityHotel> filteredHotels = const [],
+    final List<CityItinerary> itineraries = const [],
   }) : _filteredActivities = filteredActivities,
        _filteredRestaurants = filteredRestaurants,
-       _filteredHotels = filteredHotels;
+       _filteredHotels = filteredHotels,
+       _itineraries = itineraries;
 
   @override
   final CityOverview overview;
@@ -600,9 +617,18 @@ class _$LoadedImpl implements _Loaded {
     return EqualUnmodifiableListView(_filteredHotels);
   }
 
+  final List<CityItinerary> _itineraries;
+  @override
+  @JsonKey()
+  List<CityItinerary> get itineraries {
+    if (_itineraries is EqualUnmodifiableListView) return _itineraries;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_itineraries);
+  }
+
   @override
   String toString() {
-    return 'CityDetailState.loaded(overview: $overview, activeTab: $activeTab, activityFilter: $activityFilter, restaurantFilter: $restaurantFilter, hotelFilter: $hotelFilter, filteredActivities: $filteredActivities, filteredRestaurants: $filteredRestaurants, filteredHotels: $filteredHotels)';
+    return 'CityDetailState.loaded(overview: $overview, activeTab: $activeTab, activityFilter: $activityFilter, restaurantFilter: $restaurantFilter, hotelFilter: $hotelFilter, filteredActivities: $filteredActivities, filteredRestaurants: $filteredRestaurants, filteredHotels: $filteredHotels, itineraries: $itineraries)';
   }
 
   @override
@@ -631,6 +657,10 @@ class _$LoadedImpl implements _Loaded {
             const DeepCollectionEquality().equals(
               other._filteredHotels,
               _filteredHotels,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._itineraries,
+              _itineraries,
             ));
   }
 
@@ -645,6 +675,7 @@ class _$LoadedImpl implements _Loaded {
     const DeepCollectionEquality().hash(_filteredActivities),
     const DeepCollectionEquality().hash(_filteredRestaurants),
     const DeepCollectionEquality().hash(_filteredHotels),
+    const DeepCollectionEquality().hash(_itineraries),
   );
 
   /// Create a copy of CityDetailState
@@ -669,6 +700,7 @@ class _$LoadedImpl implements _Loaded {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )
     loaded,
     required TResult Function(String message) error,
@@ -682,6 +714,7 @@ class _$LoadedImpl implements _Loaded {
       filteredActivities,
       filteredRestaurants,
       filteredHotels,
+      itineraries,
     );
   }
 
@@ -699,6 +732,7 @@ class _$LoadedImpl implements _Loaded {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult? Function(String message)? error,
@@ -712,6 +746,7 @@ class _$LoadedImpl implements _Loaded {
       filteredActivities,
       filteredRestaurants,
       filteredHotels,
+      itineraries,
     );
   }
 
@@ -729,6 +764,7 @@ class _$LoadedImpl implements _Loaded {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult Function(String message)? error,
@@ -744,6 +780,7 @@ class _$LoadedImpl implements _Loaded {
         filteredActivities,
         filteredRestaurants,
         filteredHotels,
+        itineraries,
       );
     }
     return orElse();
@@ -797,6 +834,7 @@ abstract class _Loaded implements CityDetailState {
     final List<CityActivity> filteredActivities,
     final List<CityRestaurant> filteredRestaurants,
     final List<CityHotel> filteredHotels,
+    final List<CityItinerary> itineraries,
   }) = _$LoadedImpl;
 
   CityOverview get overview;
@@ -808,6 +846,7 @@ abstract class _Loaded implements CityDetailState {
   List<CityActivity> get filteredActivities;
   List<CityRestaurant> get filteredRestaurants;
   List<CityHotel> get filteredHotels;
+  List<CityItinerary> get itineraries;
 
   /// Create a copy of CityDetailState
   /// with the given fields replaced by the non-null parameter values.
@@ -897,6 +936,7 @@ class _$ErrorImpl implements _Error {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )
     loaded,
     required TResult Function(String message) error,
@@ -918,6 +958,7 @@ class _$ErrorImpl implements _Error {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult? Function(String message)? error,
@@ -939,6 +980,7 @@ class _$ErrorImpl implements _Error {
       List<CityActivity> filteredActivities,
       List<CityRestaurant> filteredRestaurants,
       List<CityHotel> filteredHotels,
+      List<CityItinerary> itineraries,
     )?
     loaded,
     TResult Function(String message)? error,

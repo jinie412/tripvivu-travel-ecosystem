@@ -340,7 +340,7 @@ abstract class _CityItinerary implements CityItinerary {
 /// @nodoc
 mixin _$CityActivity {
   String get id => throw _privateConstructorUsedError;
-  String get title => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError;
   String get imageUrl => throw _privateConstructorUsedError;
   double get rating => throw _privateConstructorUsedError;
   int get reviewCount => throw _privateConstructorUsedError;
@@ -370,7 +370,7 @@ abstract class $CityActivityCopyWith<$Res> {
   @useResult
   $Res call({
     String id,
-    String title,
+    String name,
     String imageUrl,
     double rating,
     int reviewCount,
@@ -399,7 +399,7 @@ class _$CityActivityCopyWithImpl<$Res, $Val extends CityActivity>
   @override
   $Res call({
     Object? id = null,
-    Object? title = null,
+    Object? name = null,
     Object? imageUrl = null,
     Object? rating = null,
     Object? reviewCount = null,
@@ -416,9 +416,9 @@ class _$CityActivityCopyWithImpl<$Res, $Val extends CityActivity>
                 ? _value.id
                 : id // ignore: cast_nullable_to_non_nullable
                       as String,
-            title: null == title
-                ? _value.title
-                : title // ignore: cast_nullable_to_non_nullable
+            name: null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
                       as String,
             imageUrl: null == imageUrl
                 ? _value.imageUrl
@@ -473,7 +473,7 @@ abstract class _$$CityActivityImplCopyWith<$Res>
   @useResult
   $Res call({
     String id,
-    String title,
+    String name,
     String imageUrl,
     double rating,
     int reviewCount,
@@ -501,7 +501,7 @@ class __$$CityActivityImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? title = null,
+    Object? name = null,
     Object? imageUrl = null,
     Object? rating = null,
     Object? reviewCount = null,
@@ -518,9 +518,9 @@ class __$$CityActivityImplCopyWithImpl<$Res>
             ? _value.id
             : id // ignore: cast_nullable_to_non_nullable
                   as String,
-        title: null == title
-            ? _value.title
-            : title // ignore: cast_nullable_to_non_nullable
+        name: null == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
                   as String,
         imageUrl: null == imageUrl
             ? _value.imageUrl
@@ -568,7 +568,7 @@ class __$$CityActivityImplCopyWithImpl<$Res>
 class _$CityActivityImpl implements _CityActivity {
   const _$CityActivityImpl({
     required this.id,
-    required this.title,
+    required this.name,
     required this.imageUrl,
     this.rating = 0.0,
     this.reviewCount = 0,
@@ -583,7 +583,7 @@ class _$CityActivityImpl implements _CityActivity {
   @override
   final String id;
   @override
-  final String title;
+  final String name;
   @override
   final String imageUrl;
   @override
@@ -617,7 +617,7 @@ class _$CityActivityImpl implements _CityActivity {
 
   @override
   String toString() {
-    return 'CityActivity(id: $id, title: $title, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, category: $category, priceType: $priceType, district: $district)';
+    return 'CityActivity(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, category: $category, priceType: $priceType, district: $district)';
   }
 
   @override
@@ -626,7 +626,7 @@ class _$CityActivityImpl implements _CityActivity {
         (other.runtimeType == runtimeType &&
             other is _$CityActivityImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.title, title) || other.title == title) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
             (identical(other.rating, rating) || other.rating == rating) &&
@@ -648,7 +648,7 @@ class _$CityActivityImpl implements _CityActivity {
   int get hashCode => Object.hash(
     runtimeType,
     id,
-    title,
+    name,
     imageUrl,
     rating,
     reviewCount,
@@ -672,7 +672,7 @@ class _$CityActivityImpl implements _CityActivity {
 abstract class _CityActivity implements CityActivity {
   const factory _CityActivity({
     required final String id,
-    required final String title,
+    required final String name,
     required final String imageUrl,
     final double rating,
     final int reviewCount,
@@ -687,7 +687,7 @@ abstract class _CityActivity implements CityActivity {
   @override
   String get id;
   @override
-  String get title;
+  String get name;
   @override
   String get imageUrl;
   @override

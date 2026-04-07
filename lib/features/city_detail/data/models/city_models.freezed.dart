@@ -210,34 +210,42 @@ class __$$CityItineraryModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$CityItineraryModelImpl implements _CityItineraryModel {
   const _$CityItineraryModelImpl({
-    required this.id,
-    required this.title,
-    required this.authorName,
-    required this.authorAvatar,
-    required this.imageUrl,
-    required this.duration,
-    required this.views,
-    required this.likes,
+    this.id = '',
+    this.title = '',
+    this.authorName = '',
+    this.authorAvatar = '',
+    this.imageUrl = '',
+    this.duration = '',
+    this.views = '',
+    this.likes = '',
   });
 
   factory _$CityItineraryModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$CityItineraryModelImplFromJson(json);
 
   @override
+  @JsonKey()
   final String id;
   @override
+  @JsonKey()
   final String title;
   @override
+  @JsonKey()
   final String authorName;
   @override
+  @JsonKey()
   final String authorAvatar;
   @override
+  @JsonKey()
   final String imageUrl;
   @override
+  @JsonKey()
   final String duration;
   @override
+  @JsonKey()
   final String views;
   @override
+  @JsonKey()
   final String likes;
 
   @override
@@ -297,14 +305,14 @@ class _$CityItineraryModelImpl implements _CityItineraryModel {
 
 abstract class _CityItineraryModel implements CityItineraryModel {
   const factory _CityItineraryModel({
-    required final String id,
-    required final String title,
-    required final String authorName,
-    required final String authorAvatar,
-    required final String imageUrl,
-    required final String duration,
-    required final String views,
-    required final String likes,
+    final String id,
+    final String title,
+    final String authorName,
+    final String authorAvatar,
+    final String imageUrl,
+    final String duration,
+    final String views,
+    final String likes,
   }) = _$CityItineraryModelImpl;
 
   factory _CityItineraryModel.fromJson(Map<String, dynamic> json) =
@@ -342,7 +350,7 @@ CityActivityModel _$CityActivityModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$CityActivityModel {
   String get id => throw _privateConstructorUsedError;
-  String get title => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError;
   String get imageUrl => throw _privateConstructorUsedError;
   double get rating => throw _privateConstructorUsedError;
   int get reviewCount => throw _privateConstructorUsedError;
@@ -373,7 +381,7 @@ abstract class $CityActivityModelCopyWith<$Res> {
   @useResult
   $Res call({
     String id,
-    String title,
+    String name,
     String imageUrl,
     double rating,
     int reviewCount,
@@ -402,7 +410,7 @@ class _$CityActivityModelCopyWithImpl<$Res, $Val extends CityActivityModel>
   @override
   $Res call({
     Object? id = null,
-    Object? title = null,
+    Object? name = null,
     Object? imageUrl = null,
     Object? rating = null,
     Object? reviewCount = null,
@@ -419,9 +427,9 @@ class _$CityActivityModelCopyWithImpl<$Res, $Val extends CityActivityModel>
                 ? _value.id
                 : id // ignore: cast_nullable_to_non_nullable
                       as String,
-            title: null == title
-                ? _value.title
-                : title // ignore: cast_nullable_to_non_nullable
+            name: null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
                       as String,
             imageUrl: null == imageUrl
                 ? _value.imageUrl
@@ -476,7 +484,7 @@ abstract class _$$CityActivityModelImplCopyWith<$Res>
   @useResult
   $Res call({
     String id,
-    String title,
+    String name,
     String imageUrl,
     double rating,
     int reviewCount,
@@ -504,7 +512,7 @@ class __$$CityActivityModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? title = null,
+    Object? name = null,
     Object? imageUrl = null,
     Object? rating = null,
     Object? reviewCount = null,
@@ -521,9 +529,9 @@ class __$$CityActivityModelImplCopyWithImpl<$Res>
             ? _value.id
             : id // ignore: cast_nullable_to_non_nullable
                   as String,
-        title: null == title
-            ? _value.title
-            : title // ignore: cast_nullable_to_non_nullable
+        name: null == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
                   as String,
         imageUrl: null == imageUrl
             ? _value.imageUrl
@@ -570,9 +578,9 @@ class __$$CityActivityModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$CityActivityModelImpl implements _CityActivityModel {
   const _$CityActivityModelImpl({
-    required this.id,
-    required this.title,
-    required this.imageUrl,
+    this.id = '',
+    this.name = '',
+    this.imageUrl = '',
     this.rating = 0.0,
     this.reviewCount = 0,
     this.address = '',
@@ -587,10 +595,13 @@ class _$CityActivityModelImpl implements _CityActivityModel {
       _$$CityActivityModelImplFromJson(json);
 
   @override
+  @JsonKey()
   final String id;
   @override
-  final String title;
+  @JsonKey()
+  final String name;
   @override
+  @JsonKey()
   final String imageUrl;
   @override
   @JsonKey()
@@ -620,7 +631,7 @@ class _$CityActivityModelImpl implements _CityActivityModel {
 
   @override
   String toString() {
-    return 'CityActivityModel(id: $id, title: $title, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, category: $category, priceType: $priceType, district: $district)';
+    return 'CityActivityModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, isFavorite: $isFavorite, category: $category, priceType: $priceType, district: $district)';
   }
 
   @override
@@ -629,7 +640,7 @@ class _$CityActivityModelImpl implements _CityActivityModel {
         (other.runtimeType == runtimeType &&
             other is _$CityActivityModelImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.title, title) || other.title == title) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.imageUrl, imageUrl) ||
                 other.imageUrl == imageUrl) &&
             (identical(other.rating, rating) || other.rating == rating) &&
@@ -652,7 +663,7 @@ class _$CityActivityModelImpl implements _CityActivityModel {
   int get hashCode => Object.hash(
     runtimeType,
     id,
-    title,
+    name,
     imageUrl,
     rating,
     reviewCount,
@@ -683,9 +694,9 @@ class _$CityActivityModelImpl implements _CityActivityModel {
 
 abstract class _CityActivityModel implements CityActivityModel {
   const factory _CityActivityModel({
-    required final String id,
-    required final String title,
-    required final String imageUrl,
+    final String id,
+    final String name,
+    final String imageUrl,
     final double rating,
     final int reviewCount,
     final String address,
@@ -702,7 +713,7 @@ abstract class _CityActivityModel implements CityActivityModel {
   @override
   String get id;
   @override
-  String get title;
+  String get name;
   @override
   String get imageUrl;
   @override
@@ -743,8 +754,7 @@ mixin _$CityRestaurantModel {
   int get reviewCount => throw _privateConstructorUsedError;
   String get address => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
-  bool get isFavorite =>
-      throw _privateConstructorUsedError; // === Filter fields ===
+  bool get isFavorite => throw _privateConstructorUsedError;
   String get cuisine => throw _privateConstructorUsedError;
   String get priceLevel => throw _privateConstructorUsedError;
   List<String> get amenities => throw _privateConstructorUsedError;
@@ -965,11 +975,11 @@ class __$$CityRestaurantModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$CityRestaurantModelImpl implements _CityRestaurantModel {
   const _$CityRestaurantModelImpl({
-    required this.id,
-    required this.name,
-    required this.imageUrl,
-    required this.rating,
-    required this.reviewCount,
+    this.id = '',
+    this.name = '',
+    this.imageUrl = '',
+    this.rating = 0.0,
+    this.reviewCount = 0,
     this.address = '',
     this.status = '',
     this.isFavorite = false,
@@ -982,14 +992,19 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
       _$$CityRestaurantModelImplFromJson(json);
 
   @override
+  @JsonKey()
   final String id;
   @override
+  @JsonKey()
   final String name;
   @override
+  @JsonKey()
   final String imageUrl;
   @override
+  @JsonKey()
   final double rating;
   @override
+  @JsonKey()
   final int reviewCount;
   @override
   @JsonKey()
@@ -1000,7 +1015,6 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
   @override
   @JsonKey()
   final bool isFavorite;
-  // === Filter fields ===
   @override
   @JsonKey()
   final String cuisine;
@@ -1082,11 +1096,11 @@ class _$CityRestaurantModelImpl implements _CityRestaurantModel {
 
 abstract class _CityRestaurantModel implements CityRestaurantModel {
   const factory _CityRestaurantModel({
-    required final String id,
-    required final String name,
-    required final String imageUrl,
-    required final double rating,
-    required final int reviewCount,
+    final String id,
+    final String name,
+    final String imageUrl,
+    final double rating,
+    final int reviewCount,
     final String address,
     final String status,
     final bool isFavorite,
@@ -1113,7 +1127,7 @@ abstract class _CityRestaurantModel implements CityRestaurantModel {
   @override
   String get status;
   @override
-  bool get isFavorite; // === Filter fields ===
+  bool get isFavorite;
   @override
   String get cuisine;
   @override
@@ -1364,15 +1378,15 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$CityHotelModelImpl implements _CityHotelModel {
   const _$CityHotelModelImpl({
-    required this.id,
-    required this.name,
-    required this.imageUrl,
-    required this.rating,
-    required this.reviewCount,
-    required this.price,
+    this.id = '',
+    this.name = '',
+    this.imageUrl = '',
+    this.rating = 0.0,
+    this.reviewCount = 0,
+    this.price = '',
     this.isFavorite = false,
     this.starRating = 0,
-    this.priceValue = 0,
+    this.priceValue = 0.0,
     this.accommodationType = '',
     final List<String> amenities = const [],
   }) : _amenities = amenities;
@@ -1381,16 +1395,22 @@ class _$CityHotelModelImpl implements _CityHotelModel {
       _$$CityHotelModelImplFromJson(json);
 
   @override
+  @JsonKey()
   final String id;
   @override
+  @JsonKey()
   final String name;
   @override
+  @JsonKey()
   final String imageUrl;
   @override
+  @JsonKey()
   final double rating;
   @override
+  @JsonKey()
   final int reviewCount;
   @override
+  @JsonKey()
   final String price;
   @override
   @JsonKey()
@@ -1482,12 +1502,12 @@ class _$CityHotelModelImpl implements _CityHotelModel {
 
 abstract class _CityHotelModel implements CityHotelModel {
   const factory _CityHotelModel({
-    required final String id,
-    required final String name,
-    required final String imageUrl,
-    required final double rating,
-    required final int reviewCount,
-    required final String price,
+    final String id,
+    final String name,
+    final String imageUrl,
+    final double rating,
+    final int reviewCount,
+    final String price,
     final bool isFavorite,
     final int starRating,
     final double priceValue,

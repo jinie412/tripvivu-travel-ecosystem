@@ -5,13 +5,20 @@ import 'search_state.dart';
 
 import 'package:travel_advisor_mobile/features/search/domain/usecases/get_recent_searches.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/search_locations.dart';
+import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
+import 'package:travel_advisor_mobile/features/search/domain/usecases/save_recent_search.dart';
 
 class SearchCubit extends Cubit<SearchState> {
   final GetRecentSearches _getRecentSearches;
   final SearchLocations _searchLocations;
+  final SaveRecentSearch _saveRecentSearch;
   Timer? _debounce;
 
-  SearchCubit(this._getRecentSearches, this._searchLocations) : super(const SearchState.initial());
+  SearchCubit(
+    this._getRecentSearches,
+    this._searchLocations,
+    this._saveRecentSearch,
+  ) : super(const SearchState.initial());
 
   Future<void> loadRecentSearches() async {
     emit(const SearchState.loading());
@@ -21,6 +28,11 @@ class SearchCubit extends Cubit<SearchState> {
     } catch (e) {
       emit(const SearchState.error('Failed to load recent searches'));
     }
+  }
+
+  /// Gọi khi user tap vào 1 kết quả search
+  Future<void> onLocationSelected(SearchLocation location) async {
+    await _saveRecentSearch(location);
   }
 
   void onSearchQueryChanged(String query) {
@@ -48,3 +60,4 @@ class SearchCubit extends Cubit<SearchState> {
     return super.close();
   }
 }
+

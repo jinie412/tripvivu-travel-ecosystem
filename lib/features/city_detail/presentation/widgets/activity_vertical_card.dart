@@ -83,7 +83,7 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                         children: [
                           Expanded(
                             child: Text(
-                              widget.item.title,
+                              widget.item.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

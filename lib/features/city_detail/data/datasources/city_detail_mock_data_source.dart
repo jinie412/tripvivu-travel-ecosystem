@@ -65,7 +65,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
     return const [
       CityActivityModel(
         id: 'a1',
-        title: 'Chợ Bến Thành',
+        name: 'Chợ Bến Thành',
         imageUrl:
             'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Ben_Thanh_market_2.jpg/330px-Ben_Thanh_market_2.jpg',
         rating: 4.5,
@@ -79,7 +79,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
       ),
       CityActivityModel(
         id: 'a2',
-        title: 'Bưu điện Trung tâm',
+        name: 'Bưu điện Trung tâm',
         imageUrl:
             'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2e/8c/e2/12/caption.jpg?w=900&h=500&s=1',
         rating: 4.7,
@@ -94,7 +94,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
       ),
       CityActivityModel(
         id: 'a3',
-        title: 'Dinh Độc Lập',
+        name: 'Dinh Độc Lập',
         imageUrl:
             'https://ik.imagekit.io/tvlk/blog/2025/04/dinh-doc-lap.jpg?tr=q-70,c-at_max,w-1000,h-600',
         rating: 4.6,
@@ -108,7 +108,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
       ),
       CityActivityModel(
         id: 'a4',
-        title: 'Nhà thờ Đức Bà',
+        name: 'Nhà thờ Đức Bà',
         imageUrl:
             'https://image.vietgoing.com/destination/large/vietgoing_mzh2503128324.webp',
         rating: 4.4,
@@ -122,7 +122,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
       ),
       CityActivityModel(
         id: 'a5',
-        title: 'Thảo Cầm Viên',
+        name: 'Thảo Cầm Viên',
         imageUrl:
             'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=500',
         rating: 4.2,
@@ -136,7 +136,7 @@ class CityDetailMockDataSource implements CityDetailDataSource {
       ),
       CityActivityModel(
         id: 'a6',
-        title: 'Đầm Sen Park',
+        name: 'Đầm Sen Park',
         imageUrl:
             'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=500',
         rating: 4.0,

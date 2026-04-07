@@ -20,6 +20,7 @@ class CityDetailState with _$CityDetailState {
     @Default([]) List<CityActivity> filteredActivities,
     @Default([]) List<CityRestaurant> filteredRestaurants,
     @Default([]) List<CityHotel> filteredHotels,
+    @Default([]) List<CityItinerary> itineraries,
   }) = _Loaded;
   const factory CityDetailState.error(String message) = _Error;
 }

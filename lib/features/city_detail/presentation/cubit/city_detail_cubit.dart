@@ -3,35 +3,47 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/filter_enums.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/usecases/get_city_overview_usecase.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_state.dart';
+import 'package:travel_advisor_mobile/features/city_detail/data/city_api.dart';
+import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
 
 class CityDetailCubit extends Cubit<CityDetailState> {
   final GetCityOverviewUseCase _getCityOverview;
+  String currentCityName = "";
 
-  CityDetailCubit(this._getCityOverview) : super(const CityDetailState.initial());
+  CityDetailCubit(this._getCityOverview)
+    : super(const CityDetailState.initial());
 
   /// Tải dữ liệu tổng quan của thành phố.
   /// Sau khi load xong, khởi tạo filteredList = danh sách gốc (chưa filter).
-  Future<void> loadCityDetail(String cityId) async {
-    emit(const CityDetailState.loading());
-    try {
-      final overview = await _getCityOverview(cityId);
-      emit(CityDetailState.loaded(
+Future<void> loadCityDetail(String cityId, String cityName) async {
+  emit(const CityDetailState.loading());
+  try {
+    currentCityName = cityName;
+    final overview = await _getCityOverview(cityId);
+    emit(
+      CityDetailState.loaded(
         overview,
-        0, // Tab mặc định: Tổng quan
+        0,
         filteredActivities: overview.activities,
         filteredRestaurants: overview.restaurants,
         filteredHotels: overview.hotels,
-      ));
-    } catch (e) {
-      emit(CityDetailState.error(e.toString()));
-    }
+      ),
+    );
+    // Fetch tất cả để overview dùng được
+    await Future.wait([
+      fetchItineraries(),
+      fetchPlacesByCategory("Activity"),
+      fetchPlacesByCategory("Restaurant"),
+      fetchPlacesByCategory("Hotel"),
+    ]);
+  } catch (e) {
+    emit(CityDetailState.error(e.toString()));
   }
+}
 
   /// Chuyển tab
   void changeTab(int index) {
-    state.mapOrNull(
-      loaded: (s) => emit(s.copyWith(activeTab: index)),
-    );
+    state.mapOrNull(loaded: (s) => emit(s.copyWith(activeTab: index)));
   }
 
   // ============================================================
@@ -53,7 +65,9 @@ class CityDetailCubit extends Cubit<CityDetailState> {
 
         // 2. Lọc theo khoảng giá (chọn 1)
         if (filter.priceType != ActivityPriceType.all) {
-          result = result.where((a) => a.priceType == filter.priceType.name).toList();
+          result = result
+              .where((a) => a.priceType == filter.priceType.name)
+              .toList();
         }
 
         // 3. Lọc theo khu vực
@@ -73,10 +87,7 @@ class CityDetailCubit extends Cubit<CityDetailState> {
             break;
         }
 
-        emit(s.copyWith(
-          activityFilter: filter,
-          filteredActivities: result,
-        ));
+        emit(s.copyWith(activityFilter: filter, filteredActivities: result));
       },
     );
   }
@@ -105,7 +116,8 @@ class CityDetailCubit extends Cubit<CityDetailState> {
 
         // 2. Lọc theo mức giá (chọn 1)
         if (filter.priceLevel != RestaurantPriceLevel.all) {
-          final priceLevelStr = filter.priceLevel == RestaurantPriceLevel.midRange
+          final priceLevelStr =
+              filter.priceLevel == RestaurantPriceLevel.midRange
               ? 'mid_range'
               : filter.priceLevel.name;
           result = result.where((r) => r.priceLevel == priceLevelStr).toList();
@@ -127,17 +139,17 @@ class CityDetailCubit extends Cubit<CityDetailState> {
             break;
           case SortOption.cheapest:
             // Sort theo thứ tự: budget < mid_range < premium
-            result.sort((a, b) => _priceLevelOrder(a.priceLevel)
-                .compareTo(_priceLevelOrder(b.priceLevel)));
+            result.sort(
+              (a, b) => _priceLevelOrder(
+                a.priceLevel,
+              ).compareTo(_priceLevelOrder(b.priceLevel)),
+            );
             break;
           default:
             break;
         }
 
-        emit(s.copyWith(
-          restaurantFilter: filter,
-          filteredRestaurants: result,
-        ));
+        emit(s.copyWith(restaurantFilter: filter, filteredRestaurants: result));
       },
     );
   }
@@ -175,7 +187,8 @@ class CityDetailCubit extends Cubit<CityDetailState> {
         if (filter.minPrice > 0 || filter.maxPrice > 0) {
           result = result.where((h) {
             final aboveMin = h.priceValue >= filter.minPrice;
-            final belowMax = filter.maxPrice <= 0 || h.priceValue <= filter.maxPrice;
+            final belowMax =
+                filter.maxPrice <= 0 || h.priceValue <= filter.maxPrice;
             return aboveMin && belowMax;
           }).toList();
         }
@@ -183,7 +196,9 @@ class CityDetailCubit extends Cubit<CityDetailState> {
         // 3. Lọc theo loại hình lưu trú (chọn nhiều)
         if (filter.accommodationTypes.isNotEmpty) {
           result = result.where((h) {
-            return filter.accommodationTypes.any((t) => t.name == h.accommodationType);
+            return filter.accommodationTypes.any(
+              (t) => t.name == h.accommodationType,
+            );
           }).toList();
         }
 
@@ -208,10 +223,7 @@ class CityDetailCubit extends Cubit<CityDetailState> {
             break;
         }
 
-        emit(s.copyWith(
-          hotelFilter: filter,
-          filteredHotels: result,
-        ));
+        emit(s.copyWith(hotelFilter: filter, filteredHotels: result));
       },
     );
   }
@@ -219,5 +231,93 @@ class CityDetailCubit extends Cubit<CityDetailState> {
   /// Đặt lại filter cho tab Khách sạn về mặc định
   void resetHotelFilter() {
     updateHotelFilter(const HotelFilter());
+  }
+
+Future<void> fetchItineraries() async {
+  state.mapOrNull(
+    loaded: (s) async {
+      try {
+        final api = CityApi();
+        final data = await api.getPlaces(
+          city: currentCityName,
+          category: "itinerary",
+        );
+
+        final itineraries = data.map((e) {
+          // Remap field trước khi fromJson
+          final mapped = {
+            'id': e['id'] ?? '',
+            'title': e['description'] ?? '',        // description → title
+            'authorName': e['creator_id'] ??'',
+            'authorAvatar': 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA20etNF.img?w=500&h=300&m=6&x=9&y=17&s=476&d=125',
+            'imageUrl': 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA20etNF.img?w=500&h=300&m=6&x=9&y=17&s=476&d=125',
+            'duration': _calcDuration(e['start_date'], e['end_date']),
+            'views': '',
+            'likes': '',
+          };
+          return CityItineraryModel.fromJson(mapped).toEntity();
+        }).toList();
+
+        emit(s.copyWith(itineraries: itineraries));
+      } catch (e) {
+        emit(CityDetailState.error(e.toString()));
+      }
+    },
+  );
+}
+
+// Helper tính số ngày
+String _calcDuration(String? startDate, String? endDate) {
+  try {
+    final start = DateTime.parse(startDate!);
+    final end = DateTime.parse(endDate!);
+    final days = end.difference(start).inDays;
+    return '$days NGÀY';
+  } catch (_) {
+    return '';
+  }
+}
+
+  Future<void> fetchPlacesByCategory(String category) async {
+    state.mapOrNull(
+      loaded: (s) async {
+        try {
+          final api = CityApi();
+
+          final data = await api.getPlaces(
+            city: currentCityName,
+            category: category,
+          );
+
+          if (category == "Restaurant") {
+            emit(
+              s.copyWith(
+                filteredRestaurants: data
+                    .map((e) => CityRestaurantModel.fromJson(e).toEntity())
+                    .toList(),
+              ),
+            );
+          } else if (category == "Hotel") {
+            emit(
+              s.copyWith(
+                filteredHotels: data
+                    .map((e) => CityHotelModel.fromJson(e).toEntity())
+                    .toList(),
+              ),
+            );
+          } else {
+            emit(
+              s.copyWith(
+                filteredActivities: data
+                    .map((e) => CityActivityModel.fromJson(e).toEntity())
+                    .toList(),
+              ),
+            );
+          }
+        } catch (e) {
+          emit(CityDetailState.error(e.toString()));
+        }
+      },
+    );
   }
 }
