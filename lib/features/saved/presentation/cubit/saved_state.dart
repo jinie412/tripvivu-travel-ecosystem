@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
-
-import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
-import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/entities/favorite_itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/entities/favorite_place_entity.dart';
 
 abstract class SavedState extends Equatable {
   const SavedState();
@@ -15,8 +14,8 @@ class SavedInitial extends SavedState {}
 class SavedLoading extends SavedState {}
 
 class SavedLoaded extends SavedState {
-  final List<CityItinerary> itineraries;
-  final List<Destination> places;
+  final List<FavoriteItineraryEntity> itineraries;
+  final List<FavoritePlaceEntity> places;
 
   const SavedLoaded({required this.itineraries, required this.places});
 

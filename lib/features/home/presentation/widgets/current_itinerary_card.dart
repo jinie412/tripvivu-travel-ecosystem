@@ -131,11 +131,7 @@ class CurrentItineraryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
-                      const SizedBox(width: 12),
+                    children: [                      
                       const Icon(Icons.people_outline, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),
                       Text('${item!.durationDays} ngày', style: const TextStyle(fontSize: 11, color: Colors.grey)),

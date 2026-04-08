@@ -1,26 +1,28 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_itineraries_usecase.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_places_usecase.dart';
 import 'saved_state.dart';
 
-import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
-import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
-import 'package:travel_advisor_mobile/features/saved/domain/repositories/saved_repository.dart';
-
 class SavedCubit extends Cubit<SavedState> {
-  final SavedRepository repository;
+  final GetFavoriteItinerariesUseCase getFavoriteItinerariesUseCase;
+  final GetFavoritePlacesUseCase getFavoritePlacesUseCase;
 
-  SavedCubit({required this.repository}) : super(SavedInitial());
+  SavedCubit({
+    required this.getFavoriteItinerariesUseCase,
+    required this.getFavoritePlacesUseCase,
+  }) : super(SavedInitial());
 
-  Future<void> loadSavedContent() async {
+  Future<void> loadSavedContent({int page = 1, int limit = 5}) async {
     emit(SavedLoading());
     try {
       final results = await Future.wait([
-        repository.getFavoriteItineraries(),
-        repository.getFavoritePlaces(),
+        getFavoriteItinerariesUseCase(page: page, limit: limit),
+        getFavoritePlacesUseCase(page: page, limit: limit),
       ]);
 
       emit(SavedLoaded(
-        itineraries: (results[0] as List).cast<CityItinerary>(),
-        places: (results[1] as List).cast<Destination>(),
+        itineraries: (results[0] as List).cast(),
+        places: (results[1] as List).cast(),
       ));
     } catch (e) {
       emit(SavedError(e.toString()));

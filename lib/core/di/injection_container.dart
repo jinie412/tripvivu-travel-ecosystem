@@ -5,7 +5,7 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
-import 'package:travel_advisor_mobile/features/auth/data/repositories/mock_auth_repository.dart';
+import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
@@ -14,6 +14,8 @@ import 'package:travel_advisor_mobile/features/city_detail/data/repositories/cit
 import 'package:travel_advisor_mobile/features/city_detail/domain/repositories/city_detail_repository.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/usecases/get_city_overview_usecase.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/food/data/datasources/food_remote_data_source.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/cubit/food_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/data/datasources/home_datasource.dart';
 import 'package:travel_advisor_mobile/features/home/data/repositories/mock_home_repository.dart';
 import 'package:travel_advisor_mobile/features/home/domain/repositories/home_repository.dart';
@@ -29,20 +31,24 @@ import 'package:travel_advisor_mobile/features/place/data/repositories/place_rep
 import 'package:travel_advisor_mobile/features/place/domain/repositories/place_repository.dart';
 import 'package:travel_advisor_mobile/features/place/domain/usecases/get_place_detail_usecase.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
-import 'package:travel_advisor_mobile/features/profile/data/datasources/profile_datasource.dart';
+import '../../features/profile/data/datasources/profile_datasource.dart';
 import 'package:travel_advisor_mobile/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/repositories/profile_repository.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_profile_usecase.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_recent_activities_usecase.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/upload_avatar_usecase.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/update_profile_usecase.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
 import 'package:travel_advisor_mobile/features/review/data/repositories/review_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
-import 'package:travel_advisor_mobile/features/saved/data/datasources/saved_mock_data_source.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/collections_datasource.dart';
 import 'package:travel_advisor_mobile/features/saved/data/repositories/saved_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/saved/domain/repositories/saved_repository.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_itineraries_usecase.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_places_usecase.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
 import 'package:travel_advisor_mobile/features/search/data/datasources/search_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/data/repositories/search_repository_impl.dart';
@@ -53,6 +59,11 @@ import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:travel_advisor_mobile/features/search/data/datasources/search_local_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/save_recent_search.dart';
+import 'package:travel_advisor_mobile/features/home/data/datasources/notification_datasource.dart';
+import 'package:travel_advisor_mobile/features/home/data/repositories/notification_repository_impl.dart';
+import 'package:travel_advisor_mobile/features/home/domain/repositories/notification_repository.dart';
+import 'package:travel_advisor_mobile/features/home/domain/usecases/notification_usecases.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -62,34 +73,65 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DioClient>(() => DioClient());
 
   // ── Auth ───────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<AuthDataSource>(() => MockAuthDataSource());
+  sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
-  sl.registerLazySingleton(() => LoginUseCase(sl()));
-  sl.registerLazySingleton(() => RegisterUseCase(sl()));
-  sl.registerFactory(
-    () => AuthCubit(loginUseCase: sl(), registerUseCase: sl()),
-  );
 
-  // ── Home ───────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<HomeDataSource>(() => MockHomeDataSource());
-  sl.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(sl()));
-  sl.registerLazySingleton(() => GetSuggestionsUseCase(sl()));
-  sl.registerLazySingleton(() => GetDestinationsUseCase(sl()));
-  sl.registerLazySingleton(() => GetHotelsUseCase(sl()));
-  sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
+  // Đăng ký các UseCase
+  sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterTouristUseCase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => UpdatePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => LoginWithGoogleUseCase(sl()));
+
+  // Đăng ký Cubit
   sl.registerFactory(
-    () => ExploreCubit(
-      getSuggestions: sl(),
-      getDestinations: sl(),
-      getHotels: sl(),
-      getRestaurants: sl(),
-      getItineraries: sl(),
+    () => AuthCubit(
+      loginUseCase: sl(),
+      registerTouristUseCase: sl(),
+      forgotPasswordUseCase: sl(),
+      updatePasswordUseCase: sl(),
+      changePasswordUseCase: sl(),
+      loginWithGoogleUseCase: sl(),
     ),
   );
 
+  // ── Home ───────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<HomeDataSource>(() => RemoteHomeDataSource(sl()));
+  sl.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => GetExploreHomeUseCase(sl()));
+  sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
+  sl.registerLazySingleton(() => GetPublicSuggestionsUseCase(sl()));
+  sl.registerLazySingleton(() => GetFeaturedDestinationsUseCase(sl()));
+  sl.registerLazySingleton(() => GetRestaurantsByCategoriesUseCase(sl()));
+  sl.registerLazySingleton(() => GetHotelsByCategoriesUseCase(sl()));
+  sl.registerFactory(
+    () => ExploreCubit(
+      getExploreHome: sl(),
+      getRestaurants: sl(),
+      getPublicSuggestions: sl(),
+      getFeaturedDestinations: sl(),
+      getRestaurantsByCategories: sl(),
+      getHotelsByCategories: sl(),
+    ),
+  );
+  
+    // ── Notifications ─────────────────────────────────────────────────────────
+    sl.registerLazySingleton<NotificationDataSource>(() => RemoteNotificationDataSource(sl()));
+    sl.registerLazySingleton<NotificationRepository>(() => NotificationRepositoryImpl(sl()));
+    sl.registerLazySingleton(() => GetNotificationsUseCase(sl()));
+    sl.registerFactory(
+      () => NotificationCubit(getNotifications: sl()),
+    );
+
   // ── Itinerary ──────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ItineraryDataSource>(() => MockItineraryDataSource());
-  sl.registerLazySingleton<ItineraryRepository>(() => ItineraryRepositoryImpl(sl()));
+  sl.registerLazySingleton<ItineraryDataSource>(
+    () => RemoteItineraryDataSource(),//MockItineraryDataSource(),
+    // TODO: swap → RemoteItineraryDataSource(sl<DioClient>())
+  );
+  sl.registerLazySingleton<ItineraryRepository>(
+    () => ItineraryRepositoryImpl(sl()),
+  );
   sl.registerLazySingleton(() => GetItinerariesUseCase(sl()));
   sl.registerLazySingleton(() => GetItinerarySummaryUseCase(sl()));
   sl.registerLazySingleton(() => DeleteItineraryUseCase(sl()));
@@ -104,23 +146,27 @@ Future<void> initDependencies() async {
   );
 
   // ── Profile ────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ProfileDataSource>(() => MockProfileDataSource());
+  sl.registerLazySingleton<ProfileDataSource>(() => RemoteProfileDataSource(sl()));
   sl.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetRecentActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
   sl.registerFactory(
     () => ProfileCubit(
       getProfile: sl(),
       getRecentActivities: sl(),
+      uploadAvatar: sl(),
+      updateProfile: sl(),
     ),
   );
 
   // ── Review ─────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ReviewDataSource>(() => MockReviewDataSource());
+  sl.registerLazySingleton<ReviewDataSource>(() => RemoteReviewDataSource(sl()));
   sl.registerLazySingleton<ReviewRepository>(() => ReviewRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetItineraryForReviewUseCase(sl()));
   sl.registerFactory(
-    () => ReviewCubit(getItineraryForReview: sl()),
+    () => ReviewCubit(getItineraryForReview: sl(), reviewRepository: sl()),
   );
 // Trong hàm initDependencies(), thêm SharedPreferences ở phần đầu (trước tất cả features):
   final sharedPreferences = await SharedPreferences.getInstance();
@@ -146,25 +192,36 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<CityDetailDataSource>(() => CityDetailMockDataSource());
+  sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));
   sl.registerLazySingleton<CityDetailRepository>(() => CityDetailRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetCityOverviewUseCase(sl()));
   sl.registerFactory(() => CityDetailCubit(sl()));
 
+  // ── Food / Orders ─────────────────────────────────────────────────────────
+  sl.registerLazySingleton<FoodRemoteDataSource>(() => FoodRemoteDataSource(sl()));
+  sl.registerFactory(() => FoodCubit(remote: sl()));
+
   // ── Place ──────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<PlaceDataSource>(() => MockPlaceDataSource());
+  sl.registerLazySingleton<PlaceDataSource>(() => RemotePlaceDataSource(sl()));
   sl.registerLazySingleton<PlaceRepository>(() => PlaceRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetPlaceDetailUseCase(sl()));
-  sl.registerFactory(
-    () => PlaceDetailCubit(getPlaceDetailUseCase: sl()),
-  );
+  sl.registerFactory(() => PlaceDetailCubit(getPlaceDetailUseCase: sl()));
 
   // ── Saved ──────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton(() => SavedMockDataSource());
-  sl.registerLazySingleton<SavedRepository>(
-    () => SavedRepositoryImpl(dataSource: sl<SavedMockDataSource>()),
+  sl.registerLazySingleton<CollectionsDataSource>(
+    () => RemoteCollectionsDataSource(sl()),
   );
-  sl.registerFactory(() => SavedCubit(repository: sl()));
+  sl.registerLazySingleton<SavedRepository>(
+    () => SavedRepositoryImpl(dataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetFavoriteItinerariesUseCase(repository: sl()));
+  sl.registerLazySingleton(() => GetFavoritePlacesUseCase(repository: sl()));
+  sl.registerFactory(
+    () => SavedCubit(
+      getFavoriteItinerariesUseCase: sl(),
+      getFavoritePlacesUseCase: sl(),
+    ),
+  );
 
   // ── Trip Planner ───────────────────────────────────────────────────────────
   sl.registerFactory(() => TripPlannerCubit());

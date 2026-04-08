@@ -10,6 +10,7 @@ import 'package:travel_advisor_mobile/features/home/presentation/widgets/destina
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_state.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/widgets/saved_itinerary_card.dart';
 
@@ -29,9 +30,7 @@ class _SavedScreenState extends State<SavedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return SafeArea(
         child: BlocBuilder<SavedCubit, SavedState>(
           builder: (context, state) {
             if (state is SavedLoading) {
@@ -49,16 +48,39 @@ class _SavedScreenState extends State<SavedScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(AppSizes.s24, AppSizes.s16, AppSizes.s24, AppSizes.s16),
-                      child: Text(
-                        'Bộ sưu tập',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s12, AppSizes.s16, AppSizes.s12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Builder(
+                              builder: (ctx) => IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.menu, color: AppColors.primary, size: 20),
+                                onPressed: () => Scaffold.of(ctx).openDrawer(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Bộ sưu tập',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const TabBar(
@@ -119,7 +141,13 @@ class _SavedScreenState extends State<SavedScreen> {
                             ),
                             itemCount: state.places.length,
                             itemBuilder: (context, index) {
-                              return DestinationCard(item: state.places[index]);
+                              final favPlace = state.places[index];
+                              final destination = Destination(
+                                id: favPlace.id,
+                                name: favPlace.name,
+                                imageUrl: favPlace.image,
+                              );
+                              return DestinationCard(item: destination);
                             },
                           ),
                         ],
@@ -132,7 +160,6 @@ class _SavedScreenState extends State<SavedScreen> {
             return const SizedBox.shrink();
           },
         ),
-      ),
     );
   }
 }

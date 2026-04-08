@@ -132,6 +132,53 @@ class ActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: item.imageUrl,
+                height: 112,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: LikeButton(size: 16),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: Text(
+            item.title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class RestaurantCard extends StatelessWidget {
+  final CityRestaurant item;
+  const RestaurantCard({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Stack(
@@ -152,25 +199,41 @@ class ActivityCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           item.name,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-          maxLines: 2,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            const Icon(Icons.star, color: Colors.amber, size: 14),
+            const SizedBox(width: 2),
+            Text(
+              item.rating.toString(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '(${item.reviewCount} đánh giá)',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
-class RestaurantCard extends StatelessWidget {
-  final CityRestaurant item;
-  const RestaurantCard({super.key, required this.item});
+class HotelCard extends StatelessWidget {
+  final CityHotel item;
+  const HotelCard({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -212,68 +275,17 @@ class RestaurantCard extends StatelessWidget {
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 4),
-            Text(
-              '(${item.reviewCount} đánh giá)',
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class HotelCard extends StatelessWidget {
-  final CityHotel item;
-  const HotelCard({super.key, required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
+            Expanded(
+              child: Text(
+                '(${item.reviewCount} đánh giá)',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          item.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            const Icon(Icons.star, color: Colors.amber, size: 14),
-            const SizedBox(width: 2),
-            Text(
-              item.rating.toString(),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '(${item.reviewCount} đánh giá)',
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         RichText(
           text: TextSpan(
             style: const TextStyle(color: Colors.black, fontSize: 13),

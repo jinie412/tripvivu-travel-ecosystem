@@ -1,17 +1,27 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+class TripSuggestion {
+  final String id;
+  final String title;
+  final String authorName;
+  final String authorAvatar;
+  final String days;
+  final String location;
+  final String views;
+  final String likes;
+  final String? imageUrl;
+  final List<String> imageUrls;
+  final int placeholderColor;
 
-part 'trip_suggestion.freezed.dart';
-
-@freezed
-class TripSuggestion with _$TripSuggestion {
-  const factory TripSuggestion({
-    required String id,
-    required String title,
-    required String days,
-    required String location,
-    required String views,
-    required String likes,
-    String? imageUrl,
-    @Default(0xFF4A90D9) int placeholderColor,
-  }) = _TripSuggestion;
+  const TripSuggestion({
+    required this.id,
+    required this.title,
+    this.authorName = 'Traveler',
+    this.authorAvatar = '',
+    required this.days,
+    required this.location,
+    required this.views,
+    required this.likes,
+    this.imageUrl,
+    this.imageUrls = const <String>[],
+    this.placeholderColor = 0xFF4A90D9,
+  });
 }

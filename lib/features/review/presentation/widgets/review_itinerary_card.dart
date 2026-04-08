@@ -13,6 +13,8 @@ class ReviewItineraryCard extends StatelessWidget {
   final ValueChanged<double> onRatingChanged;
   final bool applyToAll;
   final ValueChanged<bool> onApplyToAllChanged;
+  final String generalComment;
+  final ValueChanged<String> onGeneralCommentChanged;
   final List<String> mediaPaths;
   final VoidCallback onAddMedia;
   final ValueChanged<String> onRemoveMedia;
@@ -25,6 +27,8 @@ class ReviewItineraryCard extends StatelessWidget {
     required this.onRatingChanged,
     required this.applyToAll,
     required this.onApplyToAllChanged,
+    required this.generalComment,
+    required this.onGeneralCommentChanged,
     required this.mediaPaths,
     required this.onAddMedia,
     required this.onRemoveMedia,
@@ -168,8 +172,10 @@ class ReviewItineraryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.grey.shade200),
             ),
-            child: TextField(
+            child: TextFormField(
               maxLines: 4,
+              initialValue: generalComment,
+              onChanged: onGeneralCommentChanged,
               decoration: InputDecoration(
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,

@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_detail_model.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_model.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_review_model.dart';
@@ -67,5 +70,129 @@ class MockPlaceDataSource implements PlaceDataSource {
         ),
       ],
     );
+  }
+}
+
+class RemotePlaceDataSource implements PlaceDataSource {
+  final DioClient _client;
+
+  RemotePlaceDataSource(this._client);
+
+  @override
+  Future<PlaceDetailModel> getPlaceDetail(String id) async {
+    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
+
+    try {
+      final response = await _client.dio.get(
+        '/places/$id',
+        queryParameters: {
+          if (touristId != null && touristId.isNotEmpty) 'tourist_id': touristId,
+        },
+      );
+
+      return _mapPlaceDetail(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final message = e.response?.data is Map<String, dynamic>
+          ? ((e.response?.data as Map<String, dynamic>)['message'] ?? e.message)
+          : e.message;
+      throw Exception('Không tải được chi tiết địa điểm: $message');
+    }
+  }
+
+  PlaceDetailModel _mapPlaceDetail(Map<String, dynamic> json) {
+    final images = _toStringList(json['images']);
+    final primaryImage = (json['image_url'] ?? '').toString();
+    final gallery = images.isNotEmpty
+        ? images
+        : (primaryImage.isNotEmpty
+            ? <String>[primaryImage]
+            : <String>['https://placehold.co/1080x720?text=No+Image']);
+
+    final reviewInfo = (json['reviews'] as Map<String, dynamic>?) ?? const <String, dynamic>{};
+    final reviewList = (reviewInfo['list'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(_mapReview)
+        .toList();
+
+    final related = (json['related_places'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(_mapRelatedPlace)
+        .toList();
+
+    return PlaceDetailModel(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? 'Địa điểm').toString(),
+      address: (json['address'] ?? '').toString(),
+      district: (json['district'] ?? '').toString(),
+      city: (json['city'] ?? '').toString(),
+      rating: ((json['rating'] as num?) ?? 0).toDouble(),
+      totalReviews: (reviewInfo['total'] as num?)?.toInt() ?? (json['review_count'] as num?)?.toInt() ?? 0,
+      tags: _toStringList(json['tags']),
+      images: gallery,
+      description: (json['description'] ?? '').toString(),
+      openingHours: (json['open_time'] ?? '').toString(),
+      closingHours: (json['close_time'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      reviews: reviewList,
+      relatedPlaces: related,
+      isFavorite: json['is_favorite'] == true,
+    );
+  }
+
+  PlaceReviewModel _mapReview(Map<String, dynamic> json) {
+    final avatarSeed = (json['user_name'] ?? json['id'] ?? 'anonymous').toString();
+
+    return PlaceReviewModel(
+      id: (json['id'] ?? '').toString(),
+      userName: (json['user_name'] ?? 'Ẩn danh').toString(),
+      userAvatar: 'https://i.pravatar.cc/150?u=$avatarSeed',
+      rating: ((json['rating'] as num?) ?? 0).toDouble(),
+      timeAgo: _toTimeAgo((json['created_at'] ?? '').toString()),
+      reviewText: (json['content'] ?? '').toString(),
+      reviewImages: const <String>[],
+    );
+  }
+
+  PlaceModel _mapRelatedPlace(Map<String, dynamic> json) {
+    final image = (json['image'] ?? '').toString();
+    return PlaceModel(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? 'Địa điểm liên quan').toString(),
+      imageUrl: image,
+      rating: ((json['rating'] as num?) ?? 0).toDouble(),
+      district: '',
+      city: (json['city'] ?? '').toString(),
+    );
+  }
+
+  List<String> _toStringList(dynamic raw) {
+    if (raw is! List) {
+      return const <String>[];
+    }
+
+    return raw
+        .whereType<String>()
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  String _toTimeAgo(String iso) {
+    final date = DateTime.tryParse(iso);
+    if (date == null) {
+      return 'Vừa xong';
+    }
+
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays >= 1) {
+      return '${diff.inDays} ngày trước';
+    }
+    if (diff.inHours >= 1) {
+      return '${diff.inHours} giờ trước';
+    }
+    if (diff.inMinutes >= 1) {
+      return '${diff.inMinutes} phút trước';
+    }
+    return 'Vừa xong';
   }
 }

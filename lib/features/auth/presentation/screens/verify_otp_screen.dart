@@ -50,7 +50,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
       // Simulate success
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
+        MaterialPageRoute(builder: (_) => ResetPasswordScreen(accessToken: 'your_access_token')),
       );
     }
   }

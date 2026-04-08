@@ -19,19 +19,7 @@ class HomeItineraryCard extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: item.imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: item.imageUrl!,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      height: 180,
-                      width: double.infinity,
-                      color: Color(item.placeholderColor),
-                      child: const Icon(Icons.image, color: Colors.white, size: 40),
-                    ),
+              child: _buildItineraryImageGallery(),
             ),
             Positioned(
               top: 12,
@@ -71,21 +59,22 @@ class HomeItineraryCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // Single Metadata Row: Author, Location, Views, Likes
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 12,
               backgroundImage: CachedNetworkImageProvider(
-                'https://i.pravatar.cc/100?u=${item.id}',
+                item.authorAvatar.isNotEmpty
+                    ? item.authorAvatar
+                    : 'https://i.pravatar.cc/100?u=${item.id}',
               ),
             ),
             const SizedBox(width: 8),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
-                'Traveler',
+                item.authorName,
                 style: TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ),
@@ -123,6 +112,72 @@ class HomeItineraryCard extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildItineraryImageGallery() {
+    final gallery = item.imageUrls.where((url) => url.trim().isNotEmpty).take(3).toList();
+
+    if (gallery.isEmpty && item.imageUrl != null && item.imageUrl!.trim().isNotEmpty) {
+      gallery.add(item.imageUrl!.trim());
+    }
+
+    if (gallery.isEmpty) {
+      return Container(
+        height: 180,
+        width: double.infinity,
+        color: Color(item.placeholderColor),
+        child: const Icon(Icons.image, color: Colors.white, size: 40),
+      );
+    }
+
+    if (gallery.length == 1) {
+      return _buildNetworkImage(gallery.first, height: 180);
+    }
+
+    return SizedBox(
+      height: 180,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildNetworkImage(gallery[0], height: 180),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _buildNetworkImage(gallery[1], height: double.infinity),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: gallery.length >= 3
+                      ? _buildNetworkImage(gallery[2], height: double.infinity)
+                      : Container(
+                          color: Color(item.placeholderColor).withValues(alpha: 0.35),
+                          child: const Icon(Icons.landscape, color: Colors.white54),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkImage(String imageUrl, {required double height}) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorWidget: (_, __, ___) => Container(
+        color: Color(item.placeholderColor).withValues(alpha: 0.75),
+        alignment: Alignment.center,
+        child: const Icon(Icons.broken_image, color: Colors.white),
+      ),
     );
   }
 }
