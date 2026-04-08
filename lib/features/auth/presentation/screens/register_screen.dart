@@ -41,6 +41,9 @@ class _RegisterViewState extends State<_RegisterView> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // Lỗi email từ server (vd: "Email đã tồn tại")
+  String? _emailError;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -75,12 +78,12 @@ class _RegisterViewState extends State<_RegisterView> {
         return;
       }
       context.read<AuthCubit>().registerTourist(
-            fullName: _nameController.text.trim(),
-            gender: _toGenderEnum(_selectedGender),
-            email: _emailController.text.trim(),
-            phoneNumber: _phoneController.text.trim(),
-            password: _passwordController.text,
-          );
+        fullName: _nameController.text.trim(),
+        gender: _toGenderEnum(_selectedGender),
+        email: _emailController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        password: _passwordController.text,
+      );
     }
   }
 
@@ -88,13 +91,21 @@ class _RegisterViewState extends State<_RegisterView> {
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (state is RegisterSuccess) {
+        if (state is AuthSuccess) {
+          // Đăng ký/đăng nhập bằng Google thành công → vào HomeScreen
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          });
+        } else if (state is RegisterSuccess) {
           showDialog(
             context: context,
             barrierDismissible: false,
             builder: (_) => AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.r20)),
+                borderRadius: BorderRadius.circular(AppSizes.r20),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -106,14 +117,16 @@ class _RegisterViewState extends State<_RegisterView> {
                       color: Color(0xFFE8F5E9),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_circle_rounded,
-                        color: Colors.green, size: AppSizes.s48),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.green,
+                      size: AppSizes.s48,
+                    ),
                   ),
                   const SizedBox(height: AppSizes.s24),
                   const Text(
                     'Đăng ký thành công!',
-                    style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: AppSizes.s12),
                   const Text(
@@ -131,8 +144,8 @@ class _RegisterViewState extends State<_RegisterView> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.r12)),
+                          borderRadius: BorderRadius.circular(AppSizes.r12),
+                        ),
                       ),
                       child: const Text('Đăng nhập ngay'),
                     ),
@@ -142,12 +155,19 @@ class _RegisterViewState extends State<_RegisterView> {
             ),
           );
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          final msg = state.message.toLowerCase();
+          // Lỗi liên quan đến email → hiện dưới field email
+          if (msg.contains('email')) {
+            setState(() => _emailError = state.message);
+            _formKey.currentState?.validate();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
         }
       },
       child: Scaffold(
@@ -158,7 +178,9 @@ class _RegisterViewState extends State<_RegisterView> {
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s24, vertical: AppSizes.s32),
+                  horizontal: AppSizes.s24,
+                  vertical: AppSizes.s32,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -171,8 +193,7 @@ class _RegisterViewState extends State<_RegisterView> {
                           height: 100,
                           decoration: BoxDecoration(
                             color: AppColorsExt.authBgLight,
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.r32),
+                            borderRadius: BorderRadius.circular(AppSizes.r32),
                           ),
                           child: const Center(
                             child: Icon(
@@ -213,8 +234,9 @@ class _RegisterViewState extends State<_RegisterView> {
                         hintText: 'Nhập họ và tên của bạn',
                         prefixIcon: null,
                         textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            (v?.isEmpty ?? true) ? 'Vui lòng nhập họ tên' : null,
+                        validator: (v) => (v?.isEmpty ?? true)
+                            ? 'Vui lòng nhập họ tên'
+                            : null,
                       ),
                       const SizedBox(height: AppSizes.s20),
 
@@ -233,13 +255,12 @@ class _RegisterViewState extends State<_RegisterView> {
                           const SizedBox(height: AppSizes.s8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: AppSizes.s16),
+                              horizontal: AppSizes.s16,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.inputFill,
-                              borderRadius:
-                                  BorderRadius.circular(AppSizes.r12),
-                              border:
-                                  Border.all(color: AppColors.inputBorder),
+                              borderRadius: BorderRadius.circular(AppSizes.r12),
+                              border: Border.all(color: AppColors.inputBorder),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
@@ -252,8 +273,10 @@ class _RegisterViewState extends State<_RegisterView> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                icon: const Icon(Icons.expand_more,
-                                    color: AppColors.textSecondary),
+                                icon: const Icon(
+                                  Icons.expand_more,
+                                  color: AppColors.textSecondary,
+                                ),
                                 items: ['Nam', 'Nữ'].map((String value) {
                                   return DropdownMenuItem<String>(
                                     value: value,
@@ -280,8 +303,16 @@ class _RegisterViewState extends State<_RegisterView> {
                         prefixIcon: Icons.mail_rounded,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            (v?.isEmpty ?? true) ? 'Vui lòng nhập email' : null,
+                        onChanged: (_) {
+                          if (_emailError != null) {
+                            setState(() => _emailError = null);
+                          }
+                        },
+                        validator: (v) {
+                          if (v?.isEmpty ?? true) return 'Vui lòng nhập email';
+                          if (_emailError != null) return _emailError;
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -314,7 +345,8 @@ class _RegisterViewState extends State<_RegisterView> {
                             size: AppSizes.iconMd,
                           ),
                           onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
@@ -343,9 +375,10 @@ class _RegisterViewState extends State<_RegisterView> {
                             color: AppColors.textSecondary,
                             size: AppSizes.iconMd,
                           ),
-                          onPressed: () => setState(() =>
-                              _obscureConfirmPassword =
-                                  !_obscureConfirmPassword),
+                          onPressed: () => setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          ),
                         ),
                         validator: (v) {
                           if (v != _passwordController.text) {
@@ -363,17 +396,17 @@ class _RegisterViewState extends State<_RegisterView> {
                           return SizedBox(
                             height: AppSizes.buttonHeight,
                             child: ElevatedButton(
-                              onPressed:
-                                  isLoading ? null : _handleRegister,
+                              onPressed: isLoading ? null : _handleRegister,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.6),
+                                disabledBackgroundColor: AppColors.primary
+                                    .withValues(alpha: 0.6),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppSizes.r12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppSizes.r12,
+                                  ),
                                 ),
                               ),
                               child: isLoading
@@ -381,14 +414,16 @@ class _RegisterViewState extends State<_RegisterView> {
                                       width: 22,
                                       height: 22,
                                       child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2.5),
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
                                     )
                                   : const Text(
                                       'Đăng ký',
                                       style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                             ),
                           );
@@ -400,14 +435,24 @@ class _RegisterViewState extends State<_RegisterView> {
                       const SizedBox(height: AppSizes.s24),
 
                       // 10. Social Buttons
-                      Row(
-                        children: [
-                          Expanded(
-                              child: GoogleSignInButton(onPressed: () {})),
-                          const SizedBox(width: AppSizes.s16),
-                          Expanded(
-                              child: FacebookSignInButton(onPressed: () {})),
-                        ],
+                      BlocBuilder<AuthCubit, AuthState>(
+                        builder: (context, state) {
+                          final isLoading = state is AuthLoading;
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: GoogleSignInButton(
+                                  onPressed: isLoading
+                                      ? () {}
+                                      : () => context
+                                            .read<AuthCubit>()
+                                            .signInWithGoogle(),
+                                ),
+                              ),
+                              const SizedBox(width: AppSizes.s16),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: AppSizes.s32),
 
@@ -418,7 +463,9 @@ class _RegisterViewState extends State<_RegisterView> {
                           const Text(
                             'Đã có tài khoản? ',
                             style: TextStyle(
-                                color: AppColors.textSecondary, fontSize: 14),
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
                           ),
                           GestureDetector(
                             onTap: () => Navigator.pop(context),

@@ -118,38 +118,42 @@ class RemoteAuthDataSource implements AuthDataSource {
         throw Exception('Lỗi xác thực với Supabase');
       }
 
-      // Lưu token cục bộ (để Interceptor của bạn có thể dùng cho các API sau)
-      await _storage.write(key: 'access_token', value: supabaseToken);
-      await _storage.write(
-        key: 'refresh_token',
-        value: supabaseResponse.session?.refreshToken ?? '',
-      );
-
       // 3. Gọi Backend NestJS để đồng bộ DB
-      // Truyền trực tiếp token vào headers để API nhận được ngay
+      // Truyền trực tiếp token ban đầu vào headers
       final syncRes = await _client.dio.post(
-        '/auth/sync-oauth', // Sửa lại đúng đường dẫn Controller Auth
-        data: {
-          'requestedRole':
-              'TOURIST', // Bắt buộc là TOURIST theo yêu cầu của app Mobile
-        },
+        '/auth/sync-oauth',
+        data: {'requestedRole': 'TOURIST'},
         options: Options(headers: {'Authorization': 'Bearer $supabaseToken'}),
       );
 
-      // 4. Trả về LoginResult
+      // 4. Refresh Session để lấy token mới nhất với đầy đủ Metadata
+      // (Backend có thể đã cập nhật user_metadata sau sync-oauth)
+      final refreshed = await Supabase.instance.client.auth.refreshSession();
+      final freshToken =
+          refreshed.session?.accessToken ?? supabaseToken;
+      final freshRefreshToken =
+          refreshed.session?.refreshToken ??
+          supabaseResponse.session?.refreshToken ??
+          '';
+      final freshUser = refreshed.user ?? supabaseResponse.user;
+
+      // Lưu token mới nhất vào SecureStorage
+      await _storage.write(key: 'access_token', value: freshToken);
+      await _storage.write(key: 'refresh_token', value: freshRefreshToken);
+
+      // 5. Trả về LoginResult với token và metadata mới nhất
       final user = UserModel.fromJson({
-        'id': supabaseResponse.user?.id,
-        'email': supabaseResponse.user?.email,
+        'id': freshUser?.id,
+        'email': freshUser?.email,
         'display_name':
-            supabaseResponse.user?.userMetadata?['full_name'] ??
-            'Người dùng Google',
+            freshUser?.userMetadata?['full_name'] ?? 'Người dùng Google',
         'role': syncRes.data['role'] ?? 'TOURIST',
       });
 
       return LoginResult(
         user: user.toEntity(),
-        accessToken: supabaseToken,
-        refreshToken: supabaseResponse.session?.refreshToken ?? '',
+        accessToken: freshToken,
+        refreshToken: freshRefreshToken,
       );
     } on DioException catch (e) {
       final msg = e.response?.data?['message'] ?? 'Lỗi đồng bộ Backend';

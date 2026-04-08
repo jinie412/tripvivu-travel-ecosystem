@@ -107,9 +107,18 @@ class RemoteProfileDataSource implements ProfileDataSource {
 
   static String? _mapGenderFromBackend(String? raw) {
     if (raw == null) return null;
-    if (raw == 'NAM') return 'Nam';
-    if (raw == 'NỮ') return 'Nữ';
-    return raw;
+    switch (raw.toUpperCase()) {
+      case 'MALE':
+      case 'NAM':
+        return 'Nam';
+      case 'FEMALE':
+      case 'FEMAIL':
+      case 'FEMAILE':
+      case 'NỮ':
+        return 'Nữ';
+      default:
+        return raw;
+    }
   }
 
   ProfileModel _parseProfileData(Map<String, dynamic> data) {
@@ -136,7 +145,22 @@ class RemoteProfileDataSource implements ProfileDataSource {
   }) async {
     final body = <String, dynamic>{};
     if (displayName != null) body['displayName'] = displayName;
-    if (gender != null) body['gender'] = gender == 'Nam' ? 'NAM' : 'NỮ';
+    if (gender != null) {
+      switch (gender.toUpperCase()) {
+        case 'MALE':
+        case 'NAM':
+          body['gender'] = 'MALE';
+          break;
+        case 'FEMALE':
+        case 'FEMAIL':
+        case 'FEMAILE':
+        case 'NỮ':
+          body['gender'] = 'FEMALE';
+          break;
+        default:
+          body['gender'] = gender;
+      }
+    }
     if (travelPreferences != null) {
       body['travelPreferences'] = travelPreferences
           .map((e) => _interestToEnum[e] ?? e)

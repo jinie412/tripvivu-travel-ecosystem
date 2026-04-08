@@ -63,6 +63,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  String _mapGenderFromBackend(String? gender) {
+    switch (gender?.toUpperCase()) {
+      case 'MALE':
+        return 'Nam';
+      case 'FEMALE':
+      case 'FEMAIL':
+      case 'FEMAILE':
+        return 'Nữ';
+      default:
+        return gender == null || gender.trim().isEmpty ? 'Nam' : gender;
+    }
+  }
+
+  String _mapGenderToBackend(String gender) {
+    switch (gender) {
+      case 'Nam':
+        return 'MALE';
+      case 'Nữ':
+        return 'FEMALE';
+      default:
+        return gender;
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -76,7 +100,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (state is ProfileLoaded) {
           setState(() {
             _nameController.text = state.profile.name;
-            _gender = state.profile.gender ?? 'Nam';
+            _gender = _mapGenderFromBackend(state.profile.gender);
             _phoneNumber = state.profile.phoneNumber ?? '';
             _email = state.profile.email;
             _avatarUrl = state.profile.avatarUrl;
@@ -85,7 +109,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             );
           });
         } else if (state is ProfileUpdateSuccess) {
-          Navigator.pop(context);
+          setState(() {
+            _isEditing = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cập nhật hồ sơ thành công'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.read<ProfileCubit>().loadProfile();
         }
       },
       builder: (context, state) {
@@ -172,7 +205,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         if (_isEditing) {
                           context.read<ProfileCubit>().updateProfile(
                             displayName: _nameController.text,
-                            gender: _gender,
+                            gender: _mapGenderToBackend(_gender),
                             travelPreferences: _selectedInterests,
                           );
                         } else {
