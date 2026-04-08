@@ -361,7 +361,7 @@ class _ExploreViewState extends State<_ExploreView> {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (_) => CityDetailScreen(
                               cityId: item.id,
-                              cityName: item.title,
+                              cityName: item.name,
                             ),
                           ));
                         },

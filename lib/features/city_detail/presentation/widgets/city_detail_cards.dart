@@ -156,7 +156,7 @@ class ActivityCard extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: Text(
-            item.title,
+            item.name,
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 13,
