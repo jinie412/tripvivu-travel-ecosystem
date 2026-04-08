@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import 'package:intl/intl.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class BudgetSliderSection extends StatelessWidget {
   final double currentBudget;

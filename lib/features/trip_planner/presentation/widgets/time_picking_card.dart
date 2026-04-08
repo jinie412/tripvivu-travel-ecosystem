@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class TimePickingCard extends StatelessWidget {
   final String? startTime;
@@ -31,7 +32,7 @@ class TimePickingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'GIỜ BẮT ĐẦU',
                   style: TextStyle(
                     fontSize: 10,
@@ -73,7 +74,7 @@ class TimePickingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'GIỜ KẾT THÚC',
                   style: TextStyle(
                     fontSize: 10,

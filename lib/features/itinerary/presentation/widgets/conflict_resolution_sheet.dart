@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class ConflictResolutionSheet extends StatelessWidget {
   final VoidCallback onSelect;
@@ -44,7 +45,7 @@ class ConflictResolutionSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Lịch trình của bạn đang gặp xung đột về thời gian tại Dinh Độc Lập.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -55,7 +56,7 @@ class ConflictResolutionSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '“Chúng tôi gợi ý bạn nên chọn Phương án C để có thời gian nghỉ ngơi tốt hơn.”',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -98,7 +99,7 @@ class ConflictResolutionSheet extends StatelessWidget {
             const SizedBox(height: 24),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 'Bỏ qua tất cả gợi ý',
                 style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
               ),
@@ -208,7 +209,7 @@ class ConflictResolutionSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'GỢI Ý TỐT NHẤT',
                 style: TextStyle(
                   color: Colors.white,

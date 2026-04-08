@@ -1,12 +1,14 @@
-import '../models/destination_model.dart';
-import '../models/hotel_model.dart';
-import '../models/trip_suggestion_model.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/destination_model.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/hotel_model.dart';
+import 'package:travel_advisor_mobile/features/home/data/models/trip_suggestion_model.dart';
 
 /// Contract for home screen data.
 abstract class HomeDataSource {
   Future<List<TripSuggestionModel>> getSuggestions();
   Future<List<DestinationModel>> getDestinations();
   Future<List<HotelModel>> getHotels();
+  Future<List<CityRestaurant>> getRestaurants();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,12 +19,10 @@ class MockHomeDataSource implements HomeDataSource {
   Future<List<TripSuggestionModel>> getSuggestions() async {
     await Future.delayed(const Duration(milliseconds: 400));
     return const [
-      TripSuggestionModel(id: 'trip-001', title: 'Kỳ nghỉ Phú Quốc tuyệt phẩm', days: '3 ngày', location: 'Kiên Giang', views: '2.4k', likes: '512', imageUrl: 'https://images.unsplash.com/photo-1589782182703-2aad69637b3b?w=600&q=80', placeholderColor: 0xFF4A90D9),
-      TripSuggestionModel(id: 'trip-002', title: 'Du lịch Hà Nội Hà Tây', days: '4 ngày', location: 'Hà Nội', views: '1.8k', likes: '324', imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80', placeholderColor: 0xFF6C9E5C),
-      TripSuggestionModel(id: 'trip-003', title: 'Khám phá Quy Nhơn kỳ vĩ', days: '5 ngày', location: 'Bình Định', views: '892', likes: '201', imageUrl: 'https://images.unsplash.com/photo-1583483425010-c566a31bc9f8?w=600&q=80', placeholderColor: 0xFF5E7FA0),
-      TripSuggestionModel(id: 'trip-004', title: 'Khám phá Đà Lạt mộng mơ', days: '3 ngày', location: 'Lâm Đồng', views: '1.1k', likes: '287', imageUrl: 'https://images.unsplash.com/photo-1596392916540-8f9216067da1?w=600&q=80', placeholderColor: 0xFF7D5E92),
-      TripSuggestionModel(id: 'trip-005', title: 'Hành trình di sản Hội An', days: '2 ngày', location: 'Quảng Nam', views: '3.5k', likes: '1.2k', imageUrl: 'https://images.unsplash.com/photo-1588094978307-77e11c3b24a6?w=600&q=80', placeholderColor: 0xFF8B7355),
-      TripSuggestionModel(id: 'trip-006', title: 'Sapa – Thành phố trong sương', days: '4 ngày', location: 'Lào Cai', views: '2.1k', likes: '645', imageUrl: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=600&q=80', placeholderColor: 0xFF4A8C5C),
+      TripSuggestionModel(id: 'trip-001', title: 'Kỳ nghỉ Phú Quốc tuyệt phẩm', days: '3 ngày', location: 'Phú Quốc', views: '2.4k', likes: '512', imageUrl: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=600&q=80', placeholderColor: 0xFF4A90D9),
+      TripSuggestionModel(id: 'trip-002', title: 'Du lịch Hà Nội Hà Tây', days: '4 ngày', location: 'Hà Nội', views: '1.8k', likes: '324', imageUrl: 'https://vcdn1-dulich.vnecdn.net/2022/05/12/Hanoi2-1652338755-3632-1652338809.jpg?w=0&h=0&q=100&dpr=2&fit=crop&s=NxMN93PTvOTnHNryMx3xJw', placeholderColor: 0xFF6C9E5C),
+      TripSuggestionModel(id: 'trip-003', title: 'Khám phá Quy Nhơn kỳ vĩ', days: '5 ngày', location: 'Quy Nhơn', views: '892', likes: '201', imageUrl: 'https://quynhontourist.com/wp-content/uploads/2020/11/tour-ky-co-eo-gio-1-ngay-du-lich-ky-co-quy-nhon-quy-nhon-tourist.jpg', placeholderColor: 0xFF5E7FA0),
+      TripSuggestionModel(id: 'trip-004', title: 'Khám phá Đà Lạt mộng mơ', days: '3 ngày', location: 'Đà Lạt', views: '1.1k', likes: '287', imageUrl: 'https://samtenhills.vn/wp-content/uploads/2024/01/top-20-cac-diem-du-lich-da-lat-1024x576.jpg', placeholderColor: 0xFF7D5E92),
     ];
   }
 
@@ -30,14 +30,10 @@ class MockHomeDataSource implements HomeDataSource {
   Future<List<DestinationModel>> getDestinations() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return const [
-      DestinationModel(id: 'dest-001', name: 'Sapa', imageUrl: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=300&q=80', placeholderColor: 0xFF4A8C5C),
-      DestinationModel(id: 'dest-002', name: 'Hội An', imageUrl: 'https://images.unsplash.com/photo-1588094978307-77e11c3b24a6?w=300&q=80', placeholderColor: 0xFF8B7355),
-      DestinationModel(id: 'dest-003', name: 'Đà Lạt', imageUrl: 'https://images.unsplash.com/photo-1596401037688-69cb907abf12?w=300&q=80', placeholderColor: 0xFF3D7A5E),
-      DestinationModel(id: 'dest-004', name: 'Hạ Long', imageUrl: 'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=300&q=80', placeholderColor: 0xFF2E6B8A),
-      DestinationModel(id: 'dest-005', name: 'Đà Nẵng', imageUrl: 'https://plus.unsplash.com/premium_photo-1675826774815-35b8a48ddc2c?w=300&q=80', placeholderColor: 0xFF1565C0),
-      DestinationModel(id: 'dest-006', name: 'Ninh Bình', imageUrl: 'https://images.unsplash.com/photo-1610444583737-25e4f4a3e6de?w=300&q=80', placeholderColor: 0xFF4E7A3D),
-      DestinationModel(id: 'dest-007', name: 'Huế', imageUrl: 'https://images.unsplash.com/photo-1599708153386-62ea1f23722e?w=300&q=80', placeholderColor: 0xFF7D5E92),
-      DestinationModel(id: 'dest-008', name: 'Mũi Né', imageUrl: 'https://images.unsplash.com/photo-1506461883276-594a12b11cf3?w=300&q=80', placeholderColor: 0xFFE0C492),
+      DestinationModel(id: 'dest-001', name: 'Đỉnh Fansipan', imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1yCd0xZihK46J355FPzH8jZBXlnRRx-rzWw&s', placeholderColor: 0xFF4A8C5C),
+      DestinationModel(id: 'dest-002', name: 'Phố cổ Hội An', imageUrl: 'https://lalago.vn/wp-content/uploads/2025/08/pho-co-hoi-an-ve-dem-3.jpg', placeholderColor: 0xFF8B7355),
+      DestinationModel(id: 'dest-003', name: 'Thung lũng Tình Yêu', imageUrl: 'https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1200,h_630/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/t8ojjwnqqzgxuqr80k2o/V%C3%A9ThamQuanThungL%C5%A9ngT%C3%ACnhY%C3%AAu%E1%BB%9F%C4%90%C3%A0L%E1%BA%A1t-KlookVi%E1%BB%87tNam.jpg', placeholderColor: 0xFF3D7A5E),
+      DestinationModel(id: 'dest-004', name: 'Vịnh Hạ Long', imageUrl: 'https://www.dulichhalong.net/wp-content/uploads/2020/07/Vinh-Ha-Long-Quang-Ninh.jpg', placeholderColor: 0xFF2E6B8A),
     ];
   }
 
@@ -46,11 +42,43 @@ class MockHomeDataSource implements HomeDataSource {
     await Future.delayed(const Duration(milliseconds: 350));
     return const [
       HotelModel(id: 'hotel-001', name: 'Inter Phu Quoc', rating: 4.9, price: '2.500.000đ', imageUrl: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&q=80', placeholderColor: 0xFFD4C5B0),
-      HotelModel(id: 'hotel-002', name: 'JW Marriott', rating: 4.8, price: '3.200.000đ', imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80', placeholderColor: 0xFF8DACC4),
+      HotelModel(id: 'hotel-002', name: 'JW Marriott', rating: 4.8, price: '3.200.000đ', imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400&q=80', placeholderColor: 0xFF8DACC4),
       HotelModel(id: 'hotel-003', name: 'Pullman Vung Tau', rating: 4.7, price: '2.100.000đ', imageUrl: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&q=80', placeholderColor: 0xFFB0C4D4),
-      HotelModel(id: 'hotel-004', name: 'Vinpearl Nha Trang', rating: 4.9, price: '1.900.000đ', imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=400&q=80', placeholderColor: 0xFFE5DED4),
-      HotelModel(id: 'hotel-005', name: 'Mường Thanh Luxury', rating: 4.5, price: '1.500.000đ', imageUrl: 'https://images.unsplash.com/photo-1551882547-ff43c63efe8c?w=400&q=80', placeholderColor: 0xFFD4E5DE),
-      HotelModel(id: 'hotel-006', name: 'Saigon Prince Hotel', rating: 4.6, price: '1.800.000đ', imageUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80', placeholderColor: 0xFFDED4E5),
+      HotelModel(id: 'hotel-004', name: 'Vinpearl Nha Trang', rating: 4.9, price: '1.900.000đ', imageUrl: 'https://du-lich.chudu24.com/f/m/2306/16/vinpearl-nha-trang-resort-3.jpg?w=800&h=500', placeholderColor: 0xFFE5DED4),
+    ];
+  }
+
+  @override
+  Future<List<CityRestaurant>> getRestaurants() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      CityRestaurant(
+        id: 'res-001',
+        name: 'Cơm tấm Ba Ghiền',
+        imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
+        rating: 4.8,
+        reviewCount: 1200,
+        address: 'Đặng Văn Ngữ, Phú Nhuận',
+        status: 'Đang mở cửa',
+      ),
+      CityRestaurant(
+        id: 'res-002',
+        name: 'Phở Hòa Pasteur',
+        imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80',
+        rating: 4.7,
+        reviewCount: 850,
+        address: 'Pasteur, Quận 3',
+        status: 'Đang mở cửa',
+      ),
+      CityRestaurant(
+        id: 'res-003',
+        name: 'Bún Chả Hương Liên',
+        imageUrl: 'https://kenh14cdn.com/zoom/594_371/203336854389633024/2024/3/21/photo1711023527181-17110235273471578523867.jpg',
+        rating: 4.9,
+        reviewCount: 2100,
+        address: 'Lê Văn Hưu, Hà Nội',
+        status: 'Đang mở cửa',
+      ),
     ];
   }
 }

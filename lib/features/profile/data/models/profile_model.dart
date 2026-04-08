@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/profile_entity.dart';
+
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
 
 part 'profile_model.g.dart';
 
@@ -14,6 +15,11 @@ class ProfileModel {
   final String membershipTier;
   @JsonKey(name: 'review_pending_count')
   final int reviewPendingCount;
+  final String? gender;
+  @JsonKey(name: 'phoneNumber')
+  final String? phoneNumber;
+  @JsonKey(name: 'travelPreferences')
+  final List<String>? travelPreferences;
 
   const ProfileModel({
     required this.id,
@@ -22,6 +28,9 @@ class ProfileModel {
     required this.avatarUrl,
     required this.membershipTier,
     required this.reviewPendingCount,
+    this.gender,
+    this.phoneNumber,
+    this.travelPreferences,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) =>
@@ -30,11 +39,14 @@ class ProfileModel {
   Map<String, dynamic> toJson() => _$ProfileModelToJson(this);
 
   ProfileEntity toEntity() => ProfileEntity(
-        id: id,
-        name: name,
-        email: email,
-        avatarUrl: avatarUrl,
-        membershipTier: membershipTier,
-        reviewPendingCount: reviewPendingCount,
-      );
+    id: id,
+    name: name,
+    email: email,
+    avatarUrl: avatarUrl,
+    membershipTier: membershipTier,
+    reviewPendingCount: reviewPendingCount,
+    gender: gender,
+    phoneNumber: phoneNumber,
+    travelPreferences: travelPreferences,
+  );
 }

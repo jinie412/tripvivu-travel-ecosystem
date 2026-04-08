@@ -1,10 +1,12 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/itinerary_entity.dart';
 
 /// Card lịch trình (Sắp đi / Nháp) — có ảnh, badge ngày, progress bar.
 ///
@@ -14,6 +16,7 @@ class ItineraryCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
+  final ValueChanged<bool>? onStartToggle;
 
   const ItineraryCard({
     super.key,
@@ -21,6 +24,7 @@ class ItineraryCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onTap,
+    this.onStartToggle,
   });
 
   @override
@@ -129,13 +133,60 @@ class ItineraryCard extends StatelessWidget {
                               color: const Color(0xFF4CAF50), // Green for completed
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text(
+                            child: Text(
                               'ĐÃ ĐI',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
+                            ),
+                          ),
+                        ),
+                      if (_shouldShowStart(item))
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            height: 32,
+                            padding: const EdgeInsets.only(left: 12, right: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.status == ItineraryStatus.ongoing ? 'ĐANG DIỄN RA' : 'BẮT ĐẦU LỊCH TRÌNH',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: item.status == ItineraryStatus.ongoing ? const Color(0xFF2563EB) : const Color(0xFF4B5563),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Transform.scale(
+                                  scale: 0.65,
+                                  child: Switch(
+                                    value: item.status == ItineraryStatus.ongoing,
+                                    onChanged: onStartToggle,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    activeThumbColor: Colors.white,
+                                    activeTrackColor: const Color(0xFF2563EB),
+                                    inactiveThumbColor: Colors.white,
+                                    inactiveTrackColor: const Color(0xFFD1D5DB),
+                                    trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -290,5 +341,16 @@ class ItineraryCard extends StatelessWidget {
     if (cost <= 0) return 'Chưa có';
     final fmt = NumberFormat('#,###', 'vi_VN');
     return '${fmt.format(cost)} $currency';
+  }
+
+  bool _shouldShowStart(ItineraryEntity item) {
+    if (item.status == ItineraryStatus.completed) return false;
+    if (item.status == ItineraryStatus.ongoing) return true;
+    if (item.startDate == null) return false;
+    
+    final today = DateTime.now();
+    final start = item.startDate!;
+    
+    return start.year == today.year && start.month == today.month && start.day == today.day;
   }
 }

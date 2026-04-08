@@ -68,4 +68,46 @@ class ItineraryDetailEntity {
     this.visitedRestaurants = const [],
     this.centerCoordinate = const [],
   });
+
+  ItineraryDetailEntity copyWith({
+    String? id,
+    String? title,
+    String? destination,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+    bool? isPublic,
+    int? durationDays,
+    int? activitiesCount,
+    int? hotelsCount,
+    int? transportTurns,
+    double? estimatedBudget,
+    double? spentBudget,
+    String? currency,
+    List<ItineraryDayEntity>? days,
+    List<String>? notes,
+    List<VisitedRestaurant>? visitedRestaurants,
+    List<double>? centerCoordinate,
+  }) {
+    return ItineraryDetailEntity(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      destination: destination ?? this.destination,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      status: status ?? this.status,
+      isPublic: isPublic ?? this.isPublic,
+      durationDays: durationDays ?? this.durationDays,
+      activitiesCount: activitiesCount ?? this.activitiesCount,
+      hotelsCount: hotelsCount ?? this.hotelsCount,
+      transportTurns: transportTurns ?? this.transportTurns,
+      estimatedBudget: estimatedBudget ?? this.estimatedBudget,
+      spentBudget: spentBudget ?? this.spentBudget,
+      currency: currency ?? this.currency,
+      days: days ?? this.days,
+      notes: notes ?? this.notes,
+      visitedRestaurants: visitedRestaurants ?? this.visitedRestaurants,
+      centerCoordinate: centerCoordinate ?? this.centerCoordinate,
+    );
+  }
 }

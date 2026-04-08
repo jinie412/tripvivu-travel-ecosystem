@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import 'package:intl/intl.dart';
-import '../../../itinerary/domain/entities/itinerary_entity.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:intl/intl.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class CurrentItineraryCard extends StatelessWidget {
   final ItineraryEntity? item;
 
-  const CurrentItineraryCard({super.key, this.item});
+  final bool isStarted;
+  final ValueChanged<bool>? onToggle;
 
-  @override
+  const CurrentItineraryCard({
+    super.key,
+    this.item,
+    this.isStarted = false,
+    this.onToggle,
+  });  @override
   Widget build(BuildContext context) {
     if (item == null) {
       return const SizedBox.shrink(); // Hide if no current itinerary
@@ -48,6 +56,7 @@ class CurrentItineraryCard extends StatelessWidget {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 60,
@@ -75,6 +84,40 @@ class CurrentItineraryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (onToggle != null)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'BẮT ĐẦU LỊCH TRÌNH',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 24,
+                          child: Transform.scale(
+                            scale: 0.7,
+                            child: Switch(
+                              value: isStarted,
+                              onChanged: onToggle,
+                              activeThumbColor: const Color(0xFF2563EB),
+                              activeTrackColor: const Color(0xFFBFDBFE),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (onToggle != null) const SizedBox(height: 8),
                   Text(
                     item!.status == ItineraryStatus.upcoming ? 'SẮP DIỄN RA' : (item!.status == ItineraryStatus.completed ? 'HOÀN THÀNH' : 'ĐANG DIỄN RA'),
                     style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800),
@@ -91,7 +134,7 @@ class CurrentItineraryCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.access_time, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),
-                      const Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
+                      Text('08:00 - 11:30', style: TextStyle(fontSize: 11, color: Colors.grey)), // Mock time for now
                       const SizedBox(width: 12),
                       const Icon(Icons.people_outline, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),

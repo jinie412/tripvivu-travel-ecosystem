@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../cubit/place_detail_cubit.dart';
-import '../cubit/place_detail_state.dart';
-import '../widgets/place_header.dart';
-import '../widgets/place_info_section.dart';
-import '../widgets/place_gallery_section.dart';
-import '../widgets/place_description_section.dart';
-import '../widgets/place_contact_section.dart';
-import '../widgets/place_review_section.dart';
-import '../widgets/related_places_section.dart';
+
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_state.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_contact_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_description_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_gallery_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_header.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_info_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_review_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/related_places_section.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String placeId;
@@ -57,7 +59,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context.read<PlaceDetailCubit>().loadPlaceDetail(widget.placeId),
-                    child: const Text('Thử lại'),
+                    child: Text('Thử lại'),
                   ),
                 ],
               ),
@@ -76,6 +78,16 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     onBack: () => Navigator.pop(context),
                     onFavorite: () {
                       context.read<PlaceDetailCubit>().toggleFavorite();
+                      if (!place.isFavorite) {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã lưu vào danh mục yêu thích'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                   ),
                   

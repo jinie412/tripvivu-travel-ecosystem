@@ -1,6 +1,7 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/usecases/itinerary_usecases.dart';
 import 'itinerary_detail_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 
 class ItineraryDetailCubit extends Cubit<ItineraryDetailState> {
   final GetItineraryDetailUseCase getItineraryDetail;

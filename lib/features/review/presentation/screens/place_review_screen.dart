@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
-import '../cubit/review_cubit.dart';
-import '../cubit/review_state.dart';
-import '../widgets/star_rating_input.dart';
-import '../widgets/review_media_list.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/review_media_list.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/star_rating_input.dart';
 
 class PlaceReviewScreen extends StatefulWidget {
   final String locationId;
@@ -109,10 +110,10 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
             backgroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
+            title: Text(
               'Viết đánh giá',
               style: TextStyle(
                 color: AppColors.textPrimary,
@@ -125,7 +126,7 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
               if (!widget.isReadOnly)
                 TextButton(
                   onPressed: _submit,
-                  child: const Text(
+                  child: Text(
                     'Gửi',
                     style: TextStyle(
                       color: AppColors.primary,
@@ -265,7 +266,7 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
                   imageSize: 80,
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Gợi ý nhanh',
                   style: TextStyle(
                     fontSize: 14,
@@ -330,7 +331,7 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Gửi đánh giá',
                       style: TextStyle(
                         color: Colors.white,

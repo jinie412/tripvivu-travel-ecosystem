@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class PlaceDescriptionSection extends StatelessWidget {
   final String description;
@@ -13,7 +14,7 @@ class PlaceDescriptionSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Mô tả',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),

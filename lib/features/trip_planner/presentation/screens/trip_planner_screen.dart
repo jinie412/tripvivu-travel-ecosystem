@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/di/injection_container.dart';
-import '../cubit/trip_planner_cubit.dart';
-import '../cubit/trip_planner_state.dart';
-import '../widgets/location_selector_card.dart';
-import '../widgets/step_progress_bar.dart';
-import '../widgets/transportation_selector.dart';
-import '../widgets/trip_type_selector.dart';
 import 'trip_planner_step2_screen.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/location_selector_card.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/step_progress_bar.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/transportation_selector.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/trip_type_selector.dart';
 
 class TripPlannerScreen extends StatelessWidget {
   const TripPlannerScreen({super.key});
@@ -35,7 +38,7 @@ class _TripPlannerView extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0, top: 4, bottom: 4),
+          padding: const EdgeInsets.only(left: AppSizes.s16, top: AppSizes.s4, bottom: AppSizes.s4),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.background,
@@ -57,7 +60,7 @@ class _TripPlannerView extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            SizedBox(height: 2),
+            SizedBox(height: AppSizes.s2),
             Text(
               'BƯỚC 1/3',
               style: TextStyle(
@@ -73,7 +76,7 @@ class _TripPlannerView extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: AppColors.primary,
@@ -82,7 +85,7 @@ class _TripPlannerView extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSizes.s8),
         ],
       ),
       body: BlocBuilder<TripPlannerCubit, TripPlannerState>(
@@ -93,7 +96,7 @@ class _TripPlannerView extends StatelessWidget {
                 children: [
                   Container(
                     color: AppColors.surface,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
                     child: StepProgressBar(
                       currentStep: tripForm.currentStep,
                       totalSteps: 3,
@@ -101,11 +104,11 @@ class _TripPlannerView extends StatelessWidget {
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
+                      padding: const EdgeInsets.all(AppSizes.s24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Bạn sẽ đi đâu?',
                             style: TextStyle(
                               fontSize: 24,
@@ -113,8 +116,8 @@ class _TripPlannerView extends StatelessWidget {
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
+                          const SizedBox(height: AppSizes.s12),
+                          Text(
                             'Điền thông tin địa điểm và phương tiện di chuyển của bạn cho chuyến du lịch trong nước.',
                             style: TextStyle(
                               fontSize: 14,
@@ -122,14 +125,14 @@ class _TripPlannerView extends StatelessWidget {
                               height: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSizes.s24),
                           TripTypeSelector(
                             selectedType: tripForm.tripType,
                             onChanged: (type) {
                               context.read<TripPlannerCubit>().updateTripType(type);
                             },
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: AppSizes.s32),
                           LocationSelectorCard(
                             departureLocation: tripForm.departureLocation,
                             destinationLocation: tripForm.destinationLocation,
@@ -144,20 +147,20 @@ class _TripPlannerView extends StatelessWidget {
                               context.read<TripPlannerCubit>().swapLocations();
                             },
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: AppSizes.s32),
                           TransportationSelector(
                             selectedOption: tripForm.transportation,
                             onChanged: (transport) {
                               context.read<TripPlannerCubit>().updateTransportation(transport);
                             },
                           ),
-                          const SizedBox(height: 60), // Space for button
+                          const SizedBox(height: AppSizes.s64), // Space for button
                         ],
                       ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(AppSizes.s16),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                     ),
@@ -176,9 +179,9 @@ class _TripPlannerView extends StatelessWidget {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        minimumSize: const Size(double.infinity, 56),
+                        minimumSize: const Size(double.infinity, AppSizes.appBarHeight),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppSizes.r16),
                         ),
                         elevation: 0,
                       ),
@@ -193,8 +196,8 @@ class _TripPlannerView extends StatelessWidget {
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                          SizedBox(width: AppSizes.s8),
+                          Icon(Icons.arrow_forward, color: Colors.white, size: AppSizes.iconMd),
                         ],
                       ),
                     ),

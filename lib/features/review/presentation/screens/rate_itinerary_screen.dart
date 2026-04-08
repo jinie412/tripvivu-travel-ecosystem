@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/di/injection_container.dart';
-import '../cubit/review_cubit.dart';
-import '../cubit/review_state.dart';
-import '../widgets/location_review_list_tile.dart';
-import '../widgets/review_itinerary_card.dart';
 import 'place_review_screen.dart';
+
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/location_review_list_tile.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/review_itinerary_card.dart';
 
 class RateItineraryScreen extends StatelessWidget {
   final String itineraryId;
@@ -37,7 +39,7 @@ class _RateItineraryView extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA), // Nền màu xám cực nhạt như Figma
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Đánh giá lịch trình',
           style: TextStyle(
               fontSize: 16,
@@ -48,7 +50,7 @@ class _RateItineraryView extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1C1C1E)),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1C1C1E), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -101,7 +103,7 @@ class _RateItineraryView extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Đánh giá địa điểm',
                               style: TextStyle(
                                 fontSize: 16,

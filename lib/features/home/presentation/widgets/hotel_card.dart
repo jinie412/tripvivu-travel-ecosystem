@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/hotel.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
 
 class HotelCard extends StatelessWidget {
   final Hotel item;

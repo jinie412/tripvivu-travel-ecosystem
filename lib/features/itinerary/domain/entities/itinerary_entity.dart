@@ -3,7 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'itinerary_entity.freezed.dart';
 
 /// Trạng thái của một lịch trình.
-enum ItineraryStatus { upcoming, completed, draft }
+enum ItineraryStatus { upcoming, ongoing, completed, draft }
 
 /// Entity chính — đại diện cho một lịch trình du lịch.
 ///

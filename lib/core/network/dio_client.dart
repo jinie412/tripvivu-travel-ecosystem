@@ -1,18 +1,19 @@
+import 'api_config.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Singleton Dio HTTP client.
 /// Configured with baseUrl, timeouts, and interceptors.
-/// Swap [baseUrl] to production URL before release.
 class DioClient {
   late final Dio _dio;
 
-  DioClient({String baseUrl = 'https://api.gptraveladvisor.com/v1'}) {
+  DioClient({String? baseUrl}) {
     _dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
-        // connectTimeout: const Duration(seconds: 15),
-        // receiveTimeout: const Duration(seconds: 15),
-        // sendTimeout: const Duration(seconds: 15),
+        baseUrl: baseUrl ?? ApiConfig.baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 15),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -34,19 +35,23 @@ class DioClient {
   Dio get dio => _dio;
 }
 
-/// Attaches Bearer token to every request (once auth is implemented).
+/// Đính kèm Bearer token từ SecureStorage vào mỗi request.
 class _AuthInterceptor extends Interceptor {
+  final _storage = const FlutterSecureStorage();
+
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // TODO: attach token from secure storage when auth is implemented
-    // final token = await secureStorage.read(key: 'access_token');
-    // if (token != null) options.headers['Authorization'] = 'Bearer $token';
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
+    final token = await _storage.read(key: 'access_token');
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
     handler.next(options);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // TODO: handle 401 → refresh token logic here
+    // TODO: handle 401 → refresh token logic
     handler.next(err);
   }
 }

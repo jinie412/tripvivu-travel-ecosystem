@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_card.dart';
 
-
-import '../cubit/itinerary_cubit.dart';
-import '../cubit/itinerary_state.dart';
-import '../widgets/itinerary_card.dart';
-
-import '../widgets/itinerary_empty_view.dart';
-import '../widgets/itinerary_filter_chips.dart';
-import '../widgets/itinerary_summary_grid.dart';
-import '../../../../core/widgets/error_view.dart';
 import 'itinerary_summary_screen.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_empty_view.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_filter_chips.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_summary_grid.dart';
 
 /// Màn hình chính "Lịch trình của tôi".
 class ItineraryScreen extends StatelessWidget {
@@ -59,7 +60,7 @@ class _ItineraryView extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 24,
+              top: MediaQuery.of(context).padding.top + 16,
               left: 24,
               right: 24,
             ),
@@ -73,7 +74,7 @@ class _ItineraryView extends StatelessWidget {
                   child: Text(
                     'Lịch trình của tôi',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1E293B),
                     ),
@@ -89,15 +90,15 @@ class _ItineraryView extends StatelessWidget {
 
         if (state.itineraries.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: ItineraryFilterChips(
-                activeFilter: state.activeFilter,
-                activeSubFilter: state.activeCompletedFilter,
-                onChanged: (status) => cubit.filterBy(status),
-                onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: ItineraryFilterChips(
+              activeFilter: state.activeFilter,
+              activeSubFilter: state.activeCompletedFilter,
+              onChanged: (status) => cubit.filterBy(status),
+              onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
             ),
+          ),
           ),
           if (state.itineraries.isNotEmpty && state.activeFilter == null)
             SliverToBoxAdapter(
@@ -121,7 +122,7 @@ class _ItineraryView extends StatelessWidget {
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                if (index == 0) return const SizedBox(height: 12);
+                if (index == 0) return const SizedBox(height: 16);
                 if (index == state.itineraries.length + 1) {
                   return const SizedBox(height: 100);
                 }
@@ -145,6 +146,84 @@ class _ItineraryView extends StatelessWidget {
                   onTap: onCardTap,
                   onEdit: () {},
                   onDelete: () => cubit.deleteItem(item.id),
+                  onStartToggle: (val) {
+                    if (val) {
+                      final hasOngoing = state.itineraries.any((i) => i.status == ItineraryStatus.ongoing);
+                      if (hasOngoing && item.status != ItineraryStatus.ongoing) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFEF2F2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 32),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Đang có chuyến đi khác!',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1C1C1E),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Bạn đang có một lịch trình đang diễn ra.\nVui lòng hoàn thành chuyến đi hiện tại để có thể bắt đầu lịch trình mới.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF6B7280),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF2563EB),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                      child: Text(
+                                        'Đã hiểu',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                    }
+                    cubit.toggleItineraryStatus(item.id, val);
+                  },
                 );
               },
               childCount: state.itineraries.length + 2,

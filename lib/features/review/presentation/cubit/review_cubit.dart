@@ -1,7 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../domain/usecases/get_itinerary_for_review_usecase.dart';
 import 'review_state.dart';
+
+import 'package:travel_advisor_mobile/features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 
 class ReviewCubit extends Cubit<ReviewState> {
   final GetItineraryForReviewUseCase getItineraryForReview;

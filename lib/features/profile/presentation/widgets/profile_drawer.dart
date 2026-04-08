@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../../features/profile/domain/entities/activity_item_entity.dart';
-import '../../../../features/profile/domain/entities/profile_entity.dart';
-import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
-import '../../../../features/profile/presentation/cubit/profile_state.dart';
-import '../../../../features/review/presentation/screens/rate_itinerary_screen.dart';
-import '../../../../features/itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../../features/itinerary/domain/entities/itinerary_entity.dart';
-import '../../../../features/itinerary/presentation/cubit/itinerary_state.dart';
-import '../../../../core/navigation/tab_cubit.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
+
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/navigation/tab_cubit.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
 class ProfileDrawer extends StatelessWidget {
   const ProfileDrawer({super.key});
@@ -326,7 +328,7 @@ class _ActivityTile extends StatelessWidget {
                           decoration: const BoxDecoration(
                               color: Colors.green, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
-                      const Text('Chờ bạn chia sẻ',
+                      Text('Chờ bạn chia sẻ',
                           style: TextStyle(
                               fontSize: 11, color: AppColors.primary)),
                     ],
@@ -342,7 +344,7 @@ class _ActivityTile extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
-                        const Text('•',
+                        Text('•',
                             style: TextStyle(fontSize: 11, color: Colors.grey)),
                         const SizedBox(width: 8),
                       ],

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 
-import '../../../../core/theme/app_colors.dart';
-import '../cubit/trip_planner_cubit.dart';
-import '../cubit/trip_planner_state.dart';
-import '../widgets/budget_slider_section.dart';
-import '../widgets/food_preference_section.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/food_preference_section.dart';
 import '../widgets/step_progress_bar.dart'; 
-import '../../../../core/di/injection_container.dart';
-import '../../../itinerary/presentation/cubit/itinerary_cubit.dart';
-import '../../../itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 
 class TripPlannerStep3Screen extends StatelessWidget {
   const TripPlannerStep3Screen({super.key});
@@ -65,7 +66,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text(
+            child: Text(
               'Hủy',
               style: TextStyle(
                 color: AppColors.primary,
@@ -97,7 +98,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Sở thích & Ngân sách',
                             style: TextStyle(
                               fontSize: 24,
@@ -106,7 +107,7 @@ class TripPlannerStep3Screen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          Text(
                             'Tùy chỉnh chuyến đi của bạn để nhận được lịch trình phù hợp nhất.',
                             style: TextStyle(
                               fontSize: 14,
@@ -191,4 +192,3 @@ class TripPlannerStep3Screen extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 /// Trạng thái rỗng — hiển thị khi chưa có lịch trình nào.
 class ItineraryEmptyView extends StatelessWidget {
@@ -67,7 +68,7 @@ class ItineraryEmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 48),
             // ── Text Content ────────────────────────────────────────────────────────
-            const Text(
+            Text(
               'Bạn chưa có lịch trình nào',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -78,7 +79,7 @@ class ItineraryEmptyView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Bắt đầu tạo chuyến đi đầu tiên của bạn.',
               textAlign: TextAlign.center,
               style: TextStyle(

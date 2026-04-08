@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/destination_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_state.dart';
+import 'package:travel_advisor_mobile/features/saved/presentation/widgets/saved_itinerary_card.dart';
+
+class SavedScreen extends StatefulWidget {
+  const SavedScreen({super.key});
+
+  @override
+  State<SavedScreen> createState() => _SavedScreenState();
+}
+
+class _SavedScreenState extends State<SavedScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<SavedCubit>().loadSavedContent();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: BlocBuilder<SavedCubit, SavedState>(
+          builder: (context, state) {
+            if (state is SavedLoading) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            }
+            if (state is SavedError) {
+              return ErrorView(
+                error: state.message,
+                onRetry: () => context.read<SavedCubit>().loadSavedContent(),
+              );
+            }
+            if (state is SavedLoaded) {
+              return DefaultTabController(
+                length: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(AppSizes.s24, AppSizes.s16, AppSizes.s24, AppSizes.s16),
+                      child: Text(
+                        'Bộ sưu tập',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    const TabBar(
+                      tabs: [
+                        Tab(text: 'Lịch trình'),
+                        Tab(text: 'Địa điểm'),
+                      ],
+                      labelColor: AppColors.primary,
+                      unselectedLabelColor: Colors.grey,
+                      labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 16),
+                      indicatorColor: AppColors.primary,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicatorWeight: 3,
+                      dividerColor: Colors.transparent,
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          // TAB 1: ITINERARIES
+                          ListView.builder(
+                            padding: const EdgeInsets.all(AppSizes.s16),
+                            itemCount: state.itineraries.length,
+                            itemBuilder: (context, index) {
+                              final item = state.itineraries[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: AppSizes.s16),
+                                child: SizedBox(
+                                  height: 270,
+                                  child: SavedItineraryCard(
+                                    item: item,
+                                    onTap: () {
+                                      final cubit = sl<ItineraryCubit>();
+                                      cubit.selectItinerary(item.id);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => BlocProvider.value(
+                                            value: cubit,
+                                            child: ItinerarySummaryScreen(itineraryId: item.id),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          // TAB 2: PLACES
+                          GridView.builder(
+                            padding: const EdgeInsets.all(16),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: AppSizes.s16,
+                              crossAxisSpacing: AppSizes.s16,
+                              childAspectRatio: 0.82,
+                            ),
+                            itemCount: state.places.length,
+                            itemBuilder: (context, index) {
+                              return DestinationCard(item: state.places[index]);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  }
+}

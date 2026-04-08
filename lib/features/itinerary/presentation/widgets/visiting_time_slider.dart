@@ -48,7 +48,7 @@ class _VisitingTimeSliderState extends State<VisitingTimeSlider> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Thời gian tham quan',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
             ),

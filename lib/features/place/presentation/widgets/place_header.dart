@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 class PlaceHeader extends StatelessWidget {
   final String imageUrl;
@@ -31,7 +32,7 @@ class PlaceHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _circularButton(Icons.arrow_back, onBack),
+                _circularButton(Icons.arrow_back_ios_new, onBack, iconSize: 20),
                 _circularButton(
                   isFavorite ? Icons.favorite : Icons.favorite_border,
                   onFavorite,
@@ -45,7 +46,7 @@ class PlaceHeader extends StatelessWidget {
     );
   }
 
-  Widget _circularButton(IconData icon, VoidCallback onTap, {Color? color}) {
+  Widget _circularButton(IconData icon, VoidCallback onTap, {Color? color, double? iconSize}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -55,7 +56,7 @@ class PlaceHeader extends StatelessWidget {
           color: Colors.white,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: color ?? Colors.black, size: 22),
+        child: Icon(icon, color: color ?? Colors.black, size: iconSize ?? 22),
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/activity_item_entity.dart';
+
 import 'package:intl/intl.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
 
 class ActivityListWidget extends StatelessWidget {
   final List<ActivityItemEntity> items;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class SeeAllScreen extends StatelessWidget {
   final String title;
@@ -22,7 +23,7 @@ class SeeAllScreen extends StatelessWidget {
               onPressed: onAddTap,
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
-              label: const Text('Thêm địa điểm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              label: Text('Thêm địa điểm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             )
           : null,
       body: Column(
@@ -48,7 +49,7 @@ class SeeAllScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
+                        icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.primary, size: 20),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),

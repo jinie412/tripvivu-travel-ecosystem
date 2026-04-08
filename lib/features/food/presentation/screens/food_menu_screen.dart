@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
-import '../cubit/food_cubit.dart';
-import '../../domain/entities/food_item_entity.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/cubit/food_cubit.dart';
 
 class FoodMenuScreen extends StatelessWidget {
   final String restaurantName;
@@ -21,7 +23,7 @@ class FoodMenuScreen extends StatelessWidget {
           centerTitle: true,
           title: Column(
             children: [
-              const Text(
+              Text(
                 'Khám phá ẩm thực',
                 style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18),
               ),
@@ -33,7 +35,7 @@ class FoodMenuScreen extends StatelessWidget {
           ),
           leading: IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
+            icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B), size: 20),
           ),
           actions: [
             IconButton(
@@ -287,7 +289,7 @@ class _BottomCartBar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tổng cộng', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                    Text('Tổng cộng', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
                     Text(
                       '${(state.totalPrice / 1000).toStringAsFixed(0)}.000đ',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
@@ -328,7 +330,7 @@ class _BottomCartBar extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text('Đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ],
           ),

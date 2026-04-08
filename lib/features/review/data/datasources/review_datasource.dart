@@ -1,5 +1,5 @@
-import '../models/itinerary_review_model.dart';
-import '../models/location_review_model.dart';
+import 'package:travel_advisor_mobile/features/review/data/models/itinerary_review_model.dart';
+import 'package:travel_advisor_mobile/features/review/data/models/location_review_model.dart';
 
 abstract class ReviewDataSource {
   Future<ItineraryReviewModel> getItineraryForReview(String itineraryId);

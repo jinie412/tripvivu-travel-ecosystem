@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 class DetailedPlaceCard extends StatefulWidget {
   final String title;
@@ -82,6 +83,16 @@ class _DetailedPlaceCardState extends State<DetailedPlaceCard> {
                           setState(() {
                             _isFavorite = !_isFavorite;
                           });
+                          if (_isFavorite) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã lưu vào danh mục yêu thích'),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                         icon: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_outline,
@@ -135,7 +146,7 @@ class _DetailedPlaceCardState extends State<DetailedPlaceCard> {
                         ElevatedButton.icon(
                           onPressed: widget.onAddTap,
                           icon: const Icon(Icons.add_location_alt_outlined, size: 16, color: Colors.white),
-                          label: const Text('Thêm địa điểm', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                          label: Text('Thêm địa điểm', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

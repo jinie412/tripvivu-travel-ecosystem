@@ -1,6 +1,6 @@
-import '../entities/itinerary_entity.dart';
-import '../entities/itinerary_summary.dart';
-import '../entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 
 /// Hợp đồng (Interface) cho tầng Data.
 ///

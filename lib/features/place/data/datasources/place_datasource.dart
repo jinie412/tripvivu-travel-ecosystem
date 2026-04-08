@@ -1,6 +1,6 @@
-import '../models/place_model.dart';
-import '../models/place_detail_model.dart';
-import '../models/place_review_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_detail_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_model.dart';
+import 'package:travel_advisor_mobile/features/place/data/models/place_review_model.dart';
 
 abstract class PlaceDataSource {
   Future<PlaceDetailModel> getPlaceDetail(String id);
@@ -20,10 +20,9 @@ class MockPlaceDataSource implements PlaceDataSource {
       totalReviews: 1248,
       tags: ['Văn hóa - lịch sử', 'Tham quan - chụp ảnh'],
       images: [
-        'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&q=80',
-        'https://images.unsplash.com/photo-1552011335-41e893e95c1c?w=800&q=80',
-        'https://images.unsplash.com/photo-1596401037688-69cb907abf12?w=800&q=80',
-        'https://images.unsplash.com/photo-1508919892451-4b8495bc44ed?w=800&q=80',
+        'https://kyhoatourist.com.vn/uploadwb/image/tintuc/nha-hat-lon-2.jpg',
+        'https://static.vinwonders.com/production/nha-hat-thanh-pho-1.jpg',
+        'https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1200,h_811/w_74,x_13,y_13,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/i64sjejsothrtuqz43ap/V%C3%A9%C3%80%E1%BB%90Show%E1%BB%9ENh%C3%A0H%C3%A1tTh%C3%A0nhPh%E1%BB%91.jpg',
       ],
       description: 'Nhà Hát Lớn Thành Phố - Thăm quan & chụp ảnh. Sân khấu tại 7 Công Trường Lam Sơn, Quận 1, TP. HCM. Giá bình quân đầu người: 80.000đ - 350.000đ. Đây là công trình kiến trúc đặc sắc của Sài Gòn.',
       openingHours: '10:00',
@@ -53,7 +52,7 @@ class MockPlaceDataSource implements PlaceDataSource {
         PlaceModel(
           id: 'pl-related-001',
           name: 'Bảo tàng Mỹ thuật',
-          imageUrl: 'https://images.unsplash.com/photo-1565039030686-34247e0e800a?w=400&q=80',
+          imageUrl: 'https://cdn2.fptshop.com.vn/unsafe/1920x0/filters:format(webp):quality(75)/bao_tang_my_thuat_2_5830af02a8.png',
           rating: 4.6,
           district: 'Quận 1',
           city: 'TP. HCM',

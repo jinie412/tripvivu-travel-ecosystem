@@ -1,4 +1,6 @@
-import '../../domain/entities/itinerary_entity.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 
 class ItineraryModel {
   final String id;

@@ -1,11 +1,12 @@
 import 'package:json_annotation/json_annotation.dart';
-import '../../domain/entities/user_entity.dart';
+
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 
 part 'user_model.g.dart';
 
 /// Data Transfer Object for [UserEntity].
-/// Handles JSON ↔ Dart mapping from the API response.
-/// The domain layer never sees this class directly.
+/// Maps the backend API response to a Dart object.
+/// Backend login response: { user: { id, email, role, phone, fullName, gender, avatar_url } }
 @JsonSerializable()
 class UserModel {
   @JsonKey(name: 'id')
@@ -14,17 +15,30 @@ class UserModel {
   @JsonKey(name: 'email')
   final String email;
 
-  @JsonKey(name: 'display_name')
-  final String displayName;
+  /// Backend trả về `fullName`, không phải `display_name`
+  @JsonKey(name: 'fullName')
+  final String? fullName;
 
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
 
+  @JsonKey(name: 'role')
+  final String? role;
+
+  @JsonKey(name: 'phone')
+  final String? phone;
+
+  @JsonKey(name: 'gender')
+  final String? gender;
+
   const UserModel({
     required this.id,
     required this.email,
-    required this.displayName,
+    this.fullName,
     this.avatarUrl,
+    this.role,
+    this.phone,
+    this.gender,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -36,7 +50,10 @@ class UserModel {
   UserEntity toEntity() => UserEntity(
         id: id,
         email: email,
-        displayName: displayName,
+        displayName: fullName ?? email,
         avatarUrl: avatarUrl,
+        role: role,
+        phone: phone,
+        gender: gender,
       );
 }
