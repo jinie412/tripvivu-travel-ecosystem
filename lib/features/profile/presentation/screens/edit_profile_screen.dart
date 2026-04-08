@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
-import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -16,13 +19,13 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isEditing = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
-  // Mock data
-  final TextEditingController _nameController =
-      TextEditingController(text: 'Nguyễn Văn A');
-  String _gender = 'Nam';
-  final String _phone = '0973973267';
-  final String _email = 'nguyenvan.a@gmail.com';
+  final TextEditingController _nameController = TextEditingController();
+  String _gender = '';
+  String _phoneNumber = '';
+  String _email = '';
+  String _avatarUrl = '';
 
   // Interests
   final List<String> _allInterests = [
@@ -33,26 +36,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'Ẩm thực',
     'Mua sắm',
     'Nghỉ dưỡng',
-    'Thể thao mạo hiểm'
+    'Thể thao mạo hiểm',
   ];
-  final List<String> _selectedInterests = [
-    'Biển',
-    'Núi',
-    'Văn hóa',
-    'Ẩm thực',
-  ];
+  List<String> _selectedInterests = [];
 
   String _getIconForInterest(String interest) {
     switch (interest) {
-      case 'Biển': return '🌴';
-      case 'Núi': return '🏔️';
-      case 'Thành phố': return '🏙️';
-      case 'Văn hóa': return '🏛️';
-      case 'Ẩm thực': return '🥣';
-      case 'Mua sắm': return '🛍️';
-      case 'Nghỉ dưỡng': return '💆';
-      case 'Thể thao mạo hiểm': return '🧗';
-      default: return '📍';
+      case 'Biển':
+        return '🌴';
+      case 'Núi':
+        return '🏔️';
+      case 'Thành phố':
+        return '🏙️';
+      case 'Văn hóa':
+        return '🏛️';
+      case 'Ẩm thực':
+        return '🥣';
+      case 'Mua sắm':
+        return '🛍️';
+      case 'Nghỉ dưỡng':
+        return '💆';
+      case 'Thể thao mạo hiểm':
+        return '🧗';
+      default:
+        return '📍';
+    }
+  }
+
+  String _mapGenderFromBackend(String? gender) {
+    switch (gender?.toUpperCase()) {
+      case 'MALE':
+        return 'Nam';
+      case 'FEMALE':
+      case 'FEMAIL':
+      case 'FEMAILE':
+        return 'Nữ';
+      default:
+        return gender == null || gender.trim().isEmpty ? 'Nam' : gender;
+    }
+  }
+
+  String _mapGenderToBackend(String gender) {
+    switch (gender) {
+      case 'Nam':
+        return 'MALE';
+      case 'Nữ':
+        return 'FEMALE';
+      default:
+        return gender;
     }
   }
 
@@ -64,161 +95,318 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // 1. Background Image
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 240,
-            child: CachedNetworkImage(
-              imageUrl:
-                  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-              fit: BoxFit.cover,
+    return BlocConsumer<ProfileCubit, ProfileState>(
+      listener: (context, state) {
+        if (state is ProfileLoaded) {
+          setState(() {
+            _nameController.text = state.profile.name;
+            _gender = _mapGenderFromBackend(state.profile.gender);
+            _phoneNumber = state.profile.phoneNumber ?? '';
+            _email = state.profile.email;
+            _avatarUrl = state.profile.avatarUrl;
+            _selectedInterests = List<String>.from(
+              state.profile.travelPreferences ?? [],
+            );
+          });
+        } else if (state is ProfileUpdateSuccess) {
+          setState(() {
+            _isEditing = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cập nhật hồ sơ thành công'),
+              backgroundColor: Colors.green,
             ),
-          ),
+          );
+          context.read<ProfileCubit>().loadProfile();
+        }
+      },
+      builder: (context, state) {
+        final isAvatarUploading =
+            state is ProfileLoaded && state.isAvatarUploading;
 
-          // 2. AppBar (Over the image)
-          Positioned(
-            top: MediaQuery.of(context).padding.top,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon:
-                      const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Text(
-                  'Hồ sơ',
-                  style: AppTextStyles.heading2.copyWith(color: Colors.white),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isEditing ? Icons.check : Icons.edit,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isEditing = !_isEditing;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
+        if (state is ProfileInitial || state is ProfileLoading) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          // 3. Content Area
-          Positioned.fill(
-            top: 180,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r32)),
+        if (state is ProfileError) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
               ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(AppSizes.s24, 60, AppSizes.s24, AppSizes.s40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch children
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.s24),
+                child: Text(
+                  state.message,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(color: Colors.red),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // ProfileLoaded — hiện giao diện đầy đủ
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              // 1. Background Image
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 240,
+                child: CachedNetworkImage(
+                  imageUrl:
+                      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+              // 2. AppBar (Over the image)
+              Positioned(
+                top: MediaQuery.of(context).padding.top,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Profile Fields
-                    _buildProfileField(
-                      label: 'Tên hiển thị',
-                      controller: _nameController,
-                      isEditing: _isEditing,
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    _buildGenderField(isEditing: _isEditing),
-                    _buildReadOnlyField(
-                      label: 'Số điện thoại',
-                      value: _phone,
-                      isEditing: _isEditing,
-                    ),
-                    _buildReadOnlyField(
-                      label: 'Email',
-                      value: _email,
-                      isEditing: _isEditing,
-                    ),
-
-                    const SizedBox(height: AppSizes.s32),
-
-                    // Interests Section
                     Text(
-                      'Sở thích du lịch',
+                      'Hồ sơ',
                       style: AppTextStyles.heading2.copyWith(
-                        fontSize: 20,
-                        color: AppColorsExt.textDark,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: AppSizes.s8),
-                    Text(
-                      'Giúp chúng tôi gợi ý chuyến đi phù hợp hơn cho bạn',
-                      style: AppTextStyles.body.copyWith(
-                        color: Colors.grey[600],
+                    IconButton(
+                      icon: Icon(
+                        _isEditing ? Icons.check : Icons.edit,
+                        color: Colors.white,
                       ),
-                    ),
-                    const SizedBox(height: AppSizes.s16),
-
-                    // Chips
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 12,
-                      children: (_isEditing ? _allInterests : _selectedInterests)
-                          .map((interest) {
-                        final isSelected = _selectedInterests.contains(interest);
-                        return _buildInterestChip(
-                          icon: _getIconForInterest(interest),
-                          label: interest,
-                          isSelected: isSelected,
-                          onTap: _isEditing
-                              ? () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      _selectedInterests.remove(interest);
-                                    } else {
-                                      _selectedInterests.add(interest);
-                                    }
-                                  });
-                                }
-                              : null,
-                        );
-                      }).toList(),
+                      onPressed: () {
+                        if (_isEditing) {
+                          context.read<ProfileCubit>().updateProfile(
+                            displayName: _nameController.text,
+                            gender: _mapGenderToBackend(_gender),
+                            travelPreferences: _selectedInterests,
+                          );
+                        } else {
+                          setState(() {
+                            _isEditing = true;
+                          });
+                        }
+                      },
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
 
-          // 4. Avatar (Overlapping everything)
-          Positioned(
-            top: 130,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: CircleAvatar(
-                  radius: 46,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: const NetworkImage(
-                    'https://i.pravatar.cc/150?u=user123',
+              // 3. Content Area
+              Positioned.fill(
+                top: 180,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(AppSizes.r32),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSizes.s24,
+                      60,
+                      AppSizes.s24,
+                      AppSizes.s40,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Profile Fields
+                        _buildProfileField(
+                          label: 'Tên hiển thị',
+                          controller: _nameController,
+                          isEditing: _isEditing,
+                        ),
+                        _buildGenderField(isEditing: _isEditing),
+                        _buildReadOnlyField(
+                          label: 'Số điện thoại',
+                          value: _phoneNumber,
+                          isEditing: _isEditing,
+                        ),
+                        _buildReadOnlyField(
+                          label: 'Email',
+                          value: _email,
+                          isEditing: _isEditing,
+                        ),
+
+                        const SizedBox(height: AppSizes.s32),
+
+                        // Interests Section
+                        Text(
+                          'Sở thích du lịch',
+                          style: AppTextStyles.heading2.copyWith(
+                            fontSize: 20,
+                            color: AppColorsExt.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.s8),
+                        Text(
+                          'Giúp chúng tôi gợi ý chuyến đi phù hợp hơn cho bạn',
+                          style: AppTextStyles.body.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.s16),
+
+                        // Chips
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 12,
+                          children:
+                              (_isEditing ? _allInterests : _selectedInterests)
+                                  .map((interest) {
+                                    final isSelected = _selectedInterests
+                                        .contains(interest);
+                                    return _buildInterestChip(
+                                      icon: _getIconForInterest(interest),
+                                      label: interest,
+                                      isSelected: isSelected,
+                                      onTap: _isEditing
+                                          ? () {
+                                              setState(() {
+                                                if (isSelected) {
+                                                  _selectedInterests.remove(
+                                                    interest,
+                                                  );
+                                                } else {
+                                                  _selectedInterests.add(
+                                                    interest,
+                                                  );
+                                                }
+                                              });
+                                            }
+                                          : null,
+                                    );
+                                  })
+                                  .toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+
+              // 4. Avatar (Overlapping everything)
+              Positioned(
+                top: 130,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: (_isEditing && !isAvatarUploading)
+                        ? _pickAndUploadAvatar
+                        : null,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircleAvatar(
+                            radius: 46,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: _avatarUrl.isNotEmpty
+                                ? NetworkImage(_avatarUrl)
+                                : null,
+                            child: _avatarUrl.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 46,
+                                    color: Colors.grey,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        if (isAvatarUploading)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_isEditing)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    if (!_isEditing) return;
+
+    final image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 1000,
+    );
+
+    if (image == null || !mounted) return;
+    context.read<ProfileCubit>().uploadNewAvatar(image);
   }
 
   Widget _buildProfileField({
@@ -230,9 +418,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,9 +467,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +512,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       },
       child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20, vertical: AppSizes.s8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s20,
+          vertical: AppSizes.s8,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.grey[100],
           borderRadius: BorderRadius.circular(20),
@@ -353,9 +540,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,10 +588,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         decoration: BoxDecoration(
           color: isSelected ? AppColorsExt.chipActive : Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.r24),
-          border: Border.all(
-            color: AppColorsExt.chipActive,
-            width: 1,
-          ),
+          border: Border.all(color: AppColorsExt.chipActive, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

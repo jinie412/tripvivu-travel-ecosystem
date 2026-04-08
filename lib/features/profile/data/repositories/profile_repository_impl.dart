@@ -19,4 +19,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final models = await dataSource.getRecentActivities();
     return models.map((e) => e.toEntity()).toList();
   }
+
+  @override
+  Future<String> uploadAvatar(String imagePath) {
+    return dataSource.uploadAvatar(imagePath);
+  }
+
+  @override
+  Future<ProfileEntity> updateProfile({
+    String? displayName,
+    String? gender,
+    List<String>? travelPreferences,
+  }) async {
+    final model = await dataSource.updateProfile(
+      displayName: displayName,
+      gender: gender,
+      travelPreferences: travelPreferences,
+    );
+    return model.toEntity();
+  }
 }

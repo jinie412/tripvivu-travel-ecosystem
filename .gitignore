@@ -1,3 +1,8 @@
+# Auto generated files
+*.g.dart
+*.freezed.dart
+*.config.dart
+
 # Miscellaneous
 *.class
 *.log
@@ -49,3 +54,7 @@ app.*.map.json
 # Environment variables
 .env
 !.env.example
+
+# Ignore Keystore files
+*.keystore
+android/app/debug.keystore
