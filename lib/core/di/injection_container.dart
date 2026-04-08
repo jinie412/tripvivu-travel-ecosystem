@@ -103,7 +103,8 @@ Future<void> initDependencies() async {
 
   // ── Itinerary ──────────────────────────────────────────────────────────────
   sl.registerLazySingleton<ItineraryDataSource>(
-    () => MockItineraryDataSource(),
+    () => RemoteItineraryDataSource(),//MockItineraryDataSource(),
+    // TODO: swap → RemoteItineraryDataSource(sl<DioClient>())
   );
   sl.registerLazySingleton<ItineraryRepository>(
     () => ItineraryRepositoryImpl(sl()),
