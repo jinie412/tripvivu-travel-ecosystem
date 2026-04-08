@@ -21,7 +21,7 @@ class CityItinerary with _$CityItinerary {
 class CityActivity with _$CityActivity {
   const factory CityActivity({
     required String id,
-    required String title,
+    required String name,
     required String imageUrl,
     @Default(0.0) double rating,
     @Default(0) int reviewCount,

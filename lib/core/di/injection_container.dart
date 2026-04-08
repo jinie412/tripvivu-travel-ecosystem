@@ -50,12 +50,15 @@ import 'package:travel_advisor_mobile/features/saved/domain/repositories/saved_r
 import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_itineraries_usecase.dart';
 import 'package:travel_advisor_mobile/features/saved/domain/usecases/get_favorite_places_usecase.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
-import 'package:travel_advisor_mobile/features/search/data/datasources/search_mock_data_source.dart';
+import 'package:travel_advisor_mobile/features/search/data/datasources/search_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/data/repositories/search_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/search/domain/repositories/search_repository.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/get_recent_searches.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/search_locations.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:travel_advisor_mobile/features/search/data/datasources/search_local_datasource.dart';
+import 'package:travel_advisor_mobile/features/search/domain/usecases/save_recent_search.dart';
 import 'package:travel_advisor_mobile/features/home/data/datasources/notification_datasource.dart';
 import 'package:travel_advisor_mobile/features/home/data/repositories/notification_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/home/domain/repositories/notification_repository.dart';
@@ -165,17 +168,28 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => ReviewCubit(getItineraryForReview: sl(), reviewRepository: sl()),
   );
+// Trong hàm initDependencies(), thêm SharedPreferences ở phần đầu (trước tất cả features):
+  final sharedPreferences = await SharedPreferences.getInstance();
+  sl.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
 
   // ── Search ─────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<SearchMockDataSource>(
-    () => SearchMockDataSourceImpl(),
+  sl.registerLazySingleton<SearchRemoteDataSource>(
+    () => SearchRemoteDataSourceImpl(dioClient: sl<DioClient>()),
+  );
+
+  sl.registerLazySingleton<SearchLocalDataSource>(
+    () => SearchLocalDataSourceImpl(sharedPreferences: sl<SharedPreferences>()),
   );
   sl.registerLazySingleton<SearchRepository>(
-    () => SearchRepositoryImpl(remoteDataSource: sl()),
+    () => SearchRepositoryImpl(
+      remoteDataSource: sl<SearchRemoteDataSource>(),
+      localDataSource: sl<SearchLocalDataSource>(),
+    ),
   );
   sl.registerLazySingleton(() => GetRecentSearches(sl()));
   sl.registerLazySingleton(() => SearchLocations(sl()));
-  sl.registerFactory(() => SearchCubit(sl(), sl()));
+  sl.registerLazySingleton(() => SaveRecentSearch(sl()));
+  sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
   sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));

@@ -348,7 +348,7 @@ class _ExploreViewState extends State<_ExploreView> {
                 SectionHeader(title: 'Điểm đến nổi bật', onSeeAll: () {
                   final items = state.allDestinations.map((item) => CityActivity(
                     id: item.id,
-                    title: item.name,
+                    name: item.name,
                     imageUrl: item.imageUrl ?? '',
                     rating: 4.5,
                     reviewCount: 120,
@@ -395,7 +395,7 @@ class _ExploreViewState extends State<_ExploreView> {
                           child: city_cards.ActivityCard(
                             item: CityActivity(
                               id: item.id,
-                              title: item.name,
+                              name: item.name,
                               imageUrl: item.imageUrl ?? '',
                               rating: 4.5,
                               reviewCount: 120,
