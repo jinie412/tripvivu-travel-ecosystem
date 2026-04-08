@@ -5,7 +5,7 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
-import 'package:travel_advisor_mobile/features/auth/data/repositories/mock_auth_repository.dart';
+import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
@@ -34,6 +34,8 @@ import 'package:travel_advisor_mobile/features/profile/data/repositories/profile
 import 'package:travel_advisor_mobile/features/profile/domain/repositories/profile_repository.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_profile_usecase.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/usecases/get_recent_activities_usecase.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/upload_avatar_usecase.dart';
+import 'package:travel_advisor_mobile/features/profile/domain/usecases/update_profile_usecase.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
 import 'package:travel_advisor_mobile/features/review/data/repositories/review_repository_impl.dart';
@@ -59,12 +61,27 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DioClient>(() => DioClient());
 
   // ── Auth ───────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<AuthDataSource>(() => MockAuthDataSource());
+  sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
+
+  // Đăng ký các UseCase
   sl.registerLazySingleton(() => LoginUseCase(sl()));
-  sl.registerLazySingleton(() => RegisterUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterTouristUseCase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => UpdatePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
+  sl.registerLazySingleton(() => LoginWithGoogleUseCase(sl()));
+
+  // Đăng ký Cubit
   sl.registerFactory(
-    () => AuthCubit(loginUseCase: sl(), registerUseCase: sl()),
+    () => AuthCubit(
+      loginUseCase: sl(),
+      registerTouristUseCase: sl(),
+      forgotPasswordUseCase: sl(),
+      updatePasswordUseCase: sl(),
+      changePasswordUseCase: sl(),
+      loginWithGoogleUseCase: sl(),
+    ),
   );
 
   // ── Home ───────────────────────────────────────────────────────────────────
@@ -85,8 +102,12 @@ Future<void> initDependencies() async {
   );
 
   // ── Itinerary ──────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ItineraryDataSource>(() => MockItineraryDataSource());
-  sl.registerLazySingleton<ItineraryRepository>(() => ItineraryRepositoryImpl(sl()));
+  sl.registerLazySingleton<ItineraryDataSource>(
+    () => MockItineraryDataSource(),
+  );
+  sl.registerLazySingleton<ItineraryRepository>(
+    () => ItineraryRepositoryImpl(sl()),
+  );
   sl.registerLazySingleton(() => GetItinerariesUseCase(sl()));
   sl.registerLazySingleton(() => GetItinerarySummaryUseCase(sl()));
   sl.registerLazySingleton(() => DeleteItineraryUseCase(sl()));
@@ -101,14 +122,22 @@ Future<void> initDependencies() async {
   );
 
   // ── Profile ────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ProfileDataSource>(() => MockProfileDataSource());
-  sl.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(sl()));
+  sl.registerLazySingleton<ProfileDataSource>(
+    () => RemoteProfileDataSource(sl()),
+  );
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(sl()),
+  );
   sl.registerLazySingleton(() => GetProfileUseCase(sl()));
   sl.registerLazySingleton(() => GetRecentActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => UploadAvatarUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
   sl.registerFactory(
     () => ProfileCubit(
       getProfile: sl(),
       getRecentActivities: sl(),
+      uploadAvatar: sl(),
+      updateProfile: sl(),
     ),
   );
 
@@ -116,12 +145,12 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<ReviewDataSource>(() => MockReviewDataSource());
   sl.registerLazySingleton<ReviewRepository>(() => ReviewRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetItineraryForReviewUseCase(sl()));
-  sl.registerFactory(
-    () => ReviewCubit(getItineraryForReview: sl()),
-  );
+  sl.registerFactory(() => ReviewCubit(getItineraryForReview: sl()));
 
   // ── Search ─────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<SearchMockDataSource>(() => SearchMockDataSourceImpl());
+  sl.registerLazySingleton<SearchMockDataSource>(
+    () => SearchMockDataSourceImpl(),
+  );
   sl.registerLazySingleton<SearchRepository>(
     () => SearchRepositoryImpl(remoteDataSource: sl()),
   );
@@ -130,8 +159,12 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => SearchCubit(sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<CityDetailDataSource>(() => CityDetailMockDataSource());
-  sl.registerLazySingleton<CityDetailRepository>(() => CityDetailRepositoryImpl(sl()));
+  sl.registerLazySingleton<CityDetailDataSource>(
+    () => CityDetailMockDataSource(),
+  );
+  sl.registerLazySingleton<CityDetailRepository>(
+    () => CityDetailRepositoryImpl(sl()),
+  );
   sl.registerLazySingleton(() => GetCityOverviewUseCase(sl()));
   sl.registerFactory(() => CityDetailCubit(sl()));
 
@@ -139,9 +172,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<PlaceDataSource>(() => MockPlaceDataSource());
   sl.registerLazySingleton<PlaceRepository>(() => PlaceRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetPlaceDetailUseCase(sl()));
-  sl.registerFactory(
-    () => PlaceDetailCubit(getPlaceDetailUseCase: sl()),
-  );
+  sl.registerFactory(() => PlaceDetailCubit(getPlaceDetailUseCase: sl()));
 
   // ── Saved ──────────────────────────────────────────────────────────────────
   sl.registerLazySingleton(() => SavedMockDataSource());
