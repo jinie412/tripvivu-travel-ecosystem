@@ -11,5 +11,8 @@ class ProfileEntity with _$ProfileEntity {
     required String avatarUrl,
     required String membershipTier,
     required int reviewPendingCount,
+    String? gender,
+    String? phoneNumber,
+    List<String>? travelPreferences,
   }) = _ProfileEntity;
 }

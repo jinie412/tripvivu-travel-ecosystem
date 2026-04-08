@@ -12,10 +12,12 @@ class AuthRepositoryImpl implements AuthRepository {
     required String emailOrPhone,
     required String password,
   }) async {
-    return _dataSource.login(
-      emailOrPhone: emailOrPhone,
-      password: password,
-    );
+    return _dataSource.login(emailOrPhone: emailOrPhone, password: password);
+  }
+
+  @override
+  Future<LoginResult> loginWithGoogle() async {
+    return await _dataSource.loginWithGoogle();
   }
 
   @override
@@ -47,6 +49,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }) {
     return _dataSource.updatePassword(
       accessToken: accessToken,
+      newPassword: newPassword,
+    );
+  }
+
+  @override
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _dataSource.changePassword(
+      currentPassword: currentPassword,
       newPassword: newPassword,
     );
   }

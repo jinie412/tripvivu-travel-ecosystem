@@ -52,3 +52,7 @@ app.*.map.json
 # Environment variables
 .env
 !.env.example
+
+# Ignore Keystore files
+*.keystore
+android/app/debug.keystore

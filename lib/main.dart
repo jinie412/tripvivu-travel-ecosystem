@@ -9,6 +9,7 @@ import 'features/auth/presentation/screens/reset_password_screen.dart';
 import 'features/survey/presentation/screens/survey_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// 🔧 DEV FLAG — false = login screen, true = skip to home
 const bool kSkipLogin = false;
@@ -16,6 +17,10 @@ const bool kSkipLogin = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL'] ?? '',
+    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+  );
   await initializeDateFormatting('vi_VN', null);
   await initDependencies();
   runApp(const TravelAdvisorApp());
@@ -71,8 +76,7 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _navigatorKey.currentState?.push(
             MaterialPageRoute(
-              builder: (_) =>
-                  ResetPasswordScreen(accessToken: accessToken!),
+              builder: (_) => ResetPasswordScreen(accessToken: accessToken!),
             ),
           );
         });

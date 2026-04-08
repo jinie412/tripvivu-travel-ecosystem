@@ -42,6 +42,15 @@ class UpdatePasswordSuccess extends AuthState {
   const UpdatePasswordSuccess();
 }
 
+/// Đổi mật khẩu thành công
+class ChangePasswordSuccess extends AuthState {
+  final String message;
+  const ChangePasswordSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);

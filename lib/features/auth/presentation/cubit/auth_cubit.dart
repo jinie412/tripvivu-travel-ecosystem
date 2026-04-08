@@ -2,23 +2,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'auth_state.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final LoginUseCase _loginUseCase;
+  final LoginWithGoogleUseCase _loginWithGoogleUseCase;
   final RegisterTouristUseCase _registerTouristUseCase;
   final ForgotPasswordUseCase _forgotPasswordUseCase;
   final UpdatePasswordUseCase _updatePasswordUseCase;
+  final ChangePasswordUseCase _changePasswordUseCase;
 
   AuthCubit({
     required LoginUseCase loginUseCase,
+    required LoginWithGoogleUseCase loginWithGoogleUseCase,
     required RegisterTouristUseCase registerTouristUseCase,
     required ForgotPasswordUseCase forgotPasswordUseCase,
     required UpdatePasswordUseCase updatePasswordUseCase,
-  })  : _loginUseCase = loginUseCase,
-        _registerTouristUseCase = registerTouristUseCase,
-        _forgotPasswordUseCase = forgotPasswordUseCase,
-        _updatePasswordUseCase = updatePasswordUseCase,
-        super(const AuthInitial());
+    required ChangePasswordUseCase changePasswordUseCase,
+  }) : _loginUseCase = loginUseCase,
+       _loginWithGoogleUseCase = loginWithGoogleUseCase,
+       _registerTouristUseCase = registerTouristUseCase,
+       _forgotPasswordUseCase = forgotPasswordUseCase,
+       _updatePasswordUseCase = updatePasswordUseCase,
+       _changePasswordUseCase = changePasswordUseCase,
+       super(const AuthInitial());
 
   // ── Login ──────────────────────────────────────────────────────────────────
   /// Token được lưu tự động trong RemoteAuthDataSource sau khi server xác thực.
@@ -33,8 +40,13 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
       );
       emit(AuthSuccess(result));
-    } catch (e) {
-      emit(AuthError(_cleanMessage(e)));
+    } catch (e, stackTrace) {
+      debugPrint('--- LỖI ĐĂNG NHẬP ---');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
+      // Báo lỗi thân thiện cho User
+      emit(AuthError('Sai thông tin đăng nhập hoặc tài khoản không tồn tại.'));
     }
   }
 
@@ -56,7 +68,13 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
       );
       emit(const RegisterSuccess());
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Bắn log ra màn hình console cho dev
+      debugPrint('=== LỖI ĐĂNG KÝ TÀI KHOẢN ===');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
+      // Hiển thị lỗi từ server cho người dùng (vd: Email đã tồn tại)
       emit(AuthError(_cleanMessage(e)));
     }
   }
@@ -67,7 +85,11 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final message = await _forgotPasswordUseCase(email);
       emit(ForgotPasswordSuccess(message));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== LỖI QUÊN MẬT KHẨU ===');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
       emit(AuthError(_cleanMessage(e)));
     }
   }
@@ -84,8 +106,49 @@ class AuthCubit extends Cubit<AuthState> {
         newPassword: newPassword,
       );
       emit(const UpdatePasswordSuccess());
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('=== LỖI CẬP NHẬT MẬT KHẨU MỚI ===');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
       emit(AuthError(_cleanMessage(e)));
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    emit(const AuthLoading());
+    try {
+      final message = await _changePasswordUseCase(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      emit(ChangePasswordSuccess(message));
+    } catch (e, stackTrace) {
+      debugPrint('=== LỖI ĐỔI MẬT KHẨU ===');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
+      emit(AuthError(_cleanMessage(e)));
+    }
+  }
+
+  // Trong AuthCubit
+  Future<void> signInWithGoogle() async {
+    emit(const AuthLoading());
+    try {
+      final result = await _loginWithGoogleUseCase();
+      emit(AuthSuccess(result));
+    } catch (e, stackTrace) {
+      // Log lỗi kỹ thuật (PlatformException, SupabaseException...) cho Dev
+      debugPrint('--- LỖI ĐĂNG NHẬP GOOGLE ---');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+
+      // Báo lỗi thân thiện cho User
+      emit(AuthError('Đăng nhập Google thất bại. Vui lòng thử lại sau.'));
     }
   }
 

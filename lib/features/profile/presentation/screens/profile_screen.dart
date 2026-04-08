@@ -1,17 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import 'notifications_screen.dart';
 import 'support_screen.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
-import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<bool> _confirmLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    return shouldLogout ?? false;
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final shouldLogout = await _confirmLogout(context);
+    if (!shouldLogout || !context.mounted) return;
+
+    await Supabase.instance.client.auth.signOut();
+
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: 'access_token');
+    await storage.delete(key: 'refresh_token');
+
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +65,10 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.s24,
+            vertical: AppSizes.s16,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -34,12 +83,27 @@ class ProfileScreen extends StatelessWidget {
                       color: AppColorsExt.textDark,
                     ),
                   ),
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: const NetworkImage(
-                      'https://i.pravatar.cc/150?u=user123',
-                    ),
+                  BlocBuilder<ProfileCubit, ProfileState>(
+                    builder: (context, state) {
+                      final avatarUrl = state is ProfileLoaded
+                          ? state.profile.avatarUrl
+                          : '';
+
+                      return CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: avatarUrl.isNotEmpty
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        child: avatarUrl.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                color: Colors.grey,
+                                size: 30,
+                              )
+                            : null,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -49,11 +113,18 @@ class ProfileScreen extends StatelessWidget {
               _buildMenuItem(
                 icon: Icons.account_circle,
                 title: 'Hồ sơ',
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (_) => sl<ProfileCubit>()..loadProfile(),
+                        child: const EditProfileScreen(),
+                      ),
+                    ),
                   );
+                  if (!context.mounted) return;
+                  context.read<ProfileCubit>().loadProfile();
                 },
               ),
               const Divider(height: 1),
@@ -63,7 +134,9 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsScreen(),
+                    ),
                   );
                 },
               ),
@@ -80,7 +153,10 @@ class ProfileScreen extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ListTile(
-                            leading: const Icon(Icons.check, color: AppColors.primary),
+                            leading: const Icon(
+                              Icons.check,
+                              color: AppColors.primary,
+                            ),
                             title: Text('Tiếng Việt'),
                             onTap: () => Navigator.pop(context),
                           ),
@@ -97,7 +173,12 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (_) => sl<AuthCubit>(),
+                        child: const ChangePasswordScreen(),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -108,7 +189,9 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SupportScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const SupportScreen(),
+                    ),
                   );
                 },
               ),
@@ -121,7 +204,7 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 height: AppSizes.buttonHeight,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _logout(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -151,7 +234,9 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSizes.s8),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s40),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.s40,
+                      ),
                       child: Text(
                         'ID thiết bị: 19d532bc-7d43-4941-900b-a18233ea8644',
                         textAlign: TextAlign.center,
@@ -178,11 +263,7 @@ class ProfileScreen extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-      leading: Icon(
-        icon,
-        color: AppColorsExt.textDark,
-        size: AppSizes.iconLg,
-      ),
+      leading: Icon(icon, color: AppColorsExt.textDark, size: AppSizes.iconLg),
       title: Text(
         title,
         style: AppTextStyles.heading2.copyWith(
@@ -190,10 +271,7 @@ class ProfileScreen extends StatelessWidget {
           color: AppColorsExt.textDark,
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: Colors.grey,
-      ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
 }

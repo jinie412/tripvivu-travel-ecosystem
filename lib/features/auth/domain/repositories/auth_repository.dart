@@ -27,4 +27,13 @@ abstract class AuthRepository {
     required String accessToken,
     required String newPassword,
   });
+
+  /// Đổi mật khẩu trong app bằng mật khẩu hiện tại.
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
+
+  /// Đăng nhập bằng Google.
+  Future<LoginResult> loginWithGoogle();
 }

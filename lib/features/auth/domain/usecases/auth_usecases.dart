@@ -10,10 +10,7 @@ class LoginUseCase {
     required String emailOrPhone,
     required String password,
   }) {
-    return _repository.login(
-      emailOrPhone: emailOrPhone,
-      password: password,
-    );
+    return _repository.login(emailOrPhone: emailOrPhone, password: password);
   }
 }
 
@@ -62,5 +59,31 @@ class UpdatePasswordUseCase {
       accessToken: accessToken,
       newPassword: newPassword,
     );
+  }
+}
+
+/// Use-case: Đổi mật khẩu trong app.
+class ChangePasswordUseCase {
+  final AuthRepository _repository;
+  ChangePasswordUseCase(this._repository);
+
+  Future<String> call({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _repository.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
+}
+
+/// Use-case: Đăng nhập bằng Google.
+class LoginWithGoogleUseCase {
+  final AuthRepository repository;
+  LoginWithGoogleUseCase(this.repository);
+
+  Future<LoginResult> call() async {
+    return await repository.loginWithGoogle();
   }
 }

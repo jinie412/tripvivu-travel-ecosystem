@@ -46,9 +46,9 @@ class _LoginViewState extends State<_LoginView> {
 
   void _submit(BuildContext context) {
     context.read<AuthCubit>().login(
-          emailOrPhone: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+      emailOrPhone: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
   }
 
   @override
@@ -80,8 +80,10 @@ class _LoginViewState extends State<_LoginView> {
             const AuthBackground(),
             SafeArea(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -95,23 +97,33 @@ class _LoginViewState extends State<_LoginView> {
                           borderRadius: BorderRadius.circular(AppSizes.r32),
                         ),
                         child: const Center(
-                          child: Icon(Icons.flight_takeoff_rounded,
-                              size: AppSizes.s48, color: AppColors.primary),
+                          child: Icon(
+                            Icons.flight_takeoff_rounded,
+                            size: AppSizes.s48,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(height: AppSizes.s24),
-                    Text('Đăng nhập',
-                        style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A3C6E)),
-                        textAlign: TextAlign.center),
+                    Text(
+                      'Đăng nhập',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A3C6E),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: AppSizes.s8),
-                    Text('Sẵn sàng cho chuyến đi tiếp theo?',
-                        style: TextStyle(
-                            fontSize: 14, color: AppColors.textSecondary),
-                        textAlign: TextAlign.center),
+                    Text(
+                      'Sẵn sàng cho chuyến đi tiếp theo?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: AppSizes.s32),
                     // ── Email ─────────────────────────────────────────────────
                     AuthTextField(
@@ -141,7 +153,8 @@ class _LoginViewState extends State<_LoginView> {
                           size: AppSizes.iconMd,
                         ),
                         onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSizes.s8),
@@ -151,13 +164,18 @@ class _LoginViewState extends State<_LoginView> {
                       child: GestureDetector(
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const ForgotPasswordScreen(),
+                          ),
                         ),
-                        child: Text('Quên mật khẩu?',
-                            style: TextStyle(
-                                color: AppColors.primary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'Quên mật khẩu?',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSizes.s24),
@@ -168,16 +186,19 @@ class _LoginViewState extends State<_LoginView> {
                         return SizedBox(
                           height: AppSizes.buttonHeight,
                           child: ElevatedButton(
-                            onPressed:
-                                isLoading ? null : () => _submit(context),
+                            onPressed: isLoading
+                                ? null
+                                : () => _submit(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  AppColors.primary.withValues(alpha: 0.6),
+                              disabledBackgroundColor: AppColors.primary
+                                  .withValues(alpha: 0.6),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(AppSizes.r12),
+                                borderRadius: BorderRadius.circular(
+                                  AppSizes.r12,
+                                ),
                               ),
                             ),
                             child: isLoading
@@ -185,12 +206,17 @@ class _LoginViewState extends State<_LoginView> {
                                     width: 22,
                                     height: 22,
                                     child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2.5),
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
                                   )
-                                : Text('Đăng nhập',
+                                : Text(
+                                    'Đăng nhập',
                                     style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold)),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         );
                       },
@@ -204,8 +230,15 @@ class _LoginViewState extends State<_LoginView> {
                         final isLoading = state is AuthLoading;
                         return Row(
                           children: [
-                            Expanded(child: GoogleSignInButton(
-                                onPressed: isLoading ? () {} : () => _submit(context))),
+                            Expanded(
+                              child: GoogleSignInButton(
+                                onPressed: isLoading
+                                    ? () {}
+                                    : () => context
+                                          .read<AuthCubit>()
+                                          .signInWithGoogle(),
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -215,20 +248,28 @@ class _LoginViewState extends State<_LoginView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Chưa có tài khoản? ',
-                            style: TextStyle(
-                                color: AppColors.textSecondary, fontSize: 14)),
+                        Text(
+                          'Chưa có tài khoản? ',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
                         GestureDetector(
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const RegisterScreen()),
+                              builder: (_) => const RegisterScreen(),
+                            ),
                           ),
-                          child: Text('Đăng ký',
-                              style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold)),
+                          child: Text(
+                            'Đăng ký',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
