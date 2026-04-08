@@ -1,20 +1,28 @@
-import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
-import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
-import 'package:travel_advisor_mobile/features/saved/data/datasources/saved_mock_data_source.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/collections_datasource.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/entities/favorite_itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/entities/favorite_place_entity.dart';
 import 'package:travel_advisor_mobile/features/saved/domain/repositories/saved_repository.dart';
 
 class SavedRepositoryImpl implements SavedRepository {
-  final SavedMockDataSource dataSource;
+  final CollectionsDataSource dataSource;
 
   SavedRepositoryImpl({required this.dataSource});
 
   @override
-  Future<List<CityItinerary>> getFavoriteItineraries() {
-    return dataSource.getFavoriteItineraries();
+  Future<List<FavoriteItineraryEntity>> getFavoriteItineraries({
+    int page = 1,
+    int limit = 5,
+  }) async {
+    final models = await dataSource.getFavoriteItineraries(page: page, limit: limit);
+    return models.map((model) => model.toEntity()).toList();
   }
 
   @override
-  Future<List<Destination>> getFavoritePlaces() {
-    return dataSource.getFavoritePlaces();
+  Future<List<FavoritePlaceEntity>> getFavoritePlaces({
+    int page = 1,
+    int limit = 5,
+  }) async {
+    final models = await dataSource.getFavoritePlaces(page: page, limit: limit);
+    return models.map((model) => model.toEntity()).toList();
   }
 }

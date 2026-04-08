@@ -1,14 +1,20 @@
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
-import 'package:travel_advisor_mobile/features/home/domain/entities/hotel.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/explore_home_data.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 
 /// Contract for the home/explore screen data.
-/// Swap [MockHomeRepository] → [RemoteHomeRepository] in service_locator.dart
-/// without changing any UI code.
 abstract class HomeRepository {
-  Future<List<TripSuggestion>> getSuggestions();
-  Future<List<Destination>> getDestinations();
-  Future<List<Hotel>> getHotels();
-  Future<List<CityRestaurant>> getRestaurants();
+  Future<ExploreHomeData> getExploreHome();
+  Future<List<CityRestaurant>> getRestaurants({int limit = 5});
+  Future<List<TripSuggestion>> getPublicSuggestions({int limit = 50});
+  Future<List<Destination>> getFeaturedDestinations({int limit = 50});
+  Future<List<CityRestaurant>> getRestaurantsByCategories({
+    required List<String> categories,
+    int limitPerCategory = 50,
+  });
+  Future<List<CityHotel>> getHotelsByCategories({
+    required List<String> categories,
+    int limitPerCategory = 50,
+  });
 }

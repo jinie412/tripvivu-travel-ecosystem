@@ -1,113 +1,107 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/notification_entity.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
 
 class NotificationDrawer extends StatelessWidget {
   const NotificationDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Thông báo',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+    return BlocProvider(
+      create: (_) => sl<NotificationCubit>()..loadNotifications(),
+      child: Drawer(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Thông báo',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
-                  ),
-                ],
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1, color: AppColors.background),
-            // List of notifications
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  _buildNotificationItem(
-                    icon: Icons.map,
-                    iconColor: AppColors.primary,
-                    iconBgColor: AppColors.blobLight,
-                    title: 'Lịch trình sắp diễn ra',
-                    message: 'Chuyến du lịch khám phá Đà Lạt của bạn sẽ bắt đầu vào ngày mai. Đừng quên kiểm tra hành lý nhé!',
-                    time: '5 phút trước',
-                    isUnread: true,
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.star_border,
-                    iconColor: Colors.orange,
-                    iconBgColor: Colors.orange.withValues(alpha: 0.1),
-                    title: 'Đánh giá địa điểm',
-                    message: 'Bạn cảm thấy Thác Pongour như thế nào? Hãy để lại đánh giá để nhận thêm điểm thưởng.',
-                    time: '2 giờ trước',
-                    isUnread: true,
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.restaurant_menu,
-                    iconColor: Colors.green,
-                    iconBgColor: Colors.green.withValues(alpha: 0.1),
-                    title: 'Đơn hàng ẩm thực đã sẵn sàng',
-                    message: 'Món Bánh mì xíu mại (#TRV123) của bạn đã chuẩn bị xong. Vui lòng đến nhận món.',
-                    time: 'Hôm qua',
-                    isUnread: false,
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.info_outline,
-                    iconColor: Colors.blueAccent,
-                    iconBgColor: Colors.blueAccent.withValues(alpha: 0.1),
-                    title: 'Thông báo hệ thống',
-                    message: 'Chúng tôi vừa cập nhật thêm tính năng gợi ý món ăn tự động theo vị trí của bạn.',
-                    time: '2 ngày trước',
-                    isUnread: false,
-                  ),
-                ],
+              Expanded(
+                child: BlocBuilder<NotificationCubit, NotificationState>(
+                  builder: (context, state) {
+                    if (state is NotificationLoading || state is NotificationInitial) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is NotificationError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${state.message}',
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    } else if (state is NotificationLoaded) {
+                      if (state.notifications.isEmpty) {
+                        return const Center(
+                          child: Text('Không có thông báo nào.'),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: state.notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = state.notifications[index];
+                          return _buildNotificationItem(context, notification);
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNotificationItem({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-    required String title,
-    required String message,
-    required String time,
-    required bool isUnread,
-  }) {
+  Widget _buildNotificationItem(BuildContext context, NotificationEntity notification) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: isUnread ? AppColors.blobLight.withValues(alpha: 0.3) : Colors.transparent,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: notification.isUnread ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.2),
+        ),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: iconBgColor,
+                color: _iconColorFor(notification.notificationType).withOpacity(0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Center(
+              child: Icon(
+                _iconFor(notification.iconKey),
+                color: _iconColorFor(notification.notificationType),
+                size: 20,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -115,19 +109,18 @@ class NotificationDrawer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                          color: AppColors.textPrimary,
+                        notification.title,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                    if (isUnread)
+                      if (notification.isUnread)
                       Container(
                         width: 8,
                         height: 8,
@@ -141,20 +134,16 @@ class NotificationDrawer extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                    fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
-                  ),
+                    notification.content,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
-                  time,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
+                    notification.timeLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
@@ -164,4 +153,31 @@ class NotificationDrawer extends StatelessWidget {
       ),
     );
   }
+
+  IconData _iconFor(String key) {
+    final lowerKey = key.toLowerCase();
+    if (lowerKey.contains('map')) {
+      return Icons.map;
+    } else if (lowerKey.contains('star')) {
+      return Icons.star;
+    } else if (lowerKey.contains('restaurant')) {
+      return Icons.restaurant;
+    } else if (lowerKey.contains('info')) {
+      return Icons.info;
+    }
+    return Icons.notifications;
+  }
+
+  Color _iconColorFor(String type) {
+    final lowerType = type.toLowerCase();
+    if (lowerType.contains('review')) {
+      return Colors.orange;
+    } else if (lowerType.contains('food')) {
+      return Colors.red;
+    } else if (lowerType.contains('itinerary')) {
+      return Colors.blue;
+    }
+    return Colors.grey;
+  }
+
 }

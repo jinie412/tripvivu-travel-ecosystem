@@ -3,13 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class PreOrderPopup extends StatelessWidget {
+  final String title;
+  final String message;
   final String restaurantName;
+  final int estimatedWaitMinutes;
+  final double rating;
+  final int reviewCount;
   final VoidCallback onOrderTap;
+  final VoidCallback? onSkipTap;
 
   const PreOrderPopup({
     super.key, 
+    required this.title,
+    required this.message,
     required this.restaurantName, 
+    required this.estimatedWaitMinutes,
+    required this.rating,
+    required this.reviewCount,
     required this.onOrderTap,
+    this.onSkipTap,
   });
 
   @override
@@ -71,7 +83,7 @@ class PreOrderPopup extends StatelessWidget {
           
           // Text Content
           Text(
-            'GỢI Ý CHO BẠN',
+            title.toUpperCase(),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -100,7 +112,7 @@ class PreOrderPopup extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -144,7 +156,7 @@ class PreOrderPopup extends StatelessWidget {
             width: double.infinity,
             height: 56,
             child: TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: onSkipTap ?? () => Navigator.pop(context),
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFFEFF6FF),
                 shape: RoundedRectangleBorder(
@@ -176,7 +188,7 @@ class PreOrderPopup extends StatelessWidget {
                 const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Text(
-                  'Tiết kiệm 20p',
+                  'Tiết kiệm ${estimatedWaitMinutes}p',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 const SizedBox(width: 12),
@@ -185,7 +197,7 @@ class PreOrderPopup extends StatelessWidget {
                 const Icon(Icons.star, size: 14, color: Colors.amber),
                 const SizedBox(width: 4),
                 Text(
-                  '4.8/5 (2.3k+)',
+                  '${rating.toStringAsFixed(1)}/5 ($reviewCount)',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],

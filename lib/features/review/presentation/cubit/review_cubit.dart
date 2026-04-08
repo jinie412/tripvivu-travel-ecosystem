@@ -2,12 +2,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'review_state.dart';
 
+import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 
 class ReviewCubit extends Cubit<ReviewState> {
   final GetItineraryForReviewUseCase getItineraryForReview;
+  final ReviewRepository reviewRepository;
 
-  ReviewCubit({required this.getItineraryForReview}) : super(ReviewInitial());
+  ReviewCubit({
+    required this.getItineraryForReview,
+    required this.reviewRepository,
+  }) : super(ReviewInitial());
 
   Future<void> loadReviewData(String itineraryId) async {
     emit(ReviewLoading());
@@ -41,6 +47,12 @@ class ReviewCubit extends Cubit<ReviewState> {
         generalRating: rating,
         itinerary: newItinerary,
       ));
+    }
+  }
+
+  void setGeneralComment(String comment) {
+    if (state is ReviewLoaded) {
+      emit((state as ReviewLoaded).copyWith(generalComment: comment));
     }
   }
 
@@ -138,6 +150,44 @@ class ReviewCubit extends Cubit<ReviewState> {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;
       emit(currentState.copyWith(mediaPaths: []));
+    }
+  }
+
+  Future<void> submitReview(String itineraryId) async {
+    if (state is! ReviewLoaded) {
+      return;
+    }
+
+    final currentState = state as ReviewLoaded;
+    emit(currentState.copyWith(isSubmitting: true));
+
+    try {
+      final placeReviews = currentState.itinerary.locations
+          .where((loc) => loc.rating != null)
+          .map(
+            (loc) => SubmitPlaceReviewInput(
+              itineraryDetailId: loc.id,
+              rating: loc.rating!.round(),
+              content: loc.reviewText,
+              tags: loc.reviewTags ?? const [],
+            ),
+          )
+          .toList();
+
+      await reviewRepository.submitItineraryReview(
+        itineraryId: itineraryId,
+        overallRating:
+            currentState.generalRating > 0 ? currentState.generalRating : null,
+        overallContent: currentState.generalComment,
+        applyAllPlaces: currentState.applyToAllLocations,
+        placeReviews: placeReviews,
+        mediaUrls: currentState.mediaPaths,
+      );
+
+      emit(currentState.copyWith(isSubmitting: false));
+    } catch (_) {
+      emit(currentState.copyWith(isSubmitting: false));
+      rethrow;
     }
   }
 }

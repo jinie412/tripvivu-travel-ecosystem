@@ -123,14 +123,18 @@ class _TripCardWidgetState extends State<TripCardWidget> {
             children: [
               CircleAvatar(
                 radius: 12,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/100?u=${widget.item.id}'), // Móc avatar tạm
+                backgroundImage: NetworkImage(
+                  widget.item.authorAvatar.isNotEmpty
+                      ? widget.item.authorAvatar
+                      : 'https://i.pravatar.cc/100?u=${widget.item.id}',
+                ),
                 backgroundColor: Colors.grey[200],
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Traveler', // Móc tên tác giả tạm
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                  widget.item.authorName,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

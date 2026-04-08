@@ -25,14 +25,21 @@ class RateItineraryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ReviewCubit>()..loadReviewData(itineraryId),
-      child: _RateItineraryView(isReadOnly: isReadOnly),
+      child: _RateItineraryView(
+        itineraryId: itineraryId,
+        isReadOnly: isReadOnly,
+      ),
     );
   }
 }
 
 class _RateItineraryView extends StatelessWidget {
+  final String itineraryId;
   final bool isReadOnly;
-  const _RateItineraryView({required this.isReadOnly});
+  const _RateItineraryView({
+    required this.itineraryId,
+    required this.isReadOnly,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +87,16 @@ class _RateItineraryView extends StatelessWidget {
                         itinerary: state.itinerary,
                         rating: state.generalRating,
                         applyToAll: state.applyToAllLocations,
+                        generalComment: state.generalComment,
                         mediaPaths: state.mediaPaths,
                         onRatingChanged: isReadOnly ? (_) {} : (rating) {
                           context.read<ReviewCubit>().setGeneralRating(rating);
                         },
                         onApplyToAllChanged: isReadOnly ? (_) {} : (value) {
                           context.read<ReviewCubit>().toggleApplyToAll(value);
+                        },
+                        onGeneralCommentChanged: isReadOnly ? (_) {} : (value) {
+                          context.read<ReviewCubit>().setGeneralComment(value);
                         },
                         onAddMedia: isReadOnly ? () {} : () {
                           context.read<ReviewCubit>().addMedia();
@@ -132,11 +143,7 @@ class _RateItineraryView extends StatelessWidget {
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
-                          children: [
-                            _buildFilterChip(context, 'TẤT CẢ', 0, state.selectedDay),
-                            _buildFilterChip(context, 'NGÀY 1', 1, state.selectedDay),
-                            _buildFilterChip(context, 'NGÀY 2', 2, state.selectedDay),
-                          ],
+                          children: _buildDayFilterChips(context, state),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -196,12 +203,52 @@ class _RateItineraryView extends StatelessWidget {
                         minimumSize: const Size(double.infinity, 48),
                         elevation: 0,
                       ),
-                      onPressed: isReadOnly ? () => Navigator.pop(context) : () {
-                         // Thực hiện gửi đánh giá
-                      },
-                      child: Text(isReadOnly ? 'Quay lại' : 'Gửi đánh giá',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold)),
+                      onPressed: isReadOnly
+                          ? () => Navigator.pop(context)
+                          : state.isSubmitting
+                              ? null
+                              : () async {
+                                  try {
+                                    await context
+                                        .read<ReviewCubit>()
+                                        .submitReview(itineraryId);
+                                    if (!context.mounted) {
+                                      return;
+                                    }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Đã gửi đánh giá thành công!'),
+                                        backgroundColor: Color(0xFF22C55E),
+                                      ),
+                                    );
+                                    Navigator.pop(context);
+                                  } catch (e) {
+                                    if (!context.mounted) {
+                                      return;
+                                    }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Không thể gửi đánh giá: $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                      child: state.isSubmitting && !isReadOnly
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(isReadOnly ? 'Quay lại' : 'Gửi đánh giá',
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold)),
                     ),
                   ),
                 )
@@ -212,6 +259,26 @@ class _RateItineraryView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  List<Widget> _buildDayFilterChips(BuildContext context, ReviewLoaded state) {
+    final days = state.itinerary.locations
+        .map((item) => item.day)
+        .toSet()
+        .toList()
+      ..sort();
+
+    return [
+      _buildFilterChip(context, 'TẤT CẢ', 0, state.selectedDay),
+      ...days.map(
+        (day) => _buildFilterChip(
+          context,
+          'NGÀY $day',
+          day,
+          state.selectedDay,
+        ),
+      ),
+    ];
   }
 
   Widget _buildFilterChip(
