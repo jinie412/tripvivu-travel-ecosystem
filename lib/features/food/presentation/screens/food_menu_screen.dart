@@ -2,19 +2,32 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/cubit/food_cubit.dart';
 
 class FoodMenuScreen extends StatelessWidget {
+  final String placeId;
   final String restaurantName;
-  const FoodMenuScreen({super.key, required this.restaurantName});
+  final String? itineraryDetailId;
+  const FoodMenuScreen({
+    super.key,
+    required this.placeId,
+    required this.restaurantName,
+    this.itineraryDetailId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => FoodCubit()..loadRestaurantMenu(restaurantName),
+      create: (_) => sl<FoodCubit>()
+        ..loadRestaurantMenu(
+          placeId: placeId,
+          restaurantName: restaurantName,
+          itineraryDetailId: itineraryDetailId,
+        ),
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
@@ -299,38 +312,74 @@ class _BottomCartBar extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {
-                  final restaurantName = state.restaurantName;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.white),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Đặt món thành công! Bạn có thể nhận món tại $restaurantName ngay khi vừa đến nơi.',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                onPressed: state.isSubmitting
+                    ? null
+                    : () async {
+                        final restaurantName = state.restaurantName;
+                        try {
+                          await context.read<FoodCubit>().submitOrder();
+                          if (!context.mounted) {
+                            return;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Đặt món thành công! Bạn có thể nhận món tại $restaurantName ngay khi vừa đến nơi.',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFF22C55E),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              margin: const EdgeInsets.all(16),
+                              duration: const Duration(seconds: 4),
                             ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: const Color(0xFF22C55E),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.all(16),
-                      duration: const Duration(seconds: 4),
-                    ),
-                  );
-                  Navigator.pop(context);
-                },
+                          );
+                          Navigator.pop(context);
+                        } catch (e) {
+                          if (!context.mounted) {
+                            return;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Không thể đặt món: $e'),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                              margin: const EdgeInsets.all(16),
+                            ),
+                          );
+                        }
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: Text('Đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: state.isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Đặt trước',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ],
           ),

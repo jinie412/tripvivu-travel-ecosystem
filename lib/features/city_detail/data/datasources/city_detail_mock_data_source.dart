@@ -1,4 +1,5 @@
 import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 
 abstract class CityDetailDataSource {
   Future<List<CityItineraryModel>> getItineraries(String cityId);
@@ -317,5 +318,59 @@ class CityDetailMockDataSource implements CityDetailDataSource {
         amenities: ['pool', 'wifi', 'breakfast', 'gym'],
       ),
     ];
+  }
+}
+
+class RemoteCityDetailDataSource implements CityDetailDataSource {
+  final DioClient _client;
+
+  RemoteCityDetailDataSource(this._client);
+
+  final Map<String, Future<Map<String, dynamic>>> _overviewCache = {};
+
+  Future<Map<String, dynamic>> _fetchOverview(String cityId) {
+    return _overviewCache.putIfAbsent(cityId, () async {
+      final response = await _client.dio.get('/explore/cities/$cityId/overview');
+      return (response.data as Map).cast<String, dynamic>();
+    });
+  }
+
+  List<Map<String, dynamic>> _asList(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+    return raw.whereType<Map>().map((item) => item.cast<String, dynamic>()).toList();
+  }
+
+  @override
+  Future<List<CityItineraryModel>> getItineraries(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['itineraries'])
+        .map(CityItineraryModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityActivityModel>> getActivities(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['activities'])
+        .map(CityActivityModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityRestaurantModel>> getRestaurants(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['restaurants'])
+        .map(CityRestaurantModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityHotelModel>> getHotels(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['hotels'])
+        .map(CityHotelModel.fromJson)
+        .toList();
   }
 }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'star_rating_input.dart';
 
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
 class ItineraryRatingPopup extends StatefulWidget {
@@ -22,6 +24,7 @@ class ItineraryRatingPopup extends StatefulWidget {
 class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
   double _rating = 4.0;
   final TextEditingController _feedbackController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -160,38 +163,79 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
                 width: double.infinity,
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Cảm ơn bạn đã phản hồi!'),
-                        backgroundColor: Color(0xFF22C55E),
-                      ),
-                    );
-                  },
+                  onPressed: _isSubmitting
+                      ? null
+                      : () async {
+                          setState(() => _isSubmitting = true);
+                          try {
+                            await sl<ReviewRepository>().submitItineraryReview(
+                              itineraryId: widget.itineraryId,
+                              overallRating: _rating,
+                              overallContent: _feedbackController.text,
+                              applyAllPlaces: true,
+                            );
+                            if (!context.mounted) {
+                              return;
+                            }
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cảm ơn bạn đã phản hồi!'),
+                                backgroundColor: Color(0xFF22C55E),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!context.mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Không thể gửi đánh giá: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isSubmitting = false);
+                            }
+                          }
+                        },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: const Color(0xFFF8FAFC),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Gửi đánh giá',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.send_outlined, size: 16, color: Color(0xFF475569)),
-                    ],
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Gửi đánh giá',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.send_outlined, size: 16, color: Color(0xFF475569)),
+                          ],
+                        ),
                 ),
               ),
               const SizedBox(height: 12),
               
               // "Để sau" link
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () async {
+                  try {
+                    await sl<ReviewRepository>().dismissPopup(widget.itineraryId);
+                  } catch (_) {}
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
                 child: Text(
                   'Để sau',
                   style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),

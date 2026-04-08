@@ -315,17 +315,28 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
 
   void _showPreOrderDemo() {
     const restaurantName = 'Cơm tấm Ba Ghiền';
+    const placeId = 'demo-place';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => PreOrderPopup(
+        title: 'Gợi ý cho bạn',
+        message: 'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
         restaurantName: restaurantName,
+        estimatedWaitMinutes: 20,
+        rating: 4.8,
+        reviewCount: 2300,
         onOrderTap: () {
           Navigator.pop(context);
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const FoodMenuScreen(restaurantName: restaurantName)),
+            MaterialPageRoute(
+              builder: (_) => const FoodMenuScreen(
+                placeId: placeId,
+                restaurantName: restaurantName,
+              ),
+            ),
           );
         },
       ),

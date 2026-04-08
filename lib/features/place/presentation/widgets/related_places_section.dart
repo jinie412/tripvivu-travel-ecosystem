@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/place/domain/entities/place_entity.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 class RelatedPlacesSection extends StatelessWidget {
   final List<PlaceEntity> relatedPlaces;
@@ -33,7 +37,7 @@ class RelatedPlacesSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: relatedPlaces.length,
               separatorBuilder: (context, index) => const SizedBox(width: 14),
-              itemBuilder: (context, index) => _placeCard(relatedPlaces[index]),
+              itemBuilder: (context, index) => _placeCard(context, relatedPlaces[index]),
             ),
           ),
         ],
@@ -41,8 +45,20 @@ class RelatedPlacesSection extends StatelessWidget {
     );
   }
 
-  Widget _placeCard(PlaceEntity place) {
-    return Container(
+  Widget _placeCard(BuildContext context, PlaceEntity place) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider(
+              create: (_) => sl<PlaceDetailCubit>(),
+              child: PlaceDetailScreen(placeId: place.id),
+            ),
+          ),
+        );
+      },
+      child: Container(
       width: 170,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -97,6 +113,6 @@ class RelatedPlacesSection extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

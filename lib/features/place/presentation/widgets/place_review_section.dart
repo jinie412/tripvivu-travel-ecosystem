@@ -19,6 +19,9 @@ class PlaceReviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reviewCount = totalReviews > 0 ? totalReviews : reviews.length;
+    final breakdown = _buildBreakdown(reviews);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -46,7 +49,7 @@ class PlaceReviewSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _ratingSummaryBox(),
+          _ratingSummaryBox(reviewCount, breakdown),
           const SizedBox(height: 24),
           ...reviews.asMap().entries.map((entry) => ReviewCard(
             review: entry.value,
@@ -56,7 +59,23 @@ class PlaceReviewSection extends StatelessWidget {
     );
   }
 
-  Widget _ratingSummaryBox() {
+  Map<int, int> _buildBreakdown(List<PlaceReviewEntity> items) {
+    final map = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    for (final item in items) {
+      final star = item.rating.round().clamp(1, 5);
+      map[star] = (map[star] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  double _toPercent(int count, int total) {
+    if (total <= 0) {
+      return 0;
+    }
+    return count / total;
+  }
+
+  Widget _ratingSummaryBox(int reviewCount, Map<int, int> breakdown) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -88,7 +107,7 @@ class PlaceReviewSection extends StatelessWidget {
               _stars(rating.floor()),
               const SizedBox(height: 8),
               Text(
-                '$totalReviews đánh giá',
+                '$reviewCount đánh giá',
                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
               ),
             ],
@@ -97,11 +116,11 @@ class PlaceReviewSection extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _ratingBar(5, 0.8),
-                _ratingBar(4, 0.4),
-                _ratingBar(3, 0.2),
-                _ratingBar(2, 0.1),
-                _ratingBar(1, 0.05),
+                _ratingBar(5, _toPercent(breakdown[5] ?? 0, reviewCount)),
+                _ratingBar(4, _toPercent(breakdown[4] ?? 0, reviewCount)),
+                _ratingBar(3, _toPercent(breakdown[3] ?? 0, reviewCount)),
+                _ratingBar(2, _toPercent(breakdown[2] ?? 0, reviewCount)),
+                _ratingBar(1, _toPercent(breakdown[1] ?? 0, reviewCount)),
               ],
             ),
           ),

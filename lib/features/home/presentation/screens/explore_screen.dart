@@ -21,7 +21,10 @@ import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_it
 
 import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
+import 'package:travel_advisor_mobile/features/food/data/datasources/food_remote_data_source.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/city_detail_screen.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
@@ -53,9 +56,18 @@ class _ExploreViewState extends State<_ExploreView> {
   int _restaurantPage = 0;
   int _hotelPage = 0;
   bool _isItineraryStarted = false;
+  List<OrderEligiblePlace> _orderPlaces = const [];
+  int _currentOrderPlaceIndex = 0;
+  bool _isLoadingOrderPlaces = false;
 
   void _onToggleItinerary(bool value) {
     setState(() => _isItineraryStarted = value);
+    if (!value) {
+      _orderPlaces = const [];
+      _currentOrderPlaceIndex = 0;
+      return;
+    }
+
     if (value) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -66,44 +78,145 @@ class _ExploreViewState extends State<_ExploreView> {
 
       Future.delayed(const Duration(seconds: 4), () {
         if (!mounted || !_isItineraryStarted) return;
-        _showPreOrderNotification();
+        _showNextPreOrderNotification();
       });
     }
   }
 
-  void _showPreOrderNotification() {
-    const restaurantName = 'Cơm tấm Ba Ghiền';
-    showModalBottomSheet(
+  Future<void> _prepareOrderPlaces() async {
+    if (_isLoadingOrderPlaces || _orderPlaces.isNotEmpty) {
+      return;
+    }
+
+    final exploreState = context.read<ExploreCubit>().state;
+    if (exploreState is! ExploreLoaded || exploreState.currentItinerary == null) {
+      return;
+    }
+
+    _isLoadingOrderPlaces = true;
+    try {
+      final places = await sl<FoodRemoteDataSource>().getItineraryOrderPlaces(
+        itineraryId: exploreState.currentItinerary!.id,
+      );
+
+      _orderPlaces = places;
+      _currentOrderPlaceIndex = 0;
+    } catch (_) {
+      _orderPlaces = const [];
+      _currentOrderPlaceIndex = 0;
+    } finally {
+      _isLoadingOrderPlaces = false;
+    }
+  }
+
+  Future<void> _showNextPreOrderNotification() async {
+    await _prepareOrderPlaces();
+    if (!mounted || !_isItineraryStarted) {
+      return;
+    }
+
+    if (_currentOrderPlaceIndex >= _orderPlaces.length) {
+      Future.delayed(const Duration(seconds: 6), () {
+        if (!mounted || !_isItineraryStarted) return;
+        _showTripCompletionPopup();
+      });
+      return;
+    }
+
+    final currentPlace = _orderPlaces[_currentOrderPlaceIndex];
+
+    OrderPopupData popupData;
+    try {
+      popupData = await sl<FoodRemoteDataSource>().getOrderPopup(currentPlace.placeId);
+    } catch (_) {
+      popupData = OrderPopupData(
+        placeId: currentPlace.placeId,
+        placeName: currentPlace.placeName,
+        title: 'Gợi ý cho bạn',
+        message: 'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
+        estimatedWaitMinutes: 20,
+        rating: 0,
+        reviewCount: 0,
+      );
+    }
+
+    if (!mounted || !_isItineraryStarted) {
+      return;
+    }
+
+    bool movedToNext = false;
+    void moveNext() {
+      if (movedToNext) {
+        return;
+      }
+      movedToNext = true;
+      _currentOrderPlaceIndex += 1;
+      Future.delayed(const Duration(seconds: 4), () {
+        if (!mounted || !_isItineraryStarted) {
+          return;
+        }
+        _showNextPreOrderNotification();
+      });
+    }
+
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => PreOrderPopup(
-        restaurantName: restaurantName,
+        title: popupData.title,
+        message: popupData.message,
+        restaurantName: popupData.placeName,
+        estimatedWaitMinutes: popupData.estimatedWaitMinutes,
+        rating: popupData.rating,
+        reviewCount: popupData.reviewCount,
         onOrderTap: () {
           Navigator.pop(context);
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const FoodMenuScreen(restaurantName: restaurantName)),
-          );
+            MaterialPageRoute(
+              builder: (_) => FoodMenuScreen(
+                placeId: popupData.placeId,
+                restaurantName: popupData.placeName,
+                itineraryDetailId: currentPlace.itineraryDetailId,
+              ),
+            ),
+          ).then((_) => moveNext());
+        },
+        onSkipTap: () {
+          Navigator.pop(context);
+          moveNext();
         },
       ),
     );
 
-    Future.delayed(const Duration(seconds: 10), () {
-      if (!mounted || !_isItineraryStarted) return;
-      _showTripCompletionPopup();
-    });
+    if (!movedToNext) {
+      moveNext();
+    }
   }
 
   void _showTripCompletionPopup() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => const ItineraryRatingPopup(
-        itineraryId: 'itin-001',
-        itineraryTitle: 'Sài Gòn 3N2Đ',
-      ),
-    );
+    final exploreState = context.read<ExploreCubit>().state;
+    if (exploreState is! ExploreLoaded || exploreState.currentItinerary == null) {
+      return;
+    }
+
+    final itinerary = exploreState.currentItinerary!;
+
+    sl<ReviewRepository>().getPopupData(itinerary.id).then((popupData) {
+      if (!mounted || !popupData.showPopup) {
+        return;
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => ItineraryRatingPopup(
+          itineraryId: popupData.itineraryId,
+          itineraryTitle: popupData.itineraryTitle,
+        ),
+      );
+    }).catchError((_) {});
   }
 
   @override
@@ -163,11 +276,13 @@ class _ExploreViewState extends State<_ExploreView> {
               children: [
                 const SizedBox(height: 24),
                 SectionHeader(title: 'Lịch trình gợi ý', onSeeAll: () {
-                  final items = state.suggestions.map((item) => CityItinerary(
+                  final items = state.allSuggestions.map((item) => CityItinerary(
                     id: item.id,
                     title: item.title,
-                    authorName: 'Traveler',
-                    authorAvatar: 'https://i.pravatar.cc/100?u=${item.id}',
+                    authorName: item.authorName,
+                    authorAvatar: item.authorAvatar.isNotEmpty
+                        ? item.authorAvatar
+                        : 'https://i.pravatar.cc/100?u=${item.id}',
                     imageUrl: item.imageUrl ?? '',
                     duration: item.days.toLowerCase(),
                     views: item.views,
@@ -197,7 +312,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     controller: PageController(viewportFraction: 0.88),
                     padEnds: false,
                     clipBehavior: Clip.none,
-                    itemCount: state.suggestions.length,
+                    itemCount: state.suggestions.take(5).length,
                     onPageChanged: (i) => setState(() => _suggestionPage = i),
                     itemBuilder: (_, i) {
                       final item = state.suggestions[i];
@@ -218,7 +333,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.suggestions.length, current: _suggestionPage),
+                PageDots(count: state.suggestions.take(5).length, current: _suggestionPage),
               ],
             ),
           ),
@@ -231,7 +346,7 @@ class _ExploreViewState extends State<_ExploreView> {
               children: [
                 const SizedBox(height: 24),
                 SectionHeader(title: 'Điểm đến nổi bật', onSeeAll: () {
-                  final items = state.destinations.map((item) => CityActivity(
+                  final items = state.allDestinations.map((item) => CityActivity(
                     id: item.id,
                     title: item.name,
                     imageUrl: item.imageUrl ?? '',
@@ -244,9 +359,9 @@ class _ExploreViewState extends State<_ExploreView> {
                       items: items.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (_) => sl<PlaceDetailCubit>(),
-                              child: PlaceDetailScreen(placeId: item.id),
+                            builder: (_) => CityDetailScreen(
+                              cityId: item.id,
+                              cityName: item.title,
                             ),
                           ));
                         },
@@ -262,7 +377,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     controller: PageController(viewportFraction: 0.35),
                     padEnds: false,
                     clipBehavior: Clip.none,
-                    itemCount: state.destinations.length,
+                    itemCount: state.destinations.take(5).length,
                     onPageChanged: (i) => setState(() => _activityPage = i),
                     itemBuilder: (_, i) {
                       final item = state.destinations[i];
@@ -271,9 +386,9 @@ class _ExploreViewState extends State<_ExploreView> {
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BlocProvider(
-                                create: (_) => sl<PlaceDetailCubit>(),
-                                child: PlaceDetailScreen(placeId: item.id),
+                              builder: (_) => CityDetailScreen(
+                                cityId: item.id,
+                                cityName: item.name,
                               ),
                             ));
                           },
@@ -291,7 +406,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.destinations.length, current: _activityPage),
+                PageDots(count: state.destinations.take(5).length, current: _activityPage),
               ],
             ),
           ),
@@ -307,7 +422,7 @@ class _ExploreViewState extends State<_ExploreView> {
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => SeeAllScreen(
                       title: 'Nhà hàng tiêu biểu',
-                      items: state.restaurants.map((item) => GestureDetector(
+                      items: state.allRestaurants.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (_) => BlocProvider(
@@ -328,7 +443,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     controller: PageController(viewportFraction: 0.45),
                     padEnds: false,
                     clipBehavior: Clip.none,
-                    itemCount: state.restaurants.length,
+                    itemCount: state.restaurants.take(5).length,
                     onPageChanged: (i) => setState(() => _restaurantPage = i),
                     itemBuilder: (_, i) {
                       final item = state.restaurants[i];
@@ -349,7 +464,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.restaurants.length, current: _restaurantPage),
+                PageDots(count: state.restaurants.take(5).length, current: _restaurantPage),
               ],
             ),
           ),
@@ -362,18 +477,10 @@ class _ExploreViewState extends State<_ExploreView> {
               children: [
                 const SizedBox(height: 24),
                 SectionHeader(title: 'Khách sạn nổi bật', onSeeAll: () {
-                  final items = state.hotels.map((item) => CityHotel(
-                    id: item.id,
-                    name: item.name,
-                    imageUrl: item.imageUrl ?? '',
-                    rating: item.rating,
-                    reviewCount: 350,
-                    price: item.price,
-                  )).toList();
                   Navigator.push(context, MaterialPageRoute(
                     builder: (_) => SeeAllScreen(
                       title: 'Khách sạn nổi bật',
-                      items: items.map((item) => GestureDetector(
+                      items: state.allHotels.map((item) => GestureDetector(
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (_) => BlocProvider(
@@ -389,12 +496,12 @@ class _ExploreViewState extends State<_ExploreView> {
                 }),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 300,
+                  height: 185,
                   child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.65),
+                    controller: PageController(viewportFraction: 0.45),
                     padEnds: false,
                     clipBehavior: Clip.none,
-                    itemCount: state.hotels.length,
+                    itemCount: state.hotels.take(5).length,
                     onPageChanged: (i) => setState(() => _hotelPage = i),
                     itemBuilder: (_, i) {
                       final item = state.hotels[i];
@@ -410,21 +517,14 @@ class _ExploreViewState extends State<_ExploreView> {
                             ));
                           },
                           child: city_cards.HotelCard(
-                            item: CityHotel(
-                              id: item.id,
-                              name: item.name,
-                              imageUrl: item.imageUrl ?? '',
-                              rating: item.rating,
-                              reviewCount: 350,
-                              price: item.price,
-                            ),
+                            item: item,
                           ),
                         ),
                       );
                     },
                   ),
                 ),
-                PageDots(count: state.hotels.length, current: _hotelPage),
+                PageDots(count: state.hotels.take(5).length, current: _hotelPage),
               ],
             ),
           ),

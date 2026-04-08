@@ -6,6 +6,7 @@ class FoodItemEntity extends Equatable {
   final String description;
   final double price;
   final String imageUrl;
+  final String category;
   final int quantity;
 
   const FoodItemEntity({
@@ -14,6 +15,7 @@ class FoodItemEntity extends Equatable {
     required this.description,
     required this.price,
     required this.imageUrl,
+    this.category = 'main',
     this.quantity = 0,
   });
 
@@ -24,10 +26,11 @@ class FoodItemEntity extends Equatable {
       description: description,
       price: price,
       imageUrl: imageUrl,
+      category: category,
       quantity: quantity ?? this.quantity,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, description, price, imageUrl, quantity];
+  List<Object?> get props => [id, title, description, price, imageUrl, category, quantity];
 }

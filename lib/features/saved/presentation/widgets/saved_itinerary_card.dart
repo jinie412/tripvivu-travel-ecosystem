@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
-import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/saved/domain/entities/favorite_itinerary_entity.dart';
 
 class SavedItineraryCard extends StatelessWidget {
-  final CityItinerary item;
+  final FavoriteItineraryEntity item;
   final VoidCallback? onTap;
 
   const SavedItineraryCard({super.key, required this.item, this.onTap});
@@ -20,14 +20,7 @@ class SavedItineraryCard extends StatelessWidget {
         children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: CachedNetworkImage(
-            imageUrl: item.imageUrl,
-            height: 180,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(color: Colors.grey[200]),
-            errorWidget: (context, url, error) => const Icon(Icons.error),
-          ),
+          child: _buildItineraryImageGallery(),
         ),
         const SizedBox(height: 12),
         Text(
@@ -41,25 +34,10 @@ class SavedItineraryCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // Single Metadata Row: Author, Location, Views, Likes
+        // Metadata Row: Location, Days, Status
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 12,
-              backgroundImage: CachedNetworkImageProvider(
-                item.authorAvatar,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                item.authorName,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ),
-            const Spacer(),
             const Icon(Icons.location_on_outlined, size: 12, color: Colors.grey),
             const SizedBox(width: 4),
             Padding(
@@ -70,30 +48,87 @@ class SavedItineraryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
+            const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
             const SizedBox(width: 4),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
-                item.views,
+                '${item.days} ngày',
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ),
             const SizedBox(width: 8),
             const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
             const SizedBox(width: 4),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                item.likes,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-            ),
-            const SizedBox(width: 12),
           ],
         ),
       ],
     ),
+    );
+  }
+
+  Widget _buildItineraryImageGallery() {
+    final gallery = item.imageGallery
+        .where((url) => url.trim().isNotEmpty)
+        .take(3)
+        .toList();
+
+    if (gallery.isEmpty && (item.image ?? '').trim().isNotEmpty) {
+      gallery.add(item.image!.trim());
+    }
+
+    if (gallery.isEmpty) {
+      return Container(
+        height: 180,
+        width: double.infinity,
+        color: Colors.grey[200],
+        alignment: Alignment.center,
+        child: const Icon(Icons.image, color: Colors.grey, size: 40),
+      );
+    }
+
+    if (gallery.length == 1) {
+      return _buildNetworkImage(gallery.first, height: 180);
+    }
+
+    return SizedBox(
+      height: 180,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _buildNetworkImage(gallery[0], height: 180),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _buildNetworkImage(gallery[1], height: double.infinity),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: gallery.length >= 3
+                      ? _buildNetworkImage(gallery[2], height: double.infinity)
+                      : Container(color: Colors.grey[300]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkImage(String imageUrl, {required double height}) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(color: Colors.grey[200]),
+      errorWidget: (context, url, error) =>
+          Container(color: Colors.grey[300], child: const Icon(Icons.broken_image)),
     );
   }
 }
