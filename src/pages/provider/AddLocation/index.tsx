@@ -24,6 +24,10 @@ import { useNavigate } from 'react-router-dom';
 import { addNewPlace } from '@/services/order.service';
 import * as XLSX from 'xlsx';
 
+const userInfo = localStorage.getItem('userInfo');
+const parsedUser = userInfo ? JSON.parse(userInfo) : null;
+const VENDOR_ID = parsedUser?.businessId || parsedUser?.id || '';
+
 const AddLocationPage: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -265,6 +269,7 @@ const AddLocationPage: React.FC = () => {
         p_city: formData.city,
         p_lat: formData.latitude,
         p_lng: formData.longitude,
+        p_vendor_id: VENDOR_ID,
         p_categories: categories,
         p_services: services,
         p_menu: menu

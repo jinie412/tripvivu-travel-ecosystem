@@ -5,14 +5,19 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: string;
-  time: string;
-  restaurantName: string;
+  order_id: string;
+  ordered_time: string;
+  place_name: string;
   placeId: string;
-  customer: {
-    name: string;
-  };
-  items: OrderItem[];
-  total: string;
-  status: 'confirm' | 'cooking' | 'completed';
+  customer_name: string;
+  foods: string;
+  total_amount: number;
+  status: 'pending' | 'processing' | 'completed';
+  // legacy fields
+  id?: string;
+  time?: string;
+  restaurantName?: string;
+  customer?: { name: string };
+  items?: OrderItem[];
+  total?: string;
 }

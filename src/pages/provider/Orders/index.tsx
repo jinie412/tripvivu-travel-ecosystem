@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Button from '../../../components/UI/Button';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getOrdersByPlace } from '@/services/order.service';
+import { getOrdersByPlace, updateOrderStatus } from '@/services/order.service';
 import { Order } from '@/types/order.types';
 
-const PLACE_ID = 'eb4b7590-b55a-4162-9dd8-9a70229d4c9f';
+const userInfo = localStorage.getItem('userInfo');
+const parsedUser = userInfo ? JSON.parse(userInfo) : null;
+const PLACE_ID = parsedUser?.businessId || parsedUser?.id || '';
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Tất cả');
   const [statusFilter, setStatusFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
 
@@ -21,6 +22,16 @@ const OrdersPage: React.FC = () => {
 
   const handleViewDetail = (orderId: string) => {
     navigate(`/orders/${orderId}`);
+  };
+
+  const handleConfirm = async (e: React.MouseEvent, orderId: string) => {
+    e.stopPropagation();
+    try {
+      await updateOrderStatus(orderId, 'processing');
+      setOrders(prev => prev.map(o => o.order_id === orderId ? { ...o, status: 'processing' } : o));
+    } catch (err) {
+      console.error('Không thể cập nhật trạng thái đơn:', err);
+    }
   };
   // --- Fetch data khi component mount ---
   useEffect(() => {
@@ -41,20 +52,9 @@ const OrdersPage: React.FC = () => {
     fetchOrders();
   }, []);
 
-  const pendingCount = orders.filter(o => o.status === 'processing').length;
-  const tabs = ['Tất cả', `Chờ xác nhận (${pendingCount})`, 'Đang chuẩn bị'];
-
   const filteredOrders = orders.filter(order => {
-    // Tab filtering
-    if (activeTab.includes('Chờ xác nhận') && order.status !== 'processing') return false;
-    if (activeTab === 'Đang chuẩn bị' && order.status !== 'cooking') return false;
-
-    // Status dropdown filtering
     if (statusFilter !== 'all' && order.status !== statusFilter) return false;
-
-    // Restaurant dropdown filtering
     if (restaurantFilter !== 'all' && String(order.place_name || '').trim() !== restaurantFilter) return false;
-    console.log('orders:', orders);
     return true;
   });
 
@@ -67,31 +67,8 @@ const OrdersPage: React.FC = () => {
           <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', fontFamily: "'Times New Roman', Times, serif" }}>Đơn đặt món</h2>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F5F9', marginBottom: '32px' }}>
-          <div style={{ display: 'flex', gap: '40px' }}>
-            {tabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '12px 0',
-                  fontSize: '14px',
-                  fontWeight: activeTab === tab ? '700' : '600',
-                  color: activeTab === tab ? '#ef4444' : '#64748b',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === tab ? '2px solid #ef4444' : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  marginBottom: '-1px'
-                }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ position: 'relative' }}>
               <select
                 value={statusFilter}
@@ -99,8 +76,8 @@ const OrdersPage: React.FC = () => {
                 style={{ padding: '8px 32px 8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', outline: 'none', fontSize: '13px', color: '#475569', appearance: 'none', minWidth: '140px' }}
               >
                 <option value="all">Mọi trạng thái</option>
-                <option value="processing">Chờ xác nhận</option>
-                <option value="cooking">Đang chuẩn bị</option>
+                <option value="pending">Chờ xác nhận</option>
+                <option value="processing">Đang xử lý</option>
                 <option value="completed">Hoàn thành</option>
               </select>
               <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
@@ -184,21 +161,24 @@ const OrdersPage: React.FC = () => {
                   </td>
 
                   <td style={{ padding: '24px' }}>
-                    {order.status === 'confirm' || order.status === 'processing' ? (
-                      <Button style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}>
+                    {order.status === 'pending' ? (
+                      <Button
+                        style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}
+                        onClick={(e) => handleConfirm(e, order.order_id)}
+                      >
                         Xác nhận
                       </Button>
+                    ) : order.status === 'processing' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontSize: '12px', fontWeight: '700' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></div>
+                        Đang xử lý
+                      </div>
                     ) : order.status === 'completed' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '12px', fontWeight: '700' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
                         Hoàn thành
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b', fontSize: '12px', fontWeight: '700' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></div>
-                        Đang chuẩn bị
-                      </div>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
