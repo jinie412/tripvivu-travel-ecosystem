@@ -49,7 +49,12 @@ class _SavedScreenState extends State<SavedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s12, AppSizes.s16, AppSizes.s12),
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 16,
+                        left: 24,
+                        right: 24,
+                      ),
+                      // padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s12, AppSizes.s16, AppSizes.s12),
                       child: Row(
                         children: [
                           Container(

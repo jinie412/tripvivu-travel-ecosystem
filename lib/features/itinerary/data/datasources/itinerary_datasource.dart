@@ -1,8 +1,7 @@
-import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_activity_model.dart';
-import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_day_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -446,14 +445,15 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
   @override
   Future<List<ItineraryModel>> getItineraries() async {
+    final userId = await AuthUtils.requireCurrentUserId();
     final res = await http.get(
-      Uri.parse(
-        '$baseUrl/itinerary/my-itineraries?userId=20172a2f-f0a1-4449-be0a-75b7cd50f5a3',
+      Uri.parse('$baseUrl/itinerary/my-itineraries').replace(
+        queryParameters: {'userId': userId},
       ),
       headers: {
         'Content-Type': 'application/json',
         // nếu có login thì thêm
-        // 'Authorization': 'Bearer TOKEN',
+        'Authorization': 'Bearer TOKEN',
       },
     );
 

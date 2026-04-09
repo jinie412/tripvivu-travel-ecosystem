@@ -1,9 +1,11 @@
 import 'dart:convert';
 import '../../../core/api/api_client.dart';
+import '../../../core/utils/auth_utils.dart';
 import 'models/itinerary_response.dart';
 
 class ItineraryService {
-  static Future<ItineraryResponse> getMyItineraries(String userId) async {
+  static Future<ItineraryResponse> getMyItineraries() async {
+    final userId = await AuthUtils.requireCurrentUserId();
     final res = await ApiClient.get(
       '/itinerary/my-itineraries?userId=$userId',
     );

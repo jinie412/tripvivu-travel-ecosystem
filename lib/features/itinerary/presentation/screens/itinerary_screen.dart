@@ -245,10 +245,10 @@ class _ItineraryView extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          shape: BoxShape.circle,
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
-        child: Icon(icon, size: 20, color: const Color(0xFF374151)),
+        child: Icon(icon, size: 20, color: const Color(0xFF1A6EBD)),
       ),
     );
   }
