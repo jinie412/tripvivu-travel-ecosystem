@@ -1,5 +1,5 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
 
 class OrderEligiblePlace {
@@ -79,13 +79,7 @@ class FoodRemoteDataSource {
 
   FoodRemoteDataSource(this._client);
 
-  String _requireTouristId() {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
-    if (touristId == null || touristId.isEmpty) {
-      throw Exception('EXPLORE_TOURIST_ID not configured in .env');
-    }
-    return touristId;
-  }
+
 
   List<Map<String, dynamic>> _asList(dynamic raw) {
     if (raw is! List) {
@@ -109,7 +103,7 @@ class FoodRemoteDataSource {
   Future<List<OrderEligiblePlace>> getItineraryOrderPlaces({
     required String itineraryId,
   }) async {
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itineraries/$itineraryId/order/places',
       queryParameters: {'tourist_id': touristId},
@@ -206,7 +200,7 @@ class FoodRemoteDataSource {
       throw Exception('Không có món nào để đặt');
     }
 
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.post(
       '/places/$placeId/order',
       data: {

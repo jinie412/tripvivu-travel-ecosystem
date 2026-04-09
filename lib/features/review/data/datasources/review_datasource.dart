@@ -1,5 +1,5 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/review/data/models/itinerary_review_model.dart';
 import 'package:travel_advisor_mobile/features/review/data/models/location_review_model.dart';
 
@@ -51,11 +51,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
   RemoteReviewDataSource(this._client);
 
   String _requireTouristId() {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
-    if (touristId == null || touristId.isEmpty) {
-      throw Exception('EXPLORE_TOURIST_ID not configured in .env');
-    }
-    return touristId;
+    throw UnimplementedError('Use AuthUtils.requireCurrentUserId() instead');
   }
 
   int _parseDayLabel(String label) {
@@ -79,7 +75,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
   @override
   Future<ItineraryReviewModel> getItineraryForReview(String itineraryId) async {
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itinerary-reviews/$itineraryId/detail',
       queryParameters: {'tourist_id': touristId},
@@ -117,7 +113,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
   @override
   Future<ItineraryReviewPopupData> getPopupData(String itineraryId) async {
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itinerary-reviews/popup',
       queryParameters: {
@@ -140,7 +136,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
   @override
   Future<void> dismissPopup(String itineraryId) async {
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     await _client.dio.post(
       '/itinerary-reviews/popup/dismiss',
       data: {
@@ -159,7 +155,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
     List<SubmitPlaceReviewInput> placeReviews = const [],
     List<String> mediaUrls = const [],
   }) async {
-    final touristId = _requireTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     await _client.dio.post(
       '/itinerary-reviews/$itineraryId/submit',
       data: {

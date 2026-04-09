@@ -101,55 +101,65 @@ class _SavedScreenState extends State<SavedScreen> {
                       child: TabBarView(
                         children: [
                           // TAB 1: ITINERARIES
-                          ListView.builder(
-                            padding: const EdgeInsets.all(AppSizes.s16),
-                            itemCount: state.itineraries.length,
-                            itemBuilder: (context, index) {
-                              final item = state.itineraries[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: AppSizes.s16),
-                                child: SizedBox(
-                                  height: 270,
-                                  child: SavedItineraryCard(
-                                    item: item,
-                                    onTap: () {
-                                      final cubit = sl<ItineraryCubit>();
-                                      cubit.selectItinerary(item.id);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => BlocProvider.value(
-                                            value: cubit,
-                                            child: ItinerarySummaryScreen(itineraryId: item.id),
-                                          ),
+                          state.itineraries.isEmpty
+                              ? const _SavedEmptyState(
+                                  icon: Icons.map_outlined,
+                                  message: 'Bạn chưa lưu lịch trình nào.',
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(AppSizes.s16),
+                                  itemCount: state.itineraries.length,
+                                  itemBuilder: (context, index) {
+                                    final item = state.itineraries[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: AppSizes.s16),
+                                      child: SizedBox(
+                                        height: 270,
+                                        child: SavedItineraryCard(
+                                          item: item,
+                                          onTap: () {
+                                            final cubit = sl<ItineraryCubit>();
+                                            cubit.selectItinerary(item.id);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => BlocProvider.value(
+                                                  value: cubit,
+                                                  child: ItinerarySummaryScreen(itineraryId: item.id),
+                                                ),
+                                              ),
+                                            );
+                                          },
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
                           // TAB 2: PLACES
-                          GridView.builder(
-                            padding: const EdgeInsets.all(16),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: AppSizes.s16,
-                              crossAxisSpacing: AppSizes.s16,
-                              childAspectRatio: 0.82,
-                            ),
-                            itemCount: state.places.length,
-                            itemBuilder: (context, index) {
-                              final favPlace = state.places[index];
-                              final destination = Destination(
-                                id: favPlace.id,
-                                name: favPlace.name,
-                                imageUrl: favPlace.image,
-                              );
-                              return DestinationCard(item: destination);
-                            },
-                          ),
+                          state.places.isEmpty
+                              ? const _SavedEmptyState(
+                                  icon: Icons.place_outlined,
+                                  message: 'Bạn chưa lưu địa điểm nào.',
+                                )
+                              : GridView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    mainAxisSpacing: AppSizes.s16,
+                                    crossAxisSpacing: AppSizes.s16,
+                                    childAspectRatio: 0.82,
+                                  ),
+                                  itemCount: state.places.length,
+                                  itemBuilder: (context, index) {
+                                    final favPlace = state.places[index];
+                                    final destination = Destination(
+                                      id: favPlace.id,
+                                      name: favPlace.name,
+                                      imageUrl: favPlace.image,
+                                    );
+                                    return DestinationCard(item: destination);
+                                  },
+                                ),
                         ],
                       ),
                     ),
@@ -160,6 +170,41 @@ class _SavedScreenState extends State<SavedScreen> {
             return const SizedBox.shrink();
           },
         ),
+    );
+  }
+}
+
+class _SavedEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+
+  const _SavedEmptyState({
+    required this.icon,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 44, color: AppColors.textSecondary),
+            const SizedBox(height: AppSizes.s12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

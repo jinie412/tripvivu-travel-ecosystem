@@ -1,5 +1,5 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/saved/data/models/favorite_itinerary_model.dart';
 import 'package:travel_advisor_mobile/features/saved/data/models/favorite_place_model.dart';
 
@@ -19,14 +19,7 @@ class RemoteCollectionsDataSource implements CollectionsDataSource {
     int page = 1,
     int limit = 5,
   }) async {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
-
-    if (touristId == null || touristId.isEmpty) {
-      throw Exception(
-        'EXPLORE_TOURIST_ID not configured in .env. '
-        'Please add EXPLORE_TOURIST_ID=<valid_tourist_id> to use Collections screen.',
-      );
-    }
+    final touristId = await AuthUtils.requireCurrentUserId();
 
     final response = await _client.dio.get(
       '/collections/itineraries',
@@ -50,14 +43,7 @@ class RemoteCollectionsDataSource implements CollectionsDataSource {
     int page = 1,
     int limit = 5,
   }) async {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
-
-    if (touristId == null || touristId.isEmpty) {
-      throw Exception(
-        'EXPLORE_TOURIST_ID not configured in .env. '
-        'Please add EXPLORE_TOURIST_ID=<valid_tourist_id> to use Collections screen.',
-      );
-    }
+    final touristId = await AuthUtils.requireCurrentUserId();
 
     final response = await _client.dio.get(
       '/collections/places',

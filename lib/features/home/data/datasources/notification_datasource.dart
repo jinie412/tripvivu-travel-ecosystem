@@ -1,5 +1,4 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/home/data/models/notification_model.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 
@@ -59,7 +58,7 @@ class RemoteNotificationDataSource implements NotificationDataSource {
 
   @override
   Future<List<NotificationModel>> getNotifications() async {
-    final touristId = _getTouristId();
+    final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/notifications',
       queryParameters: {'tourist_id': touristId},
@@ -71,16 +70,7 @@ class RemoteNotificationDataSource implements NotificationDataSource {
     return notificationsJson.map((item) => NotificationModel.fromJson(item)).toList();
   }
 
-  String _getTouristId() {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
-    if (touristId == null || touristId.isEmpty) {
-      throw StateError(
-        'EXPLORE_TOURIST_ID not configured in .env. '
-        'Please add EXPLORE_TOURIST_ID=<valid_tourist_id> to load notifications.',
-      );
-    }
-    return touristId;
-  }
+
 
   List<Map<String, dynamic>> _asList(dynamic raw) {
     if (raw is! List) {

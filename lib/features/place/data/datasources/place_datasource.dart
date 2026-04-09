@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_detail_model.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_model.dart';
 import 'package:travel_advisor_mobile/features/place/data/models/place_review_model.dart';
@@ -80,7 +80,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
 
   @override
   Future<PlaceDetailModel> getPlaceDetail(String id) async {
-    final touristId = dotenv.env['EXPLORE_TOURIST_ID']?.trim();
+    final touristId = await AuthUtils.getCurrentUserId();
 
     try {
       final response = await _client.dio.get(

@@ -265,9 +265,9 @@ class _OverviewTabContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (overviewItineraries.isEmpty)
-          const SizedBox(
-            height: 280,
-            child: Center(child: CircularProgressIndicator()),
+          const _SectionEmptyState(
+            height: 140,
+            message: 'Chưa có lịch trình cộng đồng cho tỉnh/thành phố này.',
           )
         else
           SizedBox(
@@ -317,9 +317,9 @@ class _OverviewTabContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (overviewActivities.isEmpty)
-          const SizedBox(
-            height: 160,
-            child: Center(child: CircularProgressIndicator()),
+          const _SectionEmptyState(
+            height: 120,
+            message: 'Chưa có hoạt động tham quan cho tỉnh/thành phố này.',
           )
         else
           SizedBox(
@@ -363,9 +363,9 @@ class _OverviewTabContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (overviewRestaurants.isEmpty)
-          const SizedBox(
-            height: 185,
-            child: Center(child: CircularProgressIndicator()),
+          const _SectionEmptyState(
+            height: 120,
+            message: 'Chưa có nhà hàng tiêu biểu cho tỉnh/thành phố này.',
           )
         else
           SizedBox(
@@ -409,9 +409,9 @@ class _OverviewTabContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (overviewHotels.isEmpty)
-          const SizedBox(
-            height: 300,
-            child: Center(child: CircularProgressIndicator()),
+          const _SectionEmptyState(
+            height: 120,
+            message: 'Chưa có khách sạn hoặc chỗ ở cho tỉnh/thành phố này.',
           )
         else
           SizedBox(
@@ -761,6 +761,37 @@ class _HotelTabContent extends StatelessWidget {
         onApply: (newFilter) {
           context.read<CityDetailCubit>().updateHotelFilter(newFilter);
         },
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  final String message;
+  final double height;
+
+  const _SectionEmptyState({
+    required this.message,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
