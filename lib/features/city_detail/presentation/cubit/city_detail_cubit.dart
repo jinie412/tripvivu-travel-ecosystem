@@ -3,8 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/filter_enums.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/usecases/get_city_overview_usecase.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_state.dart';
-import 'package:travel_advisor_mobile/features/city_detail/data/city_api.dart';
-import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
 
 class CityDetailCubit extends Cubit<CityDetailState> {
   final GetCityOverviewUseCase _getCityOverview;
@@ -27,15 +25,9 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
         filteredActivities: overview.activities,
         filteredRestaurants: overview.restaurants,
         filteredHotels: overview.hotels,
+        itineraries: overview.itineraries,
       ),
     );
-    // Fetch tất cả để overview dùng được
-    await Future.wait([
-      fetchItineraries(),
-      fetchPlacesByCategory("Activity"),
-      fetchPlacesByCategory("Restaurant"),
-      fetchPlacesByCategory("Hotel"),
-    ]);
   } catch (e) {
     emit(CityDetailState.error(e.toString()));
   }
@@ -231,93 +223,5 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
   /// Đặt lại filter cho tab Khách sạn về mặc định
   void resetHotelFilter() {
     updateHotelFilter(const HotelFilter());
-  }
-
-Future<void> fetchItineraries() async {
-  state.mapOrNull(
-    loaded: (s) async {
-      try {
-        final api = CityApi();
-        final data = await api.getPlaces(
-          city: currentCityName,
-          category: "itinerary",
-        );
-
-        final itineraries = data.map((e) {
-          // Remap field trước khi fromJson
-          final mapped = {
-            'id': e['id'] ?? '',
-            'title': e['description'] ?? '',        // description → title
-            'authorName': e['creator_id'] ??'',
-            'authorAvatar': 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA20etNF.img?w=500&h=300&m=6&x=9&y=17&s=476&d=125',
-            'imageUrl': 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA20etNF.img?w=500&h=300&m=6&x=9&y=17&s=476&d=125',
-            'duration': _calcDuration(e['start_date'], e['end_date']),
-            'views': '',
-            'likes': '',
-          };
-          return CityItineraryModel.fromJson(mapped).toEntity();
-        }).toList();
-
-        emit(s.copyWith(itineraries: itineraries));
-      } catch (e) {
-        emit(CityDetailState.error(e.toString()));
-      }
-    },
-  );
-}
-
-// Helper tính số ngày
-String _calcDuration(String? startDate, String? endDate) {
-  try {
-    final start = DateTime.parse(startDate!);
-    final end = DateTime.parse(endDate!);
-    final days = end.difference(start).inDays;
-    return '$days NGÀY';
-  } catch (_) {
-    return '';
-  }
-}
-
-  Future<void> fetchPlacesByCategory(String category) async {
-    state.mapOrNull(
-      loaded: (s) async {
-        try {
-          final api = CityApi();
-
-          final data = await api.getPlaces(
-            city: currentCityName,
-            category: category,
-          );
-
-          if (category == "Restaurant") {
-            emit(
-              s.copyWith(
-                filteredRestaurants: data
-                    .map((e) => CityRestaurantModel.fromJson(e).toEntity())
-                    .toList(),
-              ),
-            );
-          } else if (category == "Hotel") {
-            emit(
-              s.copyWith(
-                filteredHotels: data
-                    .map((e) => CityHotelModel.fromJson(e).toEntity())
-                    .toList(),
-              ),
-            );
-          } else {
-            emit(
-              s.copyWith(
-                filteredActivities: data
-                    .map((e) => CityActivityModel.fromJson(e).toEntity())
-                    .toList(),
-              ),
-            );
-          }
-        } catch (e) {
-          emit(CityDetailState.error(e.toString()));
-        }
-      },
-    );
   }
 }

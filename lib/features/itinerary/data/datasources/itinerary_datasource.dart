@@ -2,6 +2,7 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_a
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_day_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
+import 'package:travel_advisor_mobile/core/network/api_config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -441,7 +442,7 @@ abstract class ItineraryDataSource {
 // }
 
 class RemoteItineraryDataSource implements ItineraryDataSource {
-  final String baseUrl = 'http://192.168.1.62:3000';
+  String get baseUrl => ApiConfig.baseUrl;
 
   @override
   Future<List<ItineraryModel>> getItineraries() async {

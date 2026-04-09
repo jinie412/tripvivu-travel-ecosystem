@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:travel_advisor_mobile/core/network/api_config.dart';
 
 class CityApi {
-  final String baseUrl = "http://192.168.1.62:3000";
+  String get baseUrl => ApiConfig.baseUrl;
 
   Future<List<dynamic>> getPlaces({
     required String city,

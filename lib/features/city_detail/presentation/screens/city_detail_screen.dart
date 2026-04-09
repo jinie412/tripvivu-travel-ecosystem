@@ -158,17 +158,7 @@ class _CityDetailContentState extends State<_CityDetailContent> {
           child: CityDetailTabBar(
             selectedIndex: widget.activeTab,
             onTabSelected: (index) {
-              final cubit = context.read<CityDetailCubit>();
-              cubit.changeTab(index);
-              if (index == 1) {
-                cubit.fetchItineraries();
-              } else if (index == 2) {
-                cubit.fetchPlacesByCategory("Activity");
-              } else if (index == 3) {
-                cubit.fetchPlacesByCategory("Restaurant");
-              } else if (index == 4) {
-                cubit.fetchPlacesByCategory("Hotel");
-              }
+              context.read<CityDetailCubit>().changeTab(index);
             },
           ),
         ),

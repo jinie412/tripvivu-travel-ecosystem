@@ -37,6 +37,14 @@ class ItineraryCard extends StatelessWidget {
   final CityItinerary item;
   const ItineraryCard({super.key, required this.item});
 
+  Widget _buildImageFallback() {
+    return Container(
+      color: Colors.grey[200],
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -51,6 +59,8 @@ class ItineraryCard extends StatelessWidget {
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.grey[200]),
+                errorWidget: (context, url, error) => _buildImageFallback(),
               ),
             ),
             Positioned(
@@ -129,6 +139,14 @@ class ActivityCard extends StatelessWidget {
   final CityActivity item;
   const ActivityCard({super.key, required this.item});
 
+  Widget _buildImageFallback() {
+    return Container(
+      color: Colors.grey[200],
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -143,6 +161,8 @@ class ActivityCard extends StatelessWidget {
                 height: 112,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.grey[200]),
+                errorWidget: (context, url, error) => _buildImageFallback(),
               ),
             ),
             const Positioned(
@@ -176,6 +196,14 @@ class RestaurantCard extends StatelessWidget {
   final CityRestaurant item;
   const RestaurantCard({super.key, required this.item});
 
+  Widget _buildImageFallback() {
+    return Container(
+      color: Colors.grey[200],
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -190,6 +218,8 @@ class RestaurantCard extends StatelessWidget {
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.grey[200]),
+                errorWidget: (context, url, error) => _buildImageFallback(),
               ),
             ),
             const Positioned(
@@ -235,6 +265,14 @@ class HotelCard extends StatelessWidget {
   final CityHotel item;
   const HotelCard({super.key, required this.item});
 
+  Widget _buildImageFallback() {
+    return Container(
+      color: Colors.grey[200],
+      alignment: Alignment.center,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -249,6 +287,8 @@ class HotelCard extends StatelessWidget {
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                placeholder: (context, url) => Container(color: Colors.grey[200]),
+                errorWidget: (context, url, error) => _buildImageFallback(),
               ),
             ),
             const Positioned(

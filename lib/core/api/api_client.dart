@@ -1,7 +1,8 @@
 import 'package:http/http.dart' as http;
+import 'package:travel_advisor_mobile/core/network/api_config.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://192.168.1.62:3000';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<http.Response> get(String endpoint) async {
     final url = Uri.parse('$baseUrl$endpoint');
@@ -11,7 +12,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
         // nếu có auth thì thêm
-        // 'Authorization': 'Bearer TOKEN',
+        'Authorization': 'Bearer TOKEN',
       },
     );
   }

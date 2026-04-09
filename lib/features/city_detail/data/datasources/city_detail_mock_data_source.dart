@@ -342,6 +342,128 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
     return raw.whereType<Map>().map((item) => item.cast<String, dynamic>()).toList();
   }
 
+  bool _isApproved(Map<String, dynamic> item) {
+    if (item.containsKey('is_approved')) {
+      return item['is_approved'] == true;
+    }
+    if (item.containsKey('isApproved')) {
+      return item['isApproved'] == true;
+    }
+    // Some API payloads are already pre-filtered and omit approval flags.
+    return true;
+  }
+
+  String _readString(dynamic value) {
+    if (value == null) {
+      return '';
+    }
+    if (value is String) {
+      return value.trim();
+    }
+    return value.toString().trim();
+  }
+
+  double _readDouble(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  int _readInt(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  String _readImageUrl(Map<String, dynamic> item) {
+    final candidates = [
+      item['imageUrl'],
+      item['image_url'],
+      item['image'],
+      item['thumbnail'],
+      item['thumbnail_url'],
+      item['cover_image'],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is String && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+
+      if (candidate is List) {
+        for (final nested in candidate) {
+          if (nested is String && nested.trim().isNotEmpty) {
+            return nested.trim();
+          }
+        }
+      }
+    }
+
+    return '';
+  }
+
+  Map<String, dynamic> _normalizeActivity(Map<String, dynamic> item) {
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']).isNotEmpty
+          ? _readString(item['name'])
+          : _readString(item['title']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': _readString(item['address']),
+      'status': _readString(item['status']),
+      'isFavorite': item['isFavorite'] == true,
+      'category': _readString(item['category']),
+      'priceType': _readString(item['priceType'] ?? item['price_type']),
+      'district': _readString(item['district']),
+    };
+  }
+
+  Map<String, dynamic> _normalizeRestaurant(Map<String, dynamic> item) {
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': _readString(item['address']),
+      'status': _readString(item['status']),
+      'isFavorite': item['isFavorite'] == true,
+      'cuisine': _readString(item['cuisine']),
+      'priceLevel': _readString(item['priceLevel'] ?? item['price_level']),
+      'amenities': item['amenities'] is List ? item['amenities'] : <String>[],
+    };
+  }
+
+  Map<String, dynamic> _normalizeHotel(Map<String, dynamic> item) {
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'price': _readString(item['price']).isNotEmpty
+          ? _readString(item['price'])
+          : 'Liên hệ',
+      'isFavorite': item['isFavorite'] == true,
+      'starRating': _readInt(item['starRating'] ?? item['star_rating']),
+      'priceValue': _readDouble(item['priceValue'] ?? item['price_value']),
+      'accommodationType': _readString(
+        item['accommodationType'] ?? item['accommodation_type'],
+      ),
+      'amenities': item['amenities'] is List ? item['amenities'] : <String>[],
+    };
+  }
+
   @override
   Future<List<CityItineraryModel>> getItineraries(String cityId) async {
     final data = await _fetchOverview(cityId);
@@ -354,7 +476,9 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
   Future<List<CityActivityModel>> getActivities(String cityId) async {
     final data = await _fetchOverview(cityId);
     return _asList(data['activities'])
-        .map(CityActivityModel.fromJson)
+      .where(_isApproved)
+      .map(_normalizeActivity)
+      .map(CityActivityModel.fromJson)
         .toList();
   }
 
@@ -362,7 +486,9 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
   Future<List<CityRestaurantModel>> getRestaurants(String cityId) async {
     final data = await _fetchOverview(cityId);
     return _asList(data['restaurants'])
-        .map(CityRestaurantModel.fromJson)
+      .where(_isApproved)
+      .map(_normalizeRestaurant)
+      .map(CityRestaurantModel.fromJson)
         .toList();
   }
 
@@ -370,6 +496,8 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
   Future<List<CityHotelModel>> getHotels(String cityId) async {
     final data = await _fetchOverview(cityId);
     return _asList(data['hotels'])
+        .where(_isApproved)
+        .map(_normalizeHotel)
         .map(CityHotelModel.fromJson)
         .toList();
   }
