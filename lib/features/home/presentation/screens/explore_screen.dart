@@ -15,6 +15,7 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/current_itinerary_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/explore_header.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_itinerary_card.dart';
@@ -36,8 +37,11 @@ class ExploreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<ExploreCubit>()..loadData(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => sl<ExploreCubit>()..loadData()),
+        BlocProvider(create: (_) => sl<NotificationCubit>()..loadNotifications()),
+      ],
       child: const _ExploreView(),
     );
   }

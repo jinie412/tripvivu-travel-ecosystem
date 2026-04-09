@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/screens/search_screen.dart';
 
 class ExploreHeader extends StatelessWidget {
@@ -62,37 +65,47 @@ class ExploreHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSizes.s12),
-              Container(
-                width: AppSizes.iconButtonSize,
-                height: AppSizes.iconButtonSize,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: IconButton(
-                        icon: const Icon(Icons.notifications_none, color: AppColors.primary, size: AppSizes.iconMd),
-                        onPressed: () {
-                          Scaffold.of(context).openEndDrawer();
-                        },
-                      ),
+              BlocBuilder<NotificationCubit, NotificationState>(
+                builder: (context, state) {
+                  bool hasUnread = false;
+                  if (state is NotificationLoaded) {
+                    hasUnread = state.notifications.any((n) => n.isUnread);
+                  }
+                  
+                  return Container(
+                    width: AppSizes.iconButtonSize,
+                    height: AppSizes.iconButtonSize,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
                     ),
-                    Positioned(
-                      top: 10,
-                      right: 12,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: IconButton(
+                            icon: const Icon(Icons.notifications_none, color: AppColors.primary, size: AppSizes.iconMd),
+                            onPressed: () {
+                              Scaffold.of(context).openEndDrawer();
+                            },
+                          ),
                         ),
-                      ),
+                        if (hasUnread)
+                          Positioned(
+                            top: 10,
+                            right: 12,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
