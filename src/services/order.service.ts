@@ -133,6 +133,17 @@ export const addNewPlace = async (payload: {
   }
 };
 
+export const getFoodPerformance = async (vendorId: string): Promise<any[]> => {
+  const res = await apiClient.get('/business/food-performance', { params: { vendorId } });
+  const payload = extractResponseData<any[]>(res as any);
+  return Array.isArray(payload) ? payload : [];
+};
+
+export const updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
+  const res = await apiClient.put('/business/update-order-status', { orderId, status });
+  return extractResponseData<any>(res as any);
+};
+
 export const getPlaceServicesByType = async (placeId: string) => {
   try {
     const res = await apiClient.get('/business/place-services-by-type', {

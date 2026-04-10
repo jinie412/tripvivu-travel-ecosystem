@@ -196,9 +196,11 @@ const normalizePlaceDetail = (raw: unknown): {
 } => {
   const place = Array.isArray(raw) ? raw[0] : raw;
   const data = place && typeof place === 'object' ? (place as Record<string, unknown>) : {};
-  const statusMeta = getStatusMeta(
-    data.status ?? data.place_status ?? data.approval_status ?? data.is_active ?? data.active,
-  );
+  // is_approved: true → approved, false/null → pending (chờ duyệt)
+  const rawStatus = data.status ?? data.place_status ?? data.approval_status;
+  const isApproved = data.is_approved ?? data.approved ?? data.is_active ?? data.active;
+  const statusValue = rawStatus ?? (isApproved === true ? 'approved' : isApproved === false ? 'pending' : null);
+  const statusMeta = getStatusMeta(statusValue);
   const gallery = normalizeGallery(data.images ?? data.gallery ?? data.image_urls ?? data.image_url)
     .filter(Boolean);
 
@@ -327,6 +329,7 @@ const LocationEditPage: React.FC = () => {
 
   const [freeServices, setFreeServices] = useState<PlaceServiceItem[]>([]);
   const [paidServices, setPaidServices] = useState<PlaceServiceItem[]>([]);
+  const [menuItems, setMenuItems] = useState<PlaceServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [serviceEditor, setServiceEditor] = useState<ServiceEditorState | null>(null);
@@ -465,15 +468,14 @@ const LocationEditPage: React.FC = () => {
         setServicesError(null);
         const rawServices = await getPlaceServicesByType(targetPlaceId);
         const payload = rawServices && typeof rawServices === 'object' ? (rawServices as Record<string, unknown>) : {};
-        const free = Array.isArray(payload.freeServices) ? payload.freeServices : Array.isArray((payload.data as Record<string, unknown> | undefined)?.freeServices)
-          ? ((payload.data as Record<string, unknown>).freeServices as unknown[])
-          : [];
-        const paid = Array.isArray(payload.paidServices) ? payload.paidServices : Array.isArray((payload.data as Record<string, unknown> | undefined)?.paidServices)
-          ? ((payload.data as Record<string, unknown>).paidServices as unknown[])
-          : [];
+        const nested = (payload.data as Record<string, unknown> | undefined) ?? {};
+        const free = Array.isArray(payload.freeServices) ? payload.freeServices : Array.isArray(nested.freeServices) ? (nested.freeServices as unknown[]) : [];
+        const paid = Array.isArray(payload.paidServices) ? payload.paidServices : Array.isArray(nested.paidServices) ? (nested.paidServices as unknown[]) : [];
+        const menu = Array.isArray(payload.menuItems) ? payload.menuItems : Array.isArray(nested.menuItems) ? (nested.menuItems as unknown[]) : [];
 
         setFreeServices(free.map((item) => normalizeServiceItem(item, 'free')));
         setPaidServices(paid.map((item) => normalizeServiceItem(item, 'paid')));
+        setMenuItems(menu.map((item) => normalizeServiceItem(item, 'paid')));
       } catch (err) {
         setServicesError(err instanceof Error ? err.message : 'Không thể tải dịch vụ');
         setFreeServices([]);
@@ -636,12 +638,12 @@ const LocationEditPage: React.FC = () => {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>Quận/Huyện</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>SĐT liên hệ</label>
               <input
                 value={draft.district}
                 onChange={(event) => setDraft((current) => ({ ...current, district: event.target.value }))}
                 style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fcfcfc', outline: 'none', fontSize: '15px', color: '#1e293b' }}
-                placeholder="Nhập quận/huyện"
+                placeholder="Số điện thoại liên hệ..."
               />
             </div>
           </div>
@@ -937,6 +939,8 @@ const LocationEditPage: React.FC = () => {
     );
   };
 
+  const isRestaurant = (place?.category ?? '').toLowerCase().includes('nhà hàng') || (place?.category ?? '').toLowerCase().includes('restaurant');
+
   const renderServicesMenu = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
       <div>
@@ -1029,6 +1033,51 @@ const LocationEditPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {isRestaurant && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h5 style={{ fontSize: '18px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Quản lý thực đơn món ăn ({menuItems.length})</h5>
+            <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
+              <Plus size={16} /> Thêm món
+            </Button>
+          </div>
+
+          <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+            {servicesLoading ? (
+              <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Đang tải thực đơn...</div>
+            ) : menuItems.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
+                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Tên món</th>
+                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Mô tả</th>
+                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Giá</th>
+                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {menuItems.map((item, index) => (
+                    <tr key={item.id} style={{ borderBottom: index < menuItems.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
+                      <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
+                      <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '—'}</td>
+                      <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6', textAlign: 'center' }}>{formatPrice(item.price)}</td>
+                      <td style={{ padding: '24px 32px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '16px', color: '#94a3b8', justifyContent: 'center' }}>
+                          <Edit2 size={18} style={{ cursor: 'pointer' }} onClick={() => openServiceEditor('paid', item)} />
+                          <Trash2 size={18} style={{ cursor: 'pointer' }} onClick={() => setMenuItems((current) => current.filter((m) => m.id !== item.id))} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Chưa có món ăn nào trong thực đơn</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 

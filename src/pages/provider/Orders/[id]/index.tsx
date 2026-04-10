@@ -1,9 +1,9 @@
 import React from 'react';
 import Button from '../../../../components/UI/Button';
-import { Mail, Phone, User, CheckCircle, XCircle, Clock, Printer } from 'lucide-react';
+import { Mail, Phone, User, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getOrderDetail } from '@/services/order.service';
+import { getOrderDetail, updateOrderStatus } from '@/services/order.service';
 
 const OrderDetailPage: React.FC = () => {
    const navigate = useNavigate();
@@ -12,6 +12,26 @@ const OrderDetailPage: React.FC = () => {
    const [orderData, setOrderData] = useState<any>(null);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
+   const [updating, setUpdating] = useState(false);
+
+   const handleUpdateStatus = async (newStatus: string) => {
+      if (!orderData) return;
+      setUpdating(true);
+      try {
+         await updateOrderStatus(orderData.id, newStatus);
+         const statusMap: { [key: string]: string } = {
+            'pending': 'Chờ xác nhận',
+            'processing': 'Đang chuẩn bị',
+            'completed': 'Hoàn thành',
+            'cancelled': 'Đã hủy',
+         };
+         setOrderData((prev: any) => ({ ...prev, status: newStatus, statusText: statusMap[newStatus] || newStatus }));
+      } catch (err) {
+         console.error('Không thể cập nhật trạng thái:', err);
+      } finally {
+         setUpdating(false);
+      }
+   };
 
    useEffect(() => {
       const fetchOrderDetail = async () => {
@@ -20,10 +40,10 @@ const OrderDetailPage: React.FC = () => {
             
             // Transform API response to match component structure
             const statusMap: { [key: string]: string } = {
-               'confirm': 'Chờ xác nhận',
-               'processing': 'Đang triển khai',
-               'cooking': 'Đang chuẩn bị',
-               'completed': 'Hoàn thành'
+               'pending': 'Chờ xác nhận',
+               'processing': 'Đang chuẩn bị',
+               'completed': 'Hoàn thành',
+               'cancelled': 'Đã hủy',
             };
 
             const transformedData = {
@@ -196,31 +216,20 @@ const OrderDetailPage: React.FC = () => {
                   <div style={{ background: 'white', borderRadius: '24px', padding: '24px', border: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                      <h5 style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Thao tác đơn hàng</h5>
 
-                     {(orderData.status === 'confirm' || orderData.status === 'processing') && (
+                     {orderData.status === 'pending' && (
                         <>
-                           <Button fullWidth style={{ borderRadius: '12px', gap: '8px', padding: '14px' }}>
-                              <CheckCircle size={18} /> {orderData.status === 'confirm' ? 'Xác nhận đơn' : 'Bắt đầu chuẩn bị'}
+                           <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px' }} onClick={() => handleUpdateStatus('processing')}>
+                              <CheckCircle size={18} /> Bắt đầu chuẩn bị
                            </Button>
-                           <Button variant="outline" fullWidth style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }}>
+                           <Button variant="outline" fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }} onClick={() => handleUpdateStatus('cancelled')}>
                               <XCircle size={18} /> Hủy đơn
                            </Button>
                         </>
                      )}
 
-                     {orderData.status === 'cooking' && (
-                        <>
-                           <Button fullWidth style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#10b981' }}>
-                              <CheckCircle size={18} /> Hoàn thành
-                           </Button>
-                           <Button variant="outline" fullWidth style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }}>
-                              <XCircle size={18} /> Hủy đơn
-                           </Button>
-                        </>
-                     )}
-
-                     {orderData.status === 'completed' && (
-                        <Button variant="ghost" fullWidth style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#F1F5F9', color: '#1e293b' }}>
-                           <Printer size={18} /> In hóa đơn
+                     {orderData.status === 'processing' && (
+                        <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#10b981' }} onClick={() => handleUpdateStatus('completed')}>
+                           <CheckCircle size={18} /> Hoàn thành
                         </Button>
                      )}
 
