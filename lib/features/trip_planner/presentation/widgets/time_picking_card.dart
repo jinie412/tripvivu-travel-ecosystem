@@ -52,7 +52,7 @@ class TimePickingCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.wb_sunny_outlined, size: 18, color: AppColors.primary),
+                        const Icon(Icons.access_time_rounded, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           startTime ?? '07:00 AM',
@@ -94,7 +94,7 @@ class TimePickingCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.nightlight_round_outlined, size: 18, color: AppColors.primary),
+                        const Icon(Icons.access_time_rounded, size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
                           endTime ?? '11:00 PM',

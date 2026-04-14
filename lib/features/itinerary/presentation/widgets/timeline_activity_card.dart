@@ -6,6 +6,7 @@ import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 class TimelineActivityCard extends StatelessWidget {
   final ItineraryActivityEntity activity;
@@ -18,6 +19,8 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onCardTap;
   final VoidCallback? onStartTimeTap;
   final VoidCallback? onEndTimeTap;
+  final VoidCallback? onRateTap;
+  final int day;
 
   const TimelineActivityCard({
     super.key,
@@ -31,6 +34,8 @@ class TimelineActivityCard extends StatelessWidget {
     this.onCardTap,
     this.onStartTimeTap,
     this.onEndTimeTap,
+    this.onRateTap,
+    required this.day,
   });
 
   String _formatReviewCount(int? count) {
@@ -47,6 +52,7 @@ class TimelineActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return Column(
       children: [
         // 1. Activity Item
@@ -172,6 +178,10 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   Widget _buildActivityCard(BuildContext context) {
+    // 🔧 DEMO SYNC: Check if user has rated this in current session
+    final double? userRating = DemoReviewStore.getLocationRating(activity.id);
+    final bool hasUserRated = userRating != null;
+
     return InkWell(
       onTap: onCardTap,
       borderRadius: BorderRadius.circular(AppSizes.r24),
@@ -189,164 +199,160 @@ class TimelineActivityCard extends StatelessWidget {
           ],
           border: Border.all(color: AppColorsExt.divider.withAlpha(40)),
         ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(AppSizes.r24)),
-            child: Image.network(
-              activity.imageUrl,
-              width: 100,
-              height: 125,
-              fit: BoxFit.cover,
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(AppSizes.r24)),
+              child: Image.network(
+                activity.imageUrl,
+                width: 100,
+                height: 125,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          const SizedBox(width: AppSizes.s12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.s8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          activity.title,
-                          style: AppTextStyles.heading2.copyWith(
-                            fontSize: 15,
-                            color: AppColorsExt.textDark,
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      if (onEditTap != null || onDeleteTap != null)
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                onEditTap?.call();
-                              } else if (value == 'replace') {
-                                onReplaceTap?.call();
-                              } else if (value == 'delete') {
-                                onDeleteTap?.call();
-                              }
-                            },
-                            icon: const Icon(
-                              Icons.more_vert,
-                              size: 18,
-                              color: Color(0xFF94A3B8),
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            splashRadius: 20,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 'replace',
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColorsExt.profileBlue),
-                                    const SizedBox(width: 8),
-                                    Text('Thay thế', style: AppTextStyles.body.copyWith(fontSize: 14)),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.delete_outline, size: 18, color: AppColorsExt.error),
-                                    const SizedBox(width: 8),
-                                    Text('Xóa', style: AppTextStyles.body.copyWith(fontSize: 14, color: AppColorsExt.error)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  Text(
-                    activity.address,
-                    style: AppTextStylesExt.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      height: 1.2,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  // Price Tag
-                  if (activity.isFree)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColorsExt.success.withAlpha(20),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'MIỄN PHÍ',
-                        style: AppTextStylesExt.captionSmall.copyWith(
-                          color: AppColorsExt.success,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                        ),
-                      ),
-                    )
-                  else
+            const SizedBox(width: AppSizes.s12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSizes.s8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _formatCurrency(activity.price),
-                          style: AppTextStylesExt.bodySmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                        Expanded(
+                          child: Text(
+                            activity.title,
+                            style: AppTextStyles.heading2.copyWith(
+                              fontSize: 15,
+                              color: AppColorsExt.textDark,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Vé vào cửa',
+                        if (onEditTap != null || onDeleteTap != null)
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.more_vert, color: Color(0xFF94A3B8), size: 20),
+                              onPressed: () {}, // Handled by onCardTap for now or can add PopupMenu
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      activity.address,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    // Price Tag
+                    if (activity.isFree)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColorsExt.success.withAlpha(20),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'MIỄN PHÍ',
                           style: AppTextStylesExt.captionSmall.copyWith(
+                            color: AppColorsExt.success,
+                            fontWeight: FontWeight.bold,
                             fontSize: 10,
                           ),
                         ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          Text(
+                            _formatCurrency(activity.price),
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Vé vào cửa',
+                            style: AppTextStylesExt.captionSmall.copyWith(
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: AppSizes.s8),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                        ),
+                        if (activity.status == ActivityStatus.daDi) ...[
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: onRateTap,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasUserRated) ...[
+                                    const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '$userRating',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ] else
+                                    Text(
+                                      '(Đánh giá địa điểm này)',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: const Color(0xFF2563EB).withValues(alpha: 0.8),
+                                        fontStyle: FontStyle.italic,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                  const SizedBox(height: AppSizes.s8),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
-                        style: AppTextStylesExt.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-     ),
     );
   }
 

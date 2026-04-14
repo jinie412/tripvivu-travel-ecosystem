@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all_screen.dart';
@@ -19,9 +20,11 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/day_selector_chip.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_review_dialog.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/timeline_activity_card.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -189,6 +192,87 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+      ),
+    );
+  }
+
+  void _onRateActivity(ItineraryActivityEntity activity) {
+    double currentRating = DemoReviewStore.getLocationRating(activity.id) ?? 0;
+    final TextEditingController commentController = TextEditingController(text: DemoReviewStore.userComments[activity.id] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Đánh giá ${activity.title}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Bạn cảm thấy địa điểm này thế nào?', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < currentRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: const Color(0xFFFFC107),
+                      size: 32,
+                    ),
+                    onPressed: () {
+                      setDialogState(() {
+                        currentRating = index + 1.0;
+                      });
+                    },
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Nhập cảm nhận của bạn...',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (currentRating > 0) {
+                  DemoReviewStore.saveLocationRating(activity.id, currentRating, comment: commentController.text);
+                  Navigator.pop(context);
+                  // Refresh UI
+                  setState(() {}); 
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã lưu đánh giá địa điểm!'),
+                      backgroundColor: Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Lưu', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -366,6 +450,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         onEditActivity: _onEditActivity,
         onReplaceActivity: _onReplaceActivity,
         onDeleteActivity: _onDeleteActivity,
+        onRateActivity: _onRateActivity,
         onEditTime: _onEditTime,
         onShareTap: _showShareSheet,
         onMarkerTap: (id) => _scrollToActivity(id),
@@ -394,6 +479,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity) onEditActivity;
   final Function(ItineraryActivityEntity) onReplaceActivity;
   final Function(ItineraryActivityEntity) onDeleteActivity;
+  final Function(ItineraryActivityEntity) onRateActivity;
   final Function(ItineraryActivityEntity, bool) onEditTime;
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
@@ -412,6 +498,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onEditActivity,
     required this.onReplaceActivity,
     required this.onDeleteActivity,
+    required this.onRateActivity,
     required this.onEditTime,
     required this.onShareTap,
     required this.onMarkerTap,
@@ -501,6 +588,36 @@ class _ItineraryDetailView extends StatelessWidget {
                   child: Row(
                     children: [
                       _floatingCircleButton(Icons.arrow_back_ios_new, () => Navigator.pop(context)),
+                      if (itin.status == 'COMPLETED' || itin.status == 'ONGOING' || itin.endDate.isBefore(DateTime.now()))
+                        Padding(
+                          padding: const EdgeInsets.only(left: AppSizes.s12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _floatingCircleButton(Icons.star_outline_rounded, () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => ItineraryReviewDialog(
+                                      itineraryId: itin.id,
+                                      itineraryTitle: itin.title,
+                                      totalLocations: itin.totalLocations,
+                                      visitedLocations: itin.visitedLocations,
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Đánh giá',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(width: AppSizes.s16),
                       Expanded(
                         child: Text(
@@ -581,12 +698,14 @@ class _ItineraryDetailView extends StatelessWidget {
             return TimelineActivityCard(
               key: key,
               activity: activity,
+              day: selectedDay,
               isFirst: entry.key == 0,
               isLast: entry.key == currentDayData.activities.length - 1,
               onAddTap: onAddPlaceTap,
               onEditTap: () => onEditActivity(activity),
               onReplaceTap: () => onReplaceActivity(activity),
               onDeleteTap: () => onDeleteActivity(activity),
+              onRateTap: () => onRateActivity(activity),
               onCardTap: () => onEditActivity(activity),
               onStartTimeTap: () => onEditTime(activity, true),
               onEndTimeTap: () => onEditTime(activity, false),

@@ -3,8 +3,12 @@ import 'package:image_picker/image_picker.dart';
 import 'review_state.dart';
 
 import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/location_review_entity.dart';
 import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 class ReviewCubit extends Cubit<ReviewState> {
   final GetItineraryForReviewUseCase getItineraryForReview;
@@ -15,14 +19,65 @@ class ReviewCubit extends Cubit<ReviewState> {
     required this.reviewRepository,
   }) : super(ReviewInitial());
 
+  /// 🔧 CHẾ ĐỘ DEMO: Set true để bỏ qua lỗi Backend và dùng dữ liệu mẫu
+  static const bool kDemoMode = AppConfig.kUseMockData;
+
   Future<void> loadReviewData(String itineraryId) async {
     emit(ReviewLoading());
+    
+    if (kDemoMode) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      final itinerary = _generateDemoData();
+      final generalRating = DemoReviewStore.itineraryOverallRatings[itineraryId] ?? 0.0;
+      final generalComment = DemoReviewStore.itineraryOverallComments[itineraryId] ?? '';
+      
+      emit(ReviewLoaded(
+        itinerary: itinerary,
+        generalRating: generalRating,
+        generalComment: generalComment,
+      ));
+      return;
+    }
+
     try {
       final itinerary = await getItineraryForReview(itineraryId);
       emit(ReviewLoaded(itinerary: itinerary));
     } catch (e) {
       emit(ReviewError(e.toString()));
     }
+  }
+
+  ItineraryReviewEntity _generateDemoData() {
+    // Generate data that matches ItineraryCubit's mock structure
+    final List<String> day1Ids = ['mock_1_1', 'mock_1_2', 'mock_1_3', 'mock_1_4', 'mock_1_5'];
+    final List<String> day2Ids = ['mock_2_1', 'mock_2_2', 'mock_2_3'];
+    final List<String> day3Ids = ['mock_3_1', 'mock_3_2'];
+    final allIds = [...day1Ids, ...day2Ids, ...day3Ids];
+
+    final locations = allIds.asMap().entries.map((entry) {
+      final locId = entry.value;
+      final index = entry.key;
+      final storedRating = DemoReviewStore.getLocationRating(locId);
+      final storedComment = DemoReviewStore.userComments[locId];
+      
+      return LocationReviewEntity(
+        id: locId,
+        name: index == 0 ? 'Dinh Độc Lập' : index == 1 ? 'Nhà thờ Đức Bà' : 'Địa điểm ${index + 1}',
+        imageUrl: 'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=100&q=80',
+        day: index < 5 ? 1 : index < 8 ? 2 : 3,
+        isVisited: true,
+        rating: storedRating, // Priority to user rating
+      );
+    }).toList();
+
+    return ItineraryReviewEntity(
+      id: 'mock_ongoing',
+      title: 'Phú Quốc Hè 2024',
+      imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+      dateRange: '15/06 - 18/06/2024',
+      status: 'PLANNING',
+      locations: locations,
+    );
   }
 
   void filterByDay(int day) {
@@ -78,6 +133,12 @@ class ReviewCubit extends Cubit<ReviewState> {
   void setLocationRating(String locationId, double rating) {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;
+      
+      // Persist to DemoStore immediately for sync with other screens
+      if (kDemoMode) {
+        DemoReviewStore.saveLocationRating(locationId, rating);
+      }
+
       final newLocations = currentState.itinerary.locations.map((loc) {
         if (loc.id == locationId) {
           return loc.copyWith(rating: rating);
@@ -162,6 +223,26 @@ class ReviewCubit extends Cubit<ReviewState> {
     emit(currentState.copyWith(isSubmitting: true));
 
     try {
+      if (kDemoMode) {
+        await Future.delayed(const Duration(seconds: 1));
+        
+        // Save to DemoStore for persistence across screens
+        DemoReviewStore.saveItineraryReview(
+          itineraryId, 
+          currentState.generalRating, 
+          comment: currentState.generalComment
+        );
+        
+        for (var loc in currentState.itinerary.locations) {
+          if (loc.rating != null) {
+            DemoReviewStore.saveLocationRating(loc.id, loc.rating!, comment: loc.reviewText);
+          }
+        }
+
+        emit(currentState.copyWith(isSubmitting: false));
+        return;
+      }
+
       final placeReviews = currentState.itinerary.locations
           .where((loc) => loc.rating != null)
           .map(

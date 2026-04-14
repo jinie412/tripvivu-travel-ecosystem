@@ -11,8 +11,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/config/app_config.dart';
+
 /// 🔧 DEV FLAG — false = login screen, true = skip to home
-const bool kSkipLogin = false;
+const bool kSkipLogin = AppConfig.kSkipLogin;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

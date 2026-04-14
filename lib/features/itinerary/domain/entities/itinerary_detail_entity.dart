@@ -35,6 +35,8 @@ class ItineraryDetailEntity {
   
   final int durationDays;
   final int activitiesCount;
+  final int totalLocations;
+  final int visitedLocations;
   final int hotelsCount;
   final int transportTurns;
   
@@ -58,6 +60,8 @@ class ItineraryDetailEntity {
     this.isPublic = true,
     required this.durationDays,
     required this.activitiesCount,
+    this.totalLocations = 0,
+    this.visitedLocations = 0,
     required this.hotelsCount,
     required this.transportTurns,
     required this.estimatedBudget,
@@ -79,6 +83,8 @@ class ItineraryDetailEntity {
     bool? isPublic,
     int? durationDays,
     int? activitiesCount,
+    int? totalLocations,
+    int? visitedLocations,
     int? hotelsCount,
     int? transportTurns,
     double? estimatedBudget,
@@ -99,6 +105,8 @@ class ItineraryDetailEntity {
       isPublic: isPublic ?? this.isPublic,
       durationDays: durationDays ?? this.durationDays,
       activitiesCount: activitiesCount ?? this.activitiesCount,
+      totalLocations: totalLocations ?? this.totalLocations,
+      visitedLocations: visitedLocations ?? this.visitedLocations,
       hotelsCount: hotelsCount ?? this.hotelsCount,
       transportTurns: transportTurns ?? this.transportTurns,
       estimatedBudget: estimatedBudget ?? this.estimatedBudget,

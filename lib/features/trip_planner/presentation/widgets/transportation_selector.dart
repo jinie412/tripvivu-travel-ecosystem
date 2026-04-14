@@ -6,11 +6,15 @@ import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip
 class TransportationSelector extends StatelessWidget {
   final Transportation selectedOption;
   final ValueChanged<Transportation> onChanged;
+  final TripType selectedType;
+  final ValueChanged<TripType> onTypeChanged;
 
   const TransportationSelector({
     super.key,
     required this.selectedOption,
     required this.onChanged,
+    required this.selectedType,
+    required this.onTypeChanged,
   });
 
   @override
@@ -60,7 +64,69 @@ class TransportationSelector extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        // Thanh chọn Khứ hồi / Một chiều được lồng vào bên trong
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(4),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildTypeOption(
+                  title: 'Khứ hồi',
+                  isSelected: selectedType == TripType.roundTrip,
+                  onTap: () => onTypeChanged(TripType.roundTrip),
+                ),
+              ),
+              Expanded(
+                child: _buildTypeOption(
+                  title: 'Một chiều',
+                  isSelected: selectedType == TripType.oneWay,
+                  onTap: () => onTypeChanged(TripType.oneWay),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildTypeOption({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
     );
   }
 

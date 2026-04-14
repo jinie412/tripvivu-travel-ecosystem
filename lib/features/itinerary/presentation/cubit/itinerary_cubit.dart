@@ -7,6 +7,8 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 /// Cubit quản lý trạng thái màn hình "Lịch trình của tôi".
 ///
@@ -37,13 +39,13 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         _getItineraryDetail = getItineraryDetail,
         super(const ItineraryInitial());
 
+  /// 🔧 CHẾ ĐỘ DEMO: Set true để bỏ qua lỗi Backend và dùng dữ liệu mẫu
+  static const bool kDemoMode = AppConfig.kUseMockData;
+
   /// Tải toàn bộ dữ liệu (danh sách + thống kê).
-  ///
-  /// Gọi khi màn hình mở lần đầu hoặc khi bấm Retry.
   Future<void> loadData() async {
     emit(const ItineraryLoading());
     try {
-      // Gọi song song để giảm thời gian chờ.
       final results = await Future.wait([
         _getItineraries(status: _currentFilter),
         _getSummary(),
@@ -51,7 +53,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
       var itineraries = results[0] as List<ItineraryEntity>;
       
-      // Lọc thêm theo Rating nếu đang ở tab "Đã đi"
       if (_currentFilter == ItineraryStatus.completed) {
         if (_currentCompletedFilter == CompletedFilter.rated) {
           itineraries = itineraries.where((i) => i.rating != null).toList();
@@ -68,33 +69,61 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         selectedItinerary: (state is ItineraryLoaded) ? (state as ItineraryLoaded).selectedItinerary : null,
       ));
     } catch (e) {
-      emit(ItineraryError(e.toString()));
+      if (kDemoMode) {
+        // ⚠️ BACKEND NOTE: Khối này chỉ dùng để chỉnh giao diện khi chưa có API
+        final mockSummary = const ItinerarySummary(total: 5, draft: 2, upcoming: 1, completed: 1);
+        final mockItineraries = [
+          ItineraryEntity(
+            id: 'mock_completed', title: 'Hành trình di sản Miền Trung', 
+            startDate: DateTime.now().subtract(const Duration(days: 10)), 
+            endDate: DateTime.now().subtract(const Duration(days: 5)),
+            status: ItineraryStatus.completed, progress: 1.0, estimatedCost: 15000000,
+            rating: null,
+            visitedLocations: 12,
+            totalLocations: 12,
+          ),
+          ItineraryEntity(
+            id: 'mock_ongoing', title: 'Phú Quốc Hè 2024', 
+            startDate: DateTime.now().subtract(const Duration(days: 1)), 
+            endDate: DateTime.now().add(const Duration(days: 3)),
+            status: ItineraryStatus.ongoing, progress: 0.8, estimatedCost: 8500000,
+            visitedLocations: 10,
+            totalLocations: 12,
+          ),
+          ItineraryEntity(
+            id: 'mock_draft', title: 'Sapa Mùa Lúa Chín', 
+            status: ItineraryStatus.draft, estimatedCost: 5200000
+          ),
+        ];
+        emit(ItineraryLoaded(
+          itineraries: mockItineraries, summary: mockSummary,
+          activeFilter: _currentFilter, activeCompletedFilter: _currentCompletedFilter,
+          selectedItinerary: (state is ItineraryLoaded) ? (state as ItineraryLoaded).selectedItinerary : null,
+        ));
+      } else {
+        // 🚀 BACKEND: Dòng gốc sẽ chạy khi kDemoMode = false
+        emit(ItineraryError(e.toString()));
+      }
     }
   }
 
-  /// Lọc theo trạng thái. Truyền `null` để hiển thị "Tất cả".
-  ///
-  /// Gọi khi người dùng bấm chip filter (Tất cả / Sắp đi / Đã đi / Nháp).
+  /// Lọc theo trạng thái...
   Future<void> filterBy(ItineraryStatus? status) async {
     _currentFilter = status;
-    // Reset filter con khi đổi tab chính
     _currentCompletedFilter = CompletedFilter.all;
     await loadData();
   }
 
-  /// Lọc con cho "Đã đi" (Tất cả / Đã đánh giá / Chưa đánh giá).
+  /// Lọc con cho "Đã đi"...
   Future<void> filterByCompleted(CompletedFilter filter) async {
     _currentCompletedFilter = filter;
     await loadData();
   }
 
-  /// Xóa một lịch trình và tải lại danh sách.
-  ///
-  /// Gọi khi người dùng vuốt trái card và bấm "Xóa".
+  /// Xóa một lịch trình...
   Future<void> deleteItem(String id) async {
     try {
       await _deleteItinerary(id);
-      // Tải lại sau khi xóa để cập nhật cả danh sách lẫn thống kê.
       await loadData();
     } catch (e) {
       emit(ItineraryError('Không thể xóa lịch trình: ${e.toString()}'));
@@ -102,33 +131,38 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   }
 
   /// Chọn một lịch trình để xem chi tiết.
-  /// Cubit sẽ fetch data detail và lưu vào [selectedItinerary].
   Future<void> selectItinerary(String id) async {
     final currentState = state;
     if (currentState is ItineraryLoaded) {
-      // Clear previous selection to show loading
       emit(currentState.copyWithSelected(null));
-      
       try {
         final detail = await _getItineraryDetail(id);
         final materializedDetail = _materializeMockDays(detail);
         emit((state as ItineraryLoaded).copyWithSelected(materializedDetail));
       } catch (e) {
-        emit(ItineraryError('Không thể tải chi tiết: ${e.toString()}'));
+        if (kDemoMode) {
+          // ⚠️ BACKEND NOTE: Mock detail cho Demo
+          final mockDetail = ItineraryDetailEntity(
+            id: id, 
+            title: 'Chi tiết lịch trình Demo', 
+            destination: 'Phú Quốc',
+            startDate: DateTime.now(), 
+            endDate: DateTime.now().add(const Duration(days: 3)),
+            status: 'PLANNING', durationDays: 4, activitiesCount: 12, 
+            visitedLocations: 10, totalLocations: 12,
+            hotelsCount: 1, transportTurns: 4,
+            estimatedBudget: 8500000, spentBudget: 0, currency: 'VNĐ', days: [], notes: ['Lưu ý 1'], visitedRestaurants: [],
+          );
+          emit((state as ItineraryLoaded).copyWithSelected(_materializeMockDays(mockDetail)));
+        } else {
+          emit(ItineraryError('Không thể tải chi tiết: ${e.toString()}'));
+        }
       }
     } else {
-      // Nếu chưa load danh sách (ví dụ đi từ màn hình Saved)
       emit(const ItineraryLoading());
       try {
-        // Tải cả summary và detail để có đủ data cho trạng thái Loaded
-        final results = await Future.wait([
-          _getSummary(),
-          _getItineraryDetail(id),
-          _getItineraries(),
-        ]);
-        
+        final results = await Future.wait([_getSummary(), _getItineraryDetail(id), _getItineraries()]);
         final materializedDetail = _materializeMockDays(results[1] as ItineraryDetailEntity);
-        
         emit(ItineraryLoaded(
           itineraries: results[2] as List<ItineraryEntity>,
           summary: results[0] as ItinerarySummary,
@@ -156,9 +190,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         endTime: '10:30',
         imageUrl: 'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=600&q=80',
         transportInfo: 'Địa điểm xuất phát',
-        rating: 4.5,
+        rating: DemoReviewStore.getLocationRating('mock_1_1') ?? 4.5,
         reviewCount: 15600,
         price: 60000,
+        status: ActivityStatus.daDi,
       ),
       ItineraryActivityEntity(
         id: 'mock_1_2',
@@ -169,9 +204,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         endTime: '12:00',
         imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
         transportInfo: '10 phút đi bộ',
-        rating: 4.8,
+        rating: DemoReviewStore.getLocationRating('mock_1_2') ?? 4.8,
         reviewCount: 42000,
         isFree: true,
+        status: ActivityStatus.daDi,
       ),
       ItineraryActivityEntity(
         id: 'mock_1_3',
@@ -355,6 +391,27 @@ class ItineraryCubit extends Cubit<ItineraryState> {
               startTime: startTime ?? activity.startTime,
               endTime: endTime ?? activity.endTime,
             );
+          }
+          return activity;
+        }).toList();
+        return day.copyWith(activities: updatedActivities);
+      }).toList();
+
+      emit(currentState.copyWithSelected(itin.copyWith(days: updatedDays)));
+    }
+  }
+
+  /// Cập nhật đánh giá cho một hoạt động cụ thể
+  void rateActivity(String activityId, double rating) {
+    if (state is ItineraryLoaded) {
+      final currentState = state as ItineraryLoaded;
+      final itin = currentState.selectedItinerary;
+      if (itin == null) return;
+
+      final updatedDays = itin.days.map((day) {
+        final updatedActivities = day.activities.map((activity) {
+          if (activity.id == activityId) {
+            return activity.copyWith(rating: rating);
           }
           return activity;
         }).toList();

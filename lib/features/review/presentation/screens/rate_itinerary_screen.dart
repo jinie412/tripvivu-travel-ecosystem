@@ -150,6 +150,7 @@ class _RateItineraryView extends StatelessWidget {
                       ...filteredLocations.map(
                         (loc) => LocationReviewListTile(
                           location: loc,
+                          isVisited: loc.isVisited,
                           isReadOnly: isReadOnly,
                           onRatingChanged: isReadOnly ? (_) {} : (rating) {
                             context.read<ReviewCubit>().setLocationRating(loc.id, rating);
@@ -221,7 +222,14 @@ class _RateItineraryView extends StatelessWidget {
                                         backgroundColor: Color(0xFF22C55E),
                                       ),
                                     );
-                                    Navigator.pop(context);
+                                    // Sau khi gửi thành công, quay về màn hình ban đầu (đóng cả trang đánh giá và dialog)
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop(); // Đóng RateItineraryScreen
+                                      // Thêm một lần pop nữa để đóng ItineraryReviewDialog
+                                      if (Navigator.of(context).canPop()) {
+                                        Navigator.of(context).pop();
+                                      }
+                                    }
                                   } catch (e) {
                                     if (!context.mounted) {
                                       return;

@@ -38,8 +38,8 @@ class ItinerarySummaryGrid extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _StatCard(
-                  label: 'Hoàn thành',
-                  valueStr: '${summary.completed} chuyến',
+                  label: 'Đã kết thúc',
+                  valueStr: '${summary.completed} lịch trình',
                   icon: Icons.check_circle_outline,
                   iconColor: const Color(0xFF10B981),
                 ),
@@ -52,7 +52,7 @@ class ItinerarySummaryGrid extends StatelessWidget {
               Expanded(
                 child: _StatCard(
                   label: 'Sắp tới',
-                  valueStr: '${summary.upcoming} chuyến',
+                  valueStr: '${summary.upcoming} lịch trình',
                   icon: Icons.upcoming_outlined,
                   iconColor: const Color(0xFFF59E0B),
                 ),
@@ -60,8 +60,8 @@ class ItinerarySummaryGrid extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _StatCard(
-                  label: 'Bản nháp',
-                  valueStr: '${summary.draft} bản',
+                  label: 'Đang tạo',
+                  valueStr: '${summary.draft} lịch trình',
                   icon: Icons.edit_note_outlined,
                   iconColor: const Color(0xFF6B7280),
                 ),

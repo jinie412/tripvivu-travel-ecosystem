@@ -45,6 +45,12 @@ class ItineraryEntity with _$ItineraryEntity {
     /// Đánh giá sau chuyến đi (chỉ khi status == completed). VD: 4.8
     double? rating,
 
+    /// Số địa điểm đã ghé thăm.
+    @Default(0) int visitedLocations,
+
+    /// Tổng số địa điểm trong lịch trình.
+    @Default(0) int totalLocations,
+
     /// Màu placeholder khi ảnh chưa tải xong.
     @Default(0xFF90CAF9) int placeholderColor,
   }) = _ItineraryEntity;

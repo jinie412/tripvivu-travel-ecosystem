@@ -134,7 +134,7 @@ class ItineraryCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'ĐÃ ĐI',
+                              'ĐÃ KẾT THÚC',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -319,9 +319,9 @@ class ItineraryCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        // Phần trăm
+        // Số lượng địa điểm
         Text(
-          '$percent%',
+          '${item.visitedLocations}/${item.totalLocations} địa điểm',
           style: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,

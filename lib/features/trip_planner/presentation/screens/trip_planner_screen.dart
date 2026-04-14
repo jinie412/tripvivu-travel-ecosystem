@@ -126,18 +126,10 @@ class _TripPlannerView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: AppSizes.s24),
-                          TripTypeSelector(
-                            selectedType: tripForm.tripType,
-                            onChanged: (type) {
-                              context.read<TripPlannerCubit>().updateTripType(type);
-                            },
-                          ),
-                          const SizedBox(height: AppSizes.s32),
                           LocationSelectorCard(
                             departureLocation: tripForm.departureLocation,
                             destinationLocation: tripForm.destinationLocation,
                             onTapDeparture: () {
-                              // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Open Location Picker for Departure')));
                               context.read<TripPlannerCubit>().updateDeparture("TP. Hồ Chí Minh");
                             },
                             onTapDestination: () {
@@ -152,6 +144,10 @@ class _TripPlannerView extends StatelessWidget {
                             selectedOption: tripForm.transportation,
                             onChanged: (transport) {
                               context.read<TripPlannerCubit>().updateTransportation(transport);
+                            },
+                            selectedType: tripForm.tripType,
+                            onTypeChanged: (type) {
+                              context.read<TripPlannerCubit>().updateTripType(type);
                             },
                           ),
                           const SizedBox(height: AppSizes.s64), // Space for button

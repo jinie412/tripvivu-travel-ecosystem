@@ -6,6 +6,7 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/destination.
 import 'package:travel_advisor_mobile/features/home/domain/entities/explore_home_data.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/domain/usecases/home_usecases.dart';
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
 
 class ExploreCubit extends Cubit<ExploreState> {
   final GetExploreHomeUseCase _getExploreHome;
@@ -29,6 +30,9 @@ class ExploreCubit extends Cubit<ExploreState> {
         _getRestaurantsByCategories = getRestaurantsByCategories,
         _getHotelsByCategories = getHotelsByCategories,
         super(const ExploreInitial());
+
+  /// 🔧 CHẾ ĐỘ DEMO: Set true để bỏ qua lỗi Backend và dùng dữ liệu mẫu
+  static const bool kDemoMode = AppConfig.kUseMockData;
 
   Future<void> loadData() async {
     emit(const ExploreLoading());
@@ -67,7 +71,43 @@ class ExploreCubit extends Cubit<ExploreState> {
         currentItinerary: data.currentItinerary,
       ));
     } catch (e) {
-      emit(ExploreError(e.toString()));
+      if (kDemoMode) {
+        // ⚠️ BACKEND NOTE: Mock dữ liệu trang chủ cho Demo
+        final mockExplore = ExploreHomeData(
+          suggestions: [
+            const TripSuggestion(
+              id: 's1', title: 'Khám phá ẩm thực Huế', 
+              imageUrl: 'https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=400',
+              days: '3 ngày', location: 'Huế', views: '1.2k', likes: '450',
+            ),
+            const TripSuggestion(
+              id: 's2', title: 'Chụp ảnh tại Hội An', 
+              imageUrl: 'https://images.unsplash.com/photo-1599708149128-01998b262143?w=400',
+              days: '2 ngày', location: 'Quảng Nam', views: '2.5k', likes: '890',
+            ),
+          ],
+          destinations: [
+            const Destination(id: 'd1', name: 'Đà Nẵng', imageUrl: 'https://images.unsplash.com/photo-1559592471-744e99c1586e?w=400'),
+            const Destination(id: 'd2', name: 'Đà Lạt', imageUrl: 'https://images.unsplash.com/photo-1571474004502-c1def214ac6d?w=400'),
+          ],
+          hotels: [],
+          currentItinerary: null,
+        );
+
+        emit(ExploreLoaded(
+          suggestions: mockExplore.suggestions,
+          destinations: mockExplore.destinations,
+          hotels: const [],
+          restaurants: const [],
+          allSuggestions: mockExplore.suggestions,
+          allDestinations: mockExplore.destinations,
+          allHotels: const [],
+          allRestaurants: const [],
+          currentItinerary: null,
+        ));
+      } else {
+        emit(ExploreError(e.toString()));
+      }
     }
   }
-}
+}
