@@ -15,7 +15,7 @@ export const DetailHeader: React.FC = () => {
           Quản lý người dùng
         </span>
         <span className="separator">&gt;</span>
-        <span className="current">Chi tiết người dùng</span>
+        <span className="current">Thông tin người dùng</span>
       </div>
       
       <div className="header-actions">

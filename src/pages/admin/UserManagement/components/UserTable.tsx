@@ -1,7 +1,7 @@
 import React from 'react';
 import { User } from '../../../../types/user';
 import { Badge } from '../../../../components/Badge';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, Lock, Unlock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface UserTableProps {
@@ -14,7 +14,7 @@ interface UserTableProps {
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
-  onSingleDelete: (id: string, name: string) => void;
+  onToggleLock: (id: string, name: string, currentStatus: string) => void;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({
@@ -27,14 +27,14 @@ export const UserTable: React.FC<UserTableProps> = ({
   totalItems,
   itemsPerPage,
   onPageChange,
-  onSingleDelete,
+  onToggleLock,
 }) => {
   const navigate = useNavigate();
 
   const formatRoleLabel = (role: string) => {
     switch (role) {
       case 'ADMIN':
-        return 'Admin';
+        return 'Quản trị';
       case 'BUSINESS':
         return 'Nhà cung cấp';
       case 'TOURIST':
@@ -220,17 +220,22 @@ export const UserTable: React.FC<UserTableProps> = ({
                   <td className="td-actions" data-label="Thao tác" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="action-btn text-blue"
-                      title="Chỉnh sửa"
+                      title="Xem chi tiết"
                       onClick={() => navigate(`/admin/users/${user.id}`)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', marginRight: '8px' }}>
-                      <Pencil size={18} />
+                      <Eye size={18} />
                     </button>
                     <button
-                      className="action-btn text-red"
-                      title="Xóa"
-                      onClick={() => onSingleDelete(user.id, user.fullName || user.email)} // GỌI HÀM XÓA
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
-                      <Trash2 size={18} />
+                      className={`action-btn ${user.activeStatus === 'ACTIVE' ? 'text-red' : 'text-green'}`}
+                      title={user.activeStatus === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                      onClick={() => onToggleLock(user.id, user.fullName || user.email, user.activeStatus)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: user.activeStatus === 'ACTIVE' ? '#ef4444' : '#22c55e',
+                      }}>
+                      {user.activeStatus === 'ACTIVE' ? <Lock size={18} /> : <Unlock size={18} />}
                     </button>
                   </td>
                 </tr>

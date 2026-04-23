@@ -68,14 +68,18 @@ export const UserManagement: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // 2. Hàm xử lý Xóa 1 User (Truyền hàm này xuống UserTable)
-  const handleSingleDelete = async (id: string, name: string) => {
+  // 2. Hàm xử lý Khóa/Mở khóa tài khoản (Truyền hàm này xuống UserTable)
+  const handleToggleLock = async (id: string, name: string, currentStatus: string) => {
+    const isLocking = currentStatus === 'ACTIVE';
+    const actionText = isLocking ? 'khóa' : 'mở khóa';
+    const newStatus = isLocking ? 'LOCKED' : 'ACTIVE';
+
     const result = await Swal.fire({
-      title: 'Xóa tài khoản?',
-      text: `Bạn có chắc chắn muốn xóa tài khoản "${name}"?`,
+      title: `${isLocking ? 'Khóa' : 'Mở khóa'} tài khoản?`,
+      text: `Bạn có chắc chắn muốn ${actionText} tài khoản "${name}"?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#ef4444',
+      confirmButtonColor: isLocking ? '#ef4444' : '#22c55e',
       cancelButtonColor: '#94a3b8',
       confirmButtonText: 'Đồng ý',
       cancelButtonText: 'Hủy',
@@ -84,22 +88,20 @@ export const UserManagement: React.FC = () => {
     if (!result.isConfirmed) return;
 
     try {
-      await apiClient.delete(`/admin/users/${id}`);
+      await apiClient.patch(`/admin/users/${id}/status`, { status: newStatus });
 
       await Swal.fire({
         title: 'Thành công!',
-        text: 'Đã xóa tài khoản thành công.',
+        text: `Đã ${actionText} tài khoản thành công.`,
         icon: 'success',
         confirmButtonColor: '#3b82f6',
       });
-      // Nếu ID vừa xóa đang nằm trong danh sách đang chọn, gỡ nó ra
-      setSelectedRows((prev) => prev.filter((rowId) => rowId !== id));
       setRefreshKey((old) => old + 1); // Kích hoạt load lại bảng
     } catch (error) {
-      console.error('Lỗi khi xóa tài khoản:', error);
+      console.error(`Lỗi khi ${actionText} tài khoản:`, error);
       await Swal.fire({
         title: 'Lỗi!',
-        text: 'Có lỗi xảy ra khi xóa tài khoản.',
+        text: `Có lỗi xảy ra khi ${actionText} tài khoản.`,
         icon: 'error',
         confirmButtonColor: '#3b82f6',
       });
@@ -229,7 +231,7 @@ export const UserManagement: React.FC = () => {
             users={users}
             loading={loading}
             selectedRows={selectedRows}
-            onSingleDelete={handleSingleDelete}
+            onToggleLock={handleToggleLock}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
             currentPage={currentPage}

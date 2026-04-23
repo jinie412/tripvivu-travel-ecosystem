@@ -68,7 +68,7 @@ export const UserFilter: React.FC<UserFilterProps> = ({
         onChange={(e) => onRoleChange(e.target.value)}
         style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
         <option value="">Tất cả vai trò</option>
-        <option value="ADMIN">Admin</option>
+        <option value="ADMIN">Quản trị</option>
         <option value="BUSINESS">Nhà cung cấp</option>
         <option value="TOURIST">Khách du lịch</option>
       </select>
