@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { DetailHeader } from './components/DetailHeader';
 import { ProfileCard } from './components/ProfileCard';
 import { PersonalInfoCard } from './components/PersonalInfoCard';
-import { AccountSettingsCard } from './components/AccountSettingsCard';
 import { DetailFooter } from './components/DetailFooter';
+import { Lock, Unlock } from 'lucide-react';
 import { User } from '../../../types/user';
 import apiClient from '../../../utils/apiClient'; // Dùng apiClient thật của dự án
 import Swal from 'sweetalert2';
@@ -142,23 +142,32 @@ export const UserDetail: React.FC = () => {
       <DetailHeader />
 
       <div className="detail-content-wrapper">
-        <h1 className="detail-page-title">Chi tiết người dùng: {user.fullName}</h1>
+        <h1 className="detail-page-title">Thông tin người dùng</h1>
 
         <div className="profile-section">
           {/* Truyền hàm update xuống nếu Card này có chức năng đổi Avatar/Tên */}
           <ProfileCard user={user} onUpdate={handleUpdateUser} isUpdating={isUpdating} />
         </div>
 
-        <div className="details-grid">
-          <div className="left-column">
-            {/* Truyền hàm update xuống Card thông tin cá nhân (Tên, SĐT, Ngày sinh, Địa chỉ...) */}
-            <PersonalInfoCard user={user} onUpdate={handleUpdateUser} isUpdating={isUpdating} />
-          </div>
+        <div>
+          {/* Truyền hàm update xuống Card thông tin cá nhân (Tên, SĐT, Ngày sinh, Địa chỉ...) */}
+          <PersonalInfoCard user={user} onUpdate={handleUpdateUser} isUpdating={isUpdating} />
+        </div>
 
-          <div className="right-column">
-            {/* Truyền thêm hàm mới này xuống Card */}
-            <AccountSettingsCard user={user} onUpdate={handleUpdateUser} onToggleStatus={handleToggleStatus} isUpdating={isUpdating} />
-          </div>
+        <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+          <button
+            className={`btn ${user.activeStatus === 'ACTIVE' ? 'btn-danger' : 'btn-primary'}`}
+            onClick={() => handleToggleStatus(user.activeStatus === 'ACTIVE' ? 'LOCKED' : 'ACTIVE')}
+            disabled={isUpdating}
+            style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '8px', fontWeight: 600, border: 'none', cursor: 'pointer', color: 'white', backgroundColor: user.activeStatus === 'ACTIVE' ? '#ef4444' : '#3b82f6' }}>
+            {user.activeStatus === 'ACTIVE' ? <Lock size={18} /> : <Unlock size={18} />}
+            {user.activeStatus === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+          </button>
+          <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic', margin: 0 }}>
+            {user.activeStatus === 'ACTIVE'
+              ? 'Người dùng sẽ không thể đăng nhập cho đến khi được mở khoá.'
+              : 'Người dùng có thể đăng nhập lại bình thường sau khi mở khóa.'}
+          </p>
         </div>
       </div>
 
