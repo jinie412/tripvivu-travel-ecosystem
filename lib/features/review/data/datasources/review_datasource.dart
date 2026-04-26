@@ -1,3 +1,4 @@
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/review/data/models/itinerary_review_model.dart';
@@ -156,10 +157,16 @@ class RemoteReviewDataSource implements ReviewDataSource {
     List<String> mediaUrls = const [],
   }) async {
     final touristId = await AuthUtils.requireCurrentUserId();
+
+    // Để pass qua @IsUUID('4') của NestJS trong chế độ Demo
+    final isDemo = AppConfig.kUseMockData;
+    final validItineraryId = isDemo ? '11111111-1111-4111-a111-111111111111' : itineraryId;
+    final validTouristId = isDemo ? '22222222-2222-4222-a222-222222222222' : touristId;
+
     await _client.dio.post(
-      '/itinerary-reviews/$itineraryId/submit',
+      '/itinerary-reviews/$validItineraryId/submit',
       data: {
-        'tourist_id': touristId,
+        'tourist_id': validTouristId,
         if (overallRating != null) 'overall_rating': overallRating.round(),
         if (overallContent != null && overallContent.trim().isNotEmpty)
           'overall_content': overallContent,
@@ -168,7 +175,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
           'place_reviews': placeReviews
               .map(
                 (item) => {
-                  'itinerary_detail_id': item.itineraryDetailId,
+                  'itinerary_detail_id': isDemo ? '33333333-3333-4333-a333-333333333333' : item.itineraryDetailId,
                   'rating': item.rating,
                   if (item.content != null && item.content!.trim().isNotEmpty)
                     'content': item.content,

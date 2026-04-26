@@ -239,8 +239,9 @@ class ReviewCubit extends Cubit<ReviewState> {
           }
         }
 
-        emit(currentState.copyWith(isSubmitting: false));
-        return;
+        // TẠM THỜI COMMENT DÒNG RETURN ĐỂ ÉP GỌI XUỐNG BACKEND THẬT DÙ ĐANG Ở CHẾ ĐỘ DEMO
+        // emit(currentState.copyWith(isSubmitting: false));
+        // return;
       }
 
       final placeReviews = currentState.itinerary.locations
