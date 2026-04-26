@@ -11,6 +11,8 @@ interface ReviewTableProps {
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onStatusChange: (id: string, status: Review['status']) => Promise<void>;
+  showClassification?: boolean;
+  targetColumnLabel?: string;
 }
 
 const STATUS_OPTIONS: Review['status'][] = ['Chờ duyệt', 'Đã duyệt', 'Vi phạm'];
@@ -107,6 +109,8 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
   itemsPerPage,
   onPageChange,
   onStatusChange,
+  showClassification = true,
+  targetColumnLabel = 'ĐỊA ĐIỂM',
 }) => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
@@ -161,17 +165,17 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
         <thead>
           <tr>
             <th>NGƯỜI ĐÁNH GIÁ</th>
-            <th>ĐỊA ĐIỂM</th>
+            <th>{targetColumnLabel}</th>
             <th>NỘI DUNG ĐÁNH GIÁ</th>
             <th>RATING</th>
             <th>NGÀY GỬI</th>
-            <th>PHÂN LOẠI</th>
+            {showClassification && <th>PHÂN LOẠI</th>}
             <th>TRẠNG THÁI</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr><td colSpan={7} className="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+            <tr><td colSpan={showClassification ? 7 : 6} className="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
           ) : (
             reviews.map((review, idx) => {
               const color = avatarColors[idx % avatarColors.length];
@@ -198,7 +202,9 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                   </td>
                   <td data-label="Đánh giá">{renderStars(review.rating)}</td>
                   <td data-label="Ngày gửi"><span className="rv-date">{review.date}</span></td>
-                  <td data-label="Phân loại">{renderClassification(review.classification)}</td>
+                  {showClassification && (
+                    <td data-label="Phân loại">{renderClassification(review.classification ?? 'Chưa phân loại')}</td>
+                  )}
                   <td data-label="Trạng thái" onClick={(event) => event.stopPropagation()}>
                     <StatusDropdown
                       reviewId={review.id}

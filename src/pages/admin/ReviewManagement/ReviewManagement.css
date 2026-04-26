@@ -1,5 +1,57 @@
 /* Review Management — Reuses shared styles from LocationManagement.css where possible */
 
+/* ── Filter bar: gộp tất cả bộ lọc lên 1 dòng ── */
+.tab-container .location-filter-bar {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.tab-container .filter-left {
+  flex-shrink: 0;
+}
+
+.tab-container .filter-right {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.tab-container .search-input {
+  min-width: 180px;
+  max-width: 220px;
+}
+
+/* ── Tab bar ── */
+.rv-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.rv-tab-btn {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.rv-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.rv-tab-btn--active {
+  color: var(--primary-color, #3b82f6);
+  font-weight: 600;
+  border-bottom-color: var(--primary-color, #3b82f6);
+}
+
 /* Table */
 .rv-table {
   width: 100%;

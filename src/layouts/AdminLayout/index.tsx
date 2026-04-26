@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
-import { LayoutDashboard, Users, MapPin, Star, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -34,9 +34,20 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     navigate('/login');
   };
 
+  const isDashboardActive = location.pathname === '/admin/dashboard' || location.pathname === '/admin';
   const isUserActive = location.pathname.startsWith('/admin/users');
   const isLocationActive = location.pathname.startsWith('/admin/locations');
   const isReviewActive = location.pathname.startsWith('/admin/reviews');
+
+  const [reviewOpen, setReviewOpen] = useState(isReviewActive);
+
+  // Tự mở submenu khi điều hướng vào /admin/reviews
+  useEffect(() => {
+    if (isReviewActive) setReviewOpen(true);
+  }, [isReviewActive]);
+
+  const isLocationReviewActive = isReviewActive && !location.search.includes('tab=itinerary');
+  const isItineraryReviewActive = location.search.includes('tab=itinerary');
 
   return (
     <div className="admin-layout">
@@ -52,8 +63,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           <div className="menu-group">
             <h4 className="menu-title">TỔNG QUAN</h4>
             <Link
-              to="/admin"
-              className={`menu-item ${location.pathname === '/admin' || location.pathname === '/admin/users' ? 'active' : ''}`}>
+              to="/admin/dashboard"
+              className={`menu-item ${isDashboardActive ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </Link>
@@ -64,18 +75,41 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
             <Link to="/admin/users" className={`menu-item ${isUserActive ? 'active' : ''}`}>
               <Users size={20} />
               <span>Người dùng</span>
-              {isUserActive ? <span className="active-indicator">&gt;</span> : <span className="hover-indicator">&gt;</span>}
             </Link>
             <Link to="/admin/locations" className={`menu-item ${isLocationActive ? 'active' : ''}`}>
               <MapPin size={20} />
               <span>Địa điểm</span>
-              {isLocationActive ? <span className="active-indicator">&gt;</span> : <span className="hover-indicator">&gt;</span>}
             </Link>
-            <Link to="/admin/reviews" className={`menu-item ${isReviewActive ? 'active' : ''}`}>
+            <button
+              className={`menu-item menu-item--expandable ${isReviewActive ? 'active' : ''}`}
+              onClick={() => setReviewOpen(prev => !prev)}
+            >
               <Star size={20} />
               <span>Đánh giá</span>
-              {isReviewActive ? <span className="active-indicator">&gt;</span> : <span className="hover-indicator">&gt;</span>}
-            </Link>
+              <ChevronDown
+                size={14}
+                className={`submenu-chevron ${reviewOpen ? 'submenu-chevron--open' : ''}`}
+              />
+            </button>
+
+            {reviewOpen && (
+              <div className="submenu">
+                <Link
+                  to="/admin/reviews"
+                  className={`submenu-item ${isLocationReviewActive ? 'submenu-item--active' : ''}`}
+                >
+                  <MapPinned size={15} />
+                  Đánh giá địa điểm
+                </Link>
+                <Link
+                  to="/admin/reviews?tab=itinerary"
+                  className={`submenu-item ${isItineraryReviewActive ? 'submenu-item--active' : ''}`}
+                >
+                  <CalendarDays size={15} />
+                  Đánh giá lịch trình
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

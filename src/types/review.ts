@@ -7,7 +7,24 @@ export interface Review {
   rating: number;
   date: string;
   status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
-  classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
+  classification?: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
+}
+
+export interface ItineraryReview {
+  id: string;
+  userAvatar: string;
+  userName: string;
+  itineraryName: string;
+  content: string;
+  rating: number;
+  date: string;
+  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+}
+
+export interface ItineraryReviewStatsInfo {
+  totalReviews: number;
+  pendingReviews: number;
+  violationReviews: number;
 }
 
 export interface ReviewDetailInfo {

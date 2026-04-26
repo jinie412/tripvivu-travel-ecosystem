@@ -17,6 +17,8 @@ interface ReviewFilterProps {
   dateSentOptions: SelectOption[];
   statusOptions: SelectOption[];
   ratingOptions: SelectOption[];
+  showClassification?: boolean;
+  searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
   onClassificationChange: (value: string) => void;
   onDateSentChange: (value: string) => void;
@@ -36,6 +38,8 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
   dateSentOptions,
   statusOptions,
   ratingOptions,
+  showClassification = true,
+  searchPlaceholder = 'Tìm kiếm địa điểm, người đánh giá...',
   onSearchChange,
   onClassificationChange,
   onDateSentChange,
@@ -66,7 +70,7 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
           <Search size={18} className="search-icon" />
           <input
             type="text"
-            placeholder="Tìm kiếm địa điểm, người đánh giá..."
+            placeholder={searchPlaceholder}
             className="search-input"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -75,19 +79,21 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
       </div>
 
       <div className="filter-right">
-        <div className="dropdown">
-          <select
-            value={classification}
-            onChange={(event) => onClassificationChange(event.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
-          >
-            {classificationOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                Phân loại ({option.label})
-              </option>
-            ))}
-          </select>
-        </div>
+        {showClassification && (
+          <div className="dropdown">
+            <select
+              value={classification}
+              onChange={(event) => onClassificationChange(event.target.value)}
+              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
+            >
+              {classificationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  Phân loại ({option.label})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="dropdown review-date-dropdown">
           <select
             value={dateSent}

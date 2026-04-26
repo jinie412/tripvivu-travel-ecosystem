@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { Review, ReviewDetailInfo, ReviewStatsInfo } from '../types/review';
+import { Review, ReviewDetailInfo, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo } from '../types/review';
 
 type BackendReviewStatus = 'pending' | 'approved' | 'violation';
 type BackendReviewClassification =
@@ -218,6 +218,117 @@ export const reviewAPI = {
     }
 
     await apiClient.put(`/admin/reviews/${id}/reject`, {
+      status: 'violation',
+      reason: reason || 'Đánh giá vi phạm chính sách nội dung.',
+    });
+  },
+};
+
+// ─────────────────────────────────────────────────────────
+// Itinerary Reviews — wired to /admin/itinerary-reviews
+// (backend endpoint chưa có, sẽ tự hoạt động khi backend bổ sung)
+// ─────────────────────────────────────────────────────────
+
+interface BackendItineraryReviewItem {
+  id: string;
+  reviewer_name: string;
+  itinerary_name: string;
+  rating: number;
+  review_content: string | null;
+  status: BackendReviewStatus;
+  created_at: string;
+}
+
+interface BackendItineraryReviewListResponse {
+  data: BackendItineraryReviewItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+  summary: {
+    total_reviews: number;
+    pending_count: number;
+    approved_count: number;
+    violation_count: number;
+  };
+}
+
+export interface ItineraryReviewFilterParams {
+  search?: string;
+  status?: BackendReviewStatus | 'all';
+  dateSent?: BackendReviewDateSent;
+  dateExact?: string;
+  rating?: number;
+  sort?: 'newest' | 'oldest' | 'highest_rating' | 'lowest_rating';
+}
+
+const mapItineraryReview = (item: BackendItineraryReviewItem): ItineraryReview => ({
+  id: item.id,
+  userAvatar: getInitials(item.reviewer_name || 'N A'),
+  userName: item.reviewer_name || 'Người dùng ẩn danh',
+  itineraryName: item.itinerary_name,
+  content: item.review_content || '(Không có nội dung)',
+  rating: item.rating,
+  date: formatDateTime(item.created_at),
+  status: mapStatus(item.status),
+});
+
+export const itineraryReviewAPI = {
+  getItineraryReviews: async (
+    page = 1,
+    limit = 10,
+    filters: ItineraryReviewFilterParams = {},
+  ): Promise<{ data: ItineraryReview[]; total: number }> => {
+    try {
+      const response = await apiClient.get<BackendItineraryReviewListResponse>('/admin/itinerary-reviews', {
+        params: {
+          page,
+          limit,
+          search: filters.search || undefined,
+          status: filters.status && filters.status !== 'all' ? filters.status : undefined,
+          sort: filters.sort || 'newest',
+          date_sent: filters.dateSent || 'all',
+          date_exact: filters.dateExact || undefined,
+          rating: filters.rating || undefined,
+        },
+      });
+      return {
+        data: response.data.data.map(mapItineraryReview),
+        total: response.data.pagination.total,
+      };
+    } catch {
+      return { data: [], total: 0 };
+    }
+  },
+
+  getItineraryReviewStats: async (): Promise<ItineraryReviewStatsInfo> => {
+    try {
+      const response = await apiClient.get<BackendItineraryReviewListResponse>('/admin/itinerary-reviews', {
+        params: { page: 1, limit: 1 },
+      });
+      return {
+        totalReviews: response.data.summary.total_reviews,
+        pendingReviews: response.data.summary.pending_count,
+        violationReviews: response.data.summary.violation_count,
+      };
+    } catch {
+      return { totalReviews: 0, pendingReviews: 0, violationReviews: 0 };
+    }
+  },
+
+  updateItineraryReviewStatus: async (
+    id: string,
+    status: ItineraryReview['status'],
+    reason?: string,
+  ): Promise<void> => {
+    const backendStatus = toBackendStatus(status);
+    if (backendStatus === 'approved') {
+      await apiClient.put(`/admin/itinerary-reviews/${id}/approve`);
+      return;
+    }
+    await apiClient.put(`/admin/itinerary-reviews/${id}/reject`, {
       status: 'violation',
       reason: reason || 'Đánh giá vi phạm chính sách nội dung.',
     });

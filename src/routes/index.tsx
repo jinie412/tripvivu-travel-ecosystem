@@ -16,6 +16,7 @@ import ProviderLayout from '../layouts/ProviderLayout/ProviderLayout';
 
 // Admin imports
 import { AdminLayout } from '../layouts/AdminLayout';
+import { AdminDashboard } from '../pages/admin/Dashboard';
 import { UserManagement } from '../pages/admin/UserManagement';
 import { AddUser } from '../pages/admin/AddUser';
 import { UserDetail } from '../pages/admin/UserDetail';
@@ -48,7 +49,8 @@ const AppRoutes: React.FC = () => {
 
       {/* Admin Routes */}
       <Route element={<AdminLayout><Outlet /></AdminLayout>}>
-        <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/users/add" element={<AddUser />} />
         <Route path="/admin/users/:id" element={<UserDetail />} />
