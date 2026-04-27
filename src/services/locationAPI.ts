@@ -33,6 +33,12 @@ interface BackendPlaceCategoriesResponse {
   categories: SelectOption[];
 }
 
+interface BackendPlaceStatsResponse {
+  totalLocations: number;
+  pendingApproval: number;
+  newThisMonth: number;
+}
+
 interface BackendPlaceDetailResponse {
   id: string;
   name: string;
@@ -207,19 +213,6 @@ const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo
   };
 };
 
-const getLocationCountByStatus = async (
-  status: 'all' | 'pending' | 'approved' | 'rejected',
-): Promise<number> => {
-  const response = await apiClient.get<BackendPlaceListResponse>('/admin/places', {
-    params: {
-      status,
-      page: 1,
-      limit: 1,
-    },
-  });
-  return response.data.pagination.total;
-};
-
 export const locationAPI = {
   getLocations: async (
     page = 1,
@@ -243,34 +236,13 @@ export const locationAPI = {
   },
 
   getLocationStats: async (): Promise<LocationStatsInfo> => {
-    const [totalLocations, pendingApproval, newestPage] = await Promise.all([
-      getLocationCountByStatus('all'),
-      getLocationCountByStatus('pending'),
-      apiClient.get<BackendPlaceListResponse>('/admin/places', {
-        params: { status: 'all', page: 1, limit: 100, sort: 'newest' },
-      }),
-    ]);
-
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    const newThisMonth = newestPage.data.data.filter((item) => {
-      if (!item.registered_date) {
-        return false;
-      }
-      const date = new Date(item.registered_date);
-      return (
-        !Number.isNaN(date.getTime()) &&
-        date.getMonth() === currentMonth &&
-        date.getFullYear() === currentYear
-      );
-    }).length;
+    const response = await apiClient.get<BackendPlaceStatsResponse>('/admin/places/stats');
+    const stats = extractResponseData(response);
 
     return {
-      totalLocations,
-      pendingApproval,
-      newThisMonth,
+      totalLocations: stats.totalLocations,
+      pendingApproval: stats.pendingApproval,
+      newThisMonth: stats.newThisMonth,
     };
   },
 
