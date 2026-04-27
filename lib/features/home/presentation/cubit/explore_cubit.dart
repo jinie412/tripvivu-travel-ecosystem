@@ -34,30 +34,61 @@ class ExploreCubit extends Cubit<ExploreState> {
   /// 🔧 CHẾ ĐỘ DEMO: Set true để bỏ qua lỗi Backend và dùng dữ liệu mẫu
   static const bool kDemoMode = AppConfig.kUseMockData;
 
+  Future<T> _safeLoad<T>(Future<T> Function() loader, T fallback) async {
+    try {
+      return await loader();
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  static const ExploreHomeData _emptyHome = ExploreHomeData(
+    suggestions: <TripSuggestion>[],
+    destinations: <Destination>[],
+    hotels: <CityHotel>[],
+    currentItinerary: null,
+  );
+
   Future<void> loadData() async {
     emit(const ExploreLoading());
     try {
-      final results = await Future.wait<dynamic>([
-        _getExploreHome(),
-        _getRestaurants(limit: 5),
-        _getPublicSuggestions(limit: 200),
-        _getFeaturedDestinations(limit: 200),
-        _getRestaurantsByCategories(
+      final ExploreHomeData data =
+          await _safeLoad<ExploreHomeData>(_getExploreHome.call, _emptyHome);
+
+      final List<CityRestaurant> topRestaurants =
+          await _safeLoad<List<CityRestaurant>>(
+        () => _getRestaurants(limit: 5),
+        const <CityRestaurant>[],
+      );
+
+      final List<TripSuggestion> allSuggestions =
+          await _safeLoad<List<TripSuggestion>>(
+        () => _getPublicSuggestions(limit: 200),
+        data.suggestions,
+      );
+
+      final List<Destination> allDestinations =
+          await _safeLoad<List<Destination>>(
+        () => _getFeaturedDestinations(limit: 200),
+        data.destinations,
+      );
+
+      final List<CityRestaurant> allRestaurants =
+          await _safeLoad<List<CityRestaurant>>(
+        () => _getRestaurantsByCategories(
           categories: const ['restaurant', 'nhà hàng'],
           limitPerCategory: 200,
         ),
-        _getHotelsByCategories(
+        topRestaurants,
+      );
+
+      final List<CityHotel> allHotels = await _safeLoad<List<CityHotel>>(
+        () => _getHotelsByCategories(
           categories: const ['hotel', 'khách sạn'],
           limitPerCategory: 200,
         ),
-      ]);
-
-      final ExploreHomeData data = results[0] as ExploreHomeData;
-      final List<CityRestaurant> topRestaurants = results[1] as List<CityRestaurant>;
-      final List<TripSuggestion> allSuggestions = results[2] as List<TripSuggestion>;
-      final List<Destination> allDestinations = results[3] as List<Destination>;
-      final List<CityRestaurant> allRestaurants = results[4] as List<CityRestaurant>;
-      final List<CityHotel> allHotels = results[5] as List<CityHotel>;
+        data.hotels,
+      );
 
       emit(ExploreLoaded(
         suggestions: data.suggestions.take(5).toList(),
@@ -110,4 +141,4 @@ class ExploreCubit extends Cubit<ExploreState> {
       }
     }
   }
-}
+}
