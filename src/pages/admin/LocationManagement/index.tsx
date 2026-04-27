@@ -60,13 +60,27 @@ export const LocationManagement: React.FC = () => {
           categoryName,
         };
 
-        const [statsData, locationsData] = await Promise.all([
-          locationAPI.getLocationStats(),
-          locationAPI.getLocations(currentPage, itemsPerPage, filters),
-        ]);
-        setStats(statsData);
+        const locationsData = await locationAPI.getLocations(
+          currentPage,
+          itemsPerPage,
+          filters,
+        );
         setLocations(locationsData.data);
         setTotalItems(locationsData.total);
+
+        try {
+          const statsData = await locationAPI.getLocationStats();
+          setStats(statsData);
+        } catch (statsError) {
+          console.error('Failed to load location stats', statsError);
+          setStats((prev) =>
+            prev ?? {
+              totalLocations: locationsData.total,
+              pendingApproval: 0,
+              newThisMonth: 0,
+            },
+          );
+        }
       } catch (error) {
         console.error('Failed to load location data', error);
       } finally {
@@ -95,13 +109,20 @@ export const LocationManagement: React.FC = () => {
       status: status as 'all' | 'pending' | 'approved' | 'rejected',
       categoryName,
     };
-    const [statsData, locationsData] = await Promise.all([
-      locationAPI.getLocationStats(),
-      locationAPI.getLocations(currentPage, itemsPerPage, filters),
-    ]);
-    setStats(statsData);
+    const locationsData = await locationAPI.getLocations(
+      currentPage,
+      itemsPerPage,
+      filters,
+    );
     setLocations(locationsData.data);
     setTotalItems(locationsData.total);
+
+    try {
+      const statsData = await locationAPI.getLocationStats();
+      setStats(statsData);
+    } catch (statsError) {
+      console.error('Failed to refresh location stats', statsError);
+    }
   };
 
   const handleApprove = async (locationId: string) => {
