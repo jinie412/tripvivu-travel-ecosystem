@@ -2,17 +2,8 @@ import { apiClient } from './apiClient';
 import { Review, ReviewDetailInfo, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo } from '../types/review';
 
 type BackendReviewStatus = 'pending' | 'approved' | 'violation';
-type BackendReviewClassification =
-  | 'short-term'
-  | 'long-term'
-  | 'need-action'
-  | 'unclassified';
-type BackendReviewDateSent =
-  | 'all'
-  | 'today'
-  | 'yesterday'
-  | 'last_7_days'
-  | 'last_30_days';
+type BackendReviewClassification = 'short-term' | 'long-term' | 'need-action' | 'unclassified';
+type BackendReviewDateSent = 'all' | 'today' | 'yesterday' | 'last_7_days' | 'last_30_days';
 
 interface BackendReviewItem {
   id: string;
@@ -62,10 +53,52 @@ interface BackendReviewDetailResponse {
   created_at: string;
 }
 
+interface BackendItineraryReviewItem {
+  id: string;
+  reviewer_id: string;
+  reviewer_name: string;
+  reviewer_review_count: number;
+  reviewer_report_count: number;
+  itinerary_id: string;
+  itinerary_name: string;
+  itinerary_start_date?: string | null;
+  itinerary_end_date?: string | null;
+  rating: number;
+  review_content: string | null;
+  status: BackendReviewStatus;
+  created_at: string;
+  has_images: boolean;
+}
+
+interface BackendItineraryReviewListResponse {
+  data: BackendItineraryReviewItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+  };
+  summary: {
+    total_reviews: number;
+    pending_count: number;
+    approved_count: number;
+    violation_count: number;
+  };
+}
+
 export interface ReviewFilterParams {
   search?: string;
   status?: BackendReviewStatus | 'all';
   classification?: BackendReviewClassification | 'all';
+  dateSent?: BackendReviewDateSent;
+  dateExact?: string;
+  rating?: number;
+  sort?: 'newest' | 'oldest' | 'highest_rating' | 'lowest_rating';
+}
+
+export interface ItineraryReviewFilterParams {
+  search?: string;
+  status?: BackendReviewStatus | 'all';
   dateSent?: BackendReviewDateSent;
   dateExact?: string;
   rating?: number;
@@ -102,7 +135,9 @@ const mapStatus = (status: BackendReviewStatus): Review['status'] => {
   return 'Chờ duyệt';
 };
 
-const mapClassification = (topic: string | null): Review['classification'] => {
+const mapClassification = (
+  topic: string | null,
+): 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại' => {
   if (topic === 'short_term') {
     return 'Ngắn hạn';
   }
@@ -115,44 +150,38 @@ const mapClassification = (topic: string | null): Review['classification'] => {
   return 'Chưa phân loại';
 };
 
-const mapReview = (item: BackendReviewItem): Review => {
-  return {
-    id: item.id,
-    userAvatar: getInitials(item.reviewer_name || 'N A'),
-    userName: item.reviewer_name || 'Người dùng ẩn danh',
-    locationName: item.place_name,
-    content: item.review_content || '(Không có nội dung)',
-    rating: item.rating,
-    date: formatDateTime(item.created_at),
-    status: mapStatus(item.status),
-    classification: mapClassification(item.main_topic),
-  };
-};
+const mapReview = (item: BackendReviewItem): Review => ({
+  id: item.id,
+  userAvatar: getInitials(item.reviewer_name || 'N A'),
+  userName: item.reviewer_name || 'Người dùng ẩn danh',
+  locationName: item.place_name,
+  content: item.review_content || '(Không có nội dung)',
+  rating: item.rating,
+  date: formatDateTime(item.created_at),
+  status: mapStatus(item.status),
+  classification: mapClassification(item.main_topic),
+});
 
-const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo => {
-  return {
-    id: item.id,
-    userAvatar: getInitials(item.user.name || 'N A'),
-    userName: item.user.name,
-    totalReviews: item.user.review_count,
-    totalReports: item.user.report_count,
-    locationName: item.place.name,
-    locationAddress: item.place.address,
-    rating: item.rating,
-    datetime: formatDateTime(item.created_at),
-    content: item.review_content || '(Không có nội dung)',
-    images: item.images.map((image) => image.url),
-    status: mapStatus(item.status),
-    classification: mapClassification(item.main_topic),
-    reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
-    reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
-    adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
-  };
-};
+const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo => ({
+  id: item.id,
+  userAvatar: getInitials(item.user.name || 'N A'),
+  userName: item.user.name,
+  totalReviews: item.user.review_count,
+  totalReports: item.user.report_count,
+  locationName: item.place.name,
+  locationAddress: item.place.address,
+  rating: item.rating,
+  datetime: formatDateTime(item.created_at),
+  content: item.review_content || '(Không có nội dung)',
+  images: item.images.map((image) => image.url),
+  status: mapStatus(item.status),
+  classification: mapClassification(item.main_topic),
+  reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
+  reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
+  adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
+});
 
-const toBackendStatus = (
-  status: Review['status'],
-): 'approved' | 'violation' => {
+const toBackendStatus = (status: Review['status']): 'approved' | 'violation' => {
   return status === 'Vi phạm' ? 'violation' : 'approved';
 };
 
@@ -224,57 +253,6 @@ export const reviewAPI = {
   },
 };
 
-// ─────────────────────────────────────────────────────────
-// Itinerary Reviews — wired to /admin/itinerary-reviews
-// (backend endpoint chưa có, sẽ tự hoạt động khi backend bổ sung)
-// ─────────────────────────────────────────────────────────
-
-interface BackendItineraryReviewItem {
-  id: string;
-  reviewer_name: string;
-  itinerary_name: string;
-  rating: number;
-  review_content: string | null;
-  status: BackendReviewStatus;
-  created_at: string;
-}
-
-interface BackendItineraryReviewListResponse {
-  data: BackendItineraryReviewItem[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    total_pages: number;
-  };
-  summary: {
-    total_reviews: number;
-    pending_count: number;
-    approved_count: number;
-    violation_count: number;
-  };
-}
-
-export interface ItineraryReviewFilterParams {
-  search?: string;
-  status?: BackendReviewStatus | 'all';
-  dateSent?: BackendReviewDateSent;
-  dateExact?: string;
-  rating?: number;
-  sort?: 'newest' | 'oldest' | 'highest_rating' | 'lowest_rating';
-}
-
-const mapItineraryReview = (item: BackendItineraryReviewItem): ItineraryReview => ({
-  id: item.id,
-  userAvatar: getInitials(item.reviewer_name || 'N A'),
-  userName: item.reviewer_name || 'Người dùng ẩn danh',
-  itineraryName: item.itinerary_name,
-  content: item.review_content || '(Không có nội dung)',
-  rating: item.rating,
-  date: formatDateTime(item.created_at),
-  status: mapStatus(item.status),
-});
-
 export const itineraryReviewAPI = {
   getItineraryReviews: async (
     page = 1,
@@ -294,8 +272,18 @@ export const itineraryReviewAPI = {
           rating: filters.rating || undefined,
         },
       });
+
       return {
-        data: response.data.data.map(mapItineraryReview),
+        data: response.data.data.map((item) => ({
+          id: item.id,
+          userAvatar: getInitials(item.reviewer_name || 'N A'),
+          userName: item.reviewer_name || 'Người dùng ẩn danh',
+          itineraryName: item.itinerary_name,
+          content: item.review_content || '(Không có nội dung)',
+          rating: item.rating,
+          date: formatDateTime(item.created_at),
+          status: mapStatus(item.status),
+        })),
         total: response.data.pagination.total,
       };
     } catch {
@@ -308,6 +296,7 @@ export const itineraryReviewAPI = {
       const response = await apiClient.get<BackendItineraryReviewListResponse>('/admin/itinerary-reviews', {
         params: { page: 1, limit: 1 },
       });
+
       return {
         totalReviews: response.data.summary.total_reviews,
         pendingReviews: response.data.summary.pending_count,
@@ -324,10 +313,12 @@ export const itineraryReviewAPI = {
     reason?: string,
   ): Promise<void> => {
     const backendStatus = toBackendStatus(status);
+
     if (backendStatus === 'approved') {
       await apiClient.put(`/admin/itinerary-reviews/${id}/approve`);
       return;
     }
+
     await apiClient.put(`/admin/itinerary-reviews/${id}/reject`, {
       status: 'violation',
       reason: reason || 'Đánh giá vi phạm chính sách nội dung.',
