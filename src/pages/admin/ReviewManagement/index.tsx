@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Review, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo } from '../../../types/review';
-import { reviewAPI, ReviewFilterParams, itineraryReviewAPI, ItineraryReviewFilterParams } from '../../../services/reviewAPI';
+import {
+  reviewAPI,
+  ReviewFilterParams,
+  itineraryReviewAPI,
+  ItineraryReviewFilterParams,
+} from '../../../services/reviewAPI';
 import { ReviewStats } from './components/ReviewStats';
 import { ReviewFilter } from './components/ReviewFilter';
 import { ReviewTable } from './components/ReviewTable';
@@ -250,6 +255,7 @@ export const ReviewManagement: React.FC = () => {
             onStatusChange={handleStatusChange}
             showClassification={activeTab === 'location'}
             targetColumnLabel={activeTab === 'location' ? 'ĐỊA ĐIỂM' : 'LỊCH TRÌNH'}
+            disableRowNavigation={activeTab === 'itinerary'}
           />
         </div>
       </div>
