@@ -14,6 +14,7 @@ interface ReviewTableProps {
   showClassification?: boolean;
   targetColumnLabel?: string;
   disableRowNavigation?: boolean;
+  rowNavigatePath?: string;
 }
 
 const STATUS_OPTIONS: Review['status'][] = ['Chờ duyệt', 'Đã duyệt', 'Vi phạm'];
@@ -113,6 +114,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
   showClassification = true,
   targetColumnLabel = 'ĐỊA ĐIỂM',
   disableRowNavigation = false,
+  rowNavigatePath = '/admin/reviews',
 }) => {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
@@ -187,11 +189,8 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                   className="table-row-hover"
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
-                    if (disableRowNavigation) {
-                      return;
-                    }
-
-                    navigate(`/admin/reviews/${review.id}`);
+                    if (disableRowNavigation) return;
+                    navigate(`${rowNavigatePath}/${review.id}`);
                   }}
                 >
                   <td data-label="Người dùng">

@@ -55,3 +55,26 @@ export interface ReviewStatsInfo {
   pendingReviews: number;
   violationReviews: number;
 }
+
+export interface ItineraryReviewDetailInfo {
+  id: string;
+  // Reviewer info
+  userAvatar: string;
+  userName: string;
+  totalReviews: number;
+  totalReports: number;
+  // Itinerary info
+  itineraryName: string;
+  itineraryStartDate?: string;
+  itineraryEndDate?: string;
+  // Review content
+  rating: number;
+  datetime: string;
+  content: string;
+  images: string[];
+  // Status / violations
+  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  reportCount: number;
+  reportReasons: string[];
+  adminNote: string;
+}

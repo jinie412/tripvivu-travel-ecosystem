@@ -255,7 +255,7 @@ export const ReviewManagement: React.FC = () => {
             onStatusChange={handleStatusChange}
             showClassification={activeTab === 'location'}
             targetColumnLabel={activeTab === 'location' ? 'ĐỊA ĐIỂM' : 'LỊCH TRÌNH'}
-            disableRowNavigation={activeTab === 'itinerary'}
+            rowNavigatePath={activeTab === 'itinerary' ? '/admin/itinerary-reviews' : '/admin/reviews'}
           />
         </div>
       </div>

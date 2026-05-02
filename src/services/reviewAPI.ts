@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { Review, ReviewDetailInfo, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo } from '../types/review';
+import { Review, ReviewDetailInfo, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo, ItineraryReviewDetailInfo } from '../types/review';
 
 type BackendReviewStatus = 'pending' | 'approved' | 'violation';
 type BackendReviewClassification = 'short-term' | 'long-term' | 'need-action' | 'unclassified';
@@ -68,6 +68,27 @@ interface BackendItineraryReviewItem {
   status: BackendReviewStatus;
   created_at: string;
   has_images: boolean;
+}
+
+interface BackendItineraryReviewDetailResponse {
+  id: string;
+  reviewer: {
+    id: string;
+    name: string;
+    review_count: number;
+    report_count: number;
+  };
+  itinerary: {
+    id: string;
+    name: string;
+    start_date?: string | null;
+    end_date?: string | null;
+  };
+  rating: number;
+  review_content: string | null;
+  images: Array<{ url: string }>;
+  status: BackendReviewStatus;
+  created_at: string;
 }
 
 interface BackendItineraryReviewListResponse {
@@ -177,6 +198,31 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   status: mapStatus(item.status),
   classification: mapClassification(item.main_topic),
   reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
+  reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
+  adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
+});
+
+const formatDate = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('vi-VN');
+};
+
+const mapItineraryReviewDetail = (item: BackendItineraryReviewDetailResponse): ItineraryReviewDetailInfo => ({
+  id: item.id,
+  userAvatar: getInitials(item.reviewer.name || 'N A'),
+  userName: item.reviewer.name,
+  totalReviews: item.reviewer.review_count,
+  totalReports: item.reviewer.report_count,
+  itineraryName: item.itinerary.name,
+  itineraryStartDate: item.itinerary.start_date ? formatDate(item.itinerary.start_date) : undefined,
+  itineraryEndDate: item.itinerary.end_date ? formatDate(item.itinerary.end_date) : undefined,
+  rating: item.rating,
+  datetime: formatDateTime(item.created_at),
+  content: item.review_content || '(Không có nội dung)',
+  images: item.images.map((img) => img.url),
+  status: mapStatus(item.status),
+  reportCount: item.status === 'violation' ? Math.max(item.reviewer.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
   adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
 });
@@ -304,6 +350,57 @@ export const itineraryReviewAPI = {
       };
     } catch {
       return { totalReviews: 0, pendingReviews: 0, violationReviews: 0 };
+    }
+  },
+
+  getItineraryReviewById: async (id: string): Promise<ItineraryReviewDetailInfo> => {
+    try {
+      const response = await apiClient.get<BackendItineraryReviewDetailResponse>(`/admin/itinerary-reviews/${id}`);
+      return mapItineraryReviewDetail(response.data);
+    } catch {
+      // Mock data — dùng tạm khi backend chưa có endpoint GET /admin/itinerary-reviews/:id
+      const mockSet: ItineraryReviewDetailInfo[] = [
+        {
+          id,
+          userAvatar: 'NN',
+          userName: 'Nguyễn Ngọc Hà',
+          totalReviews: 8,
+          totalReports: 0,
+          itineraryName: 'Hành trình Hà Nội 3 ngày 2 đêm',
+          itineraryStartDate: '05/04/2026',
+          itineraryEndDate: '08/04/2026',
+          rating: 5,
+          datetime: '02:08 - 8/4/2026',
+          content:
+            'Lịch trình được sắp xếp rất hợp lý, các điểm tham quan phân bổ đều trong ngày không quá mệt. Bữa ăn tại các nhà hàng được gợi ý đều rất ngon và đúng gu ẩm thực địa phương. Đặc biệt buổi tối dạo phố cổ rất thú vị. Sẽ giới thiệu cho bạn bè!',
+          images: [],
+          status: 'Chờ duyệt',
+          reportCount: 0,
+          reportReasons: [],
+          adminNote: '',
+        },
+        {
+          id,
+          userAvatar: 'NN',
+          userName: 'Nguyễn Ngọc Hà',
+          totalReviews: 8,
+          totalReports: 0,
+          itineraryName: 'Khám phá Đà Nẵng – Hội An cuối tuần',
+          itineraryStartDate: '08/04/2026',
+          itineraryEndDate: '10/04/2026',
+          rating: 5,
+          datetime: '00:59 - 8/4/2026',
+          content: 'OK!',
+          images: [],
+          status: 'Chờ duyệt',
+          reportCount: 0,
+          reportReasons: [],
+          adminNote: '',
+        },
+      ];
+      // Dùng ký tự cuối của ID để luân phiên giữa 2 mock
+      const idx = id.charCodeAt(id.length - 1) % 2;
+      return mockSet[idx];
     }
   },
 

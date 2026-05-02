@@ -25,6 +25,7 @@ import { AddLocation } from '../pages/admin/AddLocation';
 import { LocationDetail } from '../pages/admin/LocationDetail';
 import { ReviewManagement } from '../pages/admin/ReviewManagement';
 import { ReviewDetail } from '../pages/admin/ReviewDetail';
+import { ItineraryReviewDetail } from '../pages/admin/ItineraryReviewDetail';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -59,6 +60,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/admin/locations/:id" element={<LocationDetail />} />
         <Route path="/admin/reviews" element={<ReviewManagement />} />
         <Route path="/admin/reviews/:id" element={<ReviewDetail />} />
+        <Route path="/admin/itinerary-reviews/:id" element={<ItineraryReviewDetail />} />
       </Route>
 
       {/* Default Redirect */}

@@ -37,17 +37,23 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const isDashboardActive = location.pathname === '/admin/dashboard' || location.pathname === '/admin';
   const isUserActive = location.pathname.startsWith('/admin/users');
   const isLocationActive = location.pathname.startsWith('/admin/locations');
-  const isReviewActive = location.pathname.startsWith('/admin/reviews');
+  const isReviewActive =
+    location.pathname.startsWith('/admin/reviews') ||
+    location.pathname.startsWith('/admin/itinerary-reviews');
 
   const [reviewOpen, setReviewOpen] = useState(isReviewActive);
 
-  // Tự mở submenu khi điều hướng vào /admin/reviews
+  // Tự mở submenu khi điều hướng vào /admin/reviews hoặc /admin/itinerary-reviews
   useEffect(() => {
     if (isReviewActive) setReviewOpen(true);
   }, [isReviewActive]);
 
-  const isLocationReviewActive = isReviewActive && !location.search.includes('tab=itinerary');
-  const isItineraryReviewActive = location.search.includes('tab=itinerary');
+  const isLocationReviewActive =
+    location.pathname.startsWith('/admin/reviews') &&
+    !location.search.includes('tab=itinerary');
+  const isItineraryReviewActive =
+    location.search.includes('tab=itinerary') ||
+    location.pathname.startsWith('/admin/itinerary-reviews');
 
   return (
     <div className="admin-layout">
