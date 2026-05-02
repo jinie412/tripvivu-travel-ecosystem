@@ -201,7 +201,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         transportInfo: 'Điểm xuất phát',
         rating: 4.7, reviewCount: 32000, isFree: true,
         status: ActivityStatus.chuaDi,
-        latitude: 16.0544, longitude: 108.2450, // Bãi biển Mỹ Khê
+        latitude: 16.0544, longitude: 108.2450,
       ),
       ItineraryActivityEntity(
         id: 'dn_6',
@@ -213,7 +213,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         transportInfo: '10 phút đi bộ (600m)',
         rating: 4.4, reviewCount: 12000, isFree: true,
         status: ActivityStatus.chuaDi,
-        latitude: 16.0588, longitude: 108.2282, // Cầu Tình Yêu
+        latitude: 16.0588, longitude: 108.2282,
       ),
       ItineraryActivityEntity(
         id: 'dn_7',
@@ -225,30 +225,88 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         transportInfo: '15 phút di chuyển (1.2km)',
         rating: 4.5, reviewCount: 8500, isFree: true,
         status: ActivityStatus.chuaDi,
-        latitude: 16.0530, longitude: 108.2280, // Công viên APEC
+        latitude: 16.0530, longitude: 108.2280,
+      ),
+    ];
+
+    final mockActivitiesDay3 = [
+      ItineraryActivityEntity(
+        id: 'hcm_1',
+        title: 'Dinh Độc Lập',
+        locationName: 'Independence Palace',
+        address: '135 Nam Kỳ Khởi Nghĩa, Quận 1, TP.HCM',
+        startTime: '08:00', endTime: '10:00',
+        imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=600&q=80',
+        transportInfo: 'Điểm xuất phát',
+        rating: 4.6, reviewCount: 25000,
+        status: ActivityStatus.chuaDi,
+        latitude: 10.7770, longitude: 106.6953,
+      ),
+      ItineraryActivityEntity(
+        id: 'hcm_2',
+        title: 'Nhà thờ Đức Bà',
+        locationName: 'Notre-Dame Cathedral',
+        address: '01 Công xã Paris, Bến Nghé, Quận 1',
+        startTime: '10:30', endTime: '11:30',
+        imageUrl: 'https://images.unsplash.com/photo-1555913334-39941c16c6ba?w=600&q=80',
+        transportInfo: '5 phút đi bộ (400m)',
+        rating: 4.7, reviewCount: 18000,
+        status: ActivityStatus.chuaDi,
+        latitude: 10.7797, longitude: 106.6990,
+      ),
+    ];
+
+    final mockActivitiesDay4 = [
+      ItineraryActivityEntity(
+        id: 'hs_1',
+        title: 'Quần đảo Hoàng Sa',
+        locationName: 'Paracel Islands',
+        address: 'Huyện Hoàng Sa, TP. Đà Nẵng, Việt Nam',
+        startTime: '08:00', endTime: '17:00',
+        imageUrl: 'https://images.unsplash.com/photo-1506461883276-594a12b11cf3?w=600&q=80',
+        transportInfo: 'Di chuyển bằng tàu/máy bay',
+        rating: 5.0, reviewCount: 1000,
+        status: ActivityStatus.chuaDi,
+        latitude: 16.5000, longitude: 112.0000,
+      ),
+      ItineraryActivityEntity(
+        id: 'ts_1',
+        title: 'Quần đảo Trường Sa',
+        locationName: 'Spratly Islands',
+        address: 'Huyện Trường Sa, Tỉnh Khánh Hòa, Việt Nam',
+        startTime: '08:00', endTime: '17:00',
+        imageUrl: 'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=600&q=80',
+        transportInfo: 'Di chuyển bằng tàu',
+        rating: 5.0, reviewCount: 2000,
+        status: ActivityStatus.chuaDi,
+        latitude: 10.0000, longitude: 114.0000,
       ),
     ];
 
     final List<ItineraryDayEntity> displayDays = [
       ItineraryDayEntity(
-        dayNumber: 1,
-        date: firstDayDate,
-        temperature: 31,
-        totalDuration: '5 giờ tham quan',
-        locationsCount: mockActivitiesDay1.length,
-        dayBudget: 60000.0,
-        activities: mockActivitiesDay1,
+        dayNumber: 1, date: firstDayDate, temperature: 31,
+        totalDuration: '5 giờ tham quan', locationsCount: mockActivitiesDay1.length,
+        dayBudget: 60000.0, activities: mockActivitiesDay1,
       ),
       ItineraryDayEntity(
-        dayNumber: 2,
-        date: firstDayDate.add(const Duration(days: 1)),
-        temperature: 30,
-        totalDuration: '6 giờ tham quan',
-        locationsCount: mockActivitiesDay2.length,
-        dayBudget: 0.0,
-        activities: mockActivitiesDay2,
+        dayNumber: 2, date: firstDayDate.add(const Duration(days: 1)), temperature: 30,
+        totalDuration: '6 giờ tham quan', locationsCount: mockActivitiesDay2.length,
+        dayBudget: 0.0, activities: mockActivitiesDay2,
+      ),
+      ItineraryDayEntity(
+        dayNumber: 3, date: firstDayDate.add(const Duration(days: 2)), temperature: 33,
+        totalDuration: '4 giờ tham quan', locationsCount: mockActivitiesDay3.length,
+        dayBudget: 0.0, activities: mockActivitiesDay3,
+      ),
+      ItineraryDayEntity(
+        dayNumber: 4, date: firstDayDate.add(const Duration(days: 3)), temperature: 28,
+        totalDuration: 'Toàn ngày', locationsCount: mockActivitiesDay4.length,
+        dayBudget: 0.0, activities: mockActivitiesDay4,
       ),
     ];
+
+    return itin.copyWith(days: displayDays);
 
     return itin.copyWith(days: displayDays);
   }

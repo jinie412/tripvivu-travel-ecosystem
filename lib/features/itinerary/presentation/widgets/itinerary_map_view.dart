@@ -151,6 +151,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
   void _onStyleLoaded(mapbox.StyleLoadedEventData event) async {
     if (!mounted) return;
     _isStyleLoaded = true;
+    
     _pointAnnotationManager = await _mapboxMap?.annotations.createPointAnnotationManager();
     _pointAnnotationManager?.addOnPointAnnotationClickListener(this);
     _updateMapContent();
