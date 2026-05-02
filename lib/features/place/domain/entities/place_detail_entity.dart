@@ -23,5 +23,7 @@ class PlaceDetailEntity with _$PlaceDetailEntity {
     @Default([]) List<PlaceReviewEntity> reviews,
     @Default([]) List<PlaceEntity> relatedPlaces,
     @Default(false) bool isFavorite,
+    double? latitude,
+    double? longitude,
   }) = _PlaceDetailEntity;
 }

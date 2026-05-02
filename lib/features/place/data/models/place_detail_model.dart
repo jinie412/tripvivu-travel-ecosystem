@@ -29,6 +29,8 @@ class PlaceDetailModel {
   final List<PlaceModel> relatedPlaces;
   @JsonKey(name: 'is_favorite')
   final bool isFavorite;
+  final double? latitude;
+  final double? longitude;
 
   const PlaceDetailModel({
     required this.id,
@@ -47,6 +49,8 @@ class PlaceDetailModel {
     this.reviews = const [],
     this.relatedPlaces = const [],
     this.isFavorite = false,
+    this.latitude,
+    this.longitude,
   });
 
   factory PlaceDetailModel.fromJson(Map<String, dynamic> json) => _$PlaceDetailModelFromJson(json);
@@ -69,5 +73,7 @@ class PlaceDetailModel {
     reviews: reviews.map((e) => e.toEntity()).toList(),
     relatedPlaces: relatedPlaces.map((e) => e.toEntity()).toList(),
     isFavorite: isFavorite,
+    latitude: latitude,
+    longitude: longitude,
   );
 }

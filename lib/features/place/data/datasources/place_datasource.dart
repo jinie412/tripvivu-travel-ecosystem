@@ -32,6 +32,8 @@ class MockPlaceDataSource implements PlaceDataSource {
       closingHours: '23:00',
       phone: '(028) 38 299 919',
       isFavorite: true,
+      latitude: 10.7766,
+      longitude: 106.7032,
       reviews: [
         PlaceReviewModel(
           id: 'rv-001',
@@ -136,6 +138,8 @@ class RemotePlaceDataSource implements PlaceDataSource {
       reviews: reviewList,
       relatedPlaces: related,
       isFavorite: json['is_favorite'] == true,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 

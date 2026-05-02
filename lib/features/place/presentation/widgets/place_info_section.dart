@@ -7,6 +7,7 @@ class PlaceInfoSection extends StatelessWidget {
   final double rating;
   final String location;
   final List<String> tags;
+  final VoidCallback? onLocationTap;
 
   const PlaceInfoSection({
     super.key,
@@ -14,6 +15,7 @@ class PlaceInfoSection extends StatelessWidget {
     required this.rating,
     required this.location,
     required this.tags,
+    this.onLocationTap,
   });
 
   @override
@@ -39,18 +41,26 @@ class PlaceInfoSection extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          location,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary, 
-                            fontSize: 13,
-                          ),
+                    InkWell(
+                      onTap: onLocationTap,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              location,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary, 
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

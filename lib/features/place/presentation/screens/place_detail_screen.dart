@@ -11,6 +11,7 @@ import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_info_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_review_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/related_places_section.dart';
+import 'package:travel_advisor_mobile/core/widgets/map_bottom_sheet.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String placeId;
@@ -97,6 +98,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     rating: place.rating,
                     location: '${place.district}, ${place.city}',
                     tags: place.tags,
+                    onLocationTap: () => _showMap(
+                      context,
+                      place.latitude ?? 10.7766,
+                      place.longitude ?? 106.7032,
+                      place.name,
+                      place.address,
+                    ),
                   ),
                   
                   // 3. Image Gallery
@@ -111,6 +119,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     closingTime: place.closingHours,
                     phone: place.phone,
                     address: place.address,
+                    onLocationTap: () => _showMap(
+                      context,
+                      place.latitude ?? 10.7766,
+                      place.longitude ?? 106.7032,
+                      place.name,
+                      place.address,
+                    ),
                   ),
                   
                   // 6. Reviews Section
@@ -132,6 +147,20 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           
           return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  void _showMap(BuildContext context, double lat, double lng, String title, String address) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MapBottomSheet(
+        latitude: lat,
+        longitude: lng,
+        name: title,
+        address: address,
       ),
     );
   }

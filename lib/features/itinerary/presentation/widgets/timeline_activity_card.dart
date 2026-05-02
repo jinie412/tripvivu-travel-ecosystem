@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 import 'package:intl/intl.dart';
 
@@ -17,10 +18,12 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onDeleteTap;
   final VoidCallback? onReplaceTap;
   final VoidCallback? onCardTap;
+  final VoidCallback? onCardLongPress;
   final VoidCallback? onStartTimeTap;
   final VoidCallback? onEndTimeTap;
   final VoidCallback? onRateTap;
   final int day;
+  final bool isHighlighted;
 
   const TimelineActivityCard({
     super.key,
@@ -32,10 +35,12 @@ class TimelineActivityCard extends StatelessWidget {
     this.onDeleteTap,
     this.onReplaceTap,
     this.onCardTap,
+    this.onCardLongPress,
     this.onStartTimeTap,
     this.onEndTimeTap,
     this.onRateTap,
     required this.day,
+    this.isHighlighted = false,
   });
 
   String _formatReviewCount(int? count) {
@@ -184,6 +189,7 @@ class TimelineActivityCard extends StatelessWidget {
 
     return InkWell(
       onTap: onCardTap,
+      onLongPress: onCardLongPress,
       borderRadius: BorderRadius.circular(AppSizes.r24),
       child: Container(
         padding: const EdgeInsets.only(right: AppSizes.s8),
@@ -197,18 +203,21 @@ class TimelineActivityCard extends StatelessWidget {
               offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(color: AppColorsExt.divider.withAlpha(40)),
+          border: Border.all(
+            color: isHighlighted 
+                ? AppColors.primary 
+                : AppColorsExt.divider.withAlpha(40),
+            width: isHighlighted ? 2 : 1,
+          ),
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(AppSizes.r24)),
-              child: Image.network(
-                activity.imageUrl,
-                width: 100,
-                height: 125,
-                fit: BoxFit.cover,
-              ),
+            NetImage(
+              url: activity.imageUrl,
+              width: 100,
+              height: 125,
+              borderRadius: AppSizes.r24, // Assuming we want the same curve as the card
+              fit: BoxFit.cover,
             ),
             const SizedBox(width: AppSizes.s12),
             Expanded(
@@ -310,35 +319,42 @@ class TimelineActivityCard extends StatelessWidget {
                           ),
                         ),
                         if (activity.status == ActivityStatus.daDi) ...[
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: onRateTap,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: onRateTap,
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  if (hasUserRated) ...[
-                                    const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '$userRating',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF10B981),
-                                      ),
-                                    ),
-                                  ] else
-                                    Text(
-                                      '(Đánh giá địa điểm này)',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        color: const Color(0xFF2563EB).withValues(alpha: 0.8),
-                                        fontStyle: FontStyle.italic,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
+                                  Flexible(
+                                    child: hasUserRated 
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              '$userRating',
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF10B981),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Text(
+                                          '(Đánh giá)',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: const Color(0xFF2563EB).withValues(alpha: 0.8),
+                                            fontStyle: FontStyle.italic,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -374,12 +390,16 @@ class TimelineActivityCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            activity.transportInfo ?? '10-20 phút di chuyển',
-            style: AppTextStylesExt.bodySmall.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColorsExt.textDark,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              activity.transportInfo ?? '10-20 phút di chuyển',
+              style: AppTextStylesExt.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColorsExt.textDark,
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: AppSizes.s8),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/navigation/main_shell.dart';
@@ -25,6 +26,13 @@ void main() async {
   );
   await initializeDateFormatting('vi_VN', null);
   await initDependencies();
+  
+  // ✅ KHỞI TẠO MAPBOX SDK
+  // Lưu ý: Mapbox v2 bắt buộc dùng Mapbox Public Token (pk...) để khởi động engine.
+  // Goong Key sẽ được dùng riêng trong Style URL ở các Widget.
+  String mapboxPublicToken = dotenv.env['MAPBOX_PUBLIC_TOKEN'] ?? 'pk.eyJ1IjoibWFwdHJhdmVsNjgiLCJhIjoiY21vbmpkdXh4MDF0YTJxczlhMzQ3ZzF1cSJ9.gC1J7jzlMnFD_yHe-4JgqQ';
+  MapboxOptions.setAccessToken(mapboxPublicToken);
+
   runApp(const TravelAdvisorApp());
 }
 

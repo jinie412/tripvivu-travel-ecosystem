@@ -7,6 +7,7 @@ class PlaceContactSection extends StatelessWidget {
   final String closingTime;
   final String phone;
   final String address;
+  final VoidCallback? onLocationTap;
 
   const PlaceContactSection({
     super.key,
@@ -14,6 +15,7 @@ class PlaceContactSection extends StatelessWidget {
     required this.closingTime,
     required this.phone,
     required this.address,
+    this.onLocationTap,
   });
 
   @override
@@ -38,35 +40,42 @@ class PlaceContactSection extends StatelessWidget {
             Icons.location_on_outlined, 
             address,
             const Color(0xFFF43F5E),
+            onTap: onLocationTap,
+            isLink: true,
           ),
         ],
       ),
     );
   }
 
-  Widget _contactItem(IconData icon, String text, Color iconColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14, 
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w500,
+  Widget _contactItem(IconData icon, String text, Color iconColor, {VoidCallback? onTap, bool isLink = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: isLink ? const Color(0xFF2563EB) : AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                  decoration: isLink ? TextDecoration.underline : null,
+                  decorationColor: const Color(0xFF2563EB).withValues(alpha: 0.5),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -120,9 +120,13 @@ class _DetailedPlaceCardState extends State<DetailedPlaceCard> {
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '(${widget.reviews} đánh giá)',
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                      Flexible(
+                        child: Text(
+                          '(${widget.reviews} đánh giá)',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

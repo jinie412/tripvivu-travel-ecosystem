@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+
 
 import 'activity_edit_screen.dart';
 
@@ -25,6 +26,8 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/ti
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
+import '../widgets/itinerary_map_view.dart';
+
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -43,9 +46,10 @@ class ItineraryDetailScreen extends StatefulWidget {
 class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   int _selectedDay = 1;
   bool _isPublic = true;
-  GoogleMapController? _mapController;
+  MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _activityKeys = {};
+  String? _highlightedActivityId;
 
   void _showAddPlaceScreen() {
     void onAdd(String name) {
@@ -107,6 +111,21 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _scrollToActivity(String activityId) {
+    setState(() => _highlightedActivityId = activityId);
+    
+    // Tìm activity để lấy tọa độ và zoom nhẹ
+    final itin = (context.read<ItineraryCubit>().state as ItineraryLoaded).selectedItinerary;
+    final activity = itin?.days.expand((d) => d.activities).firstWhere((a) => a.id == activityId);
+    if (activity != null && activity.latitude != null && activity.longitude != null) {
+      _mapController?.setCamera(
+        CameraOptions(
+          center: Point(coordinates: Position(activity.longitude!, activity.latitude!)),
+          zoom: 15,
+        ),
+      );
+      // Mapbox v0.4.4 doesn't have showMarkerInfoWindow, we'd need a custom popup
+    }
+
     final key = _activityKeys[activityId];
     if (key != null && key.currentContext != null) {
       Scrollable.ensureVisible(
@@ -115,18 +134,28 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         alignment: 0.1,
       );
     }
+
+    // Reset highlight after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _highlightedActivityId = null);
+      }
+    });
   }
 
   void _zoomToActivity(ItineraryActivityEntity activity) {
     if (activity.latitude != null && activity.longitude != null) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(activity.latitude!, activity.longitude!),
-          15,
+      _mapController?.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(activity.longitude!, activity.latitude!)),
+          zoom: 17,
         ),
+        MapAnimationOptions(duration: 1000),
       );
     }
-    
+  }
+
+  void _navigateToPlaceDetail(ItineraryActivityEntity activity) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -447,6 +476,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         scrollController: _scrollController,
         activityKeys: _activityKeys,
         onActivityTap: _zoomToActivity,
+        onActivityLongPress: _navigateToPlaceDetail,
         onEditActivity: _onEditActivity,
         onReplaceActivity: _onReplaceActivity,
         onDeleteActivity: _onDeleteActivity,
@@ -454,6 +484,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         onEditTime: _onEditTime,
         onShareTap: _showShareSheet,
         onMarkerTap: (id) => _scrollToActivity(id),
+        highlightedActivityId: _highlightedActivityId,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showPreOrderDemo,
@@ -471,11 +502,12 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(int) onDayChanged;
   final Function(bool) onPublicChanged;
   final VoidCallback onAddPlaceTap;
-  final GoogleMapController? mapController;
-  final Function(GoogleMapController) onMapCreated;
+  final MapboxMap? mapController;
+  final Function(MapboxMap) onMapCreated;
   final ScrollController scrollController;
   final Map<String, GlobalKey> activityKeys;
   final Function(ItineraryActivityEntity) onActivityTap;
+  final Function(ItineraryActivityEntity) onActivityLongPress;
   final Function(ItineraryActivityEntity) onEditActivity;
   final Function(ItineraryActivityEntity) onReplaceActivity;
   final Function(ItineraryActivityEntity) onDeleteActivity;
@@ -483,6 +515,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity, bool) onEditTime;
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
+  final String? highlightedActivityId;
 
   const _ItineraryDetailView({
     required this.selectedDay,
@@ -495,6 +528,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.scrollController,
     required this.activityKeys,
     required this.onActivityTap,
+    required this.onActivityLongPress,
     required this.onEditActivity,
     required this.onReplaceActivity,
     required this.onDeleteActivity,
@@ -502,6 +536,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onEditTime,
     required this.onShareTap,
     required this.onMarkerTap,
+    this.highlightedActivityId,
   });
 
   @override
@@ -542,45 +577,68 @@ class _ItineraryDetailView extends StatelessWidget {
 
             return Stack(
               children: [
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 350,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [AppColors.primary, AppColorsExt.profileBlue],
-                      ),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.map_outlined, size: AppSizes.s64, color: Colors.white70),
-                          SizedBox(height: AppSizes.s12),
-                          Text(
-                            'Map is temporarily disabled',
-                            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w500),
+                // ✅ MAP CHIẾM TOÀN MÀN HÌNH (full-screen, tương tác hoàn toàn)
+                Positioned.fill(
+                  child: ItineraryMapView(
+                    activities: currentDayData.activities,
+                    allDays: itin.days,
+                    selectedDay: selectedDay,
+                    onMarkerTap: onMarkerTap,
+                    onMapCreated: onMapCreated,
+                  ),
+                ),
+
+                // ✅ BOTTOM SHEET KÉO LÊN/XUỐNG (DraggableScrollableSheet)
+                DraggableScrollableSheet(
+                  initialChildSize: 0.45,  // Mở 45% màn hình ban đầu
+                  minChildSize: 0.12,      // Thu nhỏ tối đa → gần như chỉ thấy map
+                  maxChildSize: 0.85,      // Mở rộng tối đa → che gần hết map
+                  snap: true,
+                  snapSizes: const [0.12, 0.45, 0.85],
+                  builder: (context, sheetScrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, -4),
                           ),
                         ],
                       ),
-                    ),
-                  ),
+                      child: Column(
+                        children: [
+                          // Thanh kéo (drag handle)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12, bottom: 8),
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          // Nội dung cuộn được
+                          Expanded(
+                            child: ListView(
+                              controller: sheetScrollController,
+                              padding: EdgeInsets.zero,
+                              children: [
+                                _buildContentCard(context, itin, currentDayData, itin.days),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-                
-                SingleChildScrollView(
-                  controller: scrollController,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 280),
-                      _buildContentCard(context, itin, currentDayData, itin.days),
-                    ],
-                  ),
-                ),
-                
+
+                // ✅ FLOATING BUTTONS (Back, Share, Rate) ở trên cùng
                 Positioned(
                   top: MediaQuery.of(context).padding.top + AppSizes.s12,
                   left: AppSizes.s20,
@@ -618,27 +676,14 @@ class _ItineraryDetailView extends StatelessWidget {
                             ],
                           ),
                         ),
-                      const SizedBox(width: AppSizes.s16),
-                      Expanded(
-                        child: Text(
-                          itin.title,
-                          style: AppTextStyles.body.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(width: AppSizes.s16),
+                      const Spacer(),
                       _floatingCircleButton(Icons.share_outlined, onShareTap),
                     ],
                   ),
                 ),
               ],
             );
+
           }
           return const SizedBox.shrink();
         },
@@ -706,7 +751,9 @@ class _ItineraryDetailView extends StatelessWidget {
               onReplaceTap: () => onReplaceActivity(activity),
               onDeleteTap: () => onDeleteActivity(activity),
               onRateTap: () => onRateActivity(activity),
-              onCardTap: () => onEditActivity(activity),
+              onCardTap: () => onActivityTap(activity),
+              onCardLongPress: () => onActivityLongPress(activity),
+              isHighlighted: highlightedActivityId == activity.id,
               onStartTimeTap: () => onEditTime(activity, true),
               onEndTimeTap: () => onEditTime(activity, false),
             );
