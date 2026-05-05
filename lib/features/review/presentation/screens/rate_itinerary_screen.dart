@@ -219,7 +219,7 @@ class _RateItineraryView extends StatelessWidget {
                                     }
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Đã gửi đánh giá thành công!'),
+                                        content: Text('Cảm ơn bạn đã đánh giá!'),
                                         backgroundColor: Color(0xFF22C55E),
                                       ),
                                     );

@@ -180,7 +180,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Cảm ơn bạn đã phản hồi!'),
+                                content: Text('Cảm ơn bạn đã đánh giá!'),
                                 backgroundColor: Color(0xFF22C55E),
                               ),
                             );

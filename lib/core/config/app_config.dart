@@ -7,7 +7,7 @@ class AppConfig {
   static const bool kUseMockData = false; 
 
   /// Tự động bỏ qua màn hình đăng nhập nếu đang ở chế độ Demo
-  static const bool kSkipLogin = kUseMockData;
+  static const bool kSkipLogin = false;
 
   /// 🗺️ CẤU HÌNH BẢN ĐỒ
   static String get kMapProvider => 'goong'; 
