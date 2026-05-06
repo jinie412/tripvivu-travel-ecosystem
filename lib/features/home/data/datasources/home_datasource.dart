@@ -145,10 +145,6 @@ class RemoteHomeDataSource implements HomeDataSource {
 
   RemoteHomeDataSource(this._client);
 
-  String _requireTouristId() {
-    throw UnimplementedError('Use AuthUtils.requireCurrentUserId() instead');
-  }
-
   @override
   Future<ExploreHomePayload> getExploreHome() async {
     final touristId = await AuthUtils.requireCurrentUserId();
@@ -328,6 +324,7 @@ class RemoteHomeDataSource implements HomeDataSource {
         'category': category,
         'page': 1,
         'limit': limit,
+        '_ts': DateTime.now().millisecondsSinceEpoch,
       },
     );
 
@@ -351,8 +348,10 @@ class RemoteHomeDataSource implements HomeDataSource {
 
   @override
   Future<List<CityRestaurant>> getRestaurants({int limit = 5}) async {
-    final items = await _getPlacesByCategory(category: 'restaurant', limit: limit);
-    return items.map(_mapRestaurant).toList();
+    return getRestaurantsByCategories(
+      categories: const ['ẩm thực'],
+      limitPerCategory: limit,
+    );
   }
 
   CityRestaurant _mapRestaurant(Map<String, dynamic> item) {
@@ -375,14 +374,20 @@ class RemoteHomeDataSource implements HomeDataSource {
     required List<String> categories,
     int limitPerCategory = 50,
   }) async {
-    final groups = await Future.wait(
-      categories.map(
-        (category) => _getPlacesByCategory(
-          category: category,
-          limit: limitPerCategory,
-        ),
-      ),
-    );
+    final groups = <List<Map<String, dynamic>>>[];
+
+    for (final category in categories) {
+      try {
+        groups.add(
+          await _getPlacesByCategory(
+            category: category,
+            limit: limitPerCategory,
+          ),
+        );
+      } catch (_) {
+        continue;
+      }
+    }
 
     final merged = _mergeById(groups);
     return merged.map(_mapRestaurant).toList();
@@ -393,14 +398,20 @@ class RemoteHomeDataSource implements HomeDataSource {
     required List<String> categories,
     int limitPerCategory = 50,
   }) async {
-    final groups = await Future.wait(
-      categories.map(
-        (category) => _getPlacesByCategory(
-          category: category,
-          limit: limitPerCategory,
-        ),
-      ),
-    );
+    final groups = <List<Map<String, dynamic>>>[];
+
+    for (final category in categories) {
+      try {
+        groups.add(
+          await _getPlacesByCategory(
+            category: category,
+            limit: limitPerCategory,
+          ),
+        );
+      } catch (_) {
+        continue;
+      }
+    }
 
     final merged = _mergeById(groups);
     return merged.map(_mapHotel).toList();

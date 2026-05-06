@@ -108,7 +108,6 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => ExploreCubit(
       getExploreHome: sl(),
-      getRestaurants: sl(),
       getPublicSuggestions: sl(),
       getFeaturedDestinations: sl(),
       getRestaurantsByCategories: sl(),

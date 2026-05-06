@@ -10,7 +10,6 @@ import 'package:travel_advisor_mobile/core/config/app_config.dart';
 
 class ExploreCubit extends Cubit<ExploreState> {
   final GetExploreHomeUseCase _getExploreHome;
-  final GetRestaurantsUseCase _getRestaurants;
   final GetPublicSuggestionsUseCase _getPublicSuggestions;
   final GetFeaturedDestinationsUseCase _getFeaturedDestinations;
   final GetRestaurantsByCategoriesUseCase _getRestaurantsByCategories;
@@ -18,13 +17,11 @@ class ExploreCubit extends Cubit<ExploreState> {
 
   ExploreCubit({
     required GetExploreHomeUseCase getExploreHome,
-    required GetRestaurantsUseCase getRestaurants,
     required GetPublicSuggestionsUseCase getPublicSuggestions,
     required GetFeaturedDestinationsUseCase getFeaturedDestinations,
     required GetRestaurantsByCategoriesUseCase getRestaurantsByCategories,
     required GetHotelsByCategoriesUseCase getHotelsByCategories,
   })  : _getExploreHome = getExploreHome,
-        _getRestaurants = getRestaurants,
         _getPublicSuggestions = getPublicSuggestions,
         _getFeaturedDestinations = getFeaturedDestinations,
         _getRestaurantsByCategories = getRestaurantsByCategories,
@@ -57,7 +54,10 @@ class ExploreCubit extends Cubit<ExploreState> {
 
       final List<CityRestaurant> topRestaurants =
           await _safeLoad<List<CityRestaurant>>(
-        () => _getRestaurants(limit: 5),
+        () => _getRestaurantsByCategories(
+          categories: const ['ẩm thực'],
+          limitPerCategory: 5,
+        ),
         const <CityRestaurant>[],
       );
 
@@ -76,7 +76,7 @@ class ExploreCubit extends Cubit<ExploreState> {
       final List<CityRestaurant> allRestaurants =
           await _safeLoad<List<CityRestaurant>>(
         () => _getRestaurantsByCategories(
-          categories: const ['restaurant', 'nhà hàng'],
+          categories: const ['ẩm thực'],
           limitPerCategory: 200,
         ),
         topRestaurants,
@@ -84,7 +84,7 @@ class ExploreCubit extends Cubit<ExploreState> {
 
       final List<CityHotel> allHotels = await _safeLoad<List<CityHotel>>(
         () => _getHotelsByCategories(
-          categories: const ['hotel', 'khách sạn'],
+          categories: const ['lưu trú'],
           limitPerCategory: 200,
         ),
         data.hotels,
