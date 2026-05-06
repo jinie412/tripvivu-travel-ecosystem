@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
 
 /// Shared utility for authentication-related operations
 class AuthUtils {
@@ -10,6 +11,8 @@ class AuthUtils {
   /// Returns the user ID if available, null otherwise.
   /// Decodes the JWT payload to extract the userId or sub claim.
   static Future<String?> getCurrentUserId() async {
+    if (AppConfig.kUseMockData) return 'dummy_tourist_id';
+
     try {
       final accessToken = await _storage.read(key: 'access_token');
       if (accessToken == null || accessToken.isEmpty) return null;

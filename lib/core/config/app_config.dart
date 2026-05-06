@@ -4,10 +4,10 @@ class AppConfig {
   /// 🔧 TRUNG TÂM ĐIỀU KHIỂN CHẾ ĐỘ DEMO
   /// - true: Dùng dữ liệu mẫu (Mock data), bỏ qua Login, Backend.
   /// - false: Kết nối API thật, yêu cầu Login.
-  static const bool kUseMockData = false; 
+  static const bool kUseMockData = true; 
 
   /// Tự động bỏ qua màn hình đăng nhập nếu đang ở chế độ Demo
-  static const bool kSkipLogin = kUseMockData;
+  static const bool kSkipLogin = true;
 
   /// 🗺️ CẤU HÌNH BẢN ĐỒ
   static String get kMapProvider => 'goong'; 
@@ -20,7 +20,7 @@ class AppConfig {
   
   static String get kGoogleMapKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
   
-  /// ✅ Goong Map Style URL - Dùng MAPTILES KEY để load tiles
+  /// Goong Map Style URL - Dùng MAPTILES KEY để load tiles
   static String get kGoongMapStyle {
     final baseUrl = dotenv.env['GOONG_MAP_STYLE'] ?? 'https://tiles.goong.io/assets/goong_map_web.json';
     return '$baseUrl?api_key=$kGoongMaptilesKey';

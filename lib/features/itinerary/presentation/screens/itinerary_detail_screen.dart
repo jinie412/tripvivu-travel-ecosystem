@@ -27,6 +27,7 @@ import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_de
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 import '../widgets/itinerary_map_view.dart';
+import '../widgets/replace_place_sheet.dart';
 
 
 class ItineraryDetailScreen extends StatefulWidget {
@@ -46,6 +47,7 @@ class ItineraryDetailScreen extends StatefulWidget {
 class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   int _selectedDay = 1;
   bool _isPublic = true;
+  bool _isEditMode = false;
   MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _activityKeys = {};
@@ -215,13 +217,19 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onReplaceActivity(ItineraryActivityEntity activity) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng thay thế địa điểm đang được phát triển!'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
-      ),
+    ReplacePlaceSheet.show(
+      context,
+      activity: activity,
+      onReplace: (id, name) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã thay thế bằng "$name"'),
+            backgroundColor: AppColorsExt.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+          ),
+        );
+      },
     );
   }
 
@@ -485,6 +493,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         onShareTap: _showShareSheet,
         onMarkerTap: (id) => _scrollToActivity(id),
         highlightedActivityId: _highlightedActivityId,
+        isEditMode: _isEditMode,
+        onEditModeTap: () => setState(() => _isEditMode = !_isEditMode),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showPreOrderDemo,
@@ -516,6 +526,8 @@ class _ItineraryDetailView extends StatelessWidget {
   final VoidCallback onShareTap;
   final Function(String) onMarkerTap;
   final String? highlightedActivityId;
+  final bool isEditMode;
+  final VoidCallback onEditModeTap;
 
   const _ItineraryDetailView({
     required this.selectedDay,
@@ -537,6 +549,8 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onShareTap,
     required this.onMarkerTap,
     this.highlightedActivityId,
+    required this.isEditMode,
+    required this.onEditModeTap,
   });
 
   @override
@@ -649,34 +663,25 @@ class _ItineraryDetailView extends StatelessWidget {
                       if (itin.status == 'COMPLETED' || itin.status == 'ONGOING' || itin.endDate.isBefore(DateTime.now()))
                         Padding(
                           padding: const EdgeInsets.only(left: AppSizes.s12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _floatingCircleButton(Icons.star_outline_rounded, () {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => ItineraryReviewDialog(
-                                      itineraryId: itin.id,
-                                      itineraryTitle: itin.title,
-                                      totalLocations: itin.totalLocations,
-                                      visitedLocations: itin.visitedLocations,
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: 2),
-                              const Text(
-                                'Đánh giá',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                                ),
+                          child: _floatingCircleButton(Icons.star_outline_rounded, () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => ItineraryReviewDialog(
+                                  itineraryId: itin.id,
+                                  itineraryTitle: itin.title,
+                                  totalLocations: itin.totalLocations,
+                                  visitedLocations: itin.visitedLocations,
                               ),
-                            ],
-                          ),
+                            );
+                          }),
                         ),
                       const Spacer(),
+                      _floatingCircleButton(
+                        isEditMode ? Icons.edit_off : Icons.edit_outlined,
+                        onEditModeTap,
+                        active: isEditMode,
+                      ),
+                      const SizedBox(width: AppSizes.s12),
                       _floatingCircleButton(Icons.share_outlined, onShareTap),
                     ],
                   ),
@@ -756,6 +761,7 @@ class _ItineraryDetailView extends StatelessWidget {
               isHighlighted: highlightedActivityId == activity.id,
               onStartTimeTap: () => onEditTime(activity, true),
               onEndTimeTap: () => onEditTime(activity, false),
+              isEditMode: isEditMode,
             );
           }),
           const SizedBox(height: AppSizes.s24),
@@ -778,9 +784,9 @@ class _ItineraryDetailView extends StatelessWidget {
     );
   }
 
-  Widget _floatingCircleButton(IconData icon, VoidCallback onTap) {
+  Widget _floatingCircleButton(IconData icon, VoidCallback onTap, {bool active = false}) {
     return Material(
-      color: Colors.black.withAlpha(120),
+      color: active ? AppColors.primary.withAlpha(220) : Colors.black.withAlpha(120),
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

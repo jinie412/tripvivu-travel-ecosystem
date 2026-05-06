@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dio/dio.dart';
 
 import 'place_review_screen.dart';
 
@@ -218,7 +219,7 @@ class _RateItineraryView extends StatelessWidget {
                                     }
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Đã gửi đánh giá thành công!'),
+                                        content: Text('Cảm ơn bạn đã đánh giá!'),
                                         backgroundColor: Color(0xFF22C55E),
                                       ),
                                     );
@@ -231,13 +232,33 @@ class _RateItineraryView extends StatelessWidget {
                                       }
                                     }
                                   } catch (e) {
-                                    if (!context.mounted) {
-                                      return;
+                                    if (!context.mounted) return;
+                                    
+                                    String errorMessage = 'Lỗi hệ thống, vui lòng thử lại sau.';
+                                    if (e is DioException) {
+                                      if (e.response != null && e.response?.data != null) {
+                                        if (e.response?.data is Map) {
+                                          final msg = e.response!.data['message'];
+                                          if (msg is List) {
+                                            errorMessage = msg.join(', ');
+                                          } else {
+                                            errorMessage = msg?.toString() ?? e.toString();
+                                          }
+                                        } else {
+                                          errorMessage = e.response?.data.toString() ?? e.toString();
+                                        }
+                                      } else {
+                                        errorMessage = e.message ?? e.toString();
+                                      }
+                                    } else {
+                                      errorMessage = e.toString();
                                     }
+
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Không thể gửi đánh giá: $e'),
+                                        content: Text(errorMessage),
                                         backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 4),
                                       ),
                                     );
                                   }
