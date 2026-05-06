@@ -24,6 +24,7 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onRateTap;
   final int day;
   final bool isHighlighted;
+  final bool isEditMode;
 
   const TimelineActivityCard({
     super.key,
@@ -41,6 +42,7 @@ class TimelineActivityCard extends StatelessWidget {
     this.onRateTap,
     required this.day,
     this.isHighlighted = false,
+    this.isEditMode = false,
   });
 
   String _formatReviewCount(int? count) {
@@ -69,8 +71,9 @@ class TimelineActivityCard extends StatelessWidget {
           content: _buildActivityCard(context),
           showLine: true,
           isCompleted: activity.status == ActivityStatus.daDi,
+          isEditMode: isEditMode,
         ),
-        
+
         // 2. Transition Item (if exists)
         if (activity.transportInfo != null)
           _buildItem(
@@ -81,6 +84,7 @@ class TimelineActivityCard extends StatelessWidget {
             content: _buildTransitionChip(),
             showLine: !isLast,
             isTransition: true,
+            isEditMode: isEditMode,
           ),
       ],
     );
@@ -94,34 +98,48 @@ class TimelineActivityCard extends StatelessWidget {
     required bool showLine,
     bool isTransition = false,
     bool isCompleted = false,
+    bool isEditMode = false,
   }) {
+    final isStartTime = label.contains('Tham quan');
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Timeline Indicator
           ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 50), // Co dãn theo nội dung, tối thiểu 50
+            constraints: const BoxConstraints(minWidth: 50),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                InkWell(
-                  onTap: label.contains('Tham quan') ? onStartTimeTap : onEndTimeTap,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                    child: Text(
-                      time,
-                      style: AppTextStylesExt.bodySmall.copyWith(
-                        color: AppColors.primary, // Đổi màu để nhận diện có thể bấm
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        decoration: TextDecoration.underline, // Gạch chân gợi ý
-                        decorationStyle: TextDecorationStyle.dashed,
+                isEditMode
+                    ? InkWell(
+                        onTap: isStartTime ? onStartTimeTap : onEndTimeTap,
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                          child: Text(
+                            time,
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              decoration: TextDecoration.underline,
+                              decorationStyle: TextDecorationStyle.dashed,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                        child: Text(
+                          time,
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: AppSizes.s8),
                 isCompleted
                     ? const Padding(
@@ -163,13 +181,27 @@ class TimelineActivityCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 38), // Push content down to align roughly with icon
-                  Text(
-                    label,
-                    style: AppTextStylesExt.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
+                  const SizedBox(height: 38),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTextStylesExt.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (isEditMode && !isTransition)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _smallEditAction(Icons.swap_horiz_rounded, const Color(0xFFF59E0B), onReplaceTap),
+                            const SizedBox(width: 6),
+                            _smallEditAction(Icons.delete_outline_rounded, const Color(0xFFEF4444), onDeleteTap),
+                          ],
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSizes.s8),
                   content,
@@ -204,8 +236,8 @@ class TimelineActivityCard extends StatelessWidget {
             ),
           ],
           border: Border.all(
-            color: isHighlighted 
-                ? AppColors.primary 
+            color: isHighlighted
+                ? AppColors.primary
                 : AppColorsExt.divider.withAlpha(40),
             width: isHighlighted ? 2 : 1,
           ),
@@ -216,7 +248,7 @@ class TimelineActivityCard extends StatelessWidget {
               url: activity.imageUrl,
               width: 100,
               height: 125,
-              borderRadius: AppSizes.r24, // Assuming we want the same curve as the card
+              borderRadius: AppSizes.r24,
               fit: BoxFit.cover,
             ),
             const SizedBox(width: AppSizes.s12),
@@ -235,7 +267,7 @@ class TimelineActivityCard extends StatelessWidget {
                           child: Text(
                             activity.title,
                             style: AppTextStyles.heading2.copyWith(
-                              fontSize: 15,
+                              fontSize: 14,
                               color: AppColorsExt.textDark,
                               height: 1.2,
                             ),
@@ -244,16 +276,6 @@ class TimelineActivityCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        if (onEditTap != null || onDeleteTap != null)
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.more_vert, color: Color(0xFF94A3B8), size: 20),
-                              onPressed: () {}, // Handled by onCardTap for now or can add PopupMenu
-                            ),
-                          ),
                       ],
                     ),
                     const SizedBox(height: AppSizes.s4),
@@ -268,7 +290,6 @@ class TimelineActivityCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSizes.s4),
-                    // Price Tag
                     if (activity.isFree)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -297,69 +318,73 @@ class TimelineActivityCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            'Vé vào cửa',
-                            style: AppTextStylesExt.captionSmall.copyWith(
-                              fontSize: 10,
+                          Flexible(
+                            child: Text(
+                              'Vé vào cửa',
+                              style: AppTextStylesExt.captionSmall.copyWith(
+                                fontSize: 10,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
                     const SizedBox(height: AppSizes.s8),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Icon(Icons.star, color: Color(0xFFFFC107), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
-                          style: AppTextStylesExt.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11,
-                          ),
-                        ),
-                        if (activity.status == ActivityStatus.daDi) ...[
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: onRateTap,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Flexible(
-                                    child: hasUserRated 
-                                      ? Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              '$userRating',
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF10B981),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Text(
-                                          '(Đánh giá)',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: const Color(0xFF2563EB).withValues(alpha: 0.8),
-                                            fontStyle: FontStyle.italic,
-                                            decoration: TextDecoration.underline,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                  ),
-                                ],
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: Color(0xFFFFC107), size: 13),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
+                              style: AppTextStylesExt.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
                               ),
                             ),
+                          ],
+                        ),
+                        if (activity.status == ActivityStatus.daDi)
+                          GestureDetector(
+                            onTap: onRateTap,
+                            child: hasUserRated
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '$userRating',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'Đánh giá',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Color(0xFF2563EB),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                           ),
-                        ],
                       ],
                     ),
                   ],
@@ -368,6 +393,22 @@ class TimelineActivityCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _smallEditAction(IconData icon, Color color, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
+        ),
+        child: Icon(icon, size: 14, color: color),
       ),
     );
   }
