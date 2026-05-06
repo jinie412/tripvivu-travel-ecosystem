@@ -27,6 +27,7 @@ import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_de
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 import '../widgets/itinerary_map_view.dart';
+import '../widgets/replace_place_sheet.dart';
 
 
 class ItineraryDetailScreen extends StatefulWidget {
@@ -216,13 +217,19 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onReplaceActivity(ItineraryActivityEntity activity) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tính năng thay thế địa điểm đang được phát triển!'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
-      ),
+    ReplacePlaceSheet.show(
+      context,
+      activity: activity,
+      onReplace: (id, name) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã thay thế bằng "$name"'),
+            backgroundColor: AppColorsExt.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+          ),
+        );
+      },
     );
   }
 
