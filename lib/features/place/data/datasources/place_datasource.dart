@@ -21,7 +21,7 @@ class MockPlaceDataSource implements PlaceDataSource {
       city: 'TP. HCM',
       rating: 4.5,
       totalReviews: 1248,
-      tags: ['Văn hóa - lịch sử', 'Tham quan - chụp ảnh'],
+      vibes: ['Văn hóa - lịch sử', 'Tham quan - chụp ảnh'],
       images: [
         'https://kyhoatourist.com.vn/uploadwb/image/tintuc/nha-hat-lon-2.jpg',
         'https://static.vinwonders.com/production/nha-hat-thanh-pho-1.jpg',
@@ -129,7 +129,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
       city: (json['city'] ?? '').toString(),
       rating: ((json['rating'] as num?) ?? 0).toDouble(),
       totalReviews: (reviewInfo['total'] as num?)?.toInt() ?? (json['review_count'] as num?)?.toInt() ?? 0,
-      tags: _toStringList(json['tags']),
+      vibes: _toStringList(json['vibes']),
       images: gallery,
       description: (json['description'] ?? '').toString(),
       openingHours: (json['open_time'] ?? '').toString(),

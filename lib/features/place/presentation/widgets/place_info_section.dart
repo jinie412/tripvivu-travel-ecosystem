@@ -6,7 +6,7 @@ class PlaceInfoSection extends StatelessWidget {
   final String name;
   final double rating;
   final String location;
-  final List<String> tags;
+  final List<String> vibes;
   final VoidCallback? onLocationTap;
 
   const PlaceInfoSection({
@@ -14,7 +14,7 @@ class PlaceInfoSection extends StatelessWidget {
     required this.name,
     required this.rating,
     required this.location,
-    required this.tags,
+    required this.vibes,
     this.onLocationTap,
   });
 
@@ -70,11 +70,12 @@ class PlaceInfoSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: tags.map((tag) => _tagWidget(tag)).toList(),
-          ),
+          if (vibes.isNotEmpty)
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: vibes.map((vibe) => _vibeWidget(vibe)).toList(),
+            ),
         ],
       ),
     );
@@ -104,7 +105,7 @@ class PlaceInfoSection extends StatelessWidget {
     );
   }
 
-  Widget _tagWidget(String tag) {
+  Widget _vibeWidget(String vibe) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -113,7 +114,7 @@ class PlaceInfoSection extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE0F2FE)),
       ),
       child: Text(
-        tag,
+        vibe,
         style: const TextStyle(
           color: Color(0xFF0369A1), 
           fontSize: 11, 

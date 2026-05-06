@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class PlaceContactSection extends StatelessWidget {
-  final String openingTime;
-  final String closingTime;
-  final String phone;
+  final String? openingTime;
+  final String? closingTime;
+  final String? phone;
   final String address;
   final VoidCallback? onLocationTap;
 
@@ -26,13 +26,13 @@ class PlaceContactSection extends StatelessWidget {
         children: [
           _contactItem(
             Icons.access_time, 
-            'Mở cửa $openingTime - Đóng cửa $closingTime',
+            _buildOpeningHoursText(),
             const Color(0xFF0EA5E9),
           ),
           const SizedBox(height: 12),
           _contactItem(
             Icons.phone_outlined, 
-            phone,
+            phone?.trim().isNotEmpty == true ? phone! : 'Chưa cập nhật số điện thoại',
             const Color(0xFF10B981),
           ),
           const SizedBox(height: 12),
@@ -46,6 +46,18 @@ class PlaceContactSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _buildOpeningHoursText() {
+    final openText = openingTime?.trim();
+    final closeText = closingTime?.trim();
+
+    if ((openText == null || openText.isEmpty) &&
+        (closeText == null || closeText.isEmpty)) {
+      return 'Chưa cập nhật giờ mở cửa';
+    }
+
+    return 'Mở cửa ${openText?.isNotEmpty == true ? openText : '--'} - Đóng cửa ${closeText?.isNotEmpty == true ? closeText : '--'}';
   }
 
   Widget _contactItem(IconData icon, String text, Color iconColor, {VoidCallback? onTap, bool isLink = false}) {

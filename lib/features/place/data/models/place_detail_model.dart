@@ -14,16 +14,17 @@ class PlaceDetailModel {
   final String district;
   final String city;
   final double rating;
-  @JsonKey(name: 'total_reviews')
+  @JsonKey(name: 'review_count')
   final int totalReviews;
-  final List<String> tags;
+  final List<String> vibes;
+  final List<String> categories;
   final List<String> images;
   final String description;
-  @JsonKey(name: 'opening_hours')
-  final String openingHours;
-  @JsonKey(name: 'closing_hours')
-  final String closingHours;
-  final String phone;
+  @JsonKey(name: 'open_time')
+  final String? openingHours;
+  @JsonKey(name: 'close_time')
+  final String? closingHours;
+  final String? phone;
   final List<PlaceReviewModel> reviews;
   @JsonKey(name: 'related_places')
   final List<PlaceModel> relatedPlaces;
@@ -40,12 +41,13 @@ class PlaceDetailModel {
     required this.city,
     required this.rating,
     required this.totalReviews,
-    this.tags = const [],
+    this.vibes = const [],
+    this.categories = const [],
     this.images = const [],
     required this.description,
-    required this.openingHours,
-    required this.closingHours,
-    required this.phone,
+    this.openingHours,
+    this.closingHours,
+    this.phone,
     this.reviews = const [],
     this.relatedPlaces = const [],
     this.isFavorite = false,
@@ -64,7 +66,8 @@ class PlaceDetailModel {
     city: city,
     rating: rating,
     totalReviews: totalReviews,
-    tags: tags,
+    vibes: vibes,
+    categories: categories,
     images: images,
     description: description,
     openingHours: openingHours,

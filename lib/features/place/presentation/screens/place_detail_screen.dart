@@ -92,12 +92,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     },
                   ),
                   
-                  // 2. Title, Rating, Location, Tags
+                  // 2. Title, Rating, Location, Vibes
                   PlaceInfoSection(
                     name: place.name,
                     rating: place.rating,
                     location: '${place.district}, ${place.city}',
-                    tags: place.tags,
+                    vibes: place.vibes,
                     onLocationTap: () => _showMap(
                       context,
                       place.latitude ?? 10.7766,
