@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/features/city/data/datasources/city_dataso
 import 'package:travel_advisor_mobile/features/city/data/repositories/city_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/city/domain/repositories/city_repository.dart';
 import 'package:travel_advisor_mobile/features/city/domain/usecases/search_cities_usecase.dart';
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
@@ -89,6 +90,9 @@ Future<void> initDependencies() async {
   // ── Location (vị trí hiện tại + reverse geocoding) ───────────────────────────
   sl.registerLazySingleton<LocationService>(() => LocationService());
   sl.registerFactory(() => LocationCubit(sl()));
+
+  // ── Activity Tracking ──────────────────────────────────────────────────────
+  sl.registerLazySingleton<ActivityService>(() => ActivityService(sl()));
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
@@ -242,7 +246,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetRecentSearches(sl()));
   sl.registerLazySingleton(() => SearchLocations(sl()));
   sl.registerLazySingleton(() => SaveRecentSearch(sl()));
-  sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
+  sl.registerFactory(() => SearchCubit(sl(), sl(), sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
   sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));

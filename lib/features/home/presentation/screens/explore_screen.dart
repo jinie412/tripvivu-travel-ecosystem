@@ -34,6 +34,8 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/
 
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
+import 'package:travel_advisor_mobile/core/widgets/visible_place_tracker.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
@@ -574,19 +576,23 @@ class _ExploreViewState extends State<_ExploreView> {
                           left: i == 0 ? 16 : 0,
                           right: 12,
                         ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider(
-                                  create: (_) => sl<PlaceDetailCubit>(),
-                                  child: PlaceDetailScreen(placeId: item.id),
+                        child: VisiblePlaceTracker(
+                          placeId: item.id,
+                          child: GestureDetector(
+                            onTap: () {
+                              sl<ActivityService>().trackClick(item.id);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider(
+                                    create: (_) => sl<PlaceDetailCubit>(),
+                                    child: PlaceDetailScreen(placeId: item.id),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                          child: city_cards.RestaurantCard(item: item),
+                              );
+                            },
+                            child: city_cards.RestaurantCard(item: item),
+                          ),
                         ),
                       );
                     },
@@ -628,19 +634,23 @@ class _ExploreViewState extends State<_ExploreView> {
                           left: i == 0 ? 16 : 0,
                           right: 12,
                         ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider(
-                                  create: (_) => sl<PlaceDetailCubit>(),
-                                  child: PlaceDetailScreen(placeId: item.id),
+                        child: VisiblePlaceTracker(
+                          placeId: item.id,
+                          child: GestureDetector(
+                            onTap: () {
+                              sl<ActivityService>().trackClick(item.id);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider(
+                                    create: (_) => sl<PlaceDetailCubit>(),
+                                    child: PlaceDetailScreen(placeId: item.id),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                          child: city_cards.HotelCard(item: item),
+                              );
+                            },
+                            child: city_cards.HotelCard(item: item),
+                          ),
                         ),
                       );
                     },

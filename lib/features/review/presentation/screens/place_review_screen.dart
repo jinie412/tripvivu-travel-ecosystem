@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
@@ -92,6 +94,15 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       reviewTags: _selectedTags,
       mediaPaths: _mediaPaths,
     );
+
+    final activityService = sl<ActivityService>();
+    if (_rating > 0) {
+      activityService.trackRating(widget.locationId);
+    }
+    if (_reviewController.text.trim().isNotEmpty) {
+      activityService.trackReview(widget.locationId);
+    }
+
     Navigator.pop(context);
   }
 
