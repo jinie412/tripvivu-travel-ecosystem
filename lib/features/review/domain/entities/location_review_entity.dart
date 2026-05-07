@@ -9,6 +9,7 @@ class LocationReviewEntity with _$LocationReviewEntity {
     required String name,
     required String imageUrl,
     required int day,
+    String? placeId,
     @Default(true) bool isVisited,
     double? rating,
     String? reviewText,

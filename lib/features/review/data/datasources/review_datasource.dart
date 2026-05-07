@@ -103,6 +103,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
               name: (item['place_name'] ?? 'Địa điểm').toString(),
               imageUrl: (item['place_image_url'] ?? '').toString(),
               day: _parseDayLabel((item['day_label'] ?? '').toString()),
+              placeId: item['place_id']?.toString(),
               rating: (item['rating'] as num?)?.toDouble(),
               reviewText: item['content']?.toString(),
             ),

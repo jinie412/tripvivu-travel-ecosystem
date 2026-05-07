@@ -12,6 +12,7 @@ class LocationReviewModel with _$LocationReviewModel {
     required String name,
     required String imageUrl,
     required int day,
+    String? placeId,
     double? rating,
     String? reviewText,
   }) = _LocationReviewModel;
@@ -26,6 +27,7 @@ class LocationReviewModel with _$LocationReviewModel {
         name: name,
         imageUrl: imageUrl,
         day: day,
+        placeId: placeId,
         rating: rating,
         reviewText: reviewText,
       );

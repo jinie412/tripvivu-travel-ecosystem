@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'place_review_screen.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
@@ -194,6 +195,9 @@ class _RateItineraryView extends StatelessWidget {
                                     loc.id,
                                     rating,
                                   );
+                                  if (loc.placeId != null && loc.placeId!.isNotEmpty) {
+                                    sl<ActivityService>().trackRating(loc.placeId!);
+                                  }
                                 },
                           onWriteReview: () {
                             Navigator.push(

@@ -87,6 +87,15 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
   }
 
   void _submit() {
+    // Lấy placeId thực sự của POI trước khi cập nhật state
+    String? placeId;
+    final cubitState = widget.reviewCubit.state;
+    if (cubitState is ReviewLoaded) {
+      final idx = cubitState.itinerary.locations
+          .indexWhere((l) => l.id == widget.locationId);
+      if (idx != -1) placeId = cubitState.itinerary.locations[idx].placeId;
+    }
+
     widget.reviewCubit.updateLocationReviewDetails(
       locationId: widget.locationId,
       rating: _rating,
@@ -95,12 +104,14 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       mediaPaths: _mediaPaths,
     );
 
-    final activityService = sl<ActivityService>();
-    if (_rating > 0) {
-      activityService.trackRating(widget.locationId);
-    }
-    if (_reviewController.text.trim().isNotEmpty) {
-      activityService.trackReview(widget.locationId);
+    if (placeId != null && placeId.isNotEmpty) {
+      final activityService = sl<ActivityService>();
+      if (_rating > 0) {
+        activityService.trackRating(placeId);
+      }
+      if (_reviewController.text.trim().isNotEmpty) {
+        activityService.trackReview(placeId);
+      }
     }
 
     Navigator.pop(context);
