@@ -7,18 +7,28 @@ class MapUtils {
   /// Sinh ra URL ảnh bản đồ tĩnh dựa trên cấu hình trong AppConfig
   static String getStaticMapUrl(double lat, double lng, {int width = 600, int height = 300, int zoom = 15}) {
     if (AppConfig.kMapProvider == 'goong') {
-      // API Goong Static Map
-      return 'https://maps.goong.io/staticmap?center=$lat,$lng&zoom=$zoom&size=${width}x$height&markers=color:red|$lat,$lng&api_key=${AppConfig.kGoongMaptilesKey}';
+      return AppConfig.kGoongStaticMapUrl
+          .replaceAll('{lat}', lat.toString())
+          .replaceAll('{lng}', lng.toString())
+          .replaceAll('{zoom}', zoom.toString())
+          .replaceAll('{width}', width.toString())
+          .replaceAll('{height}', height.toString())
+          .replaceAll('{api_key}', AppConfig.kGoongMaptilesKey);
     } else {
-      // API Google Static Map
-      return 'https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=$zoom&size=${width}x$height&markers=color:red|$lat,$lng&key=${AppConfig.kGoogleMapKey}';
+      return AppConfig.kGoogleStaticMapUrl
+          .replaceAll('{lat}', lat.toString())
+          .replaceAll('{lng}', lng.toString())
+          .replaceAll('{zoom}', zoom.toString())
+          .replaceAll('{width}', width.toString())
+          .replaceAll('{height}', height.toString())
+          .replaceAll('{api_key}', AppConfig.kGoogleMapKey);
     }
   }
 
   /// Sinh ra link dẫn đường
   static String getDirectionUrl(double lat, double lng, {String? name}) {
-    final query = name != null ? Uri.encodeComponent('$name, $lat,$lng') : '$lat,$lng';
-    return 'https://www.google.com/maps/search/?api=1&query=$query';
+    final query = name != null ? '$name, $lat,$lng' : '$lat,$lng';
+    return AppConfig.kExternalMapSearchUrl.replaceAll('{query}', Uri.encodeComponent(query));
   }
 
   /// Lấy danh sách tọa độ uốn lượn theo đường đi thực tế từ Goong
@@ -29,7 +39,10 @@ class MapUtils {
     final destination = '${waypoints.last.lat},${waypoints.last.lng}';
     
     // API v2 hỗ trợ origin và destination. Nếu có waypoints trung gian, v2 cũng xử lý tốt hơn
-    final url = 'https://rsapi.goong.io/v2/direction?origin=$origin&destination=$destination&vehicle=car&api_key=${AppConfig.kGoongApiKey}';
+    final url = AppConfig.kGoongDirectionApiUrl
+        .replaceAll('{origin}', origin)
+        .replaceAll('{destination}', destination)
+        .replaceAll('{api_key}', AppConfig.kGoongApiKey);
 
     try {
       final response = await Dio().get(url);

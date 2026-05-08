@@ -13,6 +13,33 @@ class MockPlaceDataSource implements PlaceDataSource {
   @override
   Future<PlaceDetailModel> getPlaceDetail(String id) async {
     await Future.delayed(const Duration(milliseconds: 800));
+
+    if (id == 'hotel-reverie') {
+      return const PlaceDetailModel(
+        id: 'hotel-reverie',
+        name: 'The Reverie Saigon',
+        address: '22-36 Nguyễn Huệ, Bến Nghé, Quận 1, TP. HCM',
+        district: 'Quận 1',
+        city: 'TP. HCM',
+        rating: 5.0,
+        totalReviews: 2800,
+        vibes: ['Sang trọng', 'Thượng lưu', 'View đẹp'],
+        images: [
+          'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
+          'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+        ],
+        description: 'The Reverie Saigon là khách sạn 6 sao sang trọng bậc nhất Việt Nam, nằm tại trung tâm Quận 1. Với thiết kế mang đậm phong cách Ý cổ điển và tầm nhìn panorama ra toàn cảnh thành phố.',
+        openingHours: '00:00',
+        closingHours: '23:59',
+        phone: '(028) 3823 6688',
+        isFavorite: true,
+        latitude: 10.7752,
+        longitude: 106.7041,
+        reviews: [],
+        relatedPlaces: [],
+      );
+    }
+
     return PlaceDetailModel(
       id: 'nh-001',
       name: 'Nhà hát Thành phố Hồ Chí Minh',

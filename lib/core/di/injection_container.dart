@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
 import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
@@ -97,7 +98,11 @@ Future<void> initDependencies() async {
   );
 
   // ── Home ───────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<HomeDataSource>(() => RemoteHomeDataSource(sl()));
+  if (AppConfig.kUseMockData) {
+    sl.registerLazySingleton<HomeDataSource>(() => MockHomeDataSource());
+  } else {
+    sl.registerLazySingleton<HomeDataSource>(() => RemoteHomeDataSource(sl()));
+  }
   sl.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetExploreHomeUseCase(sl()));
   sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
@@ -124,10 +129,11 @@ Future<void> initDependencies() async {
     );
 
   // ── Itinerary ──────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<ItineraryDataSource>(
-    () => RemoteItineraryDataSource(),//MockItineraryDataSource(),
-    // TODO: swap → RemoteItineraryDataSource(sl<DioClient>())
-  );
+  if (AppConfig.kUseMockData) {
+    sl.registerLazySingleton<ItineraryDataSource>(() => MockItineraryDataSource());
+  } else {
+    sl.registerLazySingleton<ItineraryDataSource>(() => RemoteItineraryDataSource());
+  }
   sl.registerLazySingleton<ItineraryRepository>(
     () => ItineraryRepositoryImpl(sl()),
   );
@@ -191,7 +197,11 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));
+  if (AppConfig.kUseMockData) {
+    sl.registerLazySingleton<CityDetailDataSource>(() => CityDetailMockDataSource());
+  } else {
+    sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));
+  }
   sl.registerLazySingleton<CityDetailRepository>(() => CityDetailRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetCityOverviewUseCase(sl()));
   sl.registerFactory(() => CityDetailCubit(sl()));
@@ -201,7 +211,11 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => FoodCubit(remote: sl()));
 
   // ── Place ──────────────────────────────────────────────────────────────────
-  sl.registerLazySingleton<PlaceDataSource>(() => RemotePlaceDataSource(sl()));
+  if (AppConfig.kUseMockData) {
+    sl.registerLazySingleton<PlaceDataSource>(() => MockPlaceDataSource());
+  } else {
+    sl.registerLazySingleton<PlaceDataSource>(() => RemotePlaceDataSource(sl()));
+  }
   sl.registerLazySingleton<PlaceRepository>(() => PlaceRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetPlaceDetailUseCase(sl()));
   sl.registerFactory(() => PlaceDetailCubit(getPlaceDetailUseCase: sl()));

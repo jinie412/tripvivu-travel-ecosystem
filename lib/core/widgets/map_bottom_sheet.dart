@@ -193,18 +193,19 @@ class MapBottomSheet extends StatelessWidget {
     final Uri uri = Uri.parse(url);
     
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Không thể mở bản đồ')),
-          );
-        }
+      // Thử mở trực tiếp bằng ứng dụng ngoài (Google Maps)
+      bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      
+      if (!launched && context.mounted) {
+        // Nếu không mở được app Maps, thử mở qua trình duyệt
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
+      debugPrint('Error launching map: $e');
       if (context.mounted) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở ứng dụng bản đồ')),
+        );
       }
     }
   }

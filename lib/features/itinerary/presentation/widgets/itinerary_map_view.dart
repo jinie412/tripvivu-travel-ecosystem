@@ -7,6 +7,7 @@ import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/core/utils/map_utils.dart';
 
 const List<Color> kDayColors = [
   Color(0xFF1A6EBD), Color(0xFFE67E22), Color(0xFF9B59B6), Color(0xFFE74C3C),
@@ -36,6 +37,7 @@ class ItineraryMapView extends StatefulWidget {
 class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.OnPointAnnotationClickListener {
   mapbox.MapboxMap? _mapboxMap;
   mapbox.PointAnnotationManager? _pointAnnotationManager;
+  mapbox.PolylineAnnotationManager? _polylineAnnotationManager;
   bool _isStyleLoaded = false;
   bool _showAllDays = false;
   mapbox.Position? _userPosition; 
@@ -58,31 +60,18 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
         }
       }
 
-      // 1. Lấy vị trí gần nhất để marker hiện nhanh
       final lastPos = await geo.Geolocator.getLastKnownPosition();
       if (lastPos != null && mounted) {
         setState(() => _userPosition = mapbox.Position(lastPos.longitude, lastPos.latitude));
         if (_isStyleLoaded) _updateMapContent();
       }
 
-      // 2. Lấy vị trí chính xác
       final pos = await geo.Geolocator.getCurrentPosition(
         locationSettings: const geo.LocationSettings(accuracy: geo.LocationAccuracy.high),
       );
       
       if (mounted) {
         setState(() => _userPosition = mapbox.Position(pos.longitude, pos.latitude));
-        debugPrint("📍 Location found: ${pos.latitude}, ${pos.longitude}");
-        
-        // Hiện thông báo để người dùng biết đã lấy được vị trí
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('📍 Đã xác định được vị trí: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-
         if (_isStyleLoaded) _updateMapContent();
       }
     } catch (e) {
@@ -93,7 +82,12 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
   void _focusOnUser() {
     if (_userPosition != null && _mapboxMap != null) {
       _mapboxMap?.flyTo(
-        mapbox.CameraOptions(center: mapbox.Point(coordinates: _userPosition!), zoom: 15.0),
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: _userPosition!), 
+          zoom: 15.0,
+          bearing: 0,
+          pitch: 0,
+        ),
         mapbox.MapAnimationOptions(duration: 1000),
       );
     } else {
@@ -139,8 +133,77 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
   @override
   bool onPointAnnotationClick(mapbox.PointAnnotation annotation) {
     final id = _annotationIdMap[annotation.id];
-    if (id != null) widget.onMarkerTap?.call(id);
+    if (id != null) {
+      widget.onMarkerTap?.call(id);
+      _handleMarkerTap(id);
+    }
     return true;
+  }
+
+  void _handleMarkerTap(String activityId) async {
+    if (_mapboxMap == null) return;
+    
+    // 1. Tìm vị trí của địa điểm hiện tại và địa điểm kế tiếp
+    final acts = widget.activities.where((a) => a.latitude != null && a.longitude != null).toList();
+    final currentIndex = acts.indexWhere((a) => a.id == activityId);
+    if (currentIndex == -1) return;
+
+    final currentAct = acts[currentIndex];
+    final nextAct = (currentIndex < acts.length - 1) ? acts[currentIndex + 1] : null;
+
+    // 2. Xóa các đường cũ
+    await _polylineAnnotationManager?.deleteAll();
+    
+    List<mapbox.Point> zoomPoints = [];
+    final currentPos = mapbox.Position(currentAct.longitude!, currentAct.latitude!);
+    zoomPoints.add(mapbox.Point(coordinates: currentPos));
+
+    // --- ĐƯỜNG 1: TỪ VỊ TRÍ NGƯỜI DÙNG -> ĐỊA ĐIỂM HIỆN TẠI ---
+    if (_userPosition != null) {
+      zoomPoints.add(mapbox.Point(coordinates: _userPosition!));
+      
+      // Gọi API Goong để lấy đường đi thực tế
+      final routePoints = await MapUtils.getGoongRoute([_userPosition!, currentPos]);
+      
+      if (routePoints.length >= 2) {
+        _polylineAnnotationManager?.create(mapbox.PolylineAnnotationOptions(
+          geometry: mapbox.LineString(coordinates: routePoints),
+          lineColor: Colors.blue.value,
+          lineWidth: 5.0,
+          lineOpacity: 0.8,
+        ));
+      }
+    }
+
+    // --- ĐƯỜNG 2: TỪ ĐỊA ĐIỂM HIỆN TẠI -> ĐỊA ĐIỂM KẾ TIẾP ---
+    if (nextAct != null) {
+      final nextPos = mapbox.Position(nextAct.longitude!, nextAct.latitude!);
+      zoomPoints.add(mapbox.Point(coordinates: nextPos));
+
+      // Gọi API Goong để lấy đường đi thực tế
+      final routePoints = await MapUtils.getGoongRoute([currentPos, nextPos]);
+
+      if (routePoints.length >= 2) {
+        _polylineAnnotationManager?.create(mapbox.PolylineAnnotationOptions(
+          geometry: mapbox.LineString(coordinates: routePoints),
+          lineColor: Colors.orange.value,
+          lineWidth: 4.0,
+          lineOpacity: 0.7,
+        ));
+      }
+    }
+
+    // 3. Camera Focus (North-up & Padding)
+    if (zoomPoints.isNotEmpty) {
+      final camera = await _mapboxMap?.cameraForCoordinates(
+        zoomPoints,
+        mapbox.MbxEdgeInsets(top: 100, left: 100, bottom: 400, right: 100),
+        0, 0
+      );
+      if (camera != null) {
+        _mapboxMap?.flyTo(camera, mapbox.MapAnimationOptions(duration: 1000));
+      }
+    }
   }
 
   void _onMapCreated(mapbox.MapboxMap map) {
@@ -154,6 +217,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
     
     _pointAnnotationManager = await _mapboxMap?.annotations.createPointAnnotationManager();
     _pointAnnotationManager?.addOnPointAnnotationClickListener(this);
+    
+    _polylineAnnotationManager = await _mapboxMap?.annotations.createPolylineAnnotationManager();
+    
     _updateMapContent();
   }
 
@@ -166,6 +232,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
   Future<void> _updateMapContent() async {
     if (_mapboxMap == null || _pointAnnotationManager == null) return;
     await _pointAnnotationManager?.deleteAll();
+    await _polylineAnnotationManager?.deleteAll();
     _annotationIdMap.clear();
 
     final List<mapbox.Point> itinPoints = [];
@@ -193,39 +260,33 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
       }
     }
 
-    // 📍 1. VẼ VỊ TRÍ NGƯỜI DÙNG (Vẽ cuối cùng để đè lên trên)
     if (_userPosition != null) {
-      debugPrint("📍 Đang vẽ marker vị trí tại: ${_userPosition!.lat}, ${_userPosition!.lng}");
       final icon = await _createCurrentLocationIcon();
       await _pointAnnotationManager?.create(mapbox.PointAnnotationOptions(
         geometry: mapbox.Point(coordinates: _userPosition!),
         image: icon, 
-        iconSize: 1.5, // Phóng to lên để dễ nhìn
+        iconSize: 1.5,
         iconAnchor: mapbox.IconAnchor.CENTER,
       ));
     }
 
-    // 🎯 CAMERA LOGIC
     final List<mapbox.Point> cameraPoints = List.from(itinPoints);
-    if (_userPosition != null) {
-      cameraPoints.add(mapbox.Point(coordinates: _userPosition!));
-    }
+    if (_userPosition != null) cameraPoints.add(mapbox.Point(coordinates: _userPosition!));
 
     if (cameraPoints.isNotEmpty) {
-      if (cameraPoints.length == 1) {
-        _mapboxMap?.easeTo(mapbox.CameraOptions(center: cameraPoints.first, zoom: 15.0), mapbox.MapAnimationOptions(duration: 1000));
-      } else {
-        final camera = await _mapboxMap?.cameraForCoordinates(
-          cameraPoints,
-          mapbox.MbxEdgeInsets(top: 120, left: 60, bottom: 220, right: 60), 
-          null, null
-        );
+      final camera = await _mapboxMap?.cameraForCoordinates(
+        cameraPoints,
+        mapbox.MbxEdgeInsets(top: 100, left: 60, bottom: 350, right: 60), 
+        0, 0
+      );
 
-        if (camera != null) {
-          double zoom = camera.zoom ?? 13.5;
-          if (zoom < 4.5) zoom = 4.5;
-          _mapboxMap?.easeTo(mapbox.CameraOptions(center: camera.center, zoom: zoom, padding: camera.padding), mapbox.MapAnimationOptions(duration: 1000));
-        }
+      if (camera != null) {
+        double zoom = camera.zoom ?? 13.5;
+        if (zoom < 4.5) zoom = 4.5;
+        _mapboxMap?.flyTo(
+          mapbox.CameraOptions(center: camera.center, zoom: zoom, padding: camera.padding, bearing: 0, pitch: 0),
+          mapbox.MapAnimationOptions(duration: 1000)
+        );
       }
     }
   }
