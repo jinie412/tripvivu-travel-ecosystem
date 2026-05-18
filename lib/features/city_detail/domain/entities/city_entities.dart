@@ -62,6 +62,7 @@ class CityHotel with _$CityHotel {
     required double rating,
     required int reviewCount,
     required String price, // e.g., "5.450.000đ"
+    @Default('') String address,
     @Default(false) bool isFavorite,
     // === Filter fields ===
     @Default(0) int starRating,               // 1-5

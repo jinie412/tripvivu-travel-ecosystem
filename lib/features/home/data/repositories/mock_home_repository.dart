@@ -16,6 +16,7 @@ class HomeRepositoryImpl implements HomeRepository {
     return ExploreHomeData(
       suggestions: payload.suggestions.map((m) => m.toEntity()).toList(),
       destinations: payload.destinations.map((m) => m.toEntity()).toList(),
+      restaurants: payload.restaurants,
       hotels: payload.hotels,
       currentItinerary: payload.currentItinerary,
     );
