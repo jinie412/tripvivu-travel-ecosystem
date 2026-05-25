@@ -144,6 +144,19 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
   return extractResponseData<any>(res as any);
 };
 
+export const uploadPlaceImage = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Gọi đến endpoint upload của bạn (giả định là /upload/place-image)
+  const response = await apiClient.post('/upload/place-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  
+  // Trả về URL từ server (Cloudflare/S3)
+  return response.data.url || response.data; 
+};
+
 export const getPlaceServicesByType = async (placeId: string) => {
   try {
     const res = await apiClient.get('/business/place-services-by-type', {

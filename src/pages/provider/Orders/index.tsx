@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Button from '../../../components/UI/Button';
+import ConfirmDialog from '../../../components/UI/ConfirmDialog';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getOrdersByPlace, updateOrderStatus } from '@/services/order.service';
@@ -19,13 +20,16 @@ const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
 
   const handleViewDetail = (orderId: string) => {
     navigate(`/orders/${orderId}`);
   };
 
-  const handleConfirm = async (e: React.MouseEvent, orderId: string) => {
-    e.stopPropagation();
+  const handleConfirm = async () => {
+    if (!pendingConfirmId) return;
+    const orderId = pendingConfirmId;
+    setPendingConfirmId(null);
     try {
       await updateOrderStatus(orderId, 'processing');
       setOrders(prev => prev.map(o => o.order_id === orderId ? { ...o, status: 'processing' } : o));
@@ -62,6 +66,13 @@ const OrdersPage: React.FC = () => {
 
   return (
     <>
+      {pendingConfirmId && (
+        <ConfirmDialog
+          message="Bạn có chắc muốn xác nhận đơn hàng này?"
+          onConfirm={handleConfirm}
+          onCancel={() => setPendingConfirmId(null)}
+        />
+      )}
       <div style={{ padding: '0 20px' }}>
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', fontFamily: "'Times New Roman', Times, serif" }}>Đơn đặt món</h2>
@@ -164,7 +175,7 @@ const OrdersPage: React.FC = () => {
                     {order.status === 'pending' ? (
                       <Button
                         style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}
-                        onClick={(e) => handleConfirm(e, order.order_id)}
+                        onClick={(e) => { e.stopPropagation(); setPendingConfirmId(order.order_id); }}
                       >
                         Xác nhận
                       </Button>

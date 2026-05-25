@@ -19,9 +19,10 @@ import {
   Info,
   ChevronDown,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addNewPlace } from '@/services/order.service';
+import { addNewPlace, uploadPlaceImage } from '@/services/order.service';
 import * as XLSX from 'xlsx';
 
 const userInfo = localStorage.getItem('userInfo');
@@ -34,13 +35,14 @@ const AddLocationPage: React.FC = () => {
   const [fileUploaded, setFileUploaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  
+  const [selectedImages, setSelectedImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
+
   // Service input state
   const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
-  
+
   // Menu item input state
   const [menuInput, setMenuInput] = useState({ name: '', description: '', price: '', img: '' });
-  
+
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -49,7 +51,10 @@ const AddLocationPage: React.FC = () => {
     latitude: 10.77,
     longitude: 106.7,
     types: [] as string[],
-    openingHours: '',
+    // Tách openingHours thành 2 trường riêng biệt
+    openTime: '08:00',
+    closeTime: '22:00',
+    description: '',
     amenities: [] as { id: string; name: string; description: string; icon: React.ReactNode }[],
     menu: [] as { id: string; name: string; description: string; price: string; img: string }[],
   });
@@ -73,19 +78,19 @@ const AddLocationPage: React.FC = () => {
       alert('Vui lòng nhập tên dịch vụ');
       return;
     }
-    
+
     const newService = {
       id: Date.now().toString(),
       name: serviceInput.name,
       description: serviceInput.description,
       icon: <Wifi size={18} />
     };
-    
+
     setFormData(prev => ({
       ...prev,
       amenities: [...prev.amenities, newService]
     }));
-    
+
     setServiceInput({ name: '', description: '' });
   };
 
@@ -101,7 +106,7 @@ const AddLocationPage: React.FC = () => {
       alert('Vui lòng nhập tên và giá của món ăn');
       return;
     }
-    
+
     const newMenuItem = {
       id: Date.now().toString(),
       name: menuInput.name,
@@ -109,12 +114,12 @@ const AddLocationPage: React.FC = () => {
       price: menuInput.price,
       img: menuInput.img || 'https://via.placeholder.com/56x56'
     };
-    
+
     setFormData(prev => ({
       ...prev,
       menu: [...prev.menu, newMenuItem]
     }));
-    
+
     setMenuInput({ name: '', description: '', price: '', img: '' });
   };
 
@@ -125,29 +130,48 @@ const AddLocationPage: React.FC = () => {
     }));
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    const remaining = 5 - selectedImages.length;
+    const toAdd = files.slice(0, remaining).map(file => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setSelectedImages(prev => [...prev, ...toAdd]);
+    e.target.value = '';
+  };
+
+  const handleImageRemove = (index: number) => {
+    setSelectedImages(prev => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const handleExcelFileUpload = (file: File) => {
     try {
       const reader = new FileReader();
-      
+
       reader.onerror = () => {
         console.error('FileReader error:', reader.error);
         alert('Lỗi khi đọc file. Vui lòng thử lại.');
       };
-      
+
       reader.onload = (e: any) => {
         try {
           const data = e.target.result;
           console.log('📄 File data loaded, size:', data.byteLength, 'bytes');
-          
+
           // Read Excel workbook
           const workbook = XLSX.read(data, { type: 'array' });
           console.log('📊 Workbook sheets found:', workbook.SheetNames);
-          
+
           if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
             alert('File Excel không chứa bảng tính');
             return;
           }
-          
+
           // Get first sheet
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(worksheet);
@@ -168,7 +192,7 @@ const AddLocationPage: React.FC = () => {
             for (const name of possibleNames) {
               const key = Object.keys(row).find(
                 k => k.toLowerCase().trim() === name.toLowerCase().trim() ||
-                     k.toLowerCase().includes(name.toLowerCase())
+                  k.toLowerCase().includes(name.toLowerCase())
               );
               if (key) return row[key];
             }
@@ -219,7 +243,7 @@ const AddLocationPage: React.FC = () => {
           alert(`Lỗi khi xử lý file: ${parseError instanceof Error ? parseError.message : 'Không xác định'}`);
         }
       };
-      
+
       reader.readAsArrayBuffer(file);
     } catch (error) {
       console.error('❌ Error:', error);
@@ -230,39 +254,37 @@ const AddLocationPage: React.FC = () => {
   const handleSubmitForm = async () => {
     try {
       setIsLoading(true);
-      
-      // Validate required fields
-      if (!formData.name || !formData.address || !formData.city || formData.types.length === 0) {
-        alert('Vui lòng điền đầy đủ thông tin bắt buộc: Tên, Địa chỉ, Tỉnh/Thành phố và Loại hình kinh doanh');
-        setIsLoading(false);
+
+      // 1. Kiểm tra thông tin cơ bản
+      if (!formData.name || !formData.address || formData.types.length === 0) {
+        alert('Vui lòng điền đầy đủ thông tin tại Bước 1');
+        setStep(1);
         return;
       }
 
-      // Map category IDs to category names (must match database travel.categories.name)
+      // 2. Logic Upload ảnh (Học từ ProfilePage)
+      const uploadedUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        // Dùng for...of để đảm bảo upload xong hết mới chạy tiếp
+        for (const imgItem of selectedImages) {
+          try {
+            const url = await uploadPlaceImage(imgItem.file);
+            uploadedUrls.push(url);
+          } catch (uploadErr) {
+            console.error("Lỗi upload 1 file:", uploadErr);
+            // Có thể chọn dừng lại hoặc tiếp tục tùy bạn
+          }
+        }
+      }
+
+      // 3. Chuẩn bị Payload cho DB
       const categoryMap: { [key: string]: string } = {
         stay: 'Hotel',
         food: 'Restaurant',
         tour: 'Tour',
         trans: 'Transport'
       };
-      
-      const categories = formData.types.map(t => categoryMap[t] || t);
-      
-      // Format services for JSONB array
-      const services = formData.amenities.map(a => ({ 
-        name: a.name, 
-        description: a.description || '' 
-      }));
 
-      // Format menu items for JSONB array
-      // Remove the img field and ensure correct format for order_sys.food_items
-      const menu = formData.menu.map(item => ({
-        name: item.name,
-        description: item.description || '',
-        price: parseFloat(item.price) || 0
-      }));
-
-      // Create payload as JSON (not FormData, since we're calling a stored procedure)
       const payload = {
         p_name: formData.name,
         p_address: formData.address,
@@ -270,18 +292,31 @@ const AddLocationPage: React.FC = () => {
         p_lat: formData.latitude,
         p_lng: formData.longitude,
         p_vendor_id: VENDOR_ID,
-        p_categories: categories,
-        p_services: services,
-        p_menu: menu
+        p_categories: formData.types.map(t => categoryMap[t] || t),
+        p_open_time: formData.openTime, // Thêm trường này
+        p_close_time: formData.closeTime, // Thêm trường này
+        p_description: formData.description,
+        p_services: formData.amenities.map(a => ({
+          name: a.name,
+          description: a.description || ''
+        })),
+        p_menu: formData.menu.map(item => ({
+          name: item.name,
+          description: item.description || '',
+          price: parseFloat(item.price) || 0
+        })),
+        p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
 
+      // 4. Gọi API lưu vào Supabase qua hàm create_full_place
       await addNewPlace(payload);
-      alert('Thêm địa điểm mới thành công!');
-      // Navigate to dashboard after success
-      setTimeout(() => navigate('/dashboard'), 1500);
+
+      alert('Tạo địa điểm và lưu ảnh thành công!');
+      navigate('/dashboard');
+
     } catch (error) {
-      console.error('Error adding new place:', error);
-      alert('Lỗi khi thêm địa điểm mới. Vui lòng kiểm tra lại dữ liệu.');
+      console.error('Lỗi khi thêm địa điểm:', error);
+      alert('Không thể tạo địa điểm. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
@@ -349,6 +384,30 @@ const AddLocationPage: React.FC = () => {
               style={{ marginBottom: 0 }}
             />
           </div>
+        </div>
+        {/* --- THÀNH PHẦN MỚI: TEXTBOX MÔ TẢ --- */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+            Mô tả địa điểm
+          </label>
+          <textarea
+            placeholder="Nhập giới thiệu ngắn gọn về địa điểm của bạn (ví dụ: không gian, phong cách, đặc sản...)"
+            style={{
+              width: '100%',
+              minHeight: '120px',
+              padding: '16px',
+              borderRadius: '12px',
+              border: '1px solid #E2E8F0',
+              background: '#fcfcfc',
+              outline: 'none',
+              fontSize: '15px',
+              color: '#1e293b',
+              lineHeight: '1.6',
+              resize: 'vertical', // Cho phép user kéo giãn chiều cao
+            }}
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          />
         </div>
         <div>
           <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
@@ -433,10 +492,64 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ flex: 1 }}><Input label="Kinh độ (Latitude)" type="number" value={formData.latitude} onChange={(e) => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ marginBottom: 0 }} /></div>
-          <div style={{ flex: 1 }}><Input label="Vĩ độ (Longitude)" type="number" value={formData.longitude} onChange={(e) => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1 }}><Input label="Kinh độ (Latitude)" type="number" value={formData.latitude} onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1 }}><Input label="Vĩ độ (Longitude)" type="number" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })} style={{ marginBottom: 0 }} /></div>
         </div>
-        <Input label="Giờ mở cửa" placeholder="Ví dụ: 08:00 - 22:00" icon={<Clock size={18} />} value={formData.openingHours} onChange={(e) => setFormData({...formData, openingHours: e.target.value})} />
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Giờ mở cửa"
+              type="time" // Sử dụng type="time" để user chọn cho nhanh
+              value={formData.openTime}
+              onChange={(e) => setFormData({ ...formData, openTime: e.target.value })}
+              icon={<Clock size={18} />}
+              style={{ marginBottom: 0 }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Giờ đóng cửa"
+              type="time"
+              value={formData.closeTime}
+              onChange={(e) => setFormData({ ...formData, closeTime: e.target.value })}
+              icon={<Clock size={18} />}
+              style={{ marginBottom: 0 }}
+            />
+          </div>
+        </div>
+        {/* Image Upload */}
+        <div>
+          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
+            Hình ảnh địa điểm <span style={{ color: '#94a3b8', fontWeight: '400' }}>(tối đa 5 ảnh)</span>
+          </label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {selectedImages.map((img, idx) => (
+              <div key={idx} style={{ position: 'relative', width: '76px', height: '76px' }}>
+                <img
+                  src={img.previewUrl}
+                  alt=""
+                  style={{ width: '76px', height: '76px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #E2E8F0' }}
+                />
+                <button
+                  onClick={() => handleImageRemove(idx)}
+                  style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '800', lineHeight: 1 }}
+                >×</button>
+              </div>
+            ))}
+            {selectedImages.length < 5 && (
+              <>
+                <input type="file" id="placeImageInput" style={{ display: 'none' }} accept="image/*" multiple onChange={handleImageSelect} />
+                <div
+                  onClick={() => document.getElementById('placeImageInput')?.click()}
+                  style={{ width: '76px', height: '76px', border: '2px dashed #E2E8F0', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', gap: '4px', cursor: 'pointer', background: '#F8FAFC' }}
+                >
+                  <Upload size={20} />
+                  <span>Thêm ảnh</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -449,8 +562,8 @@ const AddLocationPage: React.FC = () => {
           <h4 style={{ fontSize: '16px', fontWeight: '800' }}>Dịch vụ tiện ích</h4>
         </div>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ flex: 1 }}><Input label="Tên dịch vụ" placeholder="VD: Giữ xe miễn phí" value={serviceInput.name} onChange={(e) => setServiceInput({...serviceInput, name: e.target.value})} style={{ marginBottom: 0 }} /></div>
-          <div style={{ flex: 1.5 }}><Input label="Mô tả (không bắt buộc)" placeholder="Nhập mô tả ngắn về dịch vụ" value={serviceInput.description} onChange={(e) => setServiceInput({...serviceInput, description: e.target.value})} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1 }}><Input label="Tên dịch vụ" placeholder="VD: Giữ xe miễn phí" value={serviceInput.name} onChange={(e) => setServiceInput({ ...serviceInput, name: e.target.value })} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1.5 }}><Input label="Mô tả (không bắt buộc)" placeholder="Nhập mô tả ngắn về dịch vụ" value={serviceInput.description} onChange={(e) => setServiceInput({ ...serviceInput, description: e.target.value })} style={{ marginBottom: 0 }} /></div>
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <Button variant="outline" style={{ height: '50px', gap: '8px', padding: '0 24px', borderRadius: '12px', color: '#3b82f6', borderColor: '#3b82f6' }} onClick={handleAddService}>
               <Plus size={18} /> Thêm
@@ -544,8 +657,8 @@ const AddLocationPage: React.FC = () => {
             }}>
             <Upload size={24} /> Tải lên
           </div>
-          <div style={{ flex: 1 }}><Input label="Tên món ăn" placeholder="VD: Cơm Gà Hải Nam" value={menuInput.name} onChange={(e) => setMenuInput({...menuInput, name: e.target.value})} /></div>
-          <div style={{ flex: 1 }}><Input label="Giá bán (VNĐ)" placeholder="0" value={menuInput.price} onChange={(e) => setMenuInput({...menuInput, price: e.target.value})} rightIcon={<span>đ</span>} /></div>
+          <div style={{ flex: 1 }}><Input label="Tên món ăn" placeholder="VD: Cơm Gà Hải Nam" value={menuInput.name} onChange={(e) => setMenuInput({ ...menuInput, name: e.target.value })} /></div>
+          <div style={{ flex: 1 }}><Input label="Giá bán (VNĐ)" placeholder="0" value={menuInput.price} onChange={(e) => setMenuInput({ ...menuInput, price: e.target.value })} rightIcon={<span>đ</span>} /></div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginBottom: '32px' }}>
@@ -634,10 +747,10 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
 
-        <input 
-          type="file" 
-          id="fileInput" 
-          style={{ display: 'none' }} 
+        <input
+          type="file"
+          id="fileInput"
+          style={{ display: 'none' }}
           accept=".xlsx,.xls,.csv"
           onChange={(e) => {
             if (e.target.files && e.target.files[0]) {
@@ -646,19 +759,19 @@ const AddLocationPage: React.FC = () => {
           }}
         />
 
-        <div onClick={() => document.getElementById('fileInput')?.click()} style={{ 
-            height: '240px', 
-            border: '2px dashed #E2E8F0', 
-            borderRadius: '24px', 
-            background: '#F8FAFC40',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}>
+        <div onClick={() => document.getElementById('fileInput')?.click()} style={{
+          height: '240px',
+          border: '2px dashed #E2E8F0',
+          borderRadius: '24px',
+          background: '#F8FAFC40',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+        }}>
           <div
             style={{
               width: '48px',
@@ -768,7 +881,7 @@ const AddLocationPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {uploadedFile && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#22c55e', fontWeight: '600' }}>
-                 <CheckCircle size={16} /> Hoàn thành
+                <CheckCircle size={16} /> Hoàn thành
               </div>
             )}
             <button onClick={() => setUploadedFile(null)} style={{ color: '#3b82f6', fontSize: '13px', fontWeight: '700', background: 'transparent', border: 'none', cursor: 'pointer' }}>Thay đổi tệp</button>
@@ -794,9 +907,9 @@ const AddLocationPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #F1F5F9' }}>
-                 <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trường trong dữ liệu hệ thống</th>
-                 <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Cột trong file của bạn</th>
-                 <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trạng thái</th>
+                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trường trong dữ liệu hệ thống</th>
+                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Cột trong file của bạn</th>
+                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trạng thái</th>
               </tr>
             </thead>
           </table>
@@ -825,7 +938,7 @@ const AddLocationPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
-                 <th style={{ padding: '12px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>DỮ LIỆU DỰA TRÊN FILE</th>
+                <th style={{ padding: '12px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>DỮ LIỆU DỰA TRÊN FILE</th>
               </tr>
             </thead>
             <tbody>
@@ -943,39 +1056,53 @@ const AddLocationPage: React.FC = () => {
           {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3Initial()}
 
           {/* Footer Actions */}
-          <div style={{ 
-              marginTop: step === 3 ? '0' : '48px', 
-              paddingTop: step === 3 ? '24px' : '32px', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              background: step === 3 ? 'white' : 'transparent',
-              padding: step === 3 ? '24px 40px' : '32px 0 0 0',
-              position: step === 3 ? 'fixed' : 'relative',
-              bottom: 0,
-              left: step === 3 ? '280px' : 'auto',
-              right: 0,
-              zIndex: 10,
-              borderTop: step === 3 ? '1px solid #f1f5f9' : 'none'
+          <div style={{
+            marginTop: step === 3 ? '0' : '48px',
+            paddingTop: step === 3 ? '24px' : '32px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: step === 3 ? 'white' : 'transparent',
+            padding: step === 3 ? '24px 40px' : '32px 0 0 0',
+            position: step === 3 ? 'fixed' : 'relative',
+            bottom: 0,
+            left: step === 3 ? '280px' : 'auto',
+            right: 0,
+            zIndex: 10,
+            borderTop: step === 3 ? '1px solid #f1f5f9' : 'none'
           }}>
             {step === 3 ? (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '24px', width: '100%' }}>
-                    <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy</button>
-                    {uploadedFile && (
-                        <button onClick={() => {
-                          setUploadedFile(null);
-                          setFileUploaded(false);
-                        }} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Xóa file</button>
-                    )}
-                    {!uploadedFile && formData.menu.length === 0 && (
-                         <button onClick={() => setStep(2)} style={{ background: 'white', border: '1px solid #E2E8F0', padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ArrowLeft size={18} /> Quay lại
-                        </button>
-                    )}
-                    <Button onClick={handleNext} disabled={formData.menu.length === 0} style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}>
-                        Hoàn tất <CheckCircle size={18} />
-                    </Button>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '24px', width: '100%' }}>
+                <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy</button>
+                {uploadedFile && (
+                  <button onClick={() => {
+                    setUploadedFile(null);
+                    setFileUploaded(false);
+                  }} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Xóa file</button>
+                )}
+                {!uploadedFile && formData.menu.length === 0 && (
+                  <button onClick={() => setStep(2)} style={{ background: 'white', border: '1px solid #E2E8F0', padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ArrowLeft size={18} /> Quay lại
+                  </button>
+                )}
+                {/* Ở phần Footer Actions, tìm nút Hoàn tất và sửa lại như sau: */}
+                <Button
+                  onClick={handleNext}
+                  // Bỏ điều kiện formData.menu.length === 0
+                  disabled={isLoading}
+                  style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      Hoàn tất <CheckCircle size={18} />
+                    </>
+                  )}
+                </Button>
+              </div>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px', width: '100%' }}>
                 {step === 1 ? (

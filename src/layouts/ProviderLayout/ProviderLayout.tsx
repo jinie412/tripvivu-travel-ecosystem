@@ -55,6 +55,8 @@ const defaultAvatar =
 const ProviderLayout: React.FC = () => {
   const navigate = useNavigate();
 
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
+
   const [headerInfo, setHeaderInfo] = useState(() => {
     const storedUser = localStorage.getItem('userInfo');
 
@@ -71,6 +73,22 @@ const ProviderLayout: React.FC = () => {
       avatar: defaultAvatar,
     };
   });
+
+  // Fetch số đơn pending để hiển thị badge
+  useEffect(() => {
+    const storedUser = localStorage.getItem('userInfo');
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+    const vendorId = parsedUser?.businessId || parsedUser?.id || '';
+    if (!vendorId) return;
+
+    apiClient.get('/business/orders', { params: { placeId: vendorId } })
+      .then((res) => {
+        const orders: any[] = Array.isArray(res.data) ? res.data
+          : Array.isArray(res.data?.data) ? res.data.data : [];
+        setPendingOrderCount(orders.filter((o) => o.status === 'pending').length);
+      })
+      .catch(() => {});
+  }, []);
 
   // 4. Gọi API lấy thông tin ngay khi Layout được load
   useEffect(() => {
@@ -201,7 +219,7 @@ const ProviderLayout: React.FC = () => {
         <nav style={{ flex: 1 }}>
           <SidebarItem icon={<LayoutDashboard size={20} />} label="Dashboard" to="/dashboard" />
           <SidebarItem icon={<Building2 size={20} />} label="Danh sách địa điểm" to="/locations" />
-          <SidebarItem icon={<ShoppingBag size={20} />} label="Đơn đặt món" to="/orders" badge={12} />
+          <SidebarItem icon={<ShoppingBag size={20} />} label="Đơn đặt món" to="/orders" badge={pendingOrderCount || undefined} />
           <SidebarItem icon={<Settings size={20} />} label="Cài đặt" to="/settings" />
         </nav>
 

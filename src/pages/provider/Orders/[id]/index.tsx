@@ -1,5 +1,6 @@
 import React from 'react';
 import Button from '../../../../components/UI/Button';
+import ConfirmDialog from '../../../../components/UI/ConfirmDialog';
 import { Mail, Phone, User, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -13,9 +14,22 @@ const OrderDetailPage: React.FC = () => {
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
    const [updating, setUpdating] = useState(false);
+   const [confirmDialog, setConfirmDialog] = useState<{ newStatus: string; message: string } | null>(null);
 
-   const handleUpdateStatus = async (newStatus: string) => {
-      if (!orderData) return;
+   const confirmLabels: Record<string, string> = {
+      processing: 'Xác nhận đơn hàng này?',
+      completed: 'Xác nhận hoàn thành đơn hàng?',
+      cancelled: 'Bạn chắc chắn muốn hủy đơn hàng này?',
+   };
+
+   const requestUpdateStatus = (newStatus: string) => {
+      setConfirmDialog({ newStatus, message: confirmLabels[newStatus] ?? 'Xác nhận thao tác?' });
+   };
+
+   const handleUpdateStatus = async () => {
+      if (!orderData || !confirmDialog) return;
+      const { newStatus } = confirmDialog;
+      setConfirmDialog(null);
       setUpdating(true);
       try {
          await updateOrderStatus(orderData.id, newStatus);
@@ -84,6 +98,18 @@ const OrderDetailPage: React.FC = () => {
    if (!orderData) return <div>No data</div>;
    return (
       <>
+         {confirmDialog && (
+            <ConfirmDialog
+               message={confirmDialog.message}
+               confirmColor={
+                  confirmDialog.newStatus === 'cancelled' ? '#ef4444'
+                  : confirmDialog.newStatus === 'completed' ? '#10b981'
+                  : undefined
+               }
+               onConfirm={handleUpdateStatus}
+               onCancel={() => setConfirmDialog(null)}
+            />
+         )}
          <div style={{ padding: '0 20px' }}>
             {/* Breadcrumb & Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
@@ -218,17 +244,17 @@ const OrderDetailPage: React.FC = () => {
 
                      {orderData.status === 'pending' && (
                         <>
-                           <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px' }} onClick={() => handleUpdateStatus('processing')}>
-                              <CheckCircle size={18} /> Bắt đầu chuẩn bị
+                           <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px' }} onClick={() => requestUpdateStatus('processing')}>
+                              <CheckCircle size={18} /> Xác nhận
                            </Button>
-                           <Button variant="outline" fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }} onClick={() => handleUpdateStatus('cancelled')}>
+                           <Button variant="outline" fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }} onClick={() => requestUpdateStatus('cancelled')}>
                               <XCircle size={18} /> Hủy đơn
                            </Button>
                         </>
                      )}
 
                      {orderData.status === 'processing' && (
-                        <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#10b981' }} onClick={() => handleUpdateStatus('completed')}>
+                        <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#10b981' }} onClick={() => requestUpdateStatus('completed')}>
                            <CheckCircle size={18} /> Hoàn thành
                         </Button>
                      )}
