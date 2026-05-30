@@ -25,14 +25,16 @@ class ExploreHomePayload {
 abstract class HomeDataSource {
   Future<ExploreHomePayload> getExploreHome();
   Future<List<CityRestaurant>> getRestaurants({int limit = 5});
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50});
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50});
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50});
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50});
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   });
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   });
 }
@@ -129,32 +131,39 @@ class MockHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50}) async {
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50}) async {
     final payload = await getExploreHome();
-    return payload.suggestions.take(limit).toList();
+    final start = (page - 1) * limit;
+    return payload.suggestions.skip(start).take(limit).toList();
   }
 
   @override
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50}) async {
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50}) async {
     final payload = await getExploreHome();
-    return payload.destinations.take(limit).toList();
+    final start = (page - 1) * limit;
+    return payload.destinations.skip(start).take(limit).toList();
   }
 
   @override
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
-    return getRestaurants(limit: limitPerCategory);
+    final payload = await getExploreHome();
+    final start = (page - 1) * limitPerCategory;
+    return payload.restaurants.skip(start).take(limitPerCategory).toList();
   }
 
   @override
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     final payload = await getExploreHome();
-    return payload.hotels.take(limitPerCategory).toList();
+    final start = (page - 1) * limitPerCategory;
+    return payload.hotels.skip(start).take(limitPerCategory).toList();
   }
 
 }
@@ -345,10 +354,10 @@ class RemoteHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50}) async {
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50}) async {
     final response = await _client.dio.get(
       '/explore/itineraries/public',
-      queryParameters: {'page': 1, 'limit': limit},
+      queryParameters: {'page': page, 'limit': limit},
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -357,10 +366,10 @@ class RemoteHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50}) async {
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50}) async {
     final response = await _client.dio.get(
       '/explore/cities',
-      queryParameters: {'page': 1, 'limit': limit},
+      queryParameters: {'page': page, 'limit': limit},
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -370,13 +379,14 @@ class RemoteHomeDataSource implements HomeDataSource {
 
   Future<List<Map<String, dynamic>>> _getPlacesByCategory({
     required String category,
+    required int page,
     required int limit,
   }) async {
     final response = await _client.dio.get(
       '/explore/places',
       queryParameters: {
         'category': category,
-        'page': 1,
+        'page': page,
         'limit': limit,
         '_ts': DateTime.now().millisecondsSinceEpoch,
       },
@@ -426,6 +436,7 @@ class RemoteHomeDataSource implements HomeDataSource {
   @override
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     final groups = await Future.wait<List<Map<String, dynamic>>>(
@@ -433,6 +444,7 @@ class RemoteHomeDataSource implements HomeDataSource {
         try {
           return await _getPlacesByCategory(
             category: category,
+            page: page,
             limit: limitPerCategory,
           );
         } catch (_) {
@@ -448,6 +460,7 @@ class RemoteHomeDataSource implements HomeDataSource {
   @override
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     final groups = await Future.wait<List<Map<String, dynamic>>>(
@@ -455,6 +468,7 @@ class RemoteHomeDataSource implements HomeDataSource {
         try {
           return await _getPlacesByCategory(
             category: category,
+            page: page,
             limit: limitPerCategory,
           );
         } catch (_) {

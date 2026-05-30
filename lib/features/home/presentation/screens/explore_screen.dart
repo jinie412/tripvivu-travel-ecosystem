@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'see_all_screen.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
@@ -14,11 +13,13 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart'
     as city_cards;
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/screens/paginated_see_all_screen.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/current_itinerary_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/explore_header.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_itinerary_card.dart';
@@ -60,6 +61,7 @@ class _ExploreView extends StatefulWidget {
 }
 
 class _ExploreViewState extends State<_ExploreView> {
+  static const int _pageSize = 10;
   int _suggestionPage = 0;
   int _activityPage = 0;
   int _restaurantPage = 0;
@@ -238,213 +240,121 @@ class _ExploreViewState extends State<_ExploreView> {
         .catchError((_) {});
   }
 
-  Future<List<T>> _loadSectionItems<T>(
-    Future<List<T>> Function() loader,
-  ) async {
-    if (!mounted) {
-      return <T>[];
-    }
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black26,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      return await loader();
-    } finally {
-      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-    }
-  }
-
   Future<void> _openSuggestionSeeAll() async {
-    final cubit = context.read<ExploreCubit>();
-    final currentState = context.read<ExploreCubit>().state;
-    final suggestions = (currentState is ExploreLoaded && currentState.allSuggestions.isNotEmpty)
-        ? currentState.allSuggestions
-        : await _loadSectionItems(cubit.loadAllSuggestions);
-
-    if (!mounted || suggestions.isEmpty) {
-      return;
-    }
-
-    final items = suggestions
-        .map(
-          (item) => CityItinerary(
-            id: item.id,
-            title: item.title,
-            authorName: item.authorName,
-            authorAvatar: item.authorAvatar.isNotEmpty
-                ? item.authorAvatar
-                : 'https://i.pravatar.cc/100?u=${item.id}',
-            imageUrl: item.imageUrl ?? '',
-            duration: item.days.toLowerCase(),
-            views: item.views,
-            likes: item.likes,
-          ),
-        )
-        .toList();
-
-    if (!mounted) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SeeAllScreen(
+        builder: (_) => PaginatedSeeAllScreen<TripSuggestion>(
           title: 'Lịch trình gợi ý',
-          items: items
-              .map(
-                (item) => GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider<ItineraryCubit>(
-                          create: (_) => sl<ItineraryCubit>()..loadData(),
-                          child: ItinerarySummaryScreen(itineraryId: item.id),
-                        ),
-                      ),
-                    );
-                  },
-                  child: ItineraryVerticalCard(item: item),
+          pageSize: _pageSize,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadSuggestionsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider<ItineraryCubit>(
+                    create: (_) => sl<ItineraryCubit>()..loadData(),
+                    child: ItinerarySummaryScreen(itineraryId: item.id),
+                  ),
                 ),
-              )
-              .toList(),
+              );
+            },
+            child: HomeItineraryCard(item: item),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _openDestinationSeeAll() async {
-    final cubit = context.read<ExploreCubit>();
-    final currentState = context.read<ExploreCubit>().state;
-    final destinations = (currentState is ExploreLoaded && currentState.allDestinations.isNotEmpty)
-        ? currentState.allDestinations
-        : await _loadSectionItems(cubit.loadAllDestinations);
-
-    if (!mounted || destinations.isEmpty) {
-      return;
-    }
-
-    final items = destinations
-        .map(
-          (item) => CityActivity(
-            id: item.id,
-            name: item.name,
-            imageUrl: item.imageUrl ?? '',
-            rating: 4.5,
-            reviewCount: 120,
-          ),
-        )
-        .toList();
-
-    if (!mounted) return;
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SeeAllScreen(
+        builder: (_) => PaginatedSeeAllScreen<Destination>(
           title: 'Điểm đến nổi bật',
-          items: items
-              .map(
-                (item) => GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CityDetailScreen(
-                          cityId: item.id,
-                          cityName: item.name,
-                        ),
-                      ),
-                    );
-                  },
-                  child: ActivityVerticalCard(item: item),
+          pageSize: _pageSize,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadDestinationsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CityDetailScreen(
+                    cityId: item.id,
+                    cityName: item.name,
+                  ),
                 ),
-              )
-              .toList(),
+              );
+            },
+            child: ActivityVerticalCard(
+              item: CityActivity(
+                id: item.id,
+                name: item.name,
+                imageUrl: item.imageUrl ?? '',
+                rating: 4.5,
+                reviewCount: 120,
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _openRestaurantSeeAll() async {
-    final cubit = context.read<ExploreCubit>();
-    final currentState = context.read<ExploreCubit>().state;
-    final restaurants = (currentState is ExploreLoaded && currentState.allRestaurants.isNotEmpty)
-        ? currentState.allRestaurants
-        : await _loadSectionItems(cubit.loadAllRestaurants);
-
-    if (!mounted || restaurants.isEmpty) {
-      return;
-    }
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SeeAllScreen(
+        builder: (_) => PaginatedSeeAllScreen<CityRestaurant>(
           title: 'Nhà hàng tiêu biểu',
-          items: restaurants
-              .map(
-                (item) => GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (_) => sl<PlaceDetailCubit>(),
-                          child: PlaceDetailScreen(placeId: item.id),
-                        ),
-                      ),
-                    );
-                  },
-                  child: RestaurantVerticalCard(item: item),
+          pageSize: _pageSize,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadRestaurantsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) => sl<PlaceDetailCubit>(),
+                    child: PlaceDetailScreen(placeId: item.id),
+                  ),
                 ),
-              )
-              .toList(),
+              );
+            },
+            child: RestaurantVerticalCard(item: item),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _openHotelSeeAll() async {
-    final cubit = context.read<ExploreCubit>();
-    final currentState = context.read<ExploreCubit>().state;
-    final hotels = (currentState is ExploreLoaded && currentState.allHotels.isNotEmpty)
-        ? currentState.allHotels
-        : await _loadSectionItems(cubit.loadAllHotels);
-
-    if (!mounted || hotels.isEmpty) {
-      return;
-    }
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SeeAllScreen(
+        builder: (_) => PaginatedSeeAllScreen<CityHotel>(
           title: 'Khách sạn nổi bật',
-          items: hotels
-              .map(
-                (item) => GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (_) => sl<PlaceDetailCubit>(),
-                          child: PlaceDetailScreen(placeId: item.id),
-                        ),
-                      ),
-                    );
-                  },
-                  child: HotelVerticalCard(item: item),
+          pageSize: _pageSize,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadHotelsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) => sl<PlaceDetailCubit>(),
+                    child: PlaceDetailScreen(placeId: item.id),
+                  ),
                 ),
-              )
-              .toList(),
+              );
+            },
+            child: HotelVerticalCard(item: item),
+          ),
         ),
       ),
     );
@@ -724,7 +634,9 @@ class _ExploreViewState extends State<_ExploreView> {
             ),
           ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        SliverToBoxAdapter(
+          child: SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+        ),
       ],
     );
   }

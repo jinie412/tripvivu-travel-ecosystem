@@ -69,6 +69,16 @@ class ExploreCubit extends Cubit<ExploreState> {
     return result;
   }
 
+  Future<List<TripSuggestion>> loadSuggestionsPage({
+    required int page,
+    int limit = 10,
+  }) async {
+    return _safeLoad<List<TripSuggestion>>(
+      () => _getPublicSuggestions(page: page, limit: limit),
+      const <TripSuggestion>[],
+    );
+  }
+
   Future<List<Destination>> loadAllDestinations({bool refresh = false}) async {
     if (!refresh && _cachedDestinations != null) {
       return _cachedDestinations!;
@@ -88,6 +98,16 @@ class ExploreCubit extends Cubit<ExploreState> {
     );
     _cachedDestinations = result;
     return result;
+  }
+
+  Future<List<Destination>> loadDestinationsPage({
+    required int page,
+    int limit = 10,
+  }) async {
+    return _safeLoad<List<Destination>>(
+      () => _getFeaturedDestinations(page: page, limit: limit),
+      const <Destination>[],
+    );
   }
 
   Future<List<CityRestaurant>> loadAllRestaurants({
@@ -144,6 +164,35 @@ class ExploreCubit extends Cubit<ExploreState> {
     return result;
   }
 
+  Future<List<CityRestaurant>> loadRestaurantsPage({
+    required int page,
+    int limit = 10,
+  }) async {
+    final fromCategory = await _safeLoad<List<CityRestaurant>>(
+      () => _getRestaurantsByCategories(
+        // Try broader synonyms because category naming can vary on backend data.
+        categories: const ['ẩm thực', 'nhà hàng', 'ăn uống'],
+        page: page,
+        limitPerCategory: limit,
+      ),
+      const <CityRestaurant>[],
+    );
+
+    if (fromCategory.isNotEmpty) {
+      return fromCategory;
+    }
+
+    // Fallback to explore home payload when /explore/places has no matched
+    // category data for the current environment.
+    final home = await _safeLoad<ExploreHomeData>(_getExploreHome.call, _emptyHome);
+    if (home.restaurants.isEmpty) {
+      return const <CityRestaurant>[];
+    }
+
+    final start = (page - 1) * limit;
+    return home.restaurants.skip(start).take(limit).toList();
+  }
+
   Future<List<CityHotel>> loadAllHotels({bool refresh = false}) async {
     if (!refresh && _cachedHotels != null) {
       return _cachedHotels!;
@@ -180,6 +229,20 @@ class ExploreCubit extends Cubit<ExploreState> {
       ));
     }
     return result;
+  }
+
+  Future<List<CityHotel>> loadHotelsPage({
+    required int page,
+    int limit = 10,
+  }) async {
+    return _safeLoad<List<CityHotel>>(
+      () => _getHotelsByCategories(
+        categories: const ['lưu trú'],
+        page: page,
+        limitPerCategory: limit,
+      ),
+      const <CityHotel>[],
+    );
   }
 
   static const ExploreHomeData _emptyHome = ExploreHomeData(

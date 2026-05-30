@@ -264,7 +264,7 @@ class RestaurantCard extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                item.address,
+                item.address.trim().isEmpty ? 'Đang cập nhật địa chỉ' : item.address,
                 style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -361,7 +361,7 @@ class HotelCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 1),
+        const SizedBox(height: 3),
         Row(
           children: [
             const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),

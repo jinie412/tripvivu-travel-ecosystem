@@ -28,24 +28,26 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<List<TripSuggestion>> getPublicSuggestions({int limit = 50}) async {
-    final models = await _dataSource.getPublicSuggestions(limit: limit);
+  Future<List<TripSuggestion>> getPublicSuggestions({int page = 1, int limit = 50}) async {
+    final models = await _dataSource.getPublicSuggestions(page: page, limit: limit);
     return models.map((model) => model.toEntity()).toList();
   }
 
   @override
-  Future<List<Destination>> getFeaturedDestinations({int limit = 50}) async {
-    final models = await _dataSource.getFeaturedDestinations(limit: limit);
+  Future<List<Destination>> getFeaturedDestinations({int page = 1, int limit = 50}) async {
+    final models = await _dataSource.getFeaturedDestinations(page: page, limit: limit);
     return models.map((model) => model.toEntity()).toList();
   }
 
   @override
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     return _dataSource.getRestaurantsByCategories(
       categories: categories,
+      page: page,
       limitPerCategory: limitPerCategory,
     );
   }
@@ -53,10 +55,12 @@ class HomeRepositoryImpl implements HomeRepository {
   @override
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     return _dataSource.getHotelsByCategories(
       categories: categories,
+      page: page,
       limitPerCategory: limitPerCategory,
     );
   }
