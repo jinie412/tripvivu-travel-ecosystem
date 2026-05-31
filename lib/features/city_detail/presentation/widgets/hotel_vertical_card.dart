@@ -139,6 +139,23 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                // Address row (icon + province/city)
+                if ((widget.item.address).isNotEmpty)
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          widget.item.address,
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 12),
                 Text(
                   'Giá mỗi đêm',
                   style: TextStyle(
@@ -147,32 +164,13 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Từ ${widget.item.price}',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          'Truy cập trang web',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.open_in_new, size: 14, color: Colors.grey[700]),
-                      ],
-                    ),
-                  ],
+                Text(
+                  'Từ ${widget.item.price}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),

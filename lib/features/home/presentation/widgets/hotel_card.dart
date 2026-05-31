@@ -53,17 +53,14 @@ class HotelCard extends StatelessWidget {
                     fontWeight: FontWeight.w600),
               ),
             ]),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              item.price,
+              'Từ ${item.price}/đêm',
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary),
-            ),
-            Text(
-              item.priceUnit,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
             ),
           ]),
         ),

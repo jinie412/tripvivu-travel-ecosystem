@@ -6,12 +6,14 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 class ExploreHomeData {
   final List<TripSuggestion> suggestions;
   final List<Destination> destinations;
+  final List<CityRestaurant> restaurants;
   final List<CityHotel> hotels;
   final ItineraryEntity? currentItinerary;
 
   const ExploreHomeData({
     required this.suggestions,
     required this.destinations,
+    required this.restaurants,
     required this.hotels,
     required this.currentItinerary,
   });

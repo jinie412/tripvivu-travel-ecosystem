@@ -8,12 +8,14 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 class ExploreHomePayload {
   final List<TripSuggestionModel> suggestions;
   final List<DestinationModel> destinations;
+  final List<CityRestaurant> restaurants;
   final List<CityHotel> hotels;
   final ItineraryEntity? currentItinerary;
 
   const ExploreHomePayload({
     required this.suggestions,
     required this.destinations,
+    required this.restaurants,
     required this.hotels,
     required this.currentItinerary,
   });
@@ -23,14 +25,16 @@ class ExploreHomePayload {
 abstract class HomeDataSource {
   Future<ExploreHomePayload> getExploreHome();
   Future<List<CityRestaurant>> getRestaurants({int limit = 5});
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50});
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50});
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50});
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50});
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   });
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   });
 }
@@ -54,6 +58,26 @@ class MockHomeDataSource implements HomeDataSource {
         DestinationModel(id: 'dest-002', name: 'Phố cổ Hội An', imageUrl: 'https://lalago.vn/wp-content/uploads/2025/08/pho-co-hoi-an-ve-dem-3.jpg', placeholderColor: 0xFF8B7355),
         DestinationModel(id: 'dest-003', name: 'Thung lũng Tình Yêu', imageUrl: 'https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1200,h_630/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/t8ojjwnqqzgxuqr80k2o/V%C3%A9ThamQuanThungL%C5%A9ngT%C3%ACnhY%C3%AAu%E1%BB%9F%C4%90%C3%A0L%E1%BA%A1t-KlookVi%E1%BB%87tNam.jpg', placeholderColor: 0xFF3D7A5E),
         DestinationModel(id: 'dest-004', name: 'Vịnh Hạ Long', imageUrl: 'https://www.dulichhalong.net/wp-content/uploads/2020/07/Vinh-Ha-Long-Quang-Ninh.jpg', placeholderColor: 0xFF2E6B8A),
+      ],
+      restaurants: const [
+        CityRestaurant(
+          id: 'res-001',
+          name: 'Cơm tấm Ba Ghiền',
+          imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
+          rating: 4.8,
+          reviewCount: 1200,
+          address: 'Đặng Văn Ngữ, Phú Nhuận',
+          status: 'Đang mở cửa',
+        ),
+        CityRestaurant(
+          id: 'res-002',
+          name: 'Phở Hòa Pasteur',
+          imageUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80',
+          rating: 4.7,
+          reviewCount: 850,
+          address: 'Pasteur, Quận 3',
+          status: 'Đang mở cửa',
+        ),
       ],
       hotels: [
         const CityHotel(id: 'hotel-001', name: 'Inter Phu Quoc', rating: 4.9, reviewCount: 1300, price: '2.500.000đ', imageUrl: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&q=80'),
@@ -107,32 +131,39 @@ class MockHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50}) async {
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50}) async {
     final payload = await getExploreHome();
-    return payload.suggestions.take(limit).toList();
+    final start = (page - 1) * limit;
+    return payload.suggestions.skip(start).take(limit).toList();
   }
 
   @override
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50}) async {
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50}) async {
     final payload = await getExploreHome();
-    return payload.destinations.take(limit).toList();
+    final start = (page - 1) * limit;
+    return payload.destinations.skip(start).take(limit).toList();
   }
 
   @override
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
-    return getRestaurants(limit: limitPerCategory);
+    final payload = await getExploreHome();
+    final start = (page - 1) * limitPerCategory;
+    return payload.restaurants.skip(start).take(limitPerCategory).toList();
   }
 
   @override
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
     final payload = await getExploreHome();
-    return payload.hotels.take(limitPerCategory).toList();
+    final start = (page - 1) * limitPerCategory;
+    return payload.hotels.skip(start).take(limitPerCategory).toList();
   }
 
 }
@@ -154,17 +185,43 @@ class RemoteHomeDataSource implements HomeDataSource {
       queryParameters: {'tourist_id': touristId},
     );
 
-    return _mapExploreHome(response.data as Map<String, dynamic>);
+    final mapped = _mapExploreHome(response.data as Map<String, dynamic>);
+
+    // If backend returns no current_itinerary (server may provide a separate
+    // endpoint to fetch it), try to request it explicitly so the UI can show
+    // "Lịch trình của tôi" when available.
+    if (mapped.currentItinerary == null) {
+      try {
+        final curResp = await _client.dio.get('/explore/current', queryParameters: {'tourist_id': touristId});
+        if (curResp.data != null) {
+          final curJson = curResp.data as Map<String, dynamic>;
+          final ci = _mapCurrentItinerary(curJson['data'] ?? curJson);
+          return ExploreHomePayload(
+            suggestions: mapped.suggestions,
+            destinations: mapped.destinations,
+            restaurants: mapped.restaurants,
+            hotels: mapped.hotels,
+            currentItinerary: ci,
+          );
+        }
+      } catch (_) {
+        // ignore and return original mapped payload
+      }
+    }
+
+    return mapped;
   }
 
   ExploreHomePayload _mapExploreHome(Map<String, dynamic> json) {
     final suggestionJson = _asList(json['suggestion_itineraries']);
     final destinationsJson = _asList(json['featured_places']);
+    final restaurantsJson = _asList(json['restaurants']);
     final hotelsJson = _asList(json['hotels']);
 
     return ExploreHomePayload(
       suggestions: suggestionJson.map(_mapSuggestion).toList(),
       destinations: destinationsJson.map((item) => _mapPlace(item, false)).toList(),
+      restaurants: restaurantsJson.map(_mapRestaurant).toList(),
       hotels: hotelsJson.map(_mapHotel).toList(),
       currentItinerary: _mapCurrentItinerary(json['current_itinerary']),
     );
@@ -229,7 +286,13 @@ class RemoteHomeDataSource implements HomeDataSource {
       imageUrl: (json['image'] ?? '').toString(),
       rating: ((json['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
-      price: 'Liên hệ',
+      // Try to read a numeric or formatted price from payload. Fall back to 0đ
+      price: () {
+        final rawPrice = (json['price'] ?? json['min_price'] ?? '').toString().trim();
+        final priceValue = rawPrice.isNotEmpty ? rawPrice : '0đ';
+        return priceValue;
+      }(),
+      address: (json['city'] ?? json['province'] ?? json['location'] ?? '').toString(),
     );
   }
 
@@ -291,10 +354,10 @@ class RemoteHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<TripSuggestionModel>> getPublicSuggestions({int limit = 50}) async {
+  Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50}) async {
     final response = await _client.dio.get(
       '/explore/itineraries/public',
-      queryParameters: {'page': 1, 'limit': limit},
+      queryParameters: {'page': page, 'limit': limit},
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -303,10 +366,10 @@ class RemoteHomeDataSource implements HomeDataSource {
   }
 
   @override
-  Future<List<DestinationModel>> getFeaturedDestinations({int limit = 50}) async {
+  Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50}) async {
     final response = await _client.dio.get(
       '/explore/cities',
-      queryParameters: {'page': 1, 'limit': limit},
+      queryParameters: {'page': page, 'limit': limit},
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -316,13 +379,14 @@ class RemoteHomeDataSource implements HomeDataSource {
 
   Future<List<Map<String, dynamic>>> _getPlacesByCategory({
     required String category,
+    required int page,
     required int limit,
   }) async {
     final response = await _client.dio.get(
       '/explore/places',
       queryParameters: {
         'category': category,
-        'page': 1,
+        'page': page,
         'limit': limit,
         '_ts': DateTime.now().millisecondsSinceEpoch,
       },
@@ -372,22 +436,22 @@ class RemoteHomeDataSource implements HomeDataSource {
   @override
   Future<List<CityRestaurant>> getRestaurantsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
-    final groups = <List<Map<String, dynamic>>>[];
-
-    for (final category in categories) {
-      try {
-        groups.add(
-          await _getPlacesByCategory(
+    final groups = await Future.wait<List<Map<String, dynamic>>>(
+      categories.map((category) async {
+        try {
+          return await _getPlacesByCategory(
             category: category,
+            page: page,
             limit: limitPerCategory,
-          ),
-        );
-      } catch (_) {
-        continue;
-      }
-    }
+          );
+        } catch (_) {
+          return const <Map<String, dynamic>>[];
+        }
+      }),
+    );
 
     final merged = _mergeById(groups);
     return merged.map(_mapRestaurant).toList();
@@ -396,22 +460,22 @@ class RemoteHomeDataSource implements HomeDataSource {
   @override
   Future<List<CityHotel>> getHotelsByCategories({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) async {
-    final groups = <List<Map<String, dynamic>>>[];
-
-    for (final category in categories) {
-      try {
-        groups.add(
-          await _getPlacesByCategory(
+    final groups = await Future.wait<List<Map<String, dynamic>>>(
+      categories.map((category) async {
+        try {
+          return await _getPlacesByCategory(
             category: category,
+            page: page,
             limit: limitPerCategory,
-          ),
-        );
-      } catch (_) {
-        continue;
-      }
-    }
+          );
+        } catch (_) {
+          return const <Map<String, dynamic>>[];
+        }
+      }),
+    );
 
     final merged = _mergeById(groups);
     return merged.map(_mapHotel).toList();

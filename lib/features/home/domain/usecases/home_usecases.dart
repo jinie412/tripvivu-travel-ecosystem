@@ -19,15 +19,15 @@ class GetRestaurantsUseCase {
 class GetPublicSuggestionsUseCase {
   final HomeRepository _repo;
   GetPublicSuggestionsUseCase(this._repo);
-  Future<List<TripSuggestion>> call({int limit = 50}) =>
-      _repo.getPublicSuggestions(limit: limit);
+  Future<List<TripSuggestion>> call({int page = 1, int limit = 50}) =>
+      _repo.getPublicSuggestions(page: page, limit: limit);
 }
 
 class GetFeaturedDestinationsUseCase {
   final HomeRepository _repo;
   GetFeaturedDestinationsUseCase(this._repo);
-  Future<List<Destination>> call({int limit = 50}) =>
-      _repo.getFeaturedDestinations(limit: limit);
+  Future<List<Destination>> call({int page = 1, int limit = 50}) =>
+      _repo.getFeaturedDestinations(page: page, limit: limit);
 }
 
 class GetRestaurantsByCategoriesUseCase {
@@ -35,10 +35,12 @@ class GetRestaurantsByCategoriesUseCase {
   GetRestaurantsByCategoriesUseCase(this._repo);
   Future<List<CityRestaurant>> call({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) =>
       _repo.getRestaurantsByCategories(
         categories: categories,
+        page: page,
         limitPerCategory: limitPerCategory,
       );
 }
@@ -48,10 +50,12 @@ class GetHotelsByCategoriesUseCase {
   GetHotelsByCategoriesUseCase(this._repo);
   Future<List<CityHotel>> call({
     required List<String> categories,
+    int page = 1,
     int limitPerCategory = 50,
   }) =>
       _repo.getHotelsByCategories(
         categories: categories,
+        page: page,
         limitPerCategory: limitPerCategory,
       );
 }

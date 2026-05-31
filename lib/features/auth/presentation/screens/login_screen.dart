@@ -10,6 +10,8 @@ import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
+import 'package:travel_advisor_mobile/core/utils/reload.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
@@ -60,9 +62,20 @@ class _LoginViewState extends State<_LoginView> {
           // Lưu tokens sau khi login thành công
           // Token được parse bởi datasource và lưu vào SecureStorage
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
-            }
+            if (!context.mounted) return;
+            // Navigate to home immediately
+            Navigator.pushReplacementNamed(context, '/home');
+            // After 2 seconds from successful login, reload the page.
+            Future.delayed(const Duration(seconds: 2), () {
+              if (!context.mounted) return;
+              if (kIsWeb) {
+                // For web: perform full browser reload
+                reloadPage();
+              } else {
+                // For mobile/desktop: re-navigate to /home to force a refresh
+                Navigator.pushReplacementNamed(context, '/home');
+              }
+            });
           });
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
