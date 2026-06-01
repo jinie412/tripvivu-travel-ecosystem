@@ -42,10 +42,14 @@ export const LocationDetail: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Đã duyệt': return { bg: '#ccfbf1', text: '#0f766e' };
-      case 'Chờ duyệt': return { bg: '#fef3c7', text: '#b45309' };
-      case 'Từ chối': return { bg: '#fef2f2', text: '#ef4444' };
-      default: return { bg: '#f1f5f9', text: '#64748b' };
+      case 'Đã duyệt':
+        return { bg: '#ccfbf1', text: '#0f766e' };
+      case 'Chờ duyệt':
+        return { bg: '#fef3c7', text: '#b45309' };
+      case 'Từ chối':
+        return { bg: '#fef2f2', text: '#ef4444' };
+      default:
+        return { bg: '#f1f5f9', text: '#64748b' };
     }
   };
 
@@ -85,23 +89,35 @@ export const LocationDetail: React.FC = () => {
         <div className="ld-breadcrumb">
           <span>Quản lý</span> / <Link to="/admin/locations">Địa điểm</Link> / <span className="active-bread">Chi tiết</span>
         </div>
-        
+
         <div className="ld-header-main">
           <div className="ld-title-area">
             <h1 className="ld-title">Chi tiết địa điểm: {location.name}</h1>
-            <span className="badge" style={{ backgroundColor: statusColor.bg, color: statusColor.text, display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600 }}>
+            <span
+              className="badge"
+              style={{
+                backgroundColor: statusColor.bg,
+                color: statusColor.text,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: '100px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+              }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: statusColor.text }}></span>
               {location.status}
             </span>
           </div>
-          
+
           <button className="btn-outline-secondary" onClick={() => navigate('/admin/locations')}>
             <ArrowLeft size={16} />
             <span>Quay lại</span>
           </button>
         </div>
       </div>
-      
+
       {location.status === 'Từ chối' && (
         <div className="ld-rejection-alert">
           <div className="ld-rejection-title">
@@ -119,7 +135,7 @@ export const LocationDetail: React.FC = () => {
           {/* Left Column */}
           <div className="ld-col-left">
             <PhotoGallery photos={location.photos} />
-            <SenderInfo 
+            <SenderInfo
               userName={location.userName}
               userAvatar={location.userAvatar}
               email={location.email || ''}
@@ -139,9 +155,9 @@ export const LocationDetail: React.FC = () => {
         <div className="ld-footer-action">
           <div className="ld-footer-container">
             <div className="ld-reject-input">
-              <input 
-                type="text" 
-                placeholder="Nhập lý do từ chối (bắt buộc nếu từ chối)..." 
+              <input
+                type="text"
+                placeholder="Nhập lý do từ chối (bắt buộc nếu từ chối)..."
                 value={rejectReason}
                 onChange={(event) => setRejectReason(event.target.value)}
               />

@@ -152,29 +152,98 @@
 /* Period toggle */
 .dash-period-toggle {
   display: flex;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-sm);
-  overflow: hidden;
+  align-items: flex-start;
 }
 
 .dash-toggle-btn {
-  padding: 5px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  background: transparent;
-  border: none;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
+  min-width: 100px;
+}
+
+.dash-toggle-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .dash-toggle-btn.active {
-  background: var(--primary-blue);
-  color: white;
+  border-color: var(--primary-blue);
+  background: #f0f7ff;
 }
 
 .dash-toggle-btn:not(.active):hover {
   background: var(--bg-main);
+}
+
+/* Custom Month Selector */
+.dash-month-selector {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  max-height: 180px; /* Show exactly 5 months */
+  overflow-y: auto;
+  min-width: 120px;
+}
+
+.dash-month-selector.popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  z-index: 100;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.month-pill {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.1s;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.month-pill:last-child {
+  border-bottom: none;
+}
+
+.month-pill.active {
+  background: var(--primary-blue);
+  color: white;
+  border-bottom-color: var(--primary-blue);
+}
+
+.month-pill:hover:not(.active) {
+  background: var(--bg-main);
+}
+
+/* Scrollbar for month selector */
+.dash-month-selector::-webkit-scrollbar {
+  width: 4px;
+}
+.dash-month-selector::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dash-month-selector::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 /* Interaction card */
@@ -396,9 +465,10 @@
   flex-shrink: 0;
 }
 
-.dot-planning  { background: #93c5fd; }
-.dot-confirmed { background: #3b82f6; }
-.dot-rejected  { background: #1e40af; }
+.dot-pending      { background: #fbbf24; }
+.dot-ongoing      { background: #3b82f6; }
+.dot-completed    { background: #10b981; }
+.dot-uncompleted  { background: #f43f5e; }
 
 .trip-status-list {
   display: flex;
@@ -439,9 +509,10 @@
   overflow: hidden;
 }
 
-.seg-planning  { background: #93c5fd; }
-.seg-confirmed { background: #3b82f6; }
-.seg-rejected  { background: #1e40af; }
+.seg-pending      { background: #fbbf24; }
+.seg-ongoing      { background: #3b82f6; }
+.seg-completed    { background: #10b981; }
+.seg-uncompleted  { background: #f43f5e; }
 
 .trip-status-note {
   font-size: 0.72rem;

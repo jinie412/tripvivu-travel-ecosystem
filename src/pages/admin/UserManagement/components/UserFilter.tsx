@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Trash2, Download } from 'lucide-react';
+import React, { memo, useState, useEffect } from 'react';
+import { Search, Trash2 } from 'lucide-react';
 
 interface UserFilterProps {
   selectedCount: number;
   onBulkDelete: () => void;
   onSearch: (term: string) => void;
   onRoleChange: (role: string) => void;
-
-  // Nhận các Props mới từ cha
   onActiveStatusChange: (status: string) => void;
   onDeleteStatusChange: (status: string) => void;
   currentRole: string;
@@ -15,7 +13,7 @@ interface UserFilterProps {
   currentDeleteStatus: string;
 }
 
-export const UserFilter: React.FC<UserFilterProps> = ({
+export const UserFilter = memo<UserFilterProps>(function UserFilter({
   selectedCount,
   onBulkDelete,
   onSearch,
@@ -25,7 +23,7 @@ export const UserFilter: React.FC<UserFilterProps> = ({
   currentRole,
   currentActiveStatus,
   currentDeleteStatus,
-}) => {
+}) {
   const [localSearch, setLocalSearch] = useState('');
 
   useEffect(() => {
@@ -73,7 +71,6 @@ export const UserFilter: React.FC<UserFilterProps> = ({
         <option value="TOURIST">Khách du lịch</option>
       </select>
 
-      {/* Lọc theo Active / Locked */}
       <select
         value={currentActiveStatus}
         onChange={(e) => onActiveStatusChange(e.target.value)}
@@ -82,16 +79,6 @@ export const UserFilter: React.FC<UserFilterProps> = ({
         <option value="ACTIVE">Hoạt động</option>
         <option value="LOCKED">Đã khóa</option>
       </select>
-
-      {/* Lọc theo Trạng thái Xóa
-      <select
-        value={currentDeleteStatus}
-        onChange={(e) => onDeleteStatusChange(e.target.value)}
-        style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-        <option value="">Tất cả trạng thái xóa</option>
-        <option value="UNDELETED">Chưa xóa</option>
-        <option value="DELETED">Đã xóa</option>
-      </select> */}
     </div>
   );
-};
+});

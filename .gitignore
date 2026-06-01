@@ -31,3 +31,5 @@ dist-ssr
 # Prettier
 .prettierrc.json
 
+
+.claude/

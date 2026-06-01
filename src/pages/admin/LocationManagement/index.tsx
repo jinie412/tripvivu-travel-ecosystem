@@ -9,14 +9,14 @@ import { Link } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './LocationManagement.css';
 
-export const LocationManagement: React.FC = () => {
-  const statusOptions = [
-    { value: 'all', label: 'Tất cả' },
-    { value: 'pending', label: 'Chờ duyệt' },
-    { value: 'approved', label: 'Đã duyệt' },
-    { value: 'rejected', label: 'Từ chối' },
-  ];
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'pending', label: 'Chờ duyệt' },
+  { value: 'approved', label: 'Đã duyệt' },
+  { value: 'rejected', label: 'Từ chối' },
+];
 
+export const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [stats, setStats] = useState<LocationStatsInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -25,6 +25,7 @@ export const LocationManagement: React.FC = () => {
     categories: [],
   });
 
+  const [searchInput, setSearchInput] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [status, setStatus] = useState<string>('all');
   const [categoryName, setCategoryName] = useState<string>('');
@@ -50,6 +51,24 @@ export const LocationManagement: React.FC = () => {
     }
   };
 
+  // Debounce search input 400ms trước khi gửi API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Fetch stats 1 lần khi mount, không phụ thuộc filter
+  useEffect(() => {
+    locationAPI.getLocationStats()
+      .then(setStats)
+      .catch((err) => {
+        console.error('Failed to load location stats', err);
+      });
+  }, []);
+
   useEffect(() => {
     const fetchLocationPageData = async () => {
       setLoading(true);
@@ -67,20 +86,6 @@ export const LocationManagement: React.FC = () => {
         );
         setLocations(locationsData.data);
         setTotalItems(locationsData.total);
-
-        try {
-          const statsData = await locationAPI.getLocationStats();
-          setStats(statsData);
-        } catch (statsError) {
-          console.error('Failed to load location stats', statsError);
-          setStats((prev) =>
-            prev ?? {
-              totalLocations: locationsData.total,
-              pendingApproval: 0,
-              newThisMonth: 0,
-            },
-          );
-        }
       } catch (error) {
         console.error('Failed to load location data', error);
       } finally {
@@ -109,20 +114,15 @@ export const LocationManagement: React.FC = () => {
       status: status as 'all' | 'pending' | 'approved' | 'rejected',
       categoryName,
     };
-    const locationsData = await locationAPI.getLocations(
-      currentPage,
-      itemsPerPage,
-      filters,
-    );
+
+    const [locationsData, statsData] = await Promise.all([
+      locationAPI.getLocations(currentPage, itemsPerPage, filters),
+      locationAPI.getLocationStats(),
+    ]);
+
     setLocations(locationsData.data);
     setTotalItems(locationsData.total);
-
-    try {
-      const statsData = await locationAPI.getLocationStats();
-      setStats(statsData);
-    } catch (statsError) {
-      console.error('Failed to refresh location stats', statsError);
-    }
+    setStats(statsData);
   };
 
   const handleApprove = async (locationId: string) => {
@@ -173,15 +173,12 @@ export const LocationManagement: React.FC = () => {
         <div className="card tab-container">
           <LocationFilter
             selectedCount={selectedRows.length}
-            search={search}
+            search={searchInput}
             status={status}
             categoryName={categoryName}
-            statusOptions={statusOptions}
+            statusOptions={STATUS_OPTIONS}
             categoryOptions={categoryOptions.categories}
-            onSearchChange={(value) => {
-              setCurrentPage(1);
-              setSearch(value);
-            }}
+            onSearchChange={(value) => setSearchInput(value)}
             onStatusChange={(value) => {
               setCurrentPage(1);
               setStatus(value);

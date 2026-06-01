@@ -1,20 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import {
-  Bell,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  ArrowUpDown,
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Bell, TrendingUp, TrendingDown, AlertTriangle, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
@@ -37,9 +24,10 @@ interface TopLocation {
   id: string;
   name: string;
   visitCount: number;
-  planning: number;
-  confirmed: number;
-  rejected: number;
+  pending: number; // Đang lên lịch
+  ongoing: number; // Đang diễn ra
+  completed: number; // Hoàn thành
+  uncompleted: number; // Chưa hoàn thành
 }
 
 interface ActivityPoint {
@@ -52,6 +40,7 @@ interface DashInteraction {
   createdTrip: number;
   completedTrip: number;
 }
+
 
 // ─────────────────────────────────────────────────────────
 // Logic helpers
@@ -67,120 +56,133 @@ function calcChangePct(total: number, newThisMonth: number): number {
 // Dashboard Component
 // ─────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC = () => {
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const [stats, setStats] = useState<DashStats>({
-    totalUsers: 0, newUsersMonth: 0,
+    totalUsers: 0,
+    newUsersMonth: 0,
     totalLocations: 0,
-    totalReviews: 0, pendingApproval: 0,
-    pendingReviews: 0, violationReviews: 0,
+    totalReviews: 0,
+    pendingApproval: 0,
+    pendingReviews: 0,
+    violationReviews: 0,
   });
-  const [topLocations, setTopLocations] = useState<TopLocation[]>([]);
-  const [activityData, setActivityData] = useState<ActivityPoint[]>([]);
-  const [interaction, setInteraction] = useState<DashInteraction>({
-    noInteraction: 0,
-    createdTrip: 0,
-    completedTrip: 0,
-  });
-  const [activityPeriod, setActivityPeriod] = useState<'week' | 'month'>('week');
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedWeek, setSelectedWeek] = useState<number | ''>('');
   const [locSortDesc, setLocSortDesc] = useState<boolean>(true);
-  const [loading, setLoading] = useState(true);
+  const [showAllLocs, setShowAllLocs] = useState<boolean>(false);
+  const [monthDropdownOpen, setMonthDropdownOpen] = useState<boolean>(false);
+  const [weekDropdownOpen, setWeekDropdownOpen] = useState<boolean>(false);
 
+  // ---------------------------------------------------------
+  // LUỒNG 1: Tải các con số thống kê tổng
+  // ---------------------------------------------------------
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const loadStats = async () => {
+      setLoadingStats(true);
+      try {
+        const [rUser, rLocAll, rLocPending, rReviews] = await Promise.allSettled([
+          apiClient.get('/admin/users/stats'),
+          apiClient.get('/admin/places', { params: { status: 'all', page: 1, limit: 1 } }),
+          apiClient.get('/admin/places', { params: { status: 'pending', page: 1, limit: 1 } }),
+          apiClient.get('/admin/reviews', { params: { page: 1, limit: 1, sort: 'newest' } }),
+        ]);
 
-      const [rUser, rLocAll, rLocPending, rReviews, rTopLocs] = await Promise.allSettled([
-        apiClient.get('/admin/users/stats'),
-        apiClient.get('/admin/places', { params: { status: 'all', page: 1, limit: 1 } }),
-        apiClient.get('/admin/places', { params: { status: 'pending', page: 1, limit: 1 } }),
-        apiClient.get('/admin/reviews', { params: { page: 1, limit: 1, sort: 'newest' } }),
-        apiClient.get('/admin/places', { params: { status: 'approved', page: 1, limit: 100 } }),
-      ]);
+        const newStats: DashStats = {
+          totalUsers: 0,
+          newUsersMonth: 0,
+          totalLocations: 0,
+          totalReviews: 0,
+          pendingApproval: 0,
+          pendingReviews: 0,
+          violationReviews: 0,
+        };
 
-      // ── User stats
-      let totalUsers = 0, newUsersMonth = 0;
-      if (rUser.status === 'fulfilled') {
-        const raw = rUser.value.data;
-        const d = raw?.data ?? raw;
-        totalUsers = Number(d?.totalUsers ?? 0);
-        newUsersMonth = Number(d?.newThisMonth ?? 0);
-
-        // Dữ liệu hoạt động theo ngày — khi API trả về activityByDay thì tự cập nhật
-        if (Array.isArray(d?.activityByDay)) {
-          setActivityData(d.activityByDay);
+        if (rUser.status === 'fulfilled') {
+          const d = rUser.value.data?.data ?? rUser.value.data;
+          newStats.totalUsers = Number(d?.totalUsers ?? 0);
+          newStats.newUsersMonth = Number(d?.newThisMonth ?? 0);
         }
 
-        // Dữ liệu tương tác — khi API trả về interaction thì tự cập nhật
-        if (d?.interaction) {
-          setInteraction({
-            noInteraction: Number(d.interaction.noInteraction ?? 0),
-            createdTrip: Number(d.interaction.createdTrip ?? 0),
-            completedTrip: Number(d.interaction.completedTrip ?? 0),
-          });
+        if (rLocAll.status === 'fulfilled') newStats.totalLocations = Number(rLocAll.value.data?.pagination?.total ?? 0);
+        if (rLocPending.status === 'fulfilled') newStats.pendingApproval = Number(rLocPending.value.data?.pagination?.total ?? 0);
+
+        if (rReviews.status === 'fulfilled') {
+          const s = rReviews.value.data?.summary;
+          newStats.totalReviews = Number(s?.total_reviews ?? 0);
+          newStats.pendingReviews = Number(s?.pending_count ?? 0);
+          newStats.violationReviews = Number(s?.violation_count ?? 0);
         }
+
+        setStats(newStats);
+      } finally {
+        setLoadingStats(false);
       }
-
-      // ── Location counts
-      let totalLocations = 0, pendingApproval = 0;
-      if (rLocAll.status === 'fulfilled')
-        totalLocations = Number(rLocAll.value.data?.pagination?.total ?? 0);
-      if (rLocPending.status === 'fulfilled')
-        pendingApproval = Number(rLocPending.value.data?.pagination?.total ?? 0);
-
-      // ── Review stats
-      let totalReviews = 0, pendingReviews = 0, violationReviews = 0;
-      if (rReviews.status === 'fulfilled') {
-        const s = rReviews.value.data?.summary;
-        totalReviews = Number(s?.total_reviews ?? 0);
-        pendingReviews = Number(s?.pending_count ?? 0);
-        violationReviews = Number(s?.violation_count ?? 0);
-      }
-
-      setStats({
-        totalUsers, newUsersMonth,
-        totalLocations,
-        totalReviews, pendingApproval, pendingReviews, violationReviews,
-      });
-
-      // ── Top locations
-      if (rTopLocs.status === 'fulfilled') {
-        const raw: Record<string, unknown>[] = rTopLocs.value.data?.data ?? [];
-        const processed: TopLocation[] = raw
-          .filter((loc) => loc.review_count !== undefined && loc.review_count !== null)
-          .map((loc) => ({
-            id: String(loc.id),
-            name: String(loc.name ?? ''),
-            visitCount: Number(loc.review_count),
-            // Khi API trả về các trường trạng thái thì tự cập nhật, mặc định 0
-            planning: Number(loc.planning ?? 0),
-            confirmed: Number(loc.confirmed ?? 0),
-            rejected: Number(loc.rejected ?? 0),
-          }));
-        processed.sort((a, b) => b.visitCount - a.visitCount);
-        setTopLocations(processed);
-      }
-
-      [rUser, rLocAll, rLocPending, rReviews, rTopLocs].forEach((r, i) => {
-        if (r.status === 'rejected')
-          console.error(`[Dashboard] API ${i + 1} lỗi:`, r.reason);
-      });
-
-      setLoading(false);
     };
-
-    load();
+    loadStats();
   }, []);
+
+  // ---------------------------------------------------------
+  // LUỒNG 2: Tải chart user hoạt động (Fix 1+5: useQuery với signal tự động cancel)
+  // ---------------------------------------------------------
+  const { data: activityData = [], isLoading: loadingChart } = useQuery({
+    queryKey: ['dashboard-chart', selectedMonth, selectedWeek],
+    queryFn: async ({ signal }) => {
+      const params: Record<string, number> = { month: selectedMonth };
+      if (selectedWeek !== '') params.week = selectedWeek as number;
+      const res = await apiClient.get('/admin/dashboard/chart', { params, signal });
+      return (res.data?.data ?? []) as ActivityPoint[];
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
+  // ---------------------------------------------------------
+  // LUỒNG 3: Tải chart danh sách địa điểm và trạng thái (Fix 2+5: useQuery + limit param)
+  // ---------------------------------------------------------
+  const { data: topLocations = [], isLoading: loadingLocs } = useQuery({
+    queryKey: ['dashboard-popular-places'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/dashboard/popular-places', { params: { limit: 10 } });
+      const rawData = response.data?.data || [];
+      return rawData.map((loc: any) => ({
+        id: String(loc.id),
+        name: String(loc.name ?? 'Không rõ'),
+        visitCount: Number(loc.visitCount ?? 0),
+        pending: Number(loc.pendingPct ?? loc.planningPct ?? 0),
+        ongoing: Number(loc.ongoingPct ?? loc.confirmedPct ?? 0),
+        completed: Number(loc.completedPct ?? 0),
+        uncompleted: Number(loc.uncompletedPct ?? 0),
+      })) as TopLocation[];
+    },
+    staleTime: 60 * 60 * 1000,
+  });
+
+  // ---------------------------------------------------------
+  // LUỒNG 4: Tải dữ liệu tương tác người dùng
+  // ---------------------------------------------------------
+  const { data: interaction = { noInteraction: 0, createdTrip: 0, completedTrip: 0 }, isLoading: loadingInteraction } =
+    useQuery<DashInteraction>({
+      queryKey: ['dashboard-interactions'],
+      queryFn: async () => {
+        const res = await apiClient.get('/admin/dashboard/interactions');
+        return res.data?.data ?? { noInteraction: 0, createdTrip: 0, completedTrip: 0 };
+      },
+      staleTime: 5 * 60 * 1000,
+    });
 
   const userChangePct = calcChangePct(stats.totalUsers, stats.newUsersMonth);
 
-  const sortedLocations = useMemo(
-    () => [...topLocations].sort((a, b) => locSortDesc ? b.visitCount - a.visitCount : a.visitCount - b.visitCount),
-    [topLocations, locSortDesc],
-  );
-  const maxVisits = sortedLocations[0]?.visitCount || 1;
-
-  const hasStatusData = sortedLocations.some(
-    (loc) => loc.planning > 0 || loc.confirmed > 0 || loc.rejected > 0,
-  );
+  // Fix 3: Gộp sortedLocations, maxVisits, hasStatusData vào 1 useMemo
+  const { sortedLocations, maxVisits, hasStatusData } = useMemo(() => {
+    const sorted = [...topLocations].sort((a, b) =>
+      locSortDesc ? b.visitCount - a.visitCount : a.visitCount - b.visitCount,
+    );
+    return {
+      sortedLocations: sorted,
+      maxVisits: sorted[0]?.visitCount || 1,
+      hasStatusData: sorted.some((l) => l.pending > 0 || l.ongoing > 0 || l.completed > 0 || l.uncompleted > 0),
+    };
+  }, [topLocations, locSortDesc]);
 
   return (
     <div className="page-container">
@@ -190,32 +192,33 @@ export const AdminDashboard: React.FC = () => {
           <h1 className="page-title">Dashboard</h1>
         </div>
         <div className="header-actions">
-          <button className="icon-btn"><Bell size={20} /></button>
+          <button className="icon-btn">
+            <Bell size={20} />
+          </button>
           <AdminHeaderProfile />
         </div>
       </header>
 
       <div className="page-content">
-
         {/* ══ Row 1: Stats Cards ══ */}
         <div className="dash-stats-grid">
           <StatCard
             label="Tổng người dùng"
-            value={loading ? '—' : stats.totalUsers.toLocaleString('vi-VN')}
+            value={loadingStats ? '—' : stats.totalUsers.toLocaleString('vi-VN')}
             changePct={userChangePct}
-            loading={loading}
+            loading={loadingStats}
           />
           <StatCard
             label="Tổng địa điểm"
-            value={loading ? '—' : stats.totalLocations.toLocaleString('vi-VN')}
+            value={loadingStats ? '—' : stats.totalLocations.toLocaleString('vi-VN')}
             changePct={0}
-            loading={loading}
+            loading={loadingStats}
           />
           <StatCard
             label="Tổng đánh giá"
-            value={loading ? '—' : stats.totalReviews.toLocaleString('vi-VN')}
+            value={loadingStats ? '—' : stats.totalReviews.toLocaleString('vi-VN')}
             changePct={0}
-            loading={loading}
+            loading={loadingStats}
           />
         </div>
 
@@ -228,21 +231,21 @@ export const AdminDashboard: React.FC = () => {
           <div className="dash-status-card dash-status-orange">
             <div className="dash-status-top">
               <span className="dash-status-label">Địa điểm chờ duyệt</span>
-              <Link to="/admin/locations" className="dash-status-link">Xem danh sách</Link>
+              <Link to="/admin/locations" className="dash-status-link">
+                Xem danh sách
+              </Link>
             </div>
-            <div className="dash-status-value">
-              {loading ? '—' : String(stats.pendingApproval).padStart(2, '0')}
-            </div>
+            <div className="dash-status-value">{loadingStats ? '—' : String(stats.pendingApproval).padStart(2, '0')}</div>
           </div>
 
           <div className="dash-status-card dash-status-blue">
             <div className="dash-status-top">
               <span className="dash-status-label">Đánh giá chờ duyệt</span>
-              <Link to="/admin/reviews" className="dash-status-link">Xem danh sách</Link>
+              <Link to="/admin/reviews" className="dash-status-link">
+                Xem danh sách
+              </Link>
             </div>
-            <div className="dash-status-value">
-              {loading ? '—' : String(stats.pendingReviews).padStart(2, '0')}
-            </div>
+            <div className="dash-status-value">{loadingStats ? '—' : String(stats.pendingReviews).padStart(2, '0')}</div>
           </div>
 
           <div className="dash-status-card dash-status-red">
@@ -251,31 +254,88 @@ export const AdminDashboard: React.FC = () => {
               <AlertTriangle size={16} style={{ color: 'var(--danger-red)' }} />
             </div>
             <div className="dash-status-value dash-status-value-red">
-              {loading ? '—' : String(stats.violationReviews).padStart(2, '0')}
+              {loadingStats ? '—' : String(stats.violationReviews).padStart(2, '0')}
             </div>
           </div>
         </div>
 
         {/* ══ Row 3: Activity Chart + Interaction Bars ══ */}
         <div className="dash-mid-grid">
-
           {/* Area Chart */}
           <div className="card dash-chart-main">
             <div className="dash-card-header">
               <h3 className="dash-card-title">Người dùng hoạt động theo thời gian</h3>
-              <div className="dash-period-toggle">
-                <button
-                  className={`dash-toggle-btn ${activityPeriod === 'week' ? 'active' : ''}`}
-                  onClick={() => setActivityPeriod('week')}
-                >Tuần</button>
-                <button
-                  className={`dash-toggle-btn ${activityPeriod === 'month' ? 'active' : ''}`}
-                  onClick={() => setActivityPeriod('month')}
-                >Tháng</button>
+              <div className="dash-period-toggle" style={{ display: 'flex', gap: '8px' }}>
+                <div className="dash-month-dropdown-wrapper" style={{ position: 'relative' }}>
+                  <button
+                    className={`dash-toggle-btn ${monthDropdownOpen ? 'active' : ''}`}
+                    onClick={() => {
+                      setMonthDropdownOpen(!monthDropdownOpen);
+                      setWeekDropdownOpen(false);
+                    }}>
+                    <span>Tháng {selectedMonth}</span>
+                    <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                  </button>
+
+                  {monthDropdownOpen && (
+                    <div className="dash-month-selector popover">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <button
+                          key={m}
+                          className={`month-pill ${selectedMonth === m ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedMonth(m);
+                            setSelectedWeek('');
+                            setMonthDropdownOpen(false);
+                          }}>
+                          Tháng {m}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="dash-week-dropdown-wrapper" style={{ position: 'relative' }}>
+                  <button
+                    className={`dash-toggle-btn ${weekDropdownOpen ? 'active' : ''}`}
+                    onClick={() => {
+                      setWeekDropdownOpen(!weekDropdownOpen);
+                      setMonthDropdownOpen(false);
+                    }}>
+                    <span>{selectedWeek === '' ? 'Cả tháng' : `Tuần ${selectedWeek}`}</span>
+                    <ChevronDown size={14} style={{ opacity: 0.6 }} />
+                  </button>
+
+                  {weekDropdownOpen && (
+                    <div className="dash-month-selector popover" style={{ minWidth: '130px' }}>
+                      <button
+                        className={`month-pill ${selectedWeek === '' ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedWeek('');
+                          setWeekDropdownOpen(false);
+                        }}>
+                        Cả tháng
+                      </button>
+                      {[1, 2, 3, 4].map((w) => (
+                        <button
+                          key={w}
+                          className={`month-pill ${selectedWeek === w ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedWeek(w);
+                            setWeekDropdownOpen(false);
+                          }}>
+                          Tuần {w}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {activityData.length === 0 ? (
+            {loadingChart ? (
+              <div className="dash-empty-chart">Đang tải dữ liệu biểu đồ...</div>
+            ) : activityData.length === 0 ? (
               <div className="dash-empty-chart">Chưa có dữ liệu hoạt động</div>
             ) : (
               <ResponsiveContainer width="100%" height={210}>
@@ -292,7 +352,7 @@ export const AdminDashboard: React.FC = () => {
                     tick={{ fontSize: 11, fill: '#9ca3af' }}
                     axisLine={false}
                     tickLine={false}
-                    interval={activityPeriod === 'month' ? 4 : 0}
+                    interval={selectedWeek === '' ? 4 : 0}
                   />
                   <YAxis hide />
                   <Tooltip
@@ -302,10 +362,7 @@ export const AdminDashboard: React.FC = () => {
                       fontSize: 12,
                       boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                     }}
-                    formatter={(v) => [
-                      `${Number(v ?? 0).toLocaleString('vi-VN')} người`,
-                      'Đang hoạt động',
-                    ]}
+                    formatter={(v) => [`${Number(v ?? 0).toLocaleString('vi-VN')} người`, 'Đang hoạt động']}
                     labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                   />
                   <Area
@@ -328,79 +385,101 @@ export const AdminDashboard: React.FC = () => {
               <h3 className="dash-card-title">Mức độ tương tác của người dùng</h3>
             </div>
 
-            <div className="interaction-list">
-              <InteractionBar label="Chưa tương tác"        pct={interaction.noInteraction} color="#ef4444" />
-              <InteractionBar label="Đã tạo lịch trình"     pct={interaction.createdTrip}   color="#f59e0b" />
-              <InteractionBar label="Đã đi theo lịch trình" pct={interaction.completedTrip} color="#3b82f6" />
-            </div>
+            {loadingInteraction ? (
+              <div className="dash-empty-msg" style={{ marginTop: '20px' }}>
+                Đang tải dữ liệu...
+              </div>
+            ) : (
+              <>
+                <div className="interaction-list">
+                  <InteractionBar label="Chưa tương tác" pct={interaction.noInteraction} color="#ef4444" />
+                  <InteractionBar label="Đã tạo lịch trình" pct={interaction.createdTrip} color="#f59e0b" />
+                  <InteractionBar label="Đã đi theo lịch trình" pct={interaction.completedTrip} color="#3b82f6" />
+                </div>
 
-            {interaction.noInteraction === 0 && interaction.createdTrip === 0 && interaction.completedTrip === 0 && (
-              <p className="interaction-note">Chưa có dữ liệu tương tác.</p>
+                {interaction.noInteraction === 0 && interaction.createdTrip === 0 && interaction.completedTrip === 0 && (
+                  <p className="interaction-note">Chưa có dữ liệu tương tác.</p>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {/* ══ Row 4: Top Locations + Status Bars ══ */}
         <div className="dash-bottom-grid">
-
           {/* Top Locations horizontal bars */}
           <div className="card">
             <div className="dash-card-header">
               <h3 className="dash-card-title">Địa điểm phổ biến</h3>
               <button
                 className="top-loc-sort-btn"
-                onClick={() => setLocSortDesc(prev => !prev)}
-                title={locSortDesc ? 'Đang sắp xếp: Nhiều → Ít. Nhấn để đảo ngược' : 'Đang sắp xếp: Ít → Nhiều. Nhấn để đảo ngược'}
-              >
+                onClick={() => setLocSortDesc((prev) => !prev)}
+                title={locSortDesc ? 'Đang sắp xếp: Nhiều → Ít. Nhấn để đảo ngược' : 'Đang sắp xếp: Ít → Nhiều. Nhấn để đảo ngược'}>
                 <ArrowUpDown size={13} />
               </button>
             </div>
 
-            <div className="top-loc-list top-loc-list--scrollable">
-              {loading ? (
-                <div className="dash-empty-msg">Đang tải...</div>
-              ) : sortedLocations.length === 0 ? (
-                <div className="dash-empty-msg">Chưa có dữ liệu lượt đánh giá</div>
-              ) : (
-                sortedLocations.map((loc, idx) => (
-                  <div key={loc.id} className="top-loc-row">
-                    <span className="top-loc-rank">{String(idx + 1).padStart(2, '0')}</span>
-                    <Link to={`/admin/locations/${loc.id}`} className="top-loc-name">
-                      {loc.name}
-                    </Link>
-                    <div className="top-loc-bar-track">
-                      <div
-                        className="top-loc-bar-fill"
-                        style={{ width: `${Math.round((loc.visitCount / maxVisits) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="top-loc-count">
-                      {loc.visitCount.toLocaleString('vi-VN')} đánh giá
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+              <div className="top-loc-list top-loc-list--scrollable">
+                {loadingLocs ? (
+                  <div className="dash-empty-msg">Đang tải danh sách địa điểm...</div>
+                ) : sortedLocations.length === 0 ? (
+                  <div className="dash-empty-msg">Chưa có dữ liệu lượt đánh giá</div>
+                ) : (
+                  <>
+                    {sortedLocations.slice(0, showAllLocs ? 10 : 5).map((loc, idx) => (
+                      <div key={loc.id} className="top-loc-row">
+                        <span className="top-loc-rank">{String(idx + 1).padStart(2, '0')}</span>
+                        {/* Sử dụng thẻ span thay vì Link do id bây giờ là chuỗi tên thành phố thay vì UUID */}
+                        <span className="top-loc-name">{loc.name}</span>
+                        <div className="top-loc-bar-track">
+                          {/* Biểu đồ số 1: Hiển thị độ dài dựa trên số visitCount so với mốc max */}
+                          <div
+                            className="top-loc-bar-fill"
+                            style={{ width: `${Math.round((loc.visitCount / maxVisits) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="top-loc-count">{loc.visitCount.toLocaleString('vi-VN')} lượt</span>
+                      </div>
+                    ))}
+                    {sortedLocations.length > 5 && (
+                      <button className="top-loc-view-all" onClick={() => setShowAllLocs(!showAllLocs)}>
+                        {showAllLocs ? 'Thu gọn' : `Xem thêm (${sortedLocations.length - 5} địa điểm)`}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
           </div>
 
           {/* Stacked Status Bars */}
           <div className="card">
             <div className="dash-card-header">
-              <h3 className="dash-card-title">Trạng thái tại các điểm đến phổ biến</h3>
+              <h3 className="dash-card-title">Trạng thái hành trình tại các điểm đến phổ biến</h3>
             </div>
-            <p className="trip-status-subtitle">
-              Thống kê trạng thái thực tế theo từng địa điểm
-            </p>
+            <p className="trip-status-subtitle">Thống kê trạng thái thực tế theo từng địa điểm</p>
 
             <div className="trip-legend">
-              <span className="legend-item"><span className="legend-dot dot-planning" />Đang lên lịch</span>
-              <span className="legend-item"><span className="legend-dot dot-confirmed" />Xác nhận</span>
-              <span className="legend-item"><span className="legend-dot dot-rejected" />Hoàn thành</span>
+              <span className="legend-item">
+                <span className="legend-dot dot-pending" />
+                Đang lên lịch
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-ongoing" />
+                Đang diễn ra
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-completed" />
+                Hoàn thành
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-uncompleted" />
+                Chưa hoàn thành
+              </span>
             </div>
 
             <div className="trip-status-list">
-              {loading ? (
-                <div className="dash-empty-msg">Đang tải...</div>
+              {loadingLocs ? (
+                <div className="dash-empty-msg">Đang tải trạng thái...</div>
               ) : !hasStatusData ? (
                 <div className="dash-empty-msg">Chưa có dữ liệu trạng thái</div>
               ) : (
@@ -408,27 +487,27 @@ export const AdminDashboard: React.FC = () => {
                   <div key={loc.id} className="trip-row">
                     <span className="trip-row-name">{loc.name}</span>
                     <div className="trip-bar">
-                      <div className="trip-seg seg-planning" style={{ width: `${loc.planning}%` }}>
-                        {loc.planning > 0 ? `${loc.planning}%` : ''}
+                      {/* Biểu đồ số 2: Stacked Bar chia tỉ lệ phần trăm cho 4 trạng thái */}
+                      <div className="trip-seg seg-pending" style={{ width: `${loc.pending}%` }}>
+                        {loc.pending > 0 ? `${loc.pending}%` : ''}
                       </div>
-                      <div className="trip-seg seg-confirmed" style={{ width: `${loc.confirmed}%` }}>
-                        {loc.confirmed > 0 ? `${loc.confirmed}%` : ''}
+                      <div className="trip-seg seg-ongoing" style={{ width: `${loc.ongoing}%` }}>
+                        {loc.ongoing > 0 ? `${loc.ongoing}%` : ''}
                       </div>
-                      <div className="trip-seg seg-rejected" style={{ width: `${loc.rejected}%` }}>
-                        {loc.rejected > 0 ? `${loc.rejected}%` : ''}
+                      <div className="trip-seg seg-completed" style={{ width: `${loc.completed}%` }}>
+                        {loc.completed > 0 ? `${loc.completed}%` : ''}
+                      </div>
+                      <div className="trip-seg seg-uncompleted" style={{ width: `${loc.uncompleted}%` }}>
+                        {loc.uncompleted > 0 ? `${loc.uncompleted}%` : ''}
                       </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
-
-            <p className="trip-status-note">
-              ⓘ Cập nhật dựa trên dữ liệu thực tế trong hệ thống.
-            </p>
+            <p className="trip-status-note">ⓘ Cập nhật dựa trên dữ liệu thực tế trong hệ thống.</p>
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -455,7 +534,8 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, changePct, loading })
         {!loading && changePct !== 0 && (
           <span className={`stat-badge ${isPos ? 'badge-up' : 'badge-down'}`}>
             {isPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-            {isPos ? '+' : '-'}{abs}%
+            {isPos ? '+' : '-'}
+            {abs}%
           </span>
         )}
       </div>
@@ -474,7 +554,9 @@ const InteractionBar: React.FC<InteractionBarProps> = ({ label, pct, color }) =>
   <div className="interaction-item">
     <div className="interaction-row">
       <span className="interaction-label">{label}</span>
-      <span className="interaction-pct" style={{ color }}>{pct}%</span>
+      <span className="interaction-pct" style={{ color }}>
+        {pct}%
+      </span>
     </div>
     <div className="interaction-track">
       <div className="interaction-fill" style={{ width: `${pct}%`, backgroundColor: color }} />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Users, UserPlus, ShieldAlert } from 'lucide-react';
 import { UserStatsInfo } from '../../../../types/user';
 
@@ -7,9 +7,21 @@ interface UserStatsProps {
   loading: boolean;
 }
 
-export const UserStats: React.FC<UserStatsProps> = ({ stats, loading }) => {
+export const UserStats = memo<UserStatsProps>(function UserStats({ stats, loading }) {
   if (loading || !stats) {
-    return <div className="user-stats skeleton">Đang tải thống kê...</div>;
+    return (
+      <div className="user-stats">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="stat-card stat-card-skeleton">
+            <div className="skeleton-icon" />
+            <div className="stat-info">
+              <div className="skeleton-line skeleton-label" />
+              <div className="skeleton-line skeleton-value" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -45,4 +57,4 @@ export const UserStats: React.FC<UserStatsProps> = ({ stats, loading }) => {
       </div>
     </div>
   );
-};
+});
