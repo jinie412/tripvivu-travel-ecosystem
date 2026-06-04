@@ -1,9 +1,11 @@
 import 'package:travel_advisor_mobile/features/itinerary/data/datasources/itinerary_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/create_itinerary_request_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 
 /// Implementation cụ thể của [ItineraryRepository].
 ///
@@ -56,5 +58,26 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   @override
   Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days) async {
     await _dataSource.updateItineraryActivities(id, days);
+  }
+
+  @override
+  Future<String> createItinerary(CreateItineraryParams params) async {
+    final request = CreateItineraryRequestModel(
+      userId: params.userId,
+      tripType: params.tripType,
+      departureLocationId: params.departureLocationId,
+      destinationLocationId: params.destinationLocationId,
+      transportMode: params.transportMode,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      dailyStartTime: params.dailyStartTime,
+      dailyEndTime: params.dailyEndTime,
+      tripIntent: params.tripIntent,
+      adultCount: params.adultCount,
+      childCount: params.childCount,
+      budget: params.budget,
+      foodPreferences: params.foodPreferences,
+    );
+    return _dataSource.createItinerary(request);
   }
 }

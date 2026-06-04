@@ -1,3 +1,9 @@
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:travel_advisor_mobile/core/network/api_config.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/create_itinerary_request_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
@@ -7,11 +13,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Hợp đồng cho nguồn dữ liệu lịch trình.
 abstract class ItineraryDataSource {
   Future<List<ItineraryModel>> getItineraries();
   Future<ItineraryDetailModel> getItineraryDetail(String id);
   Future<void> deleteItinerary(String id);
+
+  /// Gọi POST /itinerary → trả về itineraryId.
+  Future<String> createItinerary(CreateItineraryRequestModel request);
   Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days);
 }
 
@@ -536,5 +544,26 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (res.statusCode != 200) {
       throw Exception('Không thể cập nhật lịch trình');
     }
+  }
+
+  @override
+  Future<String> createItinerary(CreateItineraryRequestModel request) async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(request.toJson()),
+    );
+
+    if (res.statusCode == 201) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return data['id'] as String;
+    }
+    throw Exception('Tạo lịch trình thất bại: ${res.statusCode}');
   }
 }

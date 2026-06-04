@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'trip_planner_step2_screen.dart';
-
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/city/domain/usecases/search_cities_usecase.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/city_search_bottom_sheet.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/location_selector_card.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/step_progress_bar.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/transportation_selector.dart';
-import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/trip_type_selector.dart';
+import 'trip_planner_step2_screen.dart';
 
 class TripPlannerScreen extends StatelessWidget {
   const TripPlannerScreen({super.key});
@@ -20,7 +18,7 @@ class TripPlannerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<TripPlannerCubit>(),
+      create: (_) => sl<TripPlannerCubit>(),
       child: const _TripPlannerView(),
     );
   }
@@ -28,6 +26,25 @@ class TripPlannerScreen extends StatelessWidget {
 
 class _TripPlannerView extends StatelessWidget {
   const _TripPlannerView();
+
+  Future<void> _pickCity(
+    BuildContext context, {
+    required bool isDeparture,
+  }) async {
+    final city = await CitySearchBottomSheet.show(
+      context,
+      searchCitiesUseCase: sl<SearchCitiesUseCase>(),
+      title: isDeparture ? 'Chọn điểm khởi hành' : 'Chọn điểm đến',
+    );
+    if (city == null || !context.mounted) return;
+
+    final cubit = context.read<TripPlannerCubit>();
+    if (isDeparture) {
+      cubit.updateDeparture(city.name, city.id);
+    } else {
+      cubit.updateDestination(city.name, city.id);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +57,7 @@ class _TripPlannerView extends StatelessWidget {
         leading: Padding(
           padding: const EdgeInsets.only(left: AppSizes.s16, top: AppSizes.s4, bottom: AppSizes.s4),
           child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
             child: IconButton(
               icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
               onPressed: () => Navigator.of(context).pop(),
@@ -52,38 +66,21 @@ class _TripPlannerView extends StatelessWidget {
         ),
         title: Column(
           children: [
-            Text(
+            const Text(
               'Tạo lịch trình mới',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            SizedBox(height: AppSizes.s2),
+            const SizedBox(height: AppSizes.s2),
             Text(
               'BƯỚC 1/3',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              'Hủy',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
-            ),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Hủy', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14)),
           ),
           const SizedBox(width: AppSizes.s8),
         ],
@@ -91,116 +88,82 @@ class _TripPlannerView extends StatelessWidget {
       body: BlocBuilder<TripPlannerCubit, TripPlannerState>(
         builder: (context, state) {
           return state.maybeWhen(
-            loaded: (tripForm) {
-              return Column(
-                children: [
-                  Container(
-                    color: AppColors.surface,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
-                    child: StepProgressBar(
-                      currentStep: tripForm.currentStep,
-                      totalSteps: 3,
-                    ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(AppSizes.s24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bạn sẽ đi đâu?',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSizes.s12),
-                          Text(
-                            'Điền thông tin địa điểm và phương tiện di chuyển của bạn cho chuyến du lịch trong nước.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textSecondary,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: AppSizes.s24),
-                          LocationSelectorCard(
-                            departureLocation: tripForm.departureLocation,
-                            destinationLocation: tripForm.destinationLocation,
-                            onTapDeparture: () {
-                              context.read<TripPlannerCubit>().updateDeparture("TP. Hồ Chí Minh");
-                            },
-                            onTapDestination: () {
-                              context.read<TripPlannerCubit>().updateDestination("Hà Nội");
-                            },
-                            onSwap: () {
-                              context.read<TripPlannerCubit>().swapLocations();
-                            },
-                          ),
-                          const SizedBox(height: AppSizes.s32),
-                          TransportationSelector(
-                            selectedOption: tripForm.transportation,
-                            onChanged: (transport) {
-                              context.read<TripPlannerCubit>().updateTransportation(transport);
-                            },
-                            selectedType: tripForm.tripType,
-                            onTypeChanged: (type) {
-                              context.read<TripPlannerCubit>().updateTripType(type);
-                            },
-                          ),
-                          const SizedBox(height: AppSizes.s64), // Space for button
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(AppSizes.s16),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        context.read<TripPlannerCubit>().goNextStep();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<TripPlannerCubit>(),
-                              child: const TripPlannerStep2Screen(),
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(double.infinity, AppSizes.appBarHeight),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.r16),
+            loaded: (tripForm) => Column(
+              children: [
+                Container(
+                  color: AppColors.surface,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
+                  child: StepProgressBar(currentStep: tripForm.currentStep, totalSteps: 3),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSizes.s24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Bạn sẽ đi đâu?',
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                         ),
-                        elevation: 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Tiếp tục',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: AppSizes.s8),
-                          Icon(Icons.arrow_forward, color: Colors.white, size: AppSizes.iconMd),
-                        ],
-                      ),
+                        const SizedBox(height: AppSizes.s12),
+                        Text(
+                          'Chọn địa điểm khởi hành, điểm đến và phương tiện di chuyển.',
+                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                        ),
+                        const SizedBox(height: AppSizes.s24),
+                        LocationSelectorCard(
+                          departureLocation: tripForm.departureLocation,
+                          destinationLocation: tripForm.destinationLocation,
+                          onTapDeparture: () => _pickCity(context, isDeparture: true),
+                          onTapDestination: () => _pickCity(context, isDeparture: false),
+                          onSwap: () => context.read<TripPlannerCubit>().swapLocations(),
+                        ),
+                        const SizedBox(height: AppSizes.s32),
+                        TransportationSelector(
+                          selectedOption: tripForm.transportation,
+                          onChanged: (t) => context.read<TripPlannerCubit>().updateTransportation(t),
+                          selectedType: tripForm.tripType,
+                          onTypeChanged: (t) => context.read<TripPlannerCubit>().updateTripType(t),
+                        ),
+                        const SizedBox(height: AppSizes.s64),
+                      ],
                     ),
                   ),
-                ],
-              );
-            },
+                ),
+                Container(
+                  padding: const EdgeInsets.all(AppSizes.s16),
+                  color: AppColors.background,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.read<TripPlannerCubit>().goNextStep();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<TripPlannerCubit>(),
+                            child: const TripPlannerStep2Screen(),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size(double.infinity, AppSizes.appBarHeight),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r16)),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Tiếp tục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        SizedBox(width: AppSizes.s8),
+                        Icon(Icons.arrow_forward, color: Colors.white, size: AppSizes.iconMd),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
             orElse: () => const Center(child: CircularProgressIndicator()),
           );
         },

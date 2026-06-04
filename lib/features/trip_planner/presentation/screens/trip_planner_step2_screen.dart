@@ -1,19 +1,57 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'trip_planner_step3_screen.dart';
-
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_intent_options.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/date_picking_field.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/member_counter_card.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/time_picking_card.dart';
-import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/topic_selector.dart';
+import 'trip_planner_step3_screen.dart';
 
 class TripPlannerStep2Screen extends StatelessWidget {
   const TripPlannerStep2Screen({super.key});
+
+  // ── Pickers ────────────────────────────────────────────────────────────────
+
+  Future<void> _pickDate(
+    BuildContext context, {
+    required bool isStart,
+    required DateTime? currentStart,
+    required DateTime? currentEnd,
+  }) async {
+    final now = DateTime.now();
+    final firstDate = isStart ? now : (currentStart ?? now);
+    final initialDate = isStart
+        ? (currentStart ?? now)
+        : (currentEnd ?? (currentStart ?? now).add(const Duration(days: 1)));
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      firstDate: firstDate,
+      lastDate: DateTime(now.year + 2),
+      locale: const Locale('vi'),
+    );
+    if (picked == null || !context.mounted) return;
+
+    final cubit = context.read<TripPlannerCubit>();
+    if (isStart) {
+      cubit.updateStartDate(picked);
+    } else {
+      cubit.updateEndDate(picked);
+    }
+  }
+
+  Future<void> _pickTripIntent(BuildContext context, String? current) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TripIntentSheet(current: current),
+    );
+    if (picked == null || !context.mounted) return;
+    context.read<TripPlannerCubit>().updateTripIntent(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,62 +70,28 @@ class TripPlannerStep2Screen extends StatelessWidget {
         ),
         title: Column(
           children: [
-            Text(
-              'Tạo lịch trình mới',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const Text('Tạo lịch trình mới', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            Text(
-              'Bước 2/3',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('Bước 2/3', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            child: Text(
-              'Hủy',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
+            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
           ),
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Stack(
               children: [
-                Container(
-                  height: 4,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Container(
-                  height: 4,
-                  width: MediaQuery.of(context).size.width * 0.66,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                Container(height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+                FractionallySizedBox(
+                  widthFactor: 0.66,
+                  child: Container(height: 4, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))),
                 ),
               ],
             ),
@@ -97,115 +101,92 @@ class TripPlannerStep2Screen extends StatelessWidget {
       body: BlocBuilder<TripPlannerCubit, TripPlannerState>(
         builder: (context, state) {
           return state.maybeWhen(
-            loaded: (tripForm) {
-              return Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _SectionTitle(title: 'THỜI GIAN CHUYẾN ĐI'),
-                          const SizedBox(height: 16),
-                          DatePickingField(
-                            label: 'TỪ NGÀY',
-                            date: tripForm.startDate,
-                            onTap: () {
-                              context.read<TripPlannerCubit>().updateStartDate(DateTime(2024, 6, 15));
-                            },
-                          ),
-                          DatePickingField(
-                            label: 'ĐẾN NGÀY',
-                            date: tripForm.endDate,
-                            onTap: () {
-                              context.read<TripPlannerCubit>().updateEndDate(DateTime(2024, 6, 20));
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                          const _SectionTitle(title: 'THỜI GIAN HOẠT ĐỘNG TRONG NGÀY'),
-                          const SizedBox(height: 16),
-                          TimePickingCard(
-                            startTime: tripForm.startTime,
-                            endTime: tripForm.endTime,
-                            onTapStart: () {
-                              context.read<TripPlannerCubit>().updateStartTime('07:00 AM');
-                            },
-                            onTapEnd: () {
-                              context.read<TripPlannerCubit>().updateEndTime('11:00 PM');
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                          const _SectionTitle(title: 'CHỦ ĐỀ CHUYẾN ĐI'),
-                          const SizedBox(height: 16),
-                          TopicSelector(
-                            selectedTopic: tripForm.topic,
-                            onTap: () {
-                              context.read<TripPlannerCubit>().updateTopic('Khám phá & Trải nghiệm');
-                            },
-                          ),
-                          const SizedBox(height: 32),
-                          const _SectionTitle(title: 'SỐ LƯỢNG THÀNH VIÊN'),
-                          const SizedBox(height: 16),
-                          MemberCounterCard(
-                            adultCount: tripForm.adultCount,
-                            childCount: tripForm.childCount,
-                            onAdultIncrease: () => context.read<TripPlannerCubit>().increaseAdults(),
-                            onAdultDecrease: () => context.read<TripPlannerCubit>().decreaseAdults(),
-                            onChildIncrease: () => context.read<TripPlannerCubit>().increaseChildren(),
-                            onChildDecrease: () => context.read<TripPlannerCubit>().decreaseChildren(),
-                          ),
-                          const SizedBox(height: 60), // Space for button
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        context.read<TripPlannerCubit>().goNextStep();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<TripPlannerCubit>(),
-                              child: const TripPlannerStep3Screen(),
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size(double.infinity, 56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+            loaded: (tripForm) => Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _SectionTitle(title: 'THỜI GIAN CHUYẾN ĐI'),
+                        const SizedBox(height: 16),
+                        DatePickingField(
+                          label: 'TỪ NGÀY',
+                          date: tripForm.startDate,
+                          onTap: () => _pickDate(context, isStart: true, currentStart: tripForm.startDate, currentEnd: tripForm.endDate),
                         ),
-                        elevation: 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Tiếp tục',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-                        ],
-                      ),
+                        DatePickingField(
+                          label: 'ĐẾN NGÀY',
+                          date: tripForm.endDate,
+                          onTap: () => _pickDate(context, isStart: false, currentStart: tripForm.startDate, currentEnd: tripForm.endDate),
+                        ),
+                        const SizedBox(height: 32),
+                        const _SectionTitle(title: 'THỜI GIAN HOẠT ĐỘNG TRONG NGÀY'),
+                        const SizedBox(height: 16),
+                        TimePickingCard(
+                          startTime: tripForm.startTime,
+                          endTime: tripForm.endTime,
+                          onStartChanged: (t) => context.read<TripPlannerCubit>().updateStartTime(t),
+                          onEndChanged: (t) => context.read<TripPlannerCubit>().updateEndTime(t),
+                        ),
+                        const SizedBox(height: 32),
+                        const _SectionTitle(title: 'MỤC ĐÍCH CHUYẾN ĐI'),
+                        const SizedBox(height: 16),
+                        _TripIntentButton(
+                          selected: tripForm.tripIntent,
+                          onTap: () => _pickTripIntent(context, tripForm.tripIntent),
+                        ),
+                        const SizedBox(height: 32),
+                        const _SectionTitle(title: 'SỐ LƯỢNG THÀNH VIÊN'),
+                        const SizedBox(height: 16),
+                        MemberCounterCard(
+                          adultCount: tripForm.adultCount,
+                          childCount: tripForm.childCount,
+                          onAdultIncrease: () => context.read<TripPlannerCubit>().increaseAdults(),
+                          onAdultDecrease: () => context.read<TripPlannerCubit>().decreaseAdults(),
+                          onChildIncrease: () => context.read<TripPlannerCubit>().increaseChildren(),
+                          onChildDecrease: () => context.read<TripPlannerCubit>().decreaseChildren(),
+                        ),
+                        const SizedBox(height: 60),
+                      ],
                     ),
                   ),
-                ],
-              );
-            },
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.background,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.read<TripPlannerCubit>().goNextStep();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider.value(
+                            value: context.read<TripPlannerCubit>(),
+                            child: const TripPlannerStep3Screen(),
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Tiếp tục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
             orElse: () => const Center(child: CircularProgressIndicator()),
           );
         },
@@ -214,21 +195,112 @@ class TripPlannerStep2Screen extends StatelessWidget {
   }
 }
 
+// ── Trip Intent selector button ──────────────────────────────────────────────
+
+class _TripIntentButton extends StatelessWidget {
+  final String? selected;
+  final VoidCallback onTap;
+
+  const _TripIntentButton({required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.explore_outlined, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                selected ?? 'Chọn mục đích chuyến đi',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: selected != null ? AppColors.textPrimary : AppColors.textSecondary,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Trip Intent bottom sheet ─────────────────────────────────────────────────
+
+class _TripIntentSheet extends StatelessWidget {
+  final String? current;
+  const _TripIntentSheet({this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: AppColors.inputBorder, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Mục đích chuyến đi',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...kTripIntents.map((intent) => ListTile(
+                leading: Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: intent == current ? AppColors.primary : AppColors.inputBorder,
+                ),
+                title: Text(
+                  intent,
+                  style: TextStyle(
+                    fontWeight: intent == current ? FontWeight.w700 : FontWeight.w500,
+                    color: intent == current ? AppColors.primary : AppColors.textPrimary,
+                  ),
+                ),
+                trailing: intent == current ? const Icon(Icons.check, color: AppColors.primary) : null,
+                onTap: () => Navigator.of(context).pop(intent),
+              )),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Section title ─────────────────────────────────────────────────────────────
+
 class _SectionTitle extends StatelessWidget {
   final String title;
-
   const _SectionTitle({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary,
-        letterSpacing: 0.5,
-      ),
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.5),
     );
   }
 }
