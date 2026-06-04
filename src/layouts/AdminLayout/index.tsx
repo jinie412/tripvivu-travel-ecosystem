@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
-import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -40,6 +40,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const isReviewActive =
     location.pathname.startsWith('/admin/reviews') ||
     location.pathname.startsWith('/admin/itinerary-reviews');
+  const isAlgoActive = location.pathname.startsWith('/admin/algorithm-settings');
 
   const [reviewOpen, setReviewOpen] = useState(isReviewActive);
 
@@ -116,6 +117,16 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
                 </Link>
               </div>
             )}
+          </div>
+
+          <div className="menu-group">
+            <h4 className="menu-title">CÀI ĐẶT</h4>
+            <Link
+              to="/admin/algorithm-settings"
+              className={`menu-item ${isAlgoActive ? 'active' : ''}`}>
+              <SlidersHorizontal size={20} />
+              <span>Thiết lập thuật toán</span>
+            </Link>
           </div>
         </div>
 
