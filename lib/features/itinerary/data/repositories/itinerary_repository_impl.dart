@@ -61,6 +61,42 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
+  Future<void> toggleVisibility(String id, bool isPublic) {
+    return _dataSource.toggleVisibility(id, isPublic);
+  }
+
+  @override
+  Future<void> updateItineraryTitle(String id, String title) {
+    return _dataSource.updateItineraryTitle(id, title);
+  }
+
+  @override
+  Future<void> updateActivity(
+    String itineraryId,
+    String activityId, {
+    String? arrivalTime,
+    String? departureTime,
+    double? actualCost,
+    String? userNotes,
+    bool? isLocked,
+  }) {
+    return _dataSource.updateActivity(
+      itineraryId,
+      activityId,
+      arrivalTime: arrivalTime,
+      departureTime: departureTime,
+      actualCost: actualCost,
+      userNotes: userNotes,
+      isLocked: isLocked,
+    );
+  }
+
+  @override
+  Future<void> deleteActivity(String itineraryId, String activityId) {
+    return _dataSource.deleteActivity(itineraryId, activityId);
+  }
+
+  @override
   Future<String> createItinerary(CreateItineraryParams params) async {
     final request = CreateItineraryRequestModel(
       userId: params.userId,

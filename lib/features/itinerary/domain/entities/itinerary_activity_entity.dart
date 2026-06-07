@@ -8,6 +8,7 @@ enum ActivityStatus { chuaDi, dangDi, daDi, diQua }
 class ItineraryActivityEntity with _$ItineraryActivityEntity {
   const factory ItineraryActivityEntity({
     required String id,
+    String? placeId,
     required String title,
     required String startTime,
     required String endTime,
@@ -19,15 +20,15 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     String? transportInfo,
     @Default(false) bool isFree,
     String? category, // e.g. "Cà phê", "Tham quan"
-    
+
     // Geographical coordinates
     double? latitude,
     double? longitude,
-    
+
     // Rating and Reviews
     double? rating,
     int? reviewCount,
-    
+
     // Status
     @Default(ActivityStatus.chuaDi) ActivityStatus status,
     String? openHourCompressed,

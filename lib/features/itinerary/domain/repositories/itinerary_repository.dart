@@ -9,6 +9,18 @@ abstract class ItineraryRepository {
   Future<ItinerarySummary> getSummary();
   Future<ItineraryDetailEntity> getItineraryDetail(String id);
   Future<void> deleteItinerary(String id);
+  Future<void> toggleVisibility(String id, bool isPublic);
+  Future<void> updateItineraryTitle(String id, String title);
+  Future<void> updateActivity(
+    String itineraryId,
+    String activityId, {
+    String? arrivalTime,
+    String? departureTime,
+    double? actualCost,
+    String? userNotes,
+    bool? isLocked,
+  });
+  Future<void> deleteActivity(String itineraryId, String activityId);
 
   /// Cập nhật danh sách hoạt động/thời gian của lịch trình theo [id].
   Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days);

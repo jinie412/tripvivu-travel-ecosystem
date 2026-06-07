@@ -70,6 +70,7 @@ dependencies:
   google_fonts: ^8.0.2
   shared_preferences: ^2.5.5
   flutter_secure_storage: ^9.2.2
+  http: ^1.0.2
   app_links: ^6.3.3
 
   # register with google
