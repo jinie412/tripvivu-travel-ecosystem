@@ -135,12 +135,14 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetItinerarySummaryUseCase(sl()));
   sl.registerLazySingleton(() => DeleteItineraryUseCase(sl()));
   sl.registerLazySingleton(() => GetItineraryDetailUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateItineraryActivitiesUseCase(sl()));
   sl.registerFactory(
     () => ItineraryCubit(
       getItineraries: sl(),
       getSummary: sl(),
       deleteItinerary: sl(),
       getItineraryDetail: sl(),
+      updateActivities: sl(),
     ),
   );
 

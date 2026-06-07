@@ -1,4 +1,5 @@
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
@@ -40,5 +41,15 @@ class GetItineraryDetailUseCase {
 
   Future<ItineraryDetailEntity> call(String id) {
     return _repository.getItineraryDetail(id);
+  }
+}
+
+/// UseCase: Cập nhật hoạt động/mốc thời gian của lịch trình.
+class UpdateItineraryActivitiesUseCase {
+  final ItineraryRepository _repository;
+  UpdateItineraryActivitiesUseCase(this._repository);
+
+  Future<void> call(String id, List<ItineraryDayEntity> days) {
+    return _repository.updateItineraryActivities(id, days);
   }
 }

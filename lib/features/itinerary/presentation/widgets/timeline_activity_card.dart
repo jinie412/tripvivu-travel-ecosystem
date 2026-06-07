@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
-import 'package:intl/intl.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
@@ -22,9 +21,11 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onStartTimeTap;
   final VoidCallback? onEndTimeTap;
   final VoidCallback? onRateTap;
+  final VoidCallback? onDirectionTap;
   final int day;
   final bool isHighlighted;
   final bool isEditMode;
+  final String? nextTransportInfo;
 
   const TimelineActivityCard({
     super.key,
@@ -40,9 +41,11 @@ class TimelineActivityCard extends StatelessWidget {
     this.onStartTimeTap,
     this.onEndTimeTap,
     this.onRateTap,
+    this.onDirectionTap,
     required this.day,
     this.isHighlighted = false,
     this.isEditMode = false,
+    this.nextTransportInfo,
   });
 
   String _formatReviewCount(int? count) {
@@ -53,8 +56,21 @@ class TimelineActivityCard extends StatelessWidget {
     return count.toString();
   }
 
-  String _formatCurrency(double amount) {
-    return NumberFormat.currency(locale: 'vi_VN', symbol: 'VNĐ', decimalDigits: 0).format(amount);
+  String _durationLabel() {
+    List<int> parts(String t) => t.split(':').map(int.parse).toList();
+    try {
+      final s = parts(activity.startTime);
+      final e = parts(activity.endTime);
+      final mins = (e[0] * 60 + e[1]) - (s[0] * 60 + s[1]);
+      if (mins <= 0) return 'Tham quan';
+      if (mins < 60) return 'Tham quan trong $mins phút';
+      final h = mins ~/ 60;
+      final m = mins % 60;
+      if (m == 0) return 'Tham quan trong $h giờ';
+      return 'Tham quan trong $h giờ $m phút';
+    } catch (_) {
+      return 'Tham quan';
+    }
   }
 
   @override
@@ -66,7 +82,7 @@ class TimelineActivityCard extends StatelessWidget {
         _buildItem(
           context,
           time: activity.startTime,
-          label: 'Tham quan trong 3 giờ',
+          label: _durationLabel(),
           icon: Icons.location_on,
           content: _buildActivityCard(context),
           showLine: true,
@@ -74,15 +90,28 @@ class TimelineActivityCard extends StatelessWidget {
           isEditMode: isEditMode,
         ),
 
-        // 2. Transition Item (if exists)
-        if (activity.transportInfo != null)
+        // 2. Transition Item
+        if (!isLast)
           _buildItem(
             context,
             time: activity.endTime,
             label: 'Di chuyển đến điểm tiếp theo',
             icon: Icons.directions_car,
             content: _buildTransitionChip(),
-            showLine: !isLast,
+            showLine: true,
+            isTransition: true,
+            isEditMode: isEditMode,
+          ),
+
+        // 3. End Marker (last activity only)
+        if (isLast)
+          _buildItem(
+            context,
+            time: activity.endTime,
+            label: 'Kết thúc hành trình',
+            icon: Icons.flag_rounded,
+            content: const SizedBox.shrink(),
+            showLine: false,
             isTransition: true,
             isEditMode: isEditMode,
           ),
@@ -289,46 +318,6 @@ class TimelineActivityCard extends StatelessWidget {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppSizes.s4),
-                    if (activity.isFree)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColorsExt.success.withAlpha(20),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'MIỄN PHÍ',
-                          style: AppTextStylesExt.captionSmall.copyWith(
-                            color: AppColorsExt.success,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      )
-                    else
-                      Row(
-                        children: [
-                          Text(
-                            _formatCurrency(activity.price),
-                            style: AppTextStylesExt.bodySmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              'Vé vào cửa',
-                              style: AppTextStylesExt.captionSmall.copyWith(
-                                fontSize: 10,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
                     const SizedBox(height: AppSizes.s8),
                     Wrap(
                       spacing: 6,
@@ -414,12 +403,16 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   Widget _buildTransitionChip() {
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.r24),
-        border: Border.all(color: AppColorsExt.divider.withAlpha(100)),
+        border: Border.all(
+          color: onDirectionTap != null
+              ? AppColors.primary.withAlpha(80)
+              : AppColorsExt.divider.withAlpha(100),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(15),
@@ -433,7 +426,7 @@ class TimelineActivityCard extends StatelessWidget {
         children: [
           Flexible(
             child: Text(
-              activity.transportInfo ?? '10-20 phút di chuyển',
+              nextTransportInfo ?? '10-20 phút di chuyển',
               style: AppTextStylesExt.bodySmall.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppColorsExt.textDark,
@@ -444,9 +437,20 @@ class TimelineActivityCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.s8),
-          const Icon(Icons.directions, size: 16, color: AppColors.primary),
+          Icon(
+            Icons.directions,
+            size: 16,
+            color: onDirectionTap != null ? AppColors.primary : AppColorsExt.textHint,
+          ),
         ],
       ),
+    );
+
+    if (onDirectionTap == null) return chip;
+
+    return GestureDetector(
+      onTap: onDirectionTap,
+      child: chip,
     );
   }
 }
@@ -461,7 +465,7 @@ class _DashedLinePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     
     while (startY < size.height) {
-      canvas.drawLine(Offset(0, startY), Offset(0, startY + 0.1), paint);
+      canvas.drawLine(Offset(0, startY), Offset(0, startY + dashHeight), paint);
       startY += dashHeight + dashSpace;
     }
   }

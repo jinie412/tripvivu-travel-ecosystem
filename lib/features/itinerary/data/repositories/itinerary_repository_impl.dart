@@ -1,5 +1,6 @@
 import 'package:travel_advisor_mobile/features/itinerary/data/datasources/itinerary_datasource.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
@@ -50,5 +51,10 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   Future<ItineraryDetailEntity> getItineraryDetail(String id) async {
     final model = await _dataSource.getItineraryDetail(id);
     return model.toEntity();
+  }
+
+  @override
+  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days) async {
+    await _dataSource.updateItineraryActivities(id, days);
   }
 }

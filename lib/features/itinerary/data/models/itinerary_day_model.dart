@@ -31,8 +31,30 @@ class ItineraryDayModel {
     this.activities = const [],
   });
 
-  factory ItineraryDayModel.fromJson(Map<String, dynamic> json) =>
-      _$ItineraryDayModelFromJson(json);
+  factory ItineraryDayModel.fromJson(Map<String, dynamic> json) {
+    // Backend date can be a formatted string or label, fallback to parsing or today
+    DateTime dayDate = DateTime.now();
+    if (json['date'] != null) {
+      dayDate = DateTime.tryParse(json['date'].toString()) ?? DateTime.now();
+    } else if (json['dateLabel'] != null) {
+      // e.g. "12/06", let's try to parse or just keep today
+      dayDate = DateTime.now();
+    }
+
+    return ItineraryDayModel(
+      dayNumber: json['day_number'] ?? json['dayNumber'] ?? 1,
+      date: dayDate,
+      temperature: json['temperature'] ?? json['weatherTemp'] ?? 0,
+      totalDuration: json['total_duration'] ?? json['totalDuration'] ?? json['activeTimeStr'] ?? '',
+      locationsCount: json['locations_count'] ?? json['locationsCount'] ?? 0,
+      dayBudget: (json['day_budget'] ?? json['dayBudget'] ?? 0.0).toDouble(),
+      currency: json['currency'] ?? 'VNĐ',
+      activities: (json['activities'] as List?)
+              ?.map((e) => ItineraryActivityModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+    );
+  }
 
   Map<String, dynamic> toJson() => _$ItineraryDayModelToJson(this);
 

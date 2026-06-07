@@ -1,16 +1,18 @@
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Hợp đồng cho nguồn dữ liệu lịch trình.
 abstract class ItineraryDataSource {
   Future<List<ItineraryModel>> getItineraries();
   Future<ItineraryDetailModel> getItineraryDetail(String id);
-  Future<void> deleteItinerary(String id)
-  ;
+  Future<void> deleteItinerary(String id);
+  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days);
 }
 
 // // ─────────────────────────────────────────────────────────────────────────────
@@ -446,14 +448,16 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   @override
   Future<List<ItineraryModel>> getItineraries() async {
     final userId = await AuthUtils.requireCurrentUserId();
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+
     final res = await http.get(
       Uri.parse('$baseUrl/itinerary/my-itineraries').replace(
         queryParameters: {'userId': userId},
       ),
       headers: {
         'Content-Type': 'application/json',
-        // nếu có login thì thêm
-        'Authorization': 'Bearer TOKEN',
+        if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
@@ -481,7 +485,56 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<ItineraryDetailModel> getItineraryDetail(String id) {
-    throw UnimplementedError(); // làm sau
+  Future<ItineraryDetailModel> getItineraryDetail(String id) async {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'access_token');
+
+    final res = await http.get(
+      Uri.parse('$baseUrl/itinerary/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    print('DETAIL API STATUS: ${res.statusCode}');
+    print('DETAIL API BODY: ${res.body}');
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      try {
+        return ItineraryDetailModel.fromJson(data as Map<String, dynamic>);
+      } catch (e, stack) {
+        print('DETAIL PARSE ERROR: $e');
+        print('DETAIL PARSE STACK: $stack');
+        rethrow;
+      }
+    } else {
+      throw Exception('Failed to load itinerary detail');
+    }
+  }
+
+  @override
+  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days) async {
+    final List<Map<String, dynamic>> daysJson = days.map((day) {
+      return {
+        'dayNumber': day.dayNumber,
+        'activities': day.activities.map((act) => {
+          'id': act.id,
+          'startTime': act.startTime,
+          'endTime': act.endTime,
+        }).toList(),
+      };
+    }).toList();
+
+    final res = await http.patch(
+      Uri.parse('$baseUrl/itinerary/$id/activities'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'days': daysJson}),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Không thể cập nhật lịch trình');
+    }
   }
 }

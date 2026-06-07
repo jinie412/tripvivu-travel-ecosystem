@@ -5,68 +5,73 @@ import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
-import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 import '../../data/datasources/nearby_places_api.dart';
-
-
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
-class ReplacePlaceSheet extends StatefulWidget {
-  final ItineraryActivityEntity currentActivity;
-  final Function(NearbyPlaceModel place) onReplace;
+class AddPlaceSheet extends StatefulWidget {
+  final Function(NearbyPlaceModel place) onAdd;
+  final double? referenceLat;
+  final double? referenceLng;
   final List<String>? existingIds;
+  /// Ngày tham quan — dùng để validate opening hours đúng ngày trong tuần.
+  final DateTime? visitDate;
+  /// Giờ dự kiến tham quan (HH:mm) — dùng để validate opening hours.
+  final String? proposedVisitTime;
 
-  const ReplacePlaceSheet({
+  const AddPlaceSheet({
     super.key,
-    required this.currentActivity,
-    required this.onReplace,
+    required this.onAdd,
+    this.referenceLat,
+    this.referenceLng,
     this.existingIds,
+    this.visitDate,
+    this.proposedVisitTime,
   });
 
   static void show(
     BuildContext context, {
-    required ItineraryActivityEntity activity,
-    required Function(NearbyPlaceModel place) onReplace,
+    required Function(NearbyPlaceModel place) onAdd,
+    double? referenceLat,
+    double? referenceLng,
     List<String>? existingIds,
+    DateTime? visitDate,
+    String? proposedVisitTime,
   }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReplacePlaceSheet(
-        currentActivity: activity,
-        onReplace: onReplace,
+      builder: (_) => AddPlaceSheet(
+        onAdd: onAdd,
+        referenceLat: referenceLat,
+        referenceLng: referenceLng,
         existingIds: existingIds,
+        visitDate: visitDate,
+        proposedVisitTime: proposedVisitTime,
       ),
     );
   }
 
   @override
-  State<ReplacePlaceSheet> createState() => _ReplacePlaceSheetState();
+  State<AddPlaceSheet> createState() => _AddPlaceSheetState();
 }
 
-class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
+class _AddPlaceSheetState extends State<AddPlaceSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
-
+  
   bool _isLoading = true;
-  List<NearbyPlaceModel> _sameCategoryPlaces = [];
-  List<NearbyPlaceModel> _otherPlaces = [];
-
-  List<NearbyPlaceModel> _applySearch(List<NearbyPlaceModel> list) {
-    if (_searchQuery.isEmpty) return list;
-    final q = _searchQuery.toLowerCase();
-    return list
-        .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            p.address.toLowerCase().contains(q))
-        .toList();
+  List<NearbyPlaceModel> _allPlaces = [];
+  
+  List<NearbyPlaceModel> get _listItems {
+    return _allPlaces.where((p) {
+      return _searchQuery.isEmpty ||
+          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          p.address.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
   }
-
-  List<NearbyPlaceModel> get _filteredSame => _applySearch(_sameCategoryPlaces);
-  List<NearbyPlaceModel> get _filteredOthers => _applySearch(_otherPlaces);
 
   @override
   void initState() {
@@ -77,20 +82,18 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 
   Future<void> _loadNearbyPlaces() async {
     try {
-      final lat = widget.currentActivity.latitude ?? 16.047079;
-      final lng = widget.currentActivity.longitude ?? 108.206230;
+      final lat = widget.referenceLat ?? 16.047079;
+      final lng = widget.referenceLng ?? 108.206230;
       final places = await NearbyPlacesApi.getNearbyPlaces(
         lat,
         lng,
         excludeIds: widget.existingIds,
-        preferCategory: widget.currentActivity.category,
         radius: 10,
       );
 
       if (mounted) {
         setState(() {
-          _sameCategoryPlaces = places.where((p) => p.isSameCategory).toList();
-          _otherPlaces = places.where((p) => !p.isSameCategory).toList();
+          _allPlaces = places;
           _isLoading = false;
         });
       }
@@ -137,13 +140,13 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   }
 
   void _onSelect(NearbyPlaceModel place) async {
-    // Validate opening hours dựa theo giờ hiện tại của activity đang thay thế
-    if (place.openHourCompressed != null) {
+    // Validate opening hours dựa theo ngày tham quan và giờ dự kiến
+    if (place.openHourCompressed != null && widget.proposedVisitTime != null) {
       final slot = _openSlotForDay(
-          place.openHourCompressed!, DateTime.now());
+          place.openHourCompressed!, widget.visitDate ?? DateTime.now());
       final hoursStr = slot != null ? '${slot.$1} – ${slot.$2}' : 'không xác định';
       final outside = slot != null
-          ? !_isWithinHours(widget.currentActivity.startTime, slot.$1, slot.$2)
+          ? !_isWithinHours(widget.proposedVisitTime!, slot.$1, slot.$2)
           : false;
       if (outside) {
         final proceed = await showDialog<bool>(
@@ -154,9 +157,9 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             title: const Text('Ngoài giờ mở cửa',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             content: Text(
-              '"${place.name}" mở cửa từ $hoursStr.\n\n'
-              'Thời gian tham quan dự kiến ${widget.currentActivity.startTime} '
-              'nằm ngoài khung giờ mở cửa. Bạn có muốn tiếp tục thay thế không?',
+              '”${place.name}” mở cửa từ $hoursStr.\n\n'
+              'Thời gian tham quan dự kiến ${widget.proposedVisitTime} '
+              'nằm ngoài khung giờ mở cửa. Bạn có muốn tiếp tục thêm không?',
               style: const TextStyle(height: 1.5),
             ),
             actions: [
@@ -175,7 +178,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                       borderRadius: BorderRadius.circular(AppSizes.r8)),
                   elevation: 0,
                 ),
-                child: const Text('Tiếp tục thay thế',
+                child: const Text('Tiếp tục thêm',
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
               ),
@@ -186,13 +189,13 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       }
     }
 
-    widget.onReplace(place);
+    widget.onAdd(place);
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
     messenger.showSnackBar(
       SnackBar(
-        content: Text('Đã thay thế bằng "${place.name}"'),
+        content: Text('Đã thêm "${place.name}" vào lịch trình'),
         backgroundColor: AppColorsExt.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -201,15 +204,25 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     );
   }
 
+  /// Trả về (openTime, closeTime) dạng "HH:mm" cho ngày [date], hoặc null nếu không tìm thấy.
   (String, String)? _openSlotForDay(String jsonStr, DateTime date) {
     try {
-      const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const dayNames = [
+        'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+        'Friday', 'Saturday', 'Sunday'
+      ];
+      final dayName = dayNames[date.weekday - 1];
       final Map<String, dynamic> map = jsonDecode(jsonStr);
-      final slots = map[dayNames[date.weekday - 1]] as List?;
+      final slots = map[dayName] as List?;
       if (slots == null || slots.isEmpty) return null;
       final slot = slots[0] as List;
-      return ((slot[0] as String).substring(0, 5), (slot[1] as String).substring(0, 5));
-    } catch (_) { return null; }
+      // "07:00:00" -> "07:00"
+      final open = (slot[0] as String).substring(0, 5);
+      final close = (slot[1] as String).substring(0, 5);
+      return (open, close);
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _isWithinHours(String time, String openTime, String closeTime) {
@@ -221,23 +234,6 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     final o = toMins(openTime);
     final c = toMins(closeTime);
     return c >= o ? (t >= o && t <= c) : (t >= o || t <= c);
-  }
-
-  Widget _buildList(List<NearbyPlaceModel> places) {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
-      itemCount: places.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSizes.s12),
-      itemBuilder: (_, i) => _ListCard(
-        place: places[i],
-        onSelect: () => _onSelect(places[i]),
-        fmt: _fmt,
-        fmtPrice: _fmtPrice,
-        tagColor: _tagColor,
-      ),
-    );
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────
@@ -259,7 +255,6 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
           child: Column(
             children: [
               _Header(
-                currentActivity: widget.currentActivity,
                 searchController: _searchController,
                 searchQuery: _searchQuery,
                 onClearSearch: () {
@@ -269,56 +264,46 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                 onClose: () => Navigator.pop(context),
               ),
               Expanded(
-                child: Builder(builder: (_) {
-                  final samePlaces = _filteredSame;
-                  final otherPlaces = _filteredOthers;
-                  final totalSearch = samePlaces.length + otherPlaces.length;
-
-                  return ListView(
-                    controller: scrollController,
-                    padding: EdgeInsets.zero,
-                    children: [
-                      if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.all(AppSizes.s32),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (_searchQuery.isNotEmpty) ...[
-                        _SectionTitle(
-                          icon: Icons.search_rounded,
-                          iconColor: AppColors.primary,
-                          title: 'Kết quả tìm kiếm ($totalSearch)',
+                child: ListView(
+                  controller: scrollController,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _SectionTitle(
+                      icon: Icons.auto_awesome_rounded,
+                      iconColor: AppColorsExt.warning,
+                      title: _searchQuery.isNotEmpty
+                          ? 'Kết quả tìm kiếm (${_listItems.length})'
+                          : 'Gợi ý',
+                    ),
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(AppSizes.s32),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_listItems.isEmpty)
+                      _EmptyState(isSearching: _searchQuery.isNotEmpty)
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
+                        itemCount: _listItems.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: AppSizes.s12),
+                        itemBuilder: (_, i) => _ListCard(
+                          place: _listItems[i],
+                          onSelect: () => _onSelect(_listItems[i]),
+                          fmt: _fmt,
+                          fmtPrice: _fmtPrice,
+                          tagColor: _tagColor,
                         ),
-                        if (totalSearch == 0)
-                          const _EmptyState(isSearching: true)
-                        else
-                          _buildList([...samePlaces, ...otherPlaces]),
-                      ] else ...[
-                        if (samePlaces.isNotEmpty) ...[
-                          _SectionTitle(
-                            icon: Icons.auto_awesome_rounded,
-                            iconColor: AppColorsExt.warning,
-                            title: 'Cùng loại: ${widget.currentActivity.category}',
-                          ),
-                          _buildList(samePlaces),
-                        ],
-                        if (otherPlaces.isNotEmpty) ...[
-                          _SectionTitle(
-                            icon: Icons.location_on_rounded,
-                            iconColor: AppColors.primary,
-                            title: 'Gợi ý gần đây',
-                          ),
-                          _buildList(otherPlaces),
-                        ],
-                        if (samePlaces.isEmpty && otherPlaces.isEmpty)
-                          const _EmptyState(isSearching: false),
-                      ],
-                      const SizedBox(height: AppSizes.s20),
-                      _ManualAddButton(onTap: () => _showManualAddDialog(context)),
-                      const SizedBox(height: AppSizes.s32),
-                    ],
-                  );
-                }),
+                      ),
+                    const SizedBox(height: AppSizes.s20),
+                    _ManualAddButton(
+                      onTap: () => _showManualAddDialog(context),
+                    ),
+                    const SizedBox(height: AppSizes.s32),
+                  ],
+                ),
               ),
             ],
           ),
@@ -340,7 +325,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Nhập tên địa điểm muốn thay thế vào lịch trình',
+              'Nhập tên địa điểm muốn thêm vào lịch trình',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: AppSizes.s16),
@@ -372,7 +357,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             onPressed: () {
               final name = ctrl.text.trim();
               if (name.isNotEmpty) {
-                widget.onReplace(NearbyPlaceModel(
+                widget.onAdd(NearbyPlaceModel(
                   id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
                   name: name,
                   address: '',
@@ -403,14 +388,12 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 // ─── Sub-widgets ─────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  final ItineraryActivityEntity currentActivity;
   final TextEditingController searchController;
   final String searchQuery;
   final VoidCallback onClearSearch;
   final VoidCallback onClose;
 
   const _Header({
-    required this.currentActivity,
     required this.searchController,
     required this.searchQuery,
     required this.onClearSearch,
@@ -440,7 +423,7 @@ class _Header extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Thay thế địa điểm',
+                  'Thêm địa điểm',
                   style: AppTextStyles.heading2
                       .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
@@ -462,71 +445,6 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s12),
 
-          // Current place mini card
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(AppSizes.r12),
-              border: Border.all(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppSizes.s8),
-                  child: NetImage(
-                    url: currentActivity.imageUrl,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Đang thay thế',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFFF59E0B),
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        currentActivity.title,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColorsExt.textDark,
-                          height: 1.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSizes.s8),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.swap_horiz_rounded,
-                      size: 16, color: Color(0xFFF59E0B)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSizes.s12),
-
           // Search bar
           Container(
             height: AppSizes.searchBarHeight,
@@ -545,7 +463,7 @@ class _Header extends StatelessWidget {
                     controller: searchController,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Tìm kiếm địa điểm cần thay thế...',
+                      hintText: 'Tìm kiếm địa điểm cần thêm...',
                       hintStyle: TextStyle(
                         color: AppColorsExt.textHint,
                         fontSize: 13,
@@ -743,7 +661,7 @@ class _ListCard extends StatelessWidget {
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppSizes.r12),
                 ),
-                child: const Text('Chọn',
+                child: const Text('Thêm',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

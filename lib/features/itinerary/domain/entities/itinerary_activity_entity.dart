@@ -30,5 +30,6 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     
     // Status
     @Default(ActivityStatus.chuaDi) ActivityStatus status,
+    String? openHourCompressed,
   }) = _ItineraryActivityEntity;
 }

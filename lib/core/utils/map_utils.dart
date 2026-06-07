@@ -15,10 +15,26 @@ class MapUtils {
     }
   }
 
-  /// Sinh ra link dẫn đường
+  /// Sinh ra link dẫn đường tới một địa điểm
   static String getDirectionUrl(double lat, double lng, {String? name}) {
-    final query = name != null ? Uri.encodeComponent('$name, $lat,$lng') : '$lat,$lng';
+    final latStr = lat.toStringAsFixed(6);
+    final lngStr = lng.toStringAsFixed(6);
+    final query = name != null
+        ? Uri.encodeComponent('$name, $latStr,$lngStr')
+        : '$latStr,$lngStr';
     return 'https://www.google.com/maps/search/?api=1&query=$query';
+  }
+
+  /// Sinh ra link chỉ đường từ điểm xuất phát đến điểm đến (Google Maps)
+  static String getDirectionsUrl(
+    double originLat,
+    double originLng,
+    double destLat,
+    double destLng,
+  ) {
+    return 'https://www.google.com/maps/dir/?api=1'
+        '&origin=${originLat.toStringAsFixed(6)},${originLng.toStringAsFixed(6)}'
+        '&destination=${destLat.toStringAsFixed(6)},${destLng.toStringAsFixed(6)}';
   }
 
   /// Lấy danh sách tọa độ uốn lượn theo đường đi thực tế từ Goong
