@@ -1247,9 +1247,9 @@ class _$CityHotelModelCopyWithImpl<$Res, $Val extends CityHotelModel>
                 : reviewCount // ignore: cast_nullable_to_non_nullable
                       as int,
             address: null == address
-              ? _value.address
-              : address // ignore: cast_nullable_to_non_nullable
-                  as String,
+                ? _value.address
+                : address // ignore: cast_nullable_to_non_nullable
+                      as String,
             price: null == price
                 ? _value.price
                 : price // ignore: cast_nullable_to_non_nullable
@@ -1355,9 +1355,9 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
             : reviewCount // ignore: cast_nullable_to_non_nullable
                   as int,
         address: null == address
-          ? _value.address
-          : address // ignore: cast_nullable_to_non_nullable
-              as String,
+            ? _value.address
+            : address // ignore: cast_nullable_to_non_nullable
+                  as String,
         price: null == price
             ? _value.price
             : price // ignore: cast_nullable_to_non_nullable
