@@ -4,7 +4,6 @@ import 'reset_password_screen.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
-import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
 
 class VerifyOTPScreen extends StatefulWidget {

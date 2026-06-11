@@ -74,7 +74,11 @@ class SearchResultWidget extends StatelessWidget {
                     );
                   }
                 },
-                child: _buildResultItem(location.name, location.imageUrl),
+                child: _buildResultItem(
+                  location.name,
+                  location.imageUrl,
+                  location.type,
+                ),
               );
             },
           ),
@@ -83,30 +87,30 @@ class SearchResultWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildResultItem(String title, String imageUrl) {
+  Widget _buildResultItem(String title, String imageUrl, String type) {
+    final fallbackIcon = type == 'city' ? Icons.location_city : Icons.place;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.s20),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSizes.r8),
-            child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: 56,
-              height: 56,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey[300],
-              ),
-              errorWidget: (context, url, error) => Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey[300],
-                child: const Icon(Icons.error),
-              ),
-            ),
+            child: imageUrl.isEmpty
+                ? _fallbackThumb(fallbackIcon)
+                : CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[200],
+                    ),
+                    errorWidget: (context, url, error) =>
+                        _fallbackThumb(fallbackIcon),
+                  ),
           ),
           const SizedBox(width: AppSizes.s16),
           Expanded(
@@ -121,6 +125,15 @@ class SearchResultWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _fallbackThumb(IconData icon) {
+    return Container(
+      width: 56,
+      height: 56,
+      color: Colors.grey[200],
+      child: Icon(icon, color: Colors.grey[500]),
     );
   }
 }

@@ -17,6 +17,7 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/paginated_see_all_screen.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
@@ -47,6 +48,7 @@ class ExploreScreen extends StatelessWidget {
         BlocProvider(
           create: (_) => sl<NotificationCubit>()..loadNotifications(),
         ),
+        BlocProvider(create: (_) => sl<LocationCubit>()..fetchLocation()),
       ],
       child: const _ExploreView(),
     );

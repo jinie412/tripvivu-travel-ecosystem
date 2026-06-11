@@ -363,7 +363,7 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   Widget _buildDestinationHeader(BuildContext context, ItineraryDetailEntity itin, String dateRange) {
-    return Container(
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.45,
       width: double.infinity,
       child: Stack(
@@ -464,7 +464,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    _getStatusText(itin) + ' • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
+                                    '${_getStatusText(itin)} • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
                                     style: const TextStyle(
                                       fontSize: 12, 
                                       color: Colors.white,
@@ -863,7 +863,7 @@ class _ItinerarySummaryView extends StatelessWidget {
     String btnText = 'XEM CHI TIẾT LỊCH TRÌNH';
     Color btnColor = const Color(0xFF1E3A8A);
     IconData btnIcon = Icons.arrow_forward;
-    VoidCallback onPressed = () => _navigateToDetail(context, itin);
+    void onPressed() => _navigateToDetail(context, itin);
 
     if (isFuture) {
       btnText = 'BẮT ĐẦU LỊCH TRÌNH';

@@ -1,4 +1,5 @@
 /// Re-export AppTextStyles từ app_theme.dart (nơi class đang nằm).
+library;
 export '../theme/app_theme.dart' show AppTextStyles;
 
 import 'package:flutter/material.dart';

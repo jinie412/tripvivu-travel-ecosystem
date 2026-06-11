@@ -1,5 +1,6 @@
 /// Re-export toàn bộ AppColors từ theme để giữ tương thích import cũ.
 /// Bổ sung thêm các màu hardcoded phổ biến trong features/.
+library;
 export '../theme/app_colors.dart';
 
 import 'package:flutter/material.dart';

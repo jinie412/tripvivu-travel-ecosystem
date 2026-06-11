@@ -12,7 +12,6 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/location_selector_card.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/step_progress_bar.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/transportation_selector.dart';
-import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/trip_type_selector.dart';
 
 class TripPlannerScreen extends StatelessWidget {
   const TripPlannerScreen({super.key});

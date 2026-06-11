@@ -153,7 +153,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   }
 
   ItineraryDetailEntity _materializeMockDays(ItineraryDetailEntity itin) {
-    if (itin.days.length >= 1) return itin;
+    if (itin.days.isNotEmpty) return itin;
 
     final firstDayDate = itin.startDate;
 

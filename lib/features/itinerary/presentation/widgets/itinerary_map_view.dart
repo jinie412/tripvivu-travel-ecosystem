@@ -266,7 +266,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
               const SizedBox(height: 12),
               Material(
                 elevation: 4, shape: const CircleBorder(), color: Colors.white,
-                child: InkWell(onTap: _focusOnUser, customBorder: const CircleBorder(), child: Container(width: 44, height: 44, child: const Icon(Icons.my_location, size: 22, color: Color(0xFF1A6EBD)))),
+                child: InkWell(onTap: _focusOnUser, customBorder: const CircleBorder(), child: SizedBox(width: 44, height: 44, child: const Icon(Icons.my_location, size: 22, color: Color(0xFF1A6EBD)))),
               ),
             ],
           ),

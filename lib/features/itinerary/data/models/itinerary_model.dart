@@ -1,4 +1,3 @@
-import 'package:json_annotation/json_annotation.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 

@@ -27,7 +27,6 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/it
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/timeline_activity_card.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 import '../widgets/itinerary_map_view.dart';
 import '../widgets/replace_place_sheet.dart';
 import '../widgets/add_place_sheet.dart';

@@ -4,6 +4,8 @@ import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/location_service.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
 import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
@@ -71,6 +73,10 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   // ── Network ────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<DioClient>(() => DioClient());
+
+  // ── Location (vị trí hiện tại + reverse geocoding) ───────────────────────────
+  sl.registerLazySingleton<LocationService>(() => LocationService());
+  sl.registerFactory(() => LocationCubit(sl()));
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
