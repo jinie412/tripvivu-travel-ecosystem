@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
@@ -9,11 +10,6 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_d
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
-import 'package:travel_advisor_mobile/core/network/api_config.dart';
-import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract class ItineraryDataSource {
   Future<List<ItineraryModel>> getItineraries();
@@ -652,6 +648,14 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
     if (res.statusCode == 201) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final executionTimeSeconds = data['executionTimeSeconds'];
+      final warning = data['warning'];
+      if (executionTimeSeconds != null) {
+        debugPrint('Itinerary generation completed in ${executionTimeSeconds}s');
+      }
+      if (warning is String && warning.isNotEmpty) {
+        debugPrint('Itinerary generation warning: $warning');
+      }
       final id = data['id'] ?? data['itineraryId'] ?? data['itinerary_id'];
       if (id is String && id.isNotEmpty) return id;
       throw Exception('Response tạo lịch trình không có id hợp lệ');

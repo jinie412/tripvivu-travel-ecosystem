@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
@@ -22,55 +21,40 @@ class TimePickingCard extends StatefulWidget {
 }
 
 class _TimePickingCardState extends State<TimePickingCard> {
-  late TextEditingController _startCtrl;
-  late TextEditingController _endCtrl;
-  String? _startError;
-  String? _endError;
+  static final List<String> _timeOptions = List.generate(31, (index) {
+    final totalMinutes = 6 * 60 + index * 30;
+    final hour = totalMinutes ~/ 60;
+    final minute = totalMinutes % 60;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  });
+
+  late String _startTime;
+  late String _endTime;
 
   @override
   void initState() {
     super.initState();
-    _startCtrl = TextEditingController(text: widget.startTime ?? '07:00');
-    _endCtrl = TextEditingController(text: widget.endTime ?? '22:00');
+    _startTime = _normalizeTime(widget.startTime, fallback: '07:00');
+    _endTime = _normalizeTime(widget.endTime, fallback: '22:00');
   }
 
   @override
-  void dispose() {
-    _startCtrl.dispose();
-    _endCtrl.dispose();
-    super.dispose();
-  }
-
-  bool _isComplete(String value) => RegExp(r'^([01][0-9]|2[0-3]):[0-5][0-9]$').hasMatch(value);
-
-  void _onStartChanged(String value) {
-    if (_isComplete(value)) {
-      setState(() => _startError = null);
-      widget.onStartChanged(value);
-    }
-  }
-
-  void _onEndChanged(String value) {
-    if (_isComplete(value)) {
-      setState(() => _endError = null);
-      widget.onEndChanged(value);
-    }
-  }
-
-  void _validateStart() {
-    if (!_isComplete(_startCtrl.text)) {
-      setState(() => _startError = 'Chưa đủ giờ hợp lệ');
-    }
-  }
-
-  void _validateEnd() {
-    if (!_isComplete(_endCtrl.text)) {
-      setState(() => _endError = 'Chưa đủ giờ hợp lệ');
+  void didUpdateWidget(covariant TimePickingCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextStart = _normalizeTime(widget.startTime, fallback: _startTime);
+    final nextEnd = _normalizeTime(widget.endTime, fallback: _endTime);
+    if (nextStart != _startTime || nextEnd != _endTime) {
+      setState(() {
+        _startTime = nextStart;
+        _endTime = nextEnd;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasInvalidRange = _toMinutes(_startTime) >= _toMinutes(_endTime);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -85,12 +69,14 @@ class _TimePickingCardState extends State<TimePickingCard> {
             children: [
               const Icon(Icons.info_outline, size: 13, color: AppColors.textSecondary),
               const SizedBox(width: 4),
-              const Text(
-                'Nhập 4 chữ số — dấu : tự thêm (hệ 24 giờ)',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                  fontStyle: FontStyle.italic,
+              Expanded(
+                child: Text(
+                  'Chọn khung giờ hoạt động trong ngày',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: hasInvalidRange ? Colors.red.shade500 : AppColors.textSecondary,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
@@ -100,98 +86,73 @@ class _TimePickingCardState extends State<TimePickingCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _TimeField(
+                child: _TimeDropdownField(
                   label: 'GIỜ BẮT ĐẦU',
-                  controller: _startCtrl,
-                  errorText: _startError,
-                  onChanged: _onStartChanged,
-                  onFocusLost: _validateStart,
+                  value: _startTime,
+                  options: _timeOptions,
+                  hasError: hasInvalidRange,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _startTime = value);
+                    widget.onStartChanged(value);
+                  },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _TimeField(
+                child: _TimeDropdownField(
                   label: 'GIỜ KẾT THÚC',
-                  controller: _endCtrl,
-                  errorText: _endError,
-                  onChanged: _onEndChanged,
-                  onFocusLost: _validateEnd,
+                  value: _endTime,
+                  options: _timeOptions,
+                  hasError: hasInvalidRange,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _endTime = value);
+                    widget.onEndChanged(value);
+                  },
                 ),
               ),
             ],
           ),
+          if (hasInvalidRange) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Giờ kết thúc phải sau giờ bắt đầu',
+              style: TextStyle(fontSize: 11, color: Colors.red.shade500),
+            ),
+          ],
         ],
       ),
     );
   }
-}
 
-// ── Auto-format formatter ─────────────────────────────────────────────────────
-
-class _TimeAutoFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    // Chỉ giữ lại chữ số
-    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-
-    // Giới hạn tối đa 4 chữ số
-    final capped = digits.length > 4 ? digits.substring(0, 4) : digits;
-
-    // Chèn dấu : sau 2 chữ số đầu
-    String formatted;
-    if (capped.length <= 2) {
-      formatted = capped;
-    } else {
-      formatted = '${capped.substring(0, 2)}:${capped.substring(2)}';
+  static String _normalizeTime(String? value, {required String fallback}) {
+    if (value == null || !_timeOptions.contains(value)) {
+      return fallback;
     }
+    return value;
+  }
 
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
+  static int _toMinutes(String value) {
+    final parts = value.split(':');
+    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
   }
 }
 
-// ── Time Field widget ─────────────────────────────────────────────────────────
-
-class _TimeField extends StatefulWidget {
+class _TimeDropdownField extends StatelessWidget {
   final String label;
-  final TextEditingController controller;
-  final String? errorText;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onFocusLost;
+  final String value;
+  final List<String> options;
+  final bool hasError;
+  final ValueChanged<String?> onChanged;
 
-  const _TimeField({
+  const _TimeDropdownField({
     required this.label,
-    required this.controller,
-    required this.errorText,
+    required this.value,
+    required this.options,
+    required this.hasError,
     required this.onChanged,
-    required this.onFocusLost,
   });
-
-  @override
-  State<_TimeField> createState() => _TimeFieldState();
-}
-
-class _TimeFieldState extends State<_TimeField> {
-  final _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) widget.onFocusLost();
-    });
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +160,7 @@ class _TimeFieldState extends State<_TimeField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.label,
+          label,
           style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -208,21 +169,19 @@ class _TimeFieldState extends State<_TimeField> {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.done,
-          inputFormatters: [_TimeAutoFormatter()],
-          onChanged: widget.onChanged,
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          items: options
+              .map(
+                (time) => DropdownMenuItem<String>(
+                  value: time,
+                  child: Text(time),
+                ),
+              )
+              .toList(),
+          onChanged: onChanged,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
           decoration: InputDecoration(
-            counterText: '',
-            hintText: '--:--',
-            hintStyle: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 16,
-              letterSpacing: 2,
-            ),
             prefixIcon: const Icon(
               Icons.access_time_rounded,
               size: 18,
@@ -238,7 +197,7 @@ class _TimeFieldState extends State<_TimeField> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: widget.errorText != null
+                color: hasError
                     ? Colors.red.shade300
                     : AppColors.inputBorder.withValues(alpha: 0.3),
               ),
@@ -246,19 +205,18 @@ class _TimeFieldState extends State<_TimeField> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: widget.errorText != null ? Colors.red.shade400 : AppColors.primary,
+                color: hasError ? Colors.red.shade400 : AppColors.primary,
                 width: 1.5,
               ),
             ),
-            errorText: widget.errorText,
-            errorStyle: const TextStyle(fontSize: 10),
           ),
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
-            letterSpacing: 2,
+            letterSpacing: 0,
           ),
+          dropdownColor: AppColors.surface,
         ),
       ],
     );
