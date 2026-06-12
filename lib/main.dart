@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'core/di/injection_container.dart';
@@ -26,6 +27,10 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
   await initializeDateFormatting('vi_VN', null);
+  // AlarmManager cho theo dõi lịch trình (đăng ký lại geofence sáng hôm sau).
+  if (!kIsWeb) {
+    await AndroidAlarmManager.initialize();
+  }
   await initDependencies();
   
   // ✅ KHỞI TẠO MAPBOX SDK

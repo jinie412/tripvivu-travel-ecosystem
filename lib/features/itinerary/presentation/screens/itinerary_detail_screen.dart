@@ -19,6 +19,7 @@ import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/detailed_place_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_section.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
@@ -1171,6 +1172,13 @@ class _ItineraryDetailView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSizes.s16),
+          // ── Theo dõi lịch trình (geofence + dwell) ──────────────────────
+          TrackingSection(
+            itineraryId: itin.id,
+            date: currentDayData.date,
+            itineraryStatus: itin.status,
+            activities: currentDayData.activities,
+          ),
           ...currentDayData.activities.asMap().entries.map((entry) {
             final index = entry.key;
             final activity = entry.value;

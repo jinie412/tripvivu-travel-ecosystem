@@ -28,6 +28,13 @@ import 'package:travel_advisor_mobile/features/itinerary/data/repositories/itine
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/datasources/tracking_remote_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/repositories/tracking_repository_impl.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/domain/repositories/tracking_repository.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/domain/usecases/tracking_usecases.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/services/geofence_tracking_service.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/services/tracking_alarm_service.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/data/datasources/place_datasource.dart';
 import 'package:travel_advisor_mobile/features/place/data/repositories/place_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/place/domain/repositories/place_repository.dart';
@@ -149,6 +156,33 @@ Future<void> initDependencies() async {
       deleteItinerary: sl(),
       getItineraryDetail: sl(),
       updateActivities: sl(),
+    ),
+  );
+
+  // ── Itinerary Tracking (geofence + dwell) ───────────────────────────────────
+  sl.registerLazySingleton<TrackingRemoteDataSource>(
+    () => TrackingRemoteDataSource(sl<DioClient>()),
+  );
+  sl.registerLazySingleton<TrackingRepository>(
+    () => TrackingRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton(() => StartTrackingUseCase(sl()));
+  sl.registerLazySingleton(() => GetGeofencesUseCase(sl()));
+  sl.registerLazySingleton(() => ManualCheckInUseCase(sl()));
+  sl.registerLazySingleton(() => GetTrackingStatusUseCase(sl()));
+  sl.registerLazySingleton(() => EndTrackingDayUseCase(sl()));
+  sl.registerLazySingleton<GeofenceTrackingService>(
+    () => GeofenceTrackingService(),
+  );
+  sl.registerLazySingleton<TrackingAlarmService>(() => TrackingAlarmService());
+  sl.registerFactory(
+    () => TrackingCubit(
+      start: sl(),
+      status: sl(),
+      checkIn: sl(),
+      endDay: sl(),
+      geofenceSvc: sl(),
+      alarmSvc: sl(),
     ),
   );
 
