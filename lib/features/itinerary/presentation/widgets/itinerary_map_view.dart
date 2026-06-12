@@ -114,6 +114,35 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
     return (await img.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
   }
 
+  Future<Uint8List> _createHotelIcon() async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    const size = ui.Size(128, 128);
+    final center = Offset(size.width / 2, size.height / 2);
+
+    canvas.drawCircle(center.translate(0, 5), 54, Paint()..color = Colors.black.withOpacity(0.25));
+    canvas.drawCircle(center, 50, Paint()..color = const Color(0xFF0F766E));
+    canvas.drawCircle(center, 50, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 6);
+
+    const icon = Icons.hotel_rounded;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Colors.white,
+          fontSize: 52,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout();
+    tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2));
+    final img = await recorder.endRecording().toImage(128, 128);
+    return (await img.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
+
   Future<Uint8List> _createDayNumberIcon(int day, int idx, Color color) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -124,6 +153,43 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
     tp.layout(); tp.paint(canvas, Offset((128 - tp.width) / 2, (128 - tp.height) / 2));
     final img = await recorder.endRecording().toImage(128, 128);
     return (await img.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
+
+  Future<Uint8List> _createDayHotelIcon(int day, Color color) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawCircle(const Offset(64, 67), 50, Paint()..color = Colors.black.withOpacity(0.25));
+    canvas.drawCircle(const Offset(64, 64), 46, Paint()..color = const Color(0xFF0F766E));
+    canvas.drawCircle(const Offset(64, 64), 46, Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 5);
+    const icon = Icons.hotel_rounded;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Colors.white,
+          fontSize: 40,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout(); tp.paint(canvas, Offset((128 - tp.width) / 2, (128 - tp.height) / 2));
+    final label = TextPainter(text: TextSpan(text: 'D$day', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), textDirection: TextDirection.ltr);
+    label.layout(); label.paint(canvas, Offset((128 - label.width) / 2, 88));
+    final img = await recorder.endRecording().toImage(128, 128);
+    return (await img.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
+
+  bool _isHotelStart(ItineraryActivityEntity activity) {
+    final category = (activity.category ?? '').toLowerCase();
+    final title = activity.title.toLowerCase();
+    final sameTime = activity.startTime == activity.endTime;
+    return sameTime && (category.contains('lưu trú') ||
+        category.contains('khách sạn') ||
+        category.contains('hotel') ||
+        title.contains('hotel') ||
+        title.contains('khách sạn'));
   }
 
   Future<Uint8List> _createCurrentLocationIcon() async {
@@ -176,7 +242,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
         for (int i = 0; i < acts.length; i++) {
           final p = mapbox.Point(coordinates: mapbox.Position(acts[i].longitude!, acts[i].latitude!));
           itinPoints.add(p);
-          final icon = await _createDayNumberIcon(day.dayNumber, i, color);
+          final icon = _isHotelStart(acts[i])
+              ? await _createDayHotelIcon(day.dayNumber, color)
+              : await _createDayNumberIcon(day.dayNumber, i, color);
           final ann = await _pointAnnotationManager?.create(mapbox.PointAnnotationOptions(geometry: p, image: icon, iconSize: 1.0, iconAnchor: mapbox.IconAnchor.CENTER));
           if (ann != null) _annotationIdMap[ann.id] = acts[i].id;
         }
@@ -187,7 +255,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView> implements mapbox.O
         final p = mapbox.Point(coordinates: mapbox.Position(acts[i].longitude!, acts[i].latitude!));
         itinPoints.add(p);
         final color = acts[i].status == ActivityStatus.daDi ? const Color(0xFF10B981) : const Color(0xFF1A6EBD);
-        final icon = await _createNumberIcon(i + 1, color);
+        final icon = _isHotelStart(acts[i])
+            ? await _createHotelIcon()
+            : await _createNumberIcon(i + 1, color);
         final ann = await _pointAnnotationManager?.create(mapbox.PointAnnotationOptions(geometry: p, image: icon, iconSize: 1.0, iconAnchor: mapbox.IconAnchor.CENTER));
         if (ann != null) _annotationIdMap[ann.id] = acts[i].id;
       }

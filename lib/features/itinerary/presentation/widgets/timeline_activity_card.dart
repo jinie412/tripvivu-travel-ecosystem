@@ -57,6 +57,7 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   String _durationLabel() {
+    if (_isAccommodationStart) return 'Nơi ở & điểm xuất phát';
     List<int> parts(String t) => t.split(':').map(int.parse).toList();
     try {
       final s = parts(activity.startTime);
@@ -75,6 +76,7 @@ class TimelineActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAccommodationStart = _isAccommodationStart;
 
     return Column(
       children: [
@@ -83,7 +85,7 @@ class TimelineActivityCard extends StatelessWidget {
           context,
           time: activity.startTime,
           label: _durationLabel(),
-          icon: Icons.location_on,
+          icon: isAccommodationStart ? Icons.hotel_rounded : Icons.location_on,
           content: _buildActivityCard(context),
           showLine: true,
           isCompleted: activity.status == ActivityStatus.daDi,
@@ -118,6 +120,16 @@ class TimelineActivityCard extends StatelessWidget {
       ],
     );
   }
+
+  bool get _isAccommodationStart {
+    final category = (activity.category ?? '').toLowerCase();
+    final isAccommodation = category.contains('lưu trú') ||
+        category.contains('luu tru') ||
+        category.contains('khách sạn') ||
+        category.contains('khach san') ||
+        category.contains('hotel');
+    return isAccommodation && activity.startTime == activity.endTime;
+  }
   Widget _buildItem(
     BuildContext context, {
     required String time,
@@ -130,6 +142,7 @@ class TimelineActivityCard extends StatelessWidget {
     bool isEditMode = false,
   }) {
     final isStartTime = label.contains('Tham quan');
+    final isAccommodationStart = _isAccommodationStart;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,7 +234,7 @@ class TimelineActivityCard extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
-                      if (isEditMode && !isTransition)
+                      if (isEditMode && !isTransition && !isAccommodationStart)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -244,6 +257,10 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   Widget _buildActivityCard(BuildContext context) {
+    if (_isAccommodationStart) {
+      return _buildAccommodationCard(context);
+    }
+
     // 🔧 DEMO SYNC: Check if user has rated this in current session
     final double? userRating = DemoReviewStore.getLocationRating(activity.id);
     final bool hasUserRated = userRating != null;
@@ -378,6 +395,78 @@ class TimelineActivityCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccommodationCard(BuildContext context) {
+    return InkWell(
+      onTap: onCardTap,
+      borderRadius: BorderRadius.circular(AppSizes.r16),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.s16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppSizes.r12),
+              ),
+              child: const Icon(
+                Icons.hotel_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppSizes.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nơi ở & xuất phát',
+                    style: AppTextStylesExt.bodySmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    activity.title,
+                    style: AppTextStyles.heading2.copyWith(
+                      fontSize: 15,
+                      color: AppColorsExt.textDark,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (activity.address.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      activity.address,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
           ],

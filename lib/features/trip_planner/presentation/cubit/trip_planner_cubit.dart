@@ -11,7 +11,11 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
   TripPlannerCubit({required CreateItineraryUseCase createItinerary})
     : _createItinerary = createItinerary,
-      super(const TripPlannerState.loaded(tripForm: TripForm()));
+      super(
+        const TripPlannerState.loaded(
+          tripForm: TripForm(transportation: Transportation.car),
+        ),
+      );
 
   // ── Bước 1: Địa điểm ────────────────────────────────────────────────────────
 
@@ -376,12 +380,10 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
   String _transportToApi(Transportation t) {
     switch (t) {
-      case Transportation.flights:
-        return 'AIRPLANE';
-      case Transportation.road:
-        return 'ROAD';
-      case Transportation.water:
-        return 'WATERWAY';
+      case Transportation.car:
+        return 'CAR';
+      case Transportation.motorbike:
+        return 'MOTORBIKE';
     }
   }
 }

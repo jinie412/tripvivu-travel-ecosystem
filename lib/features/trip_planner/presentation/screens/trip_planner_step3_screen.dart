@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
@@ -7,7 +7,6 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/it
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
-import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/food_preference_section.dart';
 import '../widgets/step_progress_bar.dart';
 
 class TripPlannerStep3Screen extends StatelessWidget {
@@ -98,23 +97,18 @@ class TripPlannerStep3Screen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Sở thích & Ngân sách',
+                          'Ngân sách',
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Tùy chỉnh chuyến đi để nhận lịch trình phù hợp nhất.',
+                          'Thiết lập ngân sách cho chuyến đi của bạn.',
                           style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                         ),
                         const SizedBox(height: 32),
                         BudgetSliderSection(
                           currentBudget: tripForm.budget,
                           onChanged: (v) => context.read<TripPlannerCubit>().updateBudget(v),
-                        ),
-                        const SizedBox(height: 40),
-                        FoodPreferenceSection(
-                          selectedPreferences: tripForm.foodPreferences,
-                          onToggle: (p) => context.read<TripPlannerCubit>().toggleFoodPreference(p),
                         ),
                         const SizedBox(height: 60),
                       ],

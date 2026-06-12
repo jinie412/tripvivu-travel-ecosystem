@@ -21,8 +21,8 @@ class TimePickingCard extends StatefulWidget {
 }
 
 class _TimePickingCardState extends State<TimePickingCard> {
-  static final List<String> _timeOptions = List.generate(31, (index) {
-    final totalMinutes = 6 * 60 + index * 30;
+  static final List<String> _timeOptions = List.generate(38, (index) {
+    final totalMinutes = 5 * 60 + index * 30;
     final hour = totalMinutes ~/ 60;
     final minute = totalMinutes % 60;
     return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
@@ -170,6 +170,7 @@ class _TimeDropdownField extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
+          key: ValueKey(value),
           initialValue: value,
           items: options
               .map(

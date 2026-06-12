@@ -4,7 +4,7 @@ part 'trip_form.freezed.dart';
 
 enum TripType { roundTrip, oneWay }
 
-enum Transportation { flights, road, water }
+enum Transportation { car, motorbike }
 
 @freezed
 class TripForm with _$TripForm {
@@ -14,7 +14,7 @@ class TripForm with _$TripForm {
     String? departureLocationId,
     String? destinationLocation,
     String? destinationLocationId,
-    @Default(Transportation.flights) Transportation transportation,
+    @Default(Transportation.car) Transportation transportation,
     @Default(1) int currentStep,
     DateTime? startDate,
     DateTime? endDate,
@@ -23,7 +23,7 @@ class TripForm with _$TripForm {
     String? tripIntent,
     @Default(1) int adultCount,
     @Default(0) int childCount,
-    @Default(5000000.0) double budget,
+    @Default(0.0) double budget,
     @Default([]) List<String> foodPreferences,
   }) = _TripForm;
 }
