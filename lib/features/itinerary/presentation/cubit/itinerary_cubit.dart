@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'itinerary_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,7 +10,6 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
-import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/datasources/optimize_route_api.dart';
 
 class ItineraryCubit extends Cubit<ItineraryState> {
@@ -22,6 +22,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   ItineraryStatus? _currentFilter;
   CompletedFilter _currentCompletedFilter = CompletedFilter.all;
+  Timer? _searchDebounce;
+  String _currentSearchQuery = '';
+  int _loadGeneration = 0;
 
   ItineraryCubit({
     required GetItinerariesUseCase getItineraries,
@@ -30,28 +33,68 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required GetItineraryDetailUseCase getItineraryDetail,
     required UpdateItineraryActivitiesUseCase updateActivities,
     required UpdateItineraryTitleUseCase updateTitle,
-  })  : _getItineraries = getItineraries,
-        _getSummary = getSummary,
-        _deleteItinerary = deleteItinerary,
-        _getItineraryDetail = getItineraryDetail,
-        _updateActivities = updateActivities,
-        _updateTitle = updateTitle,
-        super(const ItineraryInitial());
+  }) : _getItineraries = getItineraries,
+       _getSummary = getSummary,
+       _deleteItinerary = deleteItinerary,
+       _getItineraryDetail = getItineraryDetail,
+       _updateActivities = updateActivities,
+       _updateTitle = updateTitle,
+       super(const ItineraryInitial());
 
   static const bool kDemoMode = AppConfig.kUseMockData;
 
-  Future<void> loadData() async {
+  @override
+  Future<void> close() {
+    _searchDebounce?.cancel();
+    return super.close();
+  }
+
+  Future<void> loadData({bool keepCurrentList = false}) async {
+    final generation = ++_loadGeneration;
     final previousSelected = state is ItineraryLoaded
         ? (state as ItineraryLoaded).selectedItinerary
         : null;
-    emit(const ItineraryLoading());
-    try {
-      final results = await Future.wait([
-        _getItineraries(status: _currentFilter),
-        _getSummary(),
-      ]);
+    final previousLoaded = state is ItineraryLoaded
+        ? state as ItineraryLoaded
+        : null;
 
-      var itineraries = results[0] as List<ItineraryEntity>;
+    if (keepCurrentList && previousLoaded != null) {
+      emit(
+        previousLoaded.copyWith(
+          searchQuery: _currentSearchQuery,
+          isSearching: true,
+        ),
+      );
+    } else {
+      emit(const ItineraryLoading());
+    }
+
+    try {
+      final hasSearch = _currentSearchQuery.isNotEmpty;
+      final List<ItineraryEntity> itinerariesResult;
+      final ItinerarySummary summaryResult;
+
+      if (hasSearch && previousLoaded != null) {
+        itinerariesResult = await _getItineraries(
+          status: _currentFilter,
+          query: _currentSearchQuery,
+        );
+        summaryResult = previousLoaded.summary;
+      } else {
+        final results = await Future.wait([
+          _getItineraries(
+            status: _currentFilter,
+            query: hasSearch ? _currentSearchQuery : null,
+          ),
+          _getSummary(),
+        ]);
+        itinerariesResult = results[0] as List<ItineraryEntity>;
+        summaryResult = results[1] as ItinerarySummary;
+      }
+
+      if (generation != _loadGeneration) return;
+
+      var itineraries = itinerariesResult;
 
       if (_currentFilter == ItineraryStatus.completed) {
         if (_currentCompletedFilter == CompletedFilter.rated) {
@@ -64,10 +107,12 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       emit(
         ItineraryLoaded(
           itineraries: itineraries,
-          summary: results[1] as ItinerarySummary,
+          summary: summaryResult,
           activeFilter: _currentFilter,
           activeCompletedFilter: _currentCompletedFilter,
           selectedItinerary: previousSelected,
+          searchQuery: _currentSearchQuery,
+          isSearching: false,
         ),
       );
     } catch (e) {
@@ -80,14 +125,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         );
         final mockItineraries = [
           ItineraryEntity(
-            id: 'mock_saigon', title: 'Vi vu ở Sài Gòn',
+            id: 'mock_saigon',
+            title: 'Vi vu ở Sài Gòn',
             startDate: DateTime(2026, 5, 8),
             endDate: DateTime(2026, 5, 10),
-            status: ItineraryStatus.upcoming, progress: 0.0, estimatedCost: 6800000,
-            visitedLocations: 0, totalLocations: 27,
+            status: ItineraryStatus.upcoming,
+            progress: 0.0,
+            estimatedCost: 6800000,
+            visitedLocations: 0,
+            totalLocations: 27,
           ),
           ItineraryEntity(
-            id: 'mock_completed', title: 'Khám phá Đà Nẵng 3 ngày 2 đêm',
+            id: 'mock_completed',
+            title: 'Khám phá Đà Nẵng 3 ngày 2 đêm',
             startDate: DateTime.now().subtract(const Duration(days: 10)),
             endDate: DateTime.now().subtract(const Duration(days: 5)),
             status: ItineraryStatus.completed,
@@ -98,7 +148,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
             totalLocations: 8,
           ),
           ItineraryEntity(
-            id: 'mock_ongoing', title: 'Hè rực rỡ tại Phú Quốc',
+            id: 'mock_ongoing',
+            title: 'Hè rực rỡ tại Phú Quốc',
             startDate: DateTime.now().subtract(const Duration(days: 1)),
             endDate: DateTime.now().add(const Duration(days: 3)),
             status: ItineraryStatus.ongoing,
@@ -117,6 +168,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
             selectedItinerary: (state is ItineraryLoaded)
                 ? (state as ItineraryLoaded).selectedItinerary
                 : null,
+            searchQuery: _currentSearchQuery,
+            isSearching: false,
           ),
         );
       } else {
@@ -134,6 +187,40 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   Future<void> filterByCompleted(CompletedFilter filter) async {
     _currentCompletedFilter = filter;
     await loadData();
+  }
+
+  void searchByTitle(String value) {
+    final query = value.trim();
+    if (query != _currentSearchQuery) {
+      _loadGeneration++;
+    }
+    if (state is ItineraryLoaded) {
+      final currentState = state as ItineraryLoaded;
+      emit(currentState.copyWith(searchQuery: query));
+    }
+
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      if (query == _currentSearchQuery) return;
+      _currentSearchQuery = query;
+      loadData(keepCurrentList: true);
+    });
+  }
+
+  void clearSearch() {
+    _searchDebounce?.cancel();
+    if (_currentSearchQuery.isEmpty &&
+        (state is! ItineraryLoaded ||
+            (state as ItineraryLoaded).searchQuery.isEmpty)) {
+      return;
+    }
+    _currentSearchQuery = '';
+    if (state is ItineraryLoaded) {
+      emit(
+        (state as ItineraryLoaded).copyWith(searchQuery: '', isSearching: true),
+      );
+    }
+    loadData(keepCurrentList: true);
   }
 
   Future<void> deleteItem(String id) async {
@@ -154,13 +241,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       final updatedItineraries = previousState.itineraries
           .map((e) => e.id == id ? e.copyWith(title: title) : e)
           .toList();
-      emit(ItineraryLoaded(
-        itineraries: updatedItineraries,
-        summary: previousState.summary,
-        activeFilter: previousState.activeFilter,
-        activeCompletedFilter: previousState.activeCompletedFilter,
-        selectedItinerary: previousState.selectedItinerary!.copyWith(title: title),
-      ));
+      emit(
+        ItineraryLoaded(
+          itineraries: updatedItineraries,
+          summary: previousState.summary,
+          activeFilter: previousState.activeFilter,
+          activeCompletedFilter: previousState.activeCompletedFilter,
+          selectedItinerary: previousState.selectedItinerary!.copyWith(
+            title: title,
+          ),
+          searchQuery: previousState.searchQuery,
+          isSearching: previousState.isSearching,
+        ),
+      );
     }
 
     try {
@@ -169,7 +262,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }
     } catch (e) {
       // Rollback về state cũ nếu API lỗi
-      emit(ItineraryError('Không thể cập nhật tên lịch trình: ${e.toString()}'));
+      emit(
+        ItineraryError('Không thể cập nhật tên lịch trình: ${e.toString()}'),
+      );
       emit(previousState);
     }
   }
@@ -189,19 +284,38 @@ class ItineraryCubit extends Cubit<ItineraryState> {
             mockDetail = _buildSaigonDetail(id);
           } else {
             mockDetail = ItineraryDetailEntity(
-              id: id, title: 'Đà Nẵng - Thành phố đáng sống',
+              id: id,
+              title: 'Đà Nẵng - Thành phố đáng sống',
               destination: 'Đà Nẵng',
-              startDate: DateTime.now(), endDate: DateTime.now().add(const Duration(days: 3)),
-              status: 'ONGOING', durationDays: 3, activitiesCount: 5,
-              visitedLocations: 2, totalLocations: 5,
-              hotelsCount: 1, transportTurns: 3,
-              estimatedBudget: 4500000, spentBudget: 1200000, currency: 'VNĐ', days: [], notes: [], visitedRestaurants: [],
+              startDate: DateTime.now(),
+              endDate: DateTime.now().add(const Duration(days: 3)),
+              status: 'ONGOING',
+              durationDays: 3,
+              activitiesCount: 5,
+              visitedLocations: 2,
+              totalLocations: 5,
+              hotelsCount: 1,
+              transportTurns: 3,
+              estimatedBudget: 4500000,
+              spentBudget: 1200000,
+              currency: 'VNĐ',
+              days: [],
+              notes: [],
+              visitedRestaurants: [],
               centerCoordinate: [16.0611, 108.2274],
             );
           }
-          emit((state as ItineraryLoaded).copyWithSelected(_materializeMockDays(mockDetail)));
+          emit(
+            (state as ItineraryLoaded).copyWithSelected(
+              _materializeMockDays(mockDetail),
+            ),
+          );
         } else {
-          emit(currentState.copyWith(detailError: 'Không thể tải chi tiết: ${e.toString()}'));
+          emit(
+            currentState.copyWith(
+              detailError: 'Không thể tải chi tiết: ${e.toString()}',
+            ),
+          );
         }
       }
     }
@@ -249,10 +363,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         title: 'Cầu Rồng Đà Nẵng',
         locationName: 'Cầu Rồng',
         address: 'An Hải Tây, Sơn Trà, Đà Nẵng',
-        startTime: '10:15', endTime: '11:00',
-        imageUrl: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=600&q=80',
+        startTime: '10:15',
+        endTime: '11:00',
+        imageUrl:
+            'https://images.unsplash.com/photo-1528127269322-539801943592?w=600&q=80',
         transportInfo: '5 phút di chuyển (300m)',
-        rating: 4.8, reviewCount: 45000, isFree: true,
+        rating: 4.8,
+        reviewCount: 45000,
+        isFree: true,
         status: ActivityStatus.daDi,
         latitude: 16.0611,
         longitude: 108.2274, // Tọa độ thật
@@ -278,11 +396,16 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         title: 'Chợ Hàn',
         locationName: 'Chợ Hàn',
         address: '119 Trần Phú, Hải Châu 1',
-        startTime: '12:15', endTime: '13:30',
-        imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=600&q=80',
+        startTime: '12:15',
+        endTime: '13:30',
+        imageUrl:
+            'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=600&q=80',
         transportInfo: '3 phút di chuyển (200m)',
-        rating: 4.3, reviewCount: 15000, isFree: true,
-        latitude: 16.0682, longitude: 108.2244, // Tọa độ thật
+        rating: 4.3,
+        reviewCount: 15000,
+        isFree: true,
+        latitude: 16.0682,
+        longitude: 108.2244, // Tọa độ thật
       ),
     ];
 
@@ -309,10 +432,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         title: 'Cầu Tình Yêu',
         locationName: 'Love Lock Bridge',
         address: 'Trần Hưng Đạo, Sơn Trà, Đà Nẵng',
-        startTime: '08:30', endTime: '09:30',
-        imageUrl: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=600&q=80',
+        startTime: '08:30',
+        endTime: '09:30',
+        imageUrl:
+            'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=600&q=80',
         transportInfo: '10 phút di chuyển (600m)',
-        rating: 4.4, reviewCount: 12000, isFree: true,
+        rating: 4.4,
+        reviewCount: 12000,
+        isFree: true,
         status: ActivityStatus.chuaDi,
         latitude: 16.0588,
         longitude: 108.2282,
@@ -358,10 +485,13 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         title: 'Nhà thờ Đức Bà',
         locationName: 'Notre-Dame Cathedral',
         address: '01 Công xã Paris, Bến Nghé, Quận 1',
-        startTime: '10:30', endTime: '11:30',
-        imageUrl: 'https://images.unsplash.com/photo-1555913334-39941c16c6ba?w=600&q=80',
+        startTime: '10:30',
+        endTime: '11:30',
+        imageUrl:
+            'https://images.unsplash.com/photo-1555913334-39941c16c6ba?w=600&q=80',
         transportInfo: '5 phút di chuyển (400m)',
-        rating: 4.7, reviewCount: 18000,
+        rating: 4.7,
+        reviewCount: 18000,
         status: ActivityStatus.chuaDi,
         latitude: 10.7797,
         longitude: 106.6990,
@@ -447,165 +577,425 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   ItineraryDetailEntity _buildSaigonDetail(String id) {
     ItineraryActivityEntity a(
-      String aid, String title, String start, String end, String addr,
-      String img, String transport, {
-      double price = 0, bool isFree = false,
-      double? lat, double? lng,
-      double rating = 4.5, int reviewCount = 1000,
+      String aid,
+      String title,
+      String start,
+      String end,
+      String addr,
+      String img,
+      String transport, {
+      double price = 0,
+      bool isFree = false,
+      double? lat,
+      double? lng,
+      double rating = 4.5,
+      int reviewCount = 1000,
       ActivityStatus status = ActivityStatus.chuaDi,
     }) {
       return ItineraryActivityEntity(
-        id: aid, title: title, locationName: title,
-        address: addr, startTime: start, endTime: end,
-        imageUrl: img, transportInfo: transport,
-        price: price, isFree: isFree,
-        rating: rating, reviewCount: reviewCount,
-        latitude: lat, longitude: lng, status: status,
+        id: aid,
+        title: title,
+        locationName: title,
+        address: addr,
+        startTime: start,
+        endTime: end,
+        imageUrl: img,
+        transportInfo: transport,
+        price: price,
+        isFree: isFree,
+        rating: rating,
+        reviewCount: reviewCount,
+        latitude: lat,
+        longitude: lng,
+        status: status,
       );
     }
 
     final day1 = [
-      a('sg1_1', 'Phở Hòa Pasteur', '08:00', '09:00',
+      a(
+        'sg1_1',
+        'Phở Hòa Pasteur',
+        '08:00',
+        '09:00',
         '260C Pasteur, Phường Xuân Hòa, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&q=80',
         'Điểm xuất phát',
-        price: 95000, lat: 10.7790, lng: 106.6876, rating: 4.7, reviewCount: 12000),
-      a('sg1_2', 'Dinh Độc Lập', '09:15', '11:15',
+        price: 95000,
+        lat: 10.7790,
+        lng: 106.6876,
+        rating: 4.7,
+        reviewCount: 12000,
+      ),
+      a(
+        'sg1_2',
+        'Dinh Độc Lập',
+        '09:15',
+        '11:15',
         '135 Nam Kỳ Khởi Nghĩa, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1592114714621-ccc6cacad26b?w=600&q=80',
         '8 phút di chuyển (1km)',
-        price: 40000, lat: 10.7770, lng: 106.6953, rating: 4.6, reviewCount: 25000),
-      a('sg1_3', 'Nhà thờ Đức Bà', '11:30', '12:15',
+        price: 40000,
+        lat: 10.7770,
+        lng: 106.6953,
+        rating: 4.6,
+        reviewCount: 25000,
+      ),
+      a(
+        'sg1_3',
+        'Nhà thờ Đức Bà',
+        '11:30',
+        '12:15',
         '01 Công xã Paris, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1589601643522-dc444d89a2d0?w=600&q=80',
         '5 phút di chuyển (400m)',
-        isFree: true, lat: 10.7797, lng: 106.6990, rating: 4.7, reviewCount: 18000),
-      a('sg1_4', 'Cơm tấm Bụi Sài Gòn', '12:30', '13:30',
+        isFree: true,
+        lat: 10.7797,
+        lng: 106.6990,
+        rating: 4.7,
+        reviewCount: 18000,
+      ),
+      a(
+        'sg1_4',
+        'Cơm tấm Bụi Sài Gòn',
+        '12:30',
+        '13:30',
         '84 Đinh Tiên Hoàng, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
         '5 phút di chuyển (400m)',
-        price: 85000, lat: 10.7756, lng: 106.6991, rating: 4.5, reviewCount: 8500),
-      a('sg1_5', 'Liberty Central Saigon Citypoint', '14:00', '14:30',
+        price: 85000,
+        lat: 10.7756,
+        lng: 106.6991,
+        rating: 4.5,
+        reviewCount: 8500,
+      ),
+      a(
+        'sg1_5',
+        'Liberty Central Saigon Citypoint',
+        '14:00',
+        '14:30',
         '59-61 Pasteur, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80',
         '5 phút di chuyển (400m)',
-        price: 1200000, lat: 10.7757, lng: 106.7033, rating: 4.4, reviewCount: 3200),
-      a('sg1_6', 'Chợ Bến Thành', '15:00', '17:00',
+        price: 1200000,
+        lat: 10.7757,
+        lng: 106.7033,
+        rating: 4.4,
+        reviewCount: 3200,
+      ),
+      a(
+        'sg1_6',
+        'Chợ Bến Thành',
+        '15:00',
+        '17:00',
         'Lê Lợi, Phường Bến Thành, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1562147600-ee6e0707973b?w=600&q=80',
         '10 phút di chuyển (800m)',
-        isFree: true, lat: 10.7722, lng: 106.6983, rating: 4.3, reviewCount: 32000),
-      a('sg1_7', 'Phố đi bộ Nguyễn Huệ', '17:15', '18:45',
+        isFree: true,
+        lat: 10.7722,
+        lng: 106.6983,
+        rating: 4.3,
+        reviewCount: 32000,
+      ),
+      a(
+        'sg1_7',
+        'Phố đi bộ Nguyễn Huệ',
+        '17:15',
+        '18:45',
         'Nguyễn Huệ, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1521019795854-14e15f600980?w=600&q=80',
         '5 phút di chuyển (400m)',
-        isFree: true, lat: 10.7741, lng: 106.7029, rating: 4.6, reviewCount: 45000),
-      a('sg1_8', 'Nhà hàng Cục Gạch Quán', '19:30', '21:00',
+        isFree: true,
+        lat: 10.7741,
+        lng: 106.7029,
+        rating: 4.6,
+        reviewCount: 45000,
+      ),
+      a(
+        'sg1_8',
+        'Nhà hàng Cục Gạch Quán',
+        '19:30',
+        '21:00',
         '10 Đặng Tất, Phường Tân Định, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80',
         '15 phút di chuyển (2.5km)',
-        price: 280000, lat: 10.7912, lng: 106.6870, rating: 4.8, reviewCount: 6200),
-      a('sg1_9', 'Chill Skybar', '21:30', '22:00',
+        price: 280000,
+        lat: 10.7912,
+        lng: 106.6870,
+        rating: 4.8,
+        reviewCount: 6200,
+      ),
+      a(
+        'sg1_9',
+        'Chill Skybar',
+        '21:30',
+        '22:00',
         '76 Lê Lai, Phường Bến Thành, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&q=80',
         '10 phút di chuyển (1.5km)',
-        price: 200000, lat: 10.7709, lng: 106.6980, rating: 4.5, reviewCount: 4800),
+        price: 200000,
+        lat: 10.7709,
+        lng: 106.6980,
+        rating: 4.5,
+        reviewCount: 4800,
+      ),
     ];
 
     final day2 = [
-      a('sg2_1', 'Bánh mì Huỳnh Hoa', '08:00', '09:00',
+      a(
+        'sg2_1',
+        'Bánh mì Huỳnh Hoa',
+        '08:00',
+        '09:00',
         '26 Lê Thị Riêng, Phường Bến Thành, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80',
         'Điểm xuất phát',
-        price: 55000, lat: 10.7773, lng: 106.6948, rating: 4.8, reviewCount: 22000),
-      a('sg2_2', 'Bảo tàng Chứng tích Chiến tranh', '09:15', '11:30',
+        price: 55000,
+        lat: 10.7773,
+        lng: 106.6948,
+        rating: 4.8,
+        reviewCount: 22000,
+      ),
+      a(
+        'sg2_2',
+        'Bảo tàng Chứng tích Chiến tranh',
+        '09:15',
+        '11:30',
         '28 Võ Văn Tần, Phường Xuân Hòa, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1704635820420-02bc7364c3be?w=600&q=80',
         '8 phút di chuyển (1.2km)',
-        price: 40000, lat: 10.7797, lng: 106.6930, rating: 4.7, reviewCount: 35000),
-      a('sg2_3', 'Chùa Vĩnh Nghiêm', '11:45', '12:45',
+        price: 40000,
+        lat: 10.7797,
+        lng: 106.6930,
+        rating: 4.7,
+        reviewCount: 35000,
+      ),
+      a(
+        'sg2_3',
+        'Chùa Vĩnh Nghiêm',
+        '11:45',
+        '12:45',
         '339 Nam Kỳ Khởi Nghĩa, Phường Nhiêu Lộc, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1598791076033-5d11da0a734f?w=600&q=80',
         '12 phút di chuyển (2.5km)',
-        isFree: true, lat: 10.7570, lng: 106.6879, rating: 4.5, reviewCount: 9800),
-      a('sg2_4', 'Nhà hàng Ngon 160 Pasteur', '13:00', '14:00',
+        isFree: true,
+        lat: 10.7570,
+        lng: 106.6879,
+        rating: 4.5,
+        reviewCount: 9800,
+      ),
+      a(
+        'sg2_4',
+        'Nhà hàng Ngon 160 Pasteur',
+        '13:00',
+        '14:00',
         '160 Pasteur, Phường Xuân Hòa, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1463424591693-a7c7ed4e3342?w=600&q=80',
         '10 phút di chuyển (1.5km)',
-        price: 180000, lat: 10.7802, lng: 106.6887, rating: 4.6, reviewCount: 14000),
-      a('sg2_5', 'Liberty Central Saigon Citypoint', '14:15', '15:00',
+        price: 180000,
+        lat: 10.7802,
+        lng: 106.6887,
+        rating: 4.6,
+        reviewCount: 14000,
+      ),
+      a(
+        'sg2_5',
+        'Liberty Central Saigon Citypoint',
+        '14:15',
+        '15:00',
         '59-61 Pasteur, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80',
         '5 phút di chuyển (800m)',
-        isFree: true, lat: 10.7757, lng: 106.7033, rating: 4.4, reviewCount: 3200),
-      a('sg2_6', 'Chùa Bà Thiên Hậu', '15:30', '17:00',
+        isFree: true,
+        lat: 10.7757,
+        lng: 106.7033,
+        rating: 4.4,
+        reviewCount: 3200,
+      ),
+      a(
+        'sg2_6',
+        'Chùa Bà Thiên Hậu',
+        '15:30',
+        '17:00',
         '710 Nguyễn Trãi, Phường Chợ Lớn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1486056997767-09578eee7de1?w=600&q=80',
         '25 phút di chuyển (6km)',
-        isFree: true, lat: 10.7547, lng: 106.6637, rating: 4.6, reviewCount: 11000),
-      a('sg2_7', 'Khu phố người Hoa - Chợ Lớn', '17:15', '19:00',
+        isFree: true,
+        lat: 10.7547,
+        lng: 106.6637,
+        rating: 4.6,
+        reviewCount: 11000,
+      ),
+      a(
+        'sg2_7',
+        'Khu phố người Hoa - Chợ Lớn',
+        '17:15',
+        '19:00',
         'Nguyễn Trãi, Phường An Đông, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1602917381237-e46b6c517705?w=600&q=80',
         '5 phút di chuyển (500m)',
-        isFree: true, lat: 10.7540, lng: 106.6620, rating: 4.4, reviewCount: 18000),
-      a('sg2_8', 'Lẩu riêu cua đồng Ngọc Xuân', '19:30', '21:00',
+        isFree: true,
+        lat: 10.7540,
+        lng: 106.6620,
+        rating: 4.4,
+        reviewCount: 18000,
+      ),
+      a(
+        'sg2_8',
+        'Lẩu riêu cua đồng Ngọc Xuân',
+        '19:30',
+        '21:00',
         '84 Đinh Tiên Hoàng, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1562403492-454d4b075cac?w=600&q=80',
         '30 phút di chuyển (8km)',
-        price: 250000, lat: 10.7740, lng: 106.7020, rating: 4.5, reviewCount: 7600),
-      a('sg2_9', 'Phố Tây Bùi Viện', '21:30', '22:00',
+        price: 250000,
+        lat: 10.7740,
+        lng: 106.7020,
+        rating: 4.5,
+        reviewCount: 7600,
+      ),
+      a(
+        'sg2_9',
+        'Phố Tây Bùi Viện',
+        '21:30',
+        '22:00',
         'Bùi Viện, Phường Bến Thành, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1541079033018-63489731598f?w=600&q=80',
         '10 phút di chuyển (1.5km)',
-        isFree: true, lat: 10.7678, lng: 106.6949, rating: 4.2, reviewCount: 28000),
+        isFree: true,
+        lat: 10.7678,
+        lng: 106.6949,
+        rating: 4.2,
+        reviewCount: 28000,
+      ),
     ];
 
     final day3 = [
-      a('sg3_1', 'Cháo lòng Kỳ Đồng', '08:00', '09:00',
+      a(
+        'sg3_1',
+        'Cháo lòng Kỳ Đồng',
+        '08:00',
+        '09:00',
         '47 Kỳ Đồng, Phường Bàn Cờ, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1533787761082-492a5b83e614?w=600&q=80',
         'Điểm xuất phát',
-        price: 55000, lat: 10.7816, lng: 106.6888, rating: 4.4, reviewCount: 5200),
-      a('sg3_2', 'Bến Nhà Rồng - Bảo tàng Hồ Chí Minh', '09:15', '11:15',
+        price: 55000,
+        lat: 10.7816,
+        lng: 106.6888,
+        rating: 4.4,
+        reviewCount: 5200,
+      ),
+      a(
+        'sg3_2',
+        'Bến Nhà Rồng - Bảo tàng Hồ Chí Minh',
+        '09:15',
+        '11:15',
         '1 Nguyễn Tất Thành, Phường Khánh Hội, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1586004551686-d9c4fab26471?w=600&q=80',
         '15 phút di chuyển (2.5km)',
-        price: 30000, lat: 10.7627, lng: 106.7028, rating: 4.5, reviewCount: 20000),
-      a('sg3_3', 'Bạch Đằng Wharf - Bờ sông Sài Gòn', '11:30', '12:30',
+        price: 30000,
+        lat: 10.7627,
+        lng: 106.7028,
+        rating: 4.5,
+        reviewCount: 20000,
+      ),
+      a(
+        'sg3_3',
+        'Bạch Đằng Wharf - Bờ sông Sài Gòn',
+        '11:30',
+        '12:30',
         'Bến Bạch Đằng, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1592982349625-b89ecccd6a12?w=600&q=80',
         '15 phút di chuyển (2km)',
-        isFree: true, lat: 10.7738, lng: 106.7040, rating: 4.5, reviewCount: 16000),
-      a('sg3_4', 'Cơm niêu Sài Gòn', '12:45', '13:45',
+        isFree: true,
+        lat: 10.7738,
+        lng: 106.7040,
+        rating: 4.5,
+        reviewCount: 16000,
+      ),
+      a(
+        'sg3_4',
+        'Cơm niêu Sài Gòn',
+        '12:45',
+        '13:45',
         '2C Đinh Tiên Hoàng, Phường Tân Định, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
         '5 phút di chuyển (400m)',
-        price: 130000, lat: 10.7756, lng: 106.6993, rating: 4.6, reviewCount: 9400),
-      a('sg3_5', 'Liberty Central Saigon Citypoint', '14:00', '14:30',
+        price: 130000,
+        lat: 10.7756,
+        lng: 106.6993,
+        rating: 4.6,
+        reviewCount: 9400,
+      ),
+      a(
+        'sg3_5',
+        'Liberty Central Saigon Citypoint',
+        '14:00',
+        '14:30',
         '59-61 Pasteur, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80',
         '5 phút di chuyển (400m)',
-        isFree: true, lat: 10.7757, lng: 106.7033, rating: 4.4, reviewCount: 3200),
-      a('sg3_6', 'Bitexco Financial Tower - Saigon Skydeck', '15:00', '17:00',
+        isFree: true,
+        lat: 10.7757,
+        lng: 106.7033,
+        rating: 4.4,
+        reviewCount: 3200,
+      ),
+      a(
+        'sg3_6',
+        'Bitexco Financial Tower - Saigon Skydeck',
+        '15:00',
+        '17:00',
         '2 Hải Triều, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1672910366209-698b5099546d?w=600&q=80',
         '10 phút di chuyển (1.5km)',
-        price: 250000, lat: 10.7717, lng: 106.7020, rating: 4.5, reviewCount: 28000),
-      a('sg3_7', 'Hoàng hôn bờ sông Sài Gòn', '17:15', '18:30',
+        price: 250000,
+        lat: 10.7717,
+        lng: 106.7020,
+        rating: 4.5,
+        reviewCount: 28000,
+      ),
+      a(
+        'sg3_7',
+        'Hoàng hôn bờ sông Sài Gòn',
+        '17:15',
+        '18:30',
         'Bến Bạch Đằng, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1691048596859-457fbc612fe1?w=600&q=80',
         '5 phút di chuyển (400m)',
-        isFree: true, lat: 10.7738, lng: 106.7040, rating: 4.8, reviewCount: 12000),
-      a('sg3_8', 'Nhà hàng Cô Ba Vũng Tàu - Hải sản', '19:00', '21:00',
+        isFree: true,
+        lat: 10.7738,
+        lng: 106.7040,
+        rating: 4.8,
+        reviewCount: 12000,
+      ),
+      a(
+        'sg3_8',
+        'Nhà hàng Cô Ba Vũng Tàu - Hải sản',
+        '19:00',
+        '21:00',
         '191 Lý Tự Trọng, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600&q=80',
         '15 phút di chuyển (2km)',
-        price: 380000, lat: 10.7695, lng: 106.6950, rating: 4.6, reviewCount: 8900),
-      a('sg3_9', 'Đường sách Nguyễn Văn Bình', '21:30', '22:00',
+        price: 380000,
+        lat: 10.7695,
+        lng: 106.6950,
+        rating: 4.6,
+        reviewCount: 8900,
+      ),
+      a(
+        'sg3_9',
+        'Đường sách Nguyễn Văn Bình',
+        '21:30',
+        '22:00',
         'Nguyễn Văn Bình, Phường Sài Gòn, TP. Hồ Chí Minh',
         'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=600&q=80',
         '15 phút di chuyển (2km)',
-        isFree: true, lat: 10.7786, lng: 106.6978, rating: 4.3, reviewCount: 6500),
+        isFree: true,
+        lat: 10.7786,
+        lng: 106.6978,
+        rating: 4.3,
+        reviewCount: 6500,
+      ),
     ];
 
     return ItineraryDetailEntity(
@@ -634,38 +1024,64 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       visitedRestaurants: const [],
       days: [
         ItineraryDayEntity(
-          dayNumber: 1, date: DateTime(2026, 5, 8), temperature: 34,
-          totalDuration: '9 giờ tham quan', locationsCount: 9,
-          dayBudget: 1900000, activities: [],
+          dayNumber: 1,
+          date: DateTime(2026, 5, 8),
+          temperature: 34,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: 9,
+          dayBudget: 1900000,
+          activities: [],
         ),
         ItineraryDayEntity(
-          dayNumber: 2, date: DateTime(2026, 5, 9), temperature: 33,
-          totalDuration: '9 giờ tham quan', locationsCount: 9,
-          dayBudget: 525000, activities: [],
+          dayNumber: 2,
+          date: DateTime(2026, 5, 9),
+          temperature: 33,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: 9,
+          dayBudget: 525000,
+          activities: [],
         ),
         ItineraryDayEntity(
-          dayNumber: 3, date: DateTime(2026, 5, 10), temperature: 35,
-          totalDuration: '9 giờ tham quan', locationsCount: 9,
-          dayBudget: 845000, activities: [],
+          dayNumber: 3,
+          date: DateTime(2026, 5, 10),
+          temperature: 35,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: 9,
+          dayBudget: 845000,
+          activities: [],
         ),
       ],
-    ).copyWith(days: [
-      ItineraryDayEntity(
-        dayNumber: 1, date: DateTime(2026, 5, 8), temperature: 34,
-        totalDuration: '9 giờ tham quan', locationsCount: day1.length,
-        dayBudget: 1900000, activities: day1,
-      ),
-      ItineraryDayEntity(
-        dayNumber: 2, date: DateTime(2026, 5, 9), temperature: 33,
-        totalDuration: '9 giờ tham quan', locationsCount: day2.length,
-        dayBudget: 525000, activities: day2,
-      ),
-      ItineraryDayEntity(
-        dayNumber: 3, date: DateTime(2026, 5, 10), temperature: 35,
-        totalDuration: '9 giờ tham quan', locationsCount: day3.length,
-        dayBudget: 845000, activities: day3,
-      ),
-    ]);
+    ).copyWith(
+      days: [
+        ItineraryDayEntity(
+          dayNumber: 1,
+          date: DateTime(2026, 5, 8),
+          temperature: 34,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: day1.length,
+          dayBudget: 1900000,
+          activities: day1,
+        ),
+        ItineraryDayEntity(
+          dayNumber: 2,
+          date: DateTime(2026, 5, 9),
+          temperature: 33,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: day2.length,
+          dayBudget: 525000,
+          activities: day2,
+        ),
+        ItineraryDayEntity(
+          dayNumber: 3,
+          date: DateTime(2026, 5, 10),
+          temperature: 35,
+          totalDuration: '9 giờ tham quan',
+          locationsCount: day3.length,
+          dayBudget: 845000,
+          activities: day3,
+        ),
+      ],
+    );
   }
 
   void toggleItineraryStatus(String id, bool isOngoing) {
@@ -689,12 +1105,18 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           activeFilter: currentState.activeFilter,
           activeCompletedFilter: currentState.activeCompletedFilter,
           selectedItinerary: currentState.selectedItinerary,
+          searchQuery: currentState.searchQuery,
+          isSearching: currentState.isSearching,
         ),
       );
     }
   }
 
-  void updateActivityTimeSingle(String activityId, {String? startTime, String? endTime}) {
+  void updateActivityTimeSingle(
+    String activityId, {
+    String? startTime,
+    String? endTime,
+  }) {
     if (state is ItineraryLoaded) {
       final currentState = state as ItineraryLoaded;
       final itin = currentState.selectedItinerary;
@@ -720,7 +1142,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   void updateActivityTimesWithShift({
     required String activityId,
     required int deltaMinutes,
-    bool shiftStartTimeOnly = true, // true = đang chỉnh startTime, false = đang chỉnh endTime
+    bool shiftStartTimeOnly =
+        true, // true = đang chỉnh startTime, false = đang chỉnh endTime
   }) {
     if (state is ItineraryLoaded) {
       final currentState = state as ItineraryLoaded;
@@ -890,7 +1313,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     int? suggestionDayNum;
     if (originalDay != null && optimizedDays != null && dayNum != null) {
       final currentDay = updatedDays.firstWhere((d) => d.dayNumber == dayNum);
-      final optimizedDay = optimizedDays.firstWhere((d) => d.dayNumber == dayNum);
+      final optimizedDay = optimizedDays.firstWhere(
+        (d) => d.dayNumber == dayNum,
+      );
       final distBefore = _totalRouteDistanceKm(currentDay.activities);
       final distAfter = _totalRouteDistanceKm(optimizedDay.activities);
 
@@ -901,13 +1326,17 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }
     }
 
-    final finalDays = suggestion == null ? (optimizedDays ?? updatedDays) : updatedDays;
+    final finalDays = suggestion == null
+        ? (optimizedDays ?? updatedDays)
+        : updatedDays;
     final newState = ItineraryLoaded(
       itineraries: currentState.itineraries,
       summary: currentState.summary,
       activeFilter: currentState.activeFilter,
       activeCompletedFilter: currentState.activeCompletedFilter,
       selectedItinerary: itin.copyWith(days: finalDays),
+      searchQuery: currentState.searchQuery,
+      isSearching: currentState.isSearching,
       suggestedDays: suggestion,
       suggestedDayNumber: suggestionDayNum,
     );
@@ -966,9 +1395,16 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     for (int i = 0; i < activities.length - 1; i++) {
       final a = activities[i];
       final b = activities[i + 1];
-      if (a.latitude != null && a.longitude != null &&
-          b.latitude != null && b.longitude != null) {
-        total += _haversineKm(a.latitude!, a.longitude!, b.latitude!, b.longitude!);
+      if (a.latitude != null &&
+          a.longitude != null &&
+          b.latitude != null &&
+          b.longitude != null) {
+        total += _haversineKm(
+          a.latitude!,
+          a.longitude!,
+          b.latitude!,
+          b.longitude!,
+        );
       }
     }
     return total;
@@ -980,10 +1416,12 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     final dLng = (lng2 - lng1) * math.pi / 180;
     final sinDLat = math.sin(dLat / 2);
     final sinDLng = math.sin(dLng / 2);
-    final a = sinDLat * sinDLat +
+    final a =
+        sinDLat * sinDLat +
         math.cos(lat1 * math.pi / 180) *
             math.cos(lat2 * math.pi / 180) *
-            sinDLng * sinDLng;
+            sinDLng *
+            sinDLng;
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
@@ -992,13 +1430,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     if (state is! ItineraryLoaded) return;
     final s = state as ItineraryLoaded;
     if (s.suggestedDays == null || s.selectedItinerary == null) return;
-    emit(ItineraryLoaded(
-      itineraries: s.itineraries,
-      summary: s.summary,
-      activeFilter: s.activeFilter,
-      activeCompletedFilter: s.activeCompletedFilter,
-      selectedItinerary: s.selectedItinerary!.copyWith(days: s.suggestedDays!),
-    ));
+    emit(
+      ItineraryLoaded(
+        itineraries: s.itineraries,
+        summary: s.summary,
+        activeFilter: s.activeFilter,
+        activeCompletedFilter: s.activeCompletedFilter,
+        selectedItinerary: s.selectedItinerary!.copyWith(
+          days: s.suggestedDays!,
+        ),
+        searchQuery: s.searchQuery,
+        isSearching: s.isSearching,
+      ),
+    );
   }
 
   /// Bỏ qua đề xuất sắp xếp lại.
@@ -1020,9 +1464,11 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       var updatedDays = itin.days.map((day) {
         final hasActivity = day.activities.any((a) => a.id == activityId);
         if (!hasActivity) return day;
-        
+
         updatedDayNum = day.dayNumber;
-        final updatedActivities = day.activities.where((a) => a.id != activityId).toList();
+        final updatedActivities = day.activities
+            .where((a) => a.id != activityId)
+            .toList();
         return day.copyWith(activities: updatedActivities);
       }).toList();
 
@@ -1034,7 +1480,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
-  Future<List<ItineraryDayEntity>> _optimizeSpecificDay(List<ItineraryDayEntity> days, int dayNumber) async {
+  Future<List<ItineraryDayEntity>> _optimizeSpecificDay(
+    List<ItineraryDayEntity> days,
+    int dayNumber,
+  ) async {
     final List<ItineraryDayEntity> newDays = [];
     for (final d in days) {
       if (d.dayNumber == dayNumber) {
@@ -1057,26 +1506,42 @@ extension on ItineraryLoaded {
       activeCompletedFilter: activeCompletedFilter,
       selectedItinerary: selected,
       detailError: null,
+      searchQuery: searchQuery,
+      isSearching: isSearching,
       suggestedDays: null,
       suggestedDayNumber: null,
     );
   }
 
   ItineraryLoaded copyWith({
+    List<ItineraryEntity>? itineraries,
+    ItinerarySummary? summary,
+    ItineraryStatus? activeFilter,
+    CompletedFilter? activeCompletedFilter,
+    ItineraryDetailEntity? selectedItinerary,
     String? detailError,
+    String? searchQuery,
+    bool? isSearching,
     List<ItineraryDayEntity>? suggestedDays,
     int? suggestedDayNumber,
     bool clearSuggestion = false,
   }) {
     return ItineraryLoaded(
-      itineraries: itineraries,
-      summary: summary,
-      activeFilter: activeFilter,
-      activeCompletedFilter: activeCompletedFilter,
-      selectedItinerary: selectedItinerary,
+      itineraries: itineraries ?? this.itineraries,
+      summary: summary ?? this.summary,
+      activeFilter: activeFilter ?? this.activeFilter,
+      activeCompletedFilter:
+          activeCompletedFilter ?? this.activeCompletedFilter,
+      selectedItinerary: selectedItinerary ?? this.selectedItinerary,
       detailError: detailError,
-      suggestedDays: clearSuggestion ? null : (suggestedDays ?? this.suggestedDays),
-      suggestedDayNumber: clearSuggestion ? null : (suggestedDayNumber ?? this.suggestedDayNumber),
+      searchQuery: searchQuery ?? this.searchQuery,
+      isSearching: isSearching ?? this.isSearching,
+      suggestedDays: clearSuggestion
+          ? null
+          : (suggestedDays ?? this.suggestedDays),
+      suggestedDayNumber: clearSuggestion
+          ? null
+          : (suggestedDayNumber ?? this.suggestedDayNumber),
     );
   }
 }

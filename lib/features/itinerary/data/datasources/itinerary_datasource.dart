@@ -12,7 +12,7 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_m
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 
 abstract class ItineraryDataSource {
-  Future<List<ItineraryModel>> getItineraries();
+  Future<List<ItineraryModel>> getItineraries({String? query});
   Future<ItineraryDetailModel> getItineraryDetail(String id);
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
@@ -30,6 +30,10 @@ abstract class ItineraryDataSource {
 
   /// Gọi POST /itinerary/plan → trả về itineraryId.
   Future<String> createItinerary(CreateItineraryRequestModel request);
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  );
   Future<void> updateItineraryActivities(
     String id,
     List<ItineraryDayEntity> days,
@@ -477,15 +481,20 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<List<ItineraryModel>> getItineraries() async {
+  Future<List<ItineraryModel>> getItineraries({String? query}) async {
     final userId = await AuthUtils.requireCurrentUserId();
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
+    final trimmedQuery = query?.trim();
 
     final res = await http.get(
-      Uri.parse(
-        '$baseUrl/itinerary/my-itineraries',
-      ).replace(queryParameters: {'userId': userId}),
+      Uri.parse('$baseUrl/itinerary/my-itineraries').replace(
+        queryParameters: {
+          'userId': userId,
+          if (trimmedQuery != null && trimmedQuery.isNotEmpty)
+            'q': trimmedQuery,
+        },
+      ),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -494,7 +503,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      final list = data['itineraries'] as List;
+      final list = (data['itineraries'] as List?) ?? [];
       return list
           .map<ItineraryModel>((e) => ItineraryModel.fromJson(e))
           .toList();

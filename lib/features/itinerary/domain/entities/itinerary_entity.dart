@@ -53,5 +53,8 @@ class ItineraryEntity with _$ItineraryEntity {
 
     /// Màu placeholder khi ảnh chưa tải xong.
     @Default(0xFF90CAF9) int placeholderColor,
+
+    /// Danh sách ảnh địa điểm trong lịch trình (tối đa 5, từ place_images của API).
+    @Default([]) List<String> placeImages,
   }) = _ItineraryEntity;
 }

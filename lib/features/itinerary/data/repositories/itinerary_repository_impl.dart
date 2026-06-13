@@ -18,8 +18,9 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   @override
   Future<List<ItineraryEntity>> getItineraries({
     ItineraryStatus? status,
+    String? query,
   }) async {
-    final models = await _dataSource.getItineraries();
+    final models = await _dataSource.getItineraries(query: query);
     final entities = models.map((m) => m.toEntity()).toList();
 
     // Lọc theo status nếu có.
@@ -36,10 +37,12 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
 
     return ItinerarySummary(
       total: entities.length,
-      completed:
-          entities.where((e) => e.status == ItineraryStatus.completed).length,
-      upcoming:
-          entities.where((e) => e.status == ItineraryStatus.upcoming).length,
+      completed: entities
+          .where((e) => e.status == ItineraryStatus.completed)
+          .length,
+      upcoming: entities
+          .where((e) => e.status == ItineraryStatus.upcoming)
+          .length,
       draft: entities.where((e) => e.status == ItineraryStatus.draft).length,
     );
   }
@@ -56,7 +59,10 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
-  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days) async {
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  ) async {
     await _dataSource.updateItineraryActivities(id, days);
   }
 

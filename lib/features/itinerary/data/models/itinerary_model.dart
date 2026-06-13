@@ -1,5 +1,3 @@
-import 'package:json_annotation/json_annotation.dart';
-
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 
 class ItineraryModel {
@@ -11,6 +9,10 @@ class ItineraryModel {
   final String? status;
   final int days;
   final int progress;
+  final double estimatedCost;
+  final int totalLocations;
+  final int visitedLocations;
+  final List<String> placeImages;
 
   ItineraryModel({
   required this.id,
@@ -21,6 +23,10 @@ class ItineraryModel {
   this.status,
   required this.days,
   required this.progress,
+  this.estimatedCost = 0,
+  this.totalLocations = 0,
+  this.visitedLocations = 0,
+  this.placeImages = const [],
 });
 
 factory ItineraryModel.fromJson(Map<String, dynamic> json) {
@@ -33,6 +39,14 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
     status: json['status'],
     days: json['days'] ?? 0,
     progress: json['progress'] ?? 0,
+    estimatedCost: (json['estimated_cost'] as num?)?.toDouble() ?? 0,
+    totalLocations: (json['total_locations'] as num?)?.toInt() ?? 0,
+    visitedLocations: (json['visited_locations'] as num?)?.toInt() ?? 0,
+    placeImages: (json['place_images'] as List<dynamic>?)
+            ?.whereType<String>()
+            .where((url) => url.isNotEmpty)
+            .toList() ??
+        [],
   );
 }
 
@@ -40,32 +54,38 @@ ItineraryEntity toEntity() {
   return ItineraryEntity(
     id: id,
 
-    /// 🔥 API không có title → dùng destination làm title
+    /// List API uses `description` as the user-facing trip name.
+    /// `destination` is only a fallback for older rows/responses.
     title: description.isNotEmpty ? description : (destination ?? ''),
 
-    /// API chưa có → để null
+    /// The list API does not expose a single cover image.
+    /// Cards render `placeImages` as the slideshow source instead.
     imageUrl: null,
 
     startDate: DateTime.tryParse(startDate),
     endDate: DateTime.tryParse(endDate),
 
-    /// API chưa có cost
-    estimatedCost: 0,
+    estimatedCost: estimatedCost,
 
     currency: 'VNĐ',
 
-    /// 🔥 FIX: days → durationDays
+    totalLocations: totalLocations,
+    visitedLocations: visitedLocations,
+
+    /// Backend list field `days` maps to the domain duration.
     durationDays: days,
 
-    /// 🔥 FIX: progress từ 0–100 → 0–1
+    /// Backend progress is 0..100; Flutter progress widgets expect 0..1.
     progress: progress / 100,
 
     status: _mapStatus(status),
 
-    /// API chưa có rating
+    /// Rating is loaded from the review flow, not from the list API.
     rating: null,
 
     placeholderColor: 0xFF42A5F5,
+
+    placeImages: placeImages,
   );
 }
 

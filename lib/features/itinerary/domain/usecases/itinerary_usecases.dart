@@ -9,8 +9,8 @@ class GetItinerariesUseCase {
   final ItineraryRepository _repository;
   GetItinerariesUseCase(this._repository);
 
-  Future<List<ItineraryEntity>> call({ItineraryStatus? status}) {
-    return _repository.getItineraries(status: status);
+  Future<List<ItineraryEntity>> call({ItineraryStatus? status, String? query}) {
+    return _repository.getItineraries(status: status, query: query);
   }
 }
 
