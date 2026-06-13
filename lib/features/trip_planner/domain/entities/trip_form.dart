@@ -25,5 +25,7 @@ class TripForm with _$TripForm {
     @Default(0) int childCount,
     @Default(0.0) double budget,
     @Default([]) List<String> foodPreferences,
+    // [TRIP_NAME_INPUT] Tên chuyến đi user nhập ở Bước 3 (tùy chọn)
+    String? tripName,
   }) = _TripForm;
 }

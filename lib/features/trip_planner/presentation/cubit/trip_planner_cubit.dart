@@ -208,6 +208,26 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
   // â”€â”€ BÆ°á»›c 3: NgÃ¢n sÃ¡ch & áº¨m thá»±c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  // [TRIP_NAME_INPUT] Cập nhật tên chuyến đi khi user gõ vào TextField
+  void updateTripName(String name) {
+    state.maybeWhen(
+      loaded: (form) => emit(
+        TripPlannerState.loaded(tripForm: form.copyWith(tripName: name)),
+      ),
+      orElse: () {},
+    );
+  }
+
+  // [TRIP_NAME_INPUT] Lấy tên hiện tại hoặc tự sinh nếu chưa có, rồi lưu vào form
+  String resolveOrGenerateTripName() {
+    final form = state.whenOrNull(loaded: (f) => f);
+    if (form == null) return '';
+    if (form.tripName != null && form.tripName!.isNotEmpty) return form.tripName!;
+    final generated = _generateTripName(form);
+    emit(TripPlannerState.loaded(tripForm: form.copyWith(tripName: generated)));
+    return generated;
+  }
+
   void updateBudget(double amount) {
     state.maybeWhen(
       loaded: (form) => emit(
@@ -365,6 +385,10 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           childCount: form.childCount,
           budget: form.budget,
           foodPreferences: form.foodPreferences,
+          // [TRIP_NAME_INPUT] Dùng tên user đã nhập, fallback sang tên tự sinh
+          tripName: (form.tripName != null && form.tripName!.isNotEmpty)
+              ? form.tripName
+              : _generateTripName(form),
         ),
       );
 
@@ -376,6 +400,20 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   }
 
   // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  // [TRIP_NAME_INPUT] Tự sinh tên từ điểm đến + khoảng ngày, VD: "Đà Nẵng • 10–13/06"
+  String _generateTripName(TripForm form) {
+    final dest = form.destinationLocation ?? '';
+    if (form.startDate == null) return dest;
+    final startDay = form.startDate!.day;
+    final startMonth = form.startDate!.month;
+    final endDay = form.endDate?.day;
+    final endMonth = form.endDate?.month;
+    final dateRange = (endDay != null && endMonth != null)
+        ? '$startDay–$endDay/$startMonth'
+        : '$startDay/$startMonth';
+    return dest.isNotEmpty ? '$dest • $dateRange' : dateRange;
+  }
 
   String _formatDate(DateTime? date) {
     if (date == null) {

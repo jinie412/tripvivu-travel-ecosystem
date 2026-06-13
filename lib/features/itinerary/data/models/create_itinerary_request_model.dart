@@ -13,6 +13,8 @@ class CreateItineraryRequestModel {
   final int childCount;
   final double budget;
   final List<String> foodPreferences;
+  // [TRIP_NAME_INPUT] Ánh xạ sang trường description trong CreateItineraryDto
+  final String? description;
 
   const CreateItineraryRequestModel({
     required this.userId,
@@ -29,6 +31,7 @@ class CreateItineraryRequestModel {
     required this.childCount,
     required this.budget,
     required this.foodPreferences,
+    this.description, // optional
   });
 
   static const _foodPrefMap = {
@@ -56,5 +59,8 @@ class CreateItineraryRequestModel {
         'foodPreferences': foodPreferences
             .map((p) => _foodPrefMap[p] ?? p)
             .toList(),
+        // [TRIP_NAME_INPUT] Chỉ gửi khi user đã nhập tên
+        if (description != null && description!.isNotEmpty)
+          'description': description,
       };
 }

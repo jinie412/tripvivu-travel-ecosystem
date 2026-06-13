@@ -56,3 +56,5 @@ app.*.map.json
 # Ignore Keystore files
 *.keystore
 android/app/debug.keystore
+
+*.cmake

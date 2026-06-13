@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
@@ -9,8 +9,35 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
 import '../widgets/step_progress_bar.dart';
 
-class TripPlannerStep3Screen extends StatelessWidget {
+// ════════════════════════════════════════════════════════════════
+// [TRIP_NAME_INPUT] Đổi sang StatefulWidget để quản lý TextEditingController
+// cho phần nhập tên chuyến đi được thêm vào Bước 3.
+// ════════════════════════════════════════════════════════════════
+class TripPlannerStep3Screen extends StatefulWidget {
   const TripPlannerStep3Screen({super.key});
+
+  @override
+  State<TripPlannerStep3Screen> createState() => _TripPlannerStep3ScreenState();
+}
+
+class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
+  // [TRIP_NAME_INPUT] Controller cho TextField tên chuyến đi
+  late final TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    // [TRIP_NAME_INPUT] Lấy tên hiện tại hoặc tự sinh từ điểm đến + ngày
+    final generatedName =
+        context.read<TripPlannerCubit>().resolveOrGenerateTripName();
+    _nameController = TextEditingController(text: generatedName);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +123,58 @@ class TripPlannerStep3Screen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ════════════════════════════════════════
+                        // [TRIP_NAME_INPUT] Phần nhập tên chuyến đi
+                        // ════════════════════════════════════════
+                        const Text(
+                          'Tên chuyến đi',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Đặt tên để dễ nhận ra chuyến đi của bạn.',
+                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _nameController,
+                          onChanged: (v) =>
+                              context.read<TripPlannerCubit>().updateTripName(v),
+                          decoration: InputDecoration(
+                            hintText: 'Nhập tên chuyến đi...',
+                            filled: true,
+                            fillColor: AppColors.surface,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                            ),
+                            suffixIcon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 18),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLength: 100,
+                          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Bạn có thể đổi tên sau khi tạo',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        // ════════════════════════════════════════
+                        const SizedBox(height: 36),
+                        // Phần ngân sách (giữ nguyên như cũ)
                         const Text(
                           'Ngân sách',
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
