@@ -476,10 +476,14 @@ class _ItinerarySummaryView extends StatelessWidget {
     final TextEditingController controller = TextEditingController(
       text: itin.title,
     );
+    // Capture cubit và scaffoldMessenger trước khi showDialog,
+    // vì context bên trong builder của dialog không thuộc subtree của BlocProvider.
+    final cubit = context.read<ItineraryCubit>();
+    final messenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Chỉnh sửa tên lịch trình',
@@ -500,19 +504,16 @@ class _ItinerarySummaryView extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Hủy', style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton(
             onPressed: () {
               final newTitle = controller.text.trim();
               if (newTitle.isNotEmpty) {
-                Navigator.pop(context);
-                context.read<ItineraryCubit>().updateItineraryTitle(
-                      itin.id,
-                      newTitle,
-                    );
-                ScaffoldMessenger.of(context).showSnackBar(
+                Navigator.pop(dialogContext);
+                cubit.updateItineraryTitle(itin.id, newTitle);
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Đang cập nhật tên lịch trình...'),
                     behavior: SnackBarBehavior.floating,

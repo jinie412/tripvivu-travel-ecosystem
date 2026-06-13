@@ -151,8 +151,15 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
     // Optimistic update: cập nhật UI ngay lập tức
     if (previousState.selectedItinerary?.id == id) {
-      emit(previousState.copyWithSelected(
-        previousState.selectedItinerary!.copyWith(title: title),
+      final updatedItineraries = previousState.itineraries
+          .map((e) => e.id == id ? e.copyWith(title: title) : e)
+          .toList();
+      emit(ItineraryLoaded(
+        itineraries: updatedItineraries,
+        summary: previousState.summary,
+        activeFilter: previousState.activeFilter,
+        activeCompletedFilter: previousState.activeCompletedFilter,
+        selectedItinerary: previousState.selectedItinerary!.copyWith(title: title),
       ));
     }
 
