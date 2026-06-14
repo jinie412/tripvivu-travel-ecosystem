@@ -6,6 +6,7 @@ import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 import 'itinerary_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
@@ -745,7 +746,7 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   Widget _buildBudgetSection(ItineraryDetailEntity itin) {
-    final progress = itin.spentBudget / itin.estimatedBudget;
+    final progress = itin.estimatedBudget == 0 ? 0.0 : (itin.spentBudget / itin.estimatedBudget).clamp(0.0, 2.0);
     final formatter = NumberFormat('#,###', 'vi_VN');
     final bool isOverBudget = progress > 1.0;
     final overAmount = itin.spentBudget - itin.estimatedBudget;
@@ -1106,12 +1107,16 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   void _navigateToDetail(BuildContext context, ItineraryDetailEntity itin) {
-    final cubit = context.read<ItineraryCubit>();
+    final itinCubit = context.read<ItineraryCubit>();
+    final trackingCubit = context.read<TrackingCubit>();
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: cubit,
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: itinCubit),
+            BlocProvider.value(value: trackingCubit),
+          ],
           child: ItineraryDetailScreen(
             itineraryId: itin.id,
             initialDetail: itin,

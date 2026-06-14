@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
@@ -15,27 +16,26 @@ class TrackingAlarmService {
   static const int endOfDayAlarmId = 990001;
   static const int nextDayAlarmId = 990002;
 
-  Future<void> scheduleEndOfDay(DateTime at) => AndroidAlarmManager.oneShotAt(
-        at,
-        endOfDayAlarmId,
-        onTrackingDayEnd,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-        allowWhileIdle: true,
-      );
+  Future<void> scheduleEndOfDay(DateTime at) async {
+    if (!Platform.isAndroid) return;
+    await AndroidAlarmManager.oneShotAt(
+      at, endOfDayAlarmId, onTrackingDayEnd,
+      exact: true, wakeup: true,
+      rescheduleOnReboot: true, allowWhileIdle: true,
+    );
+  }
 
-  Future<void> scheduleNextDay(DateTime at) => AndroidAlarmManager.oneShotAt(
-        at,
-        nextDayAlarmId,
-        onTrackingNextDay,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-        allowWhileIdle: true,
-      );
+  Future<void> scheduleNextDay(DateTime at) async {
+    if (!Platform.isAndroid) return;
+    await AndroidAlarmManager.oneShotAt(
+      at, nextDayAlarmId, onTrackingNextDay,
+      exact: true, wakeup: true,
+      rescheduleOnReboot: true, allowWhileIdle: true,
+    );
+  }
 
   Future<void> cancelAll() async {
+    if (!Platform.isAndroid) return;
     await AndroidAlarmManager.cancel(endOfDayAlarmId);
     await AndroidAlarmManager.cancel(nextDayAlarmId);
   }

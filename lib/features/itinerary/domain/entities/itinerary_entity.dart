@@ -53,5 +53,9 @@ class ItineraryEntity with _$ItineraryEntity {
 
     /// Màu placeholder khi ảnh chưa tải xong.
     @Default(0xFF90CAF9) int placeholderColor,
+
+    /// GPS tracking đang bật trên thiết bị (nguồn gốc từ cột tracking_active trong DB).
+    /// Khác với [status]: status = vòng đời chuyến đi; trackingActive = tracking có đang chạy không.
+    @Default(false) bool trackingActive,
   }) = _ItineraryEntity;
 }

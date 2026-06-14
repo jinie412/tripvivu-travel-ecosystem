@@ -5,6 +5,8 @@
 /// để bền với thay đổi nhỏ phía BE.
 library;
 
+import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
+
 // ───────────────────────── helpers parse linh hoạt ─────────────────────────
 double? _toDouble(dynamic v) {
   if (v == null) return null;
@@ -61,8 +63,8 @@ class TrackingGeofence {
     this.geofenceId,
     this.placeId,
     this.name,
-    this.radiusM = 100,
-    this.dwellThresholdSeconds = 120,
+    this.radiusM = TrackingConfig.radiusM,
+    this.dwellThresholdSeconds = TrackingConfig.dwellSeconds,
   });
 
   factory TrackingGeofence.fromJson(Map<String, dynamic> j) => TrackingGeofence(
@@ -73,10 +75,10 @@ class TrackingGeofence {
         name: _toStr(_pick(j, ['name', 'placeName', 'place_name', 'title'])),
         latitude: _toDouble(_pick(j, ['latitude', 'lat'])) ?? 0,
         longitude: _toDouble(_pick(j, ['longitude', 'lng', 'lon'])) ?? 0,
-        radiusM: _toInt(_pick(j, ['radiusM', 'radius_m', 'radius']), 100),
+        radiusM: _toInt(_pick(j, ['radiusM', 'radius_m', 'radius']), TrackingConfig.radiusM),
         dwellThresholdSeconds: _toInt(
           _pick(j, ['dwellThresholdSeconds', 'dwell_threshold_seconds']),
-          120,
+          TrackingConfig.dwellSeconds,
         ),
       );
 

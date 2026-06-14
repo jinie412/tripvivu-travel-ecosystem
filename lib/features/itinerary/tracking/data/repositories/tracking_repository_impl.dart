@@ -1,4 +1,5 @@
 import '../../domain/repositories/tracking_repository.dart';
+import '../../tracking_config.dart';
 import '../datasources/tracking_remote_datasource.dart';
 import '../models/tracking_models.dart';
 
@@ -11,7 +12,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
     required String itineraryId,
     required String touristId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) =>
       _remote.start(
         itineraryId: itineraryId,
@@ -24,7 +25,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
   Future<List<TrackingGeofence>> geofences({
     required String itineraryId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) =>
       _remote.geofences(itineraryId: itineraryId, date: date, radiusM: radiusM);
 

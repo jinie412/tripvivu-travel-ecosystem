@@ -1,4 +1,5 @@
 import '../../data/models/tracking_models.dart';
+import '../../tracking_config.dart';
 import '../repositories/tracking_repository.dart';
 
 /// Bắt đầu theo dõi lịch trình trong ngày.
@@ -10,7 +11,7 @@ class StartTrackingUseCase {
     required String itineraryId,
     required String touristId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) =>
       repo.start(
         itineraryId: itineraryId,
@@ -28,9 +29,30 @@ class GetGeofencesUseCase {
   Future<List<TrackingGeofence>> call({
     required String itineraryId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) =>
       repo.geofences(itineraryId: itineraryId, date: date, radiusM: radiusM);
+}
+
+/// Gửi sự kiện geofence (ENTER / DWELL / EXIT) từ phát hiện chủ động foreground.
+class SendTrackingEventUseCase {
+  final TrackingRepository repo;
+  SendTrackingEventUseCase(this.repo);
+
+  Future<GeofenceEventResult> call({
+    required String itineraryDetailId,
+    required String touristId,
+    required String eventType,
+    DateTime? occurredAt,
+    int? dwellSeconds,
+  }) =>
+      repo.sendEvent(
+        itineraryDetailId: itineraryDetailId,
+        touristId: touristId,
+        eventType: eventType,
+        occurredAt: occurredAt,
+        dwellSeconds: dwellSeconds,
+      );
 }
 
 /// Check-in thủ công ("Tôi đã đến đây").

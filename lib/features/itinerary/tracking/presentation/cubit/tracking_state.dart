@@ -12,6 +12,9 @@ class TrackingState extends Equatable {
   final int registeredCount;
   final String? checkingInDetailId; // điểm đang check-in thủ công
   final String? message; // lỗi hoặc thông báo ngắn
+  // Quán ăn gần vị trí hiện tại (trong kBán kính cấu hình)
+  final String? nearbyRestaurantDetailId;
+  final String? nearbyRestaurantName;
 
   const TrackingState({
     this.phase = TrackingPhase.idle,
@@ -21,6 +24,8 @@ class TrackingState extends Equatable {
     this.registeredCount = 0,
     this.checkingInDetailId,
     this.message,
+    this.nearbyRestaurantDetailId,
+    this.nearbyRestaurantName,
   });
 
   bool get isActive => phase == TrackingPhase.active;
@@ -48,6 +53,9 @@ class TrackingState extends Equatable {
     bool clearCheckingIn = false,
     String? message,
     bool clearMessage = false,
+    String? nearbyRestaurantDetailId,
+    String? nearbyRestaurantName,
+    bool clearNearbyRestaurant = false,
   }) {
     return TrackingState(
       phase: phase ?? this.phase,
@@ -58,6 +66,12 @@ class TrackingState extends Equatable {
       checkingInDetailId:
           clearCheckingIn ? null : (checkingInDetailId ?? this.checkingInDetailId),
       message: clearMessage ? null : (message ?? this.message),
+      nearbyRestaurantDetailId: clearNearbyRestaurant
+          ? null
+          : (nearbyRestaurantDetailId ?? this.nearbyRestaurantDetailId),
+      nearbyRestaurantName: clearNearbyRestaurant
+          ? null
+          : (nearbyRestaurantName ?? this.nearbyRestaurantName),
     );
   }
 
@@ -70,5 +84,7 @@ class TrackingState extends Equatable {
         registeredCount,
         checkingInDetailId,
         message,
+        nearbyRestaurantDetailId,
+        nearbyRestaurantName,
       ];
 }

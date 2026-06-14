@@ -56,3 +56,6 @@ app.*.map.json
 # Ignore Keystore files
 *.keystore
 android/app/debug.keystore
+
+*.apk
+android/app/build/

@@ -168,6 +168,7 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton(() => StartTrackingUseCase(sl()));
   sl.registerLazySingleton(() => GetGeofencesUseCase(sl()));
+  sl.registerLazySingleton(() => SendTrackingEventUseCase(sl()));
   sl.registerLazySingleton(() => ManualCheckInUseCase(sl()));
   sl.registerLazySingleton(() => GetTrackingStatusUseCase(sl()));
   sl.registerLazySingleton(() => EndTrackingDayUseCase(sl()));
@@ -179,6 +180,7 @@ Future<void> initDependencies() async {
     () => TrackingCubit(
       start: sl(),
       status: sl(),
+      sendEvent: sl(),
       checkIn: sl(),
       endDay: sl(),
       geofenceSvc: sl(),

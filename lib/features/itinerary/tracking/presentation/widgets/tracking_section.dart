@@ -3,21 +3,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
-import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
-import '../../data/models/tracking_models.dart';
 import '../cubit/tracking_cubit.dart';
 import '../cubit/tracking_state.dart';
 import 'tracking_permissions.dart';
 
-/// Khối UI "Theo dõi lịch trình" chèn vào màn chi tiết lịch trình.
-/// Tự cung cấp [TrackingCubit] qua DI nên không cần sửa cây provider sẵn có.
-class TrackingSection extends StatelessWidget {
+/// Khối UI "Theo dõi lịch trình" nhúng vào màn chi tiết.
+///
+/// Khi tracking KHÔNG active: hiện nút "Bắt đầu theo dõi" (nếu showStartButton=true).
+/// Khi tracking ACTIVE: hiện compact bar "Đã đi X/Y địa điểm + Dừng".
+class TrackingSection extends StatefulWidget {
   final String itineraryId;
   final DateTime date;
   final String itineraryStatus;
   final List<ItineraryActivityEntity> activities;
+  final bool showStartButton;
+  final bool dbTrackingActive;
+  /// Callback sau khi bắt đầu tracking thành công (dùng để cập nhật ItineraryCubit).
+  final VoidCallback? onStarted;
+  /// Callback sau khi dừng tracking (dùng để cập nhật ItineraryCubit).
+  final VoidCallback? onStopped;
 
   const TrackingSection({
     super.key,
@@ -25,18 +31,46 @@ class TrackingSection extends StatelessWidget {
     required this.date,
     required this.itineraryStatus,
     required this.activities,
+    this.showStartButton = true,
+    this.dbTrackingActive = false,
+    this.onStarted,
+    this.onStopped,
   });
 
   @override
+  State<TrackingSection> createState() => _TrackingSectionState();
+}
+
+class _TrackingSectionState extends State<TrackingSection> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncActivities());
+  }
+
+  @override
+  void didUpdateWidget(TrackingSection old) {
+    super.didUpdateWidget(old);
+    if (old.activities != widget.activities) {
+      _syncActivities();
+    }
+  }
+
+  void _syncActivities() {
+    if (!mounted) return;
+    context.read<TrackingCubit>().updateActivities(widget.activities);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider<TrackingCubit>(
-      create: (_) => sl<TrackingCubit>(),
-      child: _TrackingBody(
-        itineraryId: itineraryId,
-        date: date,
-        itineraryStatus: itineraryStatus,
-        activities: activities,
-      ),
+    return _TrackingBody(
+      itineraryId: widget.itineraryId,
+      date: widget.date,
+      itineraryStatus: widget.itineraryStatus,
+      activities: widget.activities,
+      showStartButton: widget.showStartButton,
+      onStarted: widget.onStarted,
+      onStopped: widget.onStopped,
     );
   }
 }
@@ -46,20 +80,27 @@ class _TrackingBody extends StatelessWidget {
   final DateTime date;
   final String itineraryStatus;
   final List<ItineraryActivityEntity> activities;
+  final bool showStartButton;
+  final VoidCallback? onStarted;
+  final VoidCallback? onStopped;
 
   const _TrackingBody({
     required this.itineraryId,
     required this.date,
     required this.itineraryStatus,
     required this.activities,
+    required this.showStartButton,
+    this.onStarted,
+    this.onStopped,
   });
 
-  bool get _dayReached {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final d = DateTime(date.year, date.month, date.day);
-    return !d.isAfter(today); // hôm nay hoặc đã qua
-  }
+  // TODO(date-restriction): Bật lại khi muốn giới hạn chỉ bắt đầu vào ngày lịch trình.
+  // bool get _dayReached {
+  //   final now = DateTime.now();
+  //   final today = DateTime(now.year, now.month, now.day);
+  //   final d = DateTime(date.year, date.month, date.day);
+  //   return !d.isAfter(today);
+  // }
 
   Future<void> _onStart(BuildContext context) async {
     final cubit = context.read<TrackingCubit>();
@@ -75,16 +116,14 @@ class _TrackingBody extends StatelessWidget {
       ));
       return;
     }
-    await cubit.start(itineraryId: itineraryId, date: date);
-  }
-
-  Map<String, String> get _nameByDetailId {
-    final map = <String, String>{};
-    for (final a in activities) {
-      final name = a.locationName.isNotEmpty ? a.locationName : a.title;
-      if (a.id.isNotEmpty && name.isNotEmpty) map[a.id] = name;
+    await cubit.start(
+      itineraryId: itineraryId,
+      date: date,
+      activities: activities,
+    );
+    if (context.mounted && cubit.state.isActive) {
+      onStarted?.call();
     }
-    return map;
   }
 
   @override
@@ -93,183 +132,100 @@ class _TrackingBody extends StatelessWidget {
       listenWhen: (p, c) => c.message != null && c.message != p.message,
       listener: (context, state) {
         if (state.message != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message!)),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(state.message!)));
         }
       },
       builder: (context, state) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: AppSizes.s12),
-          padding: const EdgeInsets.all(AppSizes.s16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppSizes.r16),
-            border: Border.all(color: const Color(0xFFE0E0E0)),
-          ),
-          child: state.isActive
-              ? _activePanel(context, state)
-              : _startPanel(context, state),
-        );
+        final isThisTrip = state.itineraryId == itineraryId;
+        final isTrackedDay = state.date != null &&
+            state.date!.year == date.year &&
+            state.date!.month == date.month &&
+            state.date!.day == date.day;
+        if (state.isActive && isThisTrip && isTrackedDay) return _activeBar(context, state);
+        if (!showStartButton) return const SizedBox.shrink();
+        return _startButton(context, state);
       },
     );
   }
 
-  // ───────────────────────────── panel trước khi bắt đầu
-  Widget _startPanel(BuildContext context, TrackingState state) {
-    final canStart = _dayReached && itineraryStatus.toUpperCase() != 'COMPLETED';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: const [
-            Icon(Icons.my_location, color: Color(0xFF14DFBC)),
-            SizedBox(width: AppSizes.s8),
-            Expanded(
-              child: Text(
-                'Theo dõi lịch trình',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSizes.s8),
-        Text(
-          canStart
-              ? 'Bật theo dõi để tự động đánh dấu "Đã ghé" khi bạn đến từng địa điểm (chạy nền bằng geofence).'
-              : 'Chức năng theo dõi sẽ khả dụng vào ngày diễn ra lịch trình.',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-        ),
-        const SizedBox(height: AppSizes.s12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: (!canStart || state.isStarting)
-                ? null
-                : () => _onStart(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF14DFBC),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.r12),
-              ),
-            ),
-            icon: state.isStarting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.play_arrow_rounded),
-            label: Text(state.isStarting ? 'Đang bật...' : 'Bắt đầu'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────────── panel khi đang theo dõi
-  Widget _activePanel(BuildContext context, TrackingState state) {
-    final names = _nameByDetailId;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.location_searching, color: Color(0xFF14DFBC)),
-            const SizedBox(width: AppSizes.s8),
-            Expanded(
-              child: Text(
-                'Đang theo dõi · đã ghé ${state.visitedCount}/${state.totalCount}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 15),
-              ),
-            ),
-            TextButton(
-              onPressed: () => _confirmStop(context),
-              child: const Text('Dừng',
-                  style: TextStyle(color: Color(0xFFE53935))),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSizes.s8),
-        ...state.places.map((p) => _placeRow(context, state, p, names)),
-        if (state.places.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSizes.s8),
-            child: Text('Chưa có điểm nào trong ngày.',
-                style: TextStyle(color: Color(0xFF6B7280), fontSize: 13)),
-          ),
-        const SizedBox(height: AppSizes.s8),
-        Row(
-          children: const [
-            Icon(Icons.refresh, size: 14, color: Color(0xFF9E9E9E)),
-            SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                'Trạng thái cập nhật tự động khi bạn đến nơi đủ thời gian.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _placeRow(BuildContext context, TrackingState state,
-      TrackingPlaceStatus p, Map<String, String> names) {
-    final name = (p.name != null && p.name!.isNotEmpty)
-        ? p.name!
-        : (names[p.itineraryDetailId] ?? 'Điểm dừng');
-    final color = _statusColor(p);
-    final isChecking = state.checkingInDetailId == p.itineraryDetailId;
-    final visited = p.status == VisitStatus.visited;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+  // ── Compact bar khi đang theo dõi ──────────────────────────────────────────
+  Widget _activeBar(BuildContext context, TrackingState state) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.s12),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8FDF8),
+        borderRadius: BorderRadius.circular(AppSizes.r12),
+        border: Border.all(color: const Color(0xFF14DFBC).withValues(alpha: 0.4)),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(_statusIcon(p), size: 16, color: color),
-          ),
-          const SizedBox(width: AppSizes.s12),
+          const Icon(Icons.map_outlined, color: Color(0xFF14DFBC), size: 18),
+          const SizedBox(width: AppSizes.s8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 14)),
-                Text(p.statusLabelVi,
-                    style: TextStyle(fontSize: 12, color: color)),
-              ],
+            child: Text(
+              'Đã đi ${state.visitedCount}/${state.totalCount} địa điểm',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Color(0xFF0E9E87),
+              ),
             ),
           ),
-          if (!visited)
-            isChecking
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : TextButton(
-                    onPressed: () => context
-                        .read<TrackingCubit>()
-                        .manualCheckIn(p.itineraryDetailId),
-                    child: const Text('Tôi đã đến'),
-                  ),
+          TextButton(
+            onPressed: () => _confirmStop(context),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Dừng',
+                style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ── Nút bắt đầu ─────────────────────────────────────────────────────────────
+  Widget _startButton(BuildContext context, TrackingState state) {
+    final isCompleted = itineraryStatus.toUpperCase() == 'COMPLETED';
+    // TODO(date-restriction): thay canStart = _dayReached && !isCompleted
+    final canStart = !isCompleted;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.s12),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: (!canStart || state.isStarting) ? null : () => _onStart(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF14DFBC),
+            disabledBackgroundColor: const Color(0xFFE5E7EB),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.r12),
+            ),
+            elevation: 0,
+          ),
+          icon: state.isStarting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.my_location_rounded, size: 18),
+          label: Text(
+            state.isStarting
+                ? 'Đang bật...'
+                : isCompleted
+                    ? 'Lịch trình đã hoàn thành'
+                    : 'Bắt đầu theo dõi lịch trình',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
+        ),
       ),
     );
   }
@@ -280,8 +236,7 @@ class _TrackingBody extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Dừng theo dõi?'),
-        content: const Text(
-            'Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.'),
+        content: const Text('Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -292,49 +247,9 @@ class _TrackingBody extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true) await cubit.stop();
-  }
-
-  Color _statusColor(TrackingPlaceStatus p) {
-    final hex = p.mapColor;
-    if (hex != null && hex.isNotEmpty) {
-      final parsed = _parseHex(hex);
-      if (parsed != null) return parsed;
+    if (ok == true) {
+      await cubit.stop();
+      if (context.mounted) onStopped?.call();
     }
-    switch (p.status) {
-      case VisitStatus.visited:
-        return const Color(0xFF10B981); // success
-      case VisitStatus.skipped:
-        return const Color(0xFFE53935); // error
-      case VisitStatus.notVisited:
-        return const Color(0xFF9E9E9E); // grey
-    }
-  }
-
-  IconData _statusIcon(TrackingPlaceStatus p) {
-    switch (p.mapIcon) {
-      case 'check':
-        return Icons.check_circle;
-      case 'skip':
-        return Icons.remove_circle_outline;
-      case 'pin':
-        return Icons.place_outlined;
-    }
-    switch (p.status) {
-      case VisitStatus.visited:
-        return Icons.check_circle;
-      case VisitStatus.skipped:
-        return Icons.remove_circle_outline;
-      case VisitStatus.notVisited:
-        return Icons.place_outlined;
-    }
-  }
-
-  Color? _parseHex(String hex) {
-    var h = hex.replaceAll('#', '').trim();
-    if (h.length == 6) h = 'FF$h';
-    if (h.length != 8) return null;
-    final v = int.tryParse(h, radix: 16);
-    return v == null ? null : Color(v);
   }
 }

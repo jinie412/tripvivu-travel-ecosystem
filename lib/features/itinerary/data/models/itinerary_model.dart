@@ -10,6 +10,7 @@ class ItineraryModel {
   final String? status;
   final int days;
   final int progress;
+  final bool trackingActive;
 
   ItineraryModel({
   required this.id,
@@ -20,6 +21,7 @@ class ItineraryModel {
   this.status,
   required this.days,
   required this.progress,
+  this.trackingActive = false,
 });
 
 factory ItineraryModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
     status: json['status'],
     days: json['days'] ?? 0,
     progress: json['progress'] ?? 0,
+    trackingActive: json['tracking_active'] == true,
   );
 }
 
@@ -65,14 +68,16 @@ ItineraryEntity toEntity() {
     rating: null,
 
     placeholderColor: 0xFF42A5F5,
+    trackingActive: trackingActive,
   );
 }
 
 ItineraryStatus _mapStatus(String? status) {
-  switch (status) {
+  switch (status?.toLowerCase()) {
     case 'completed':
       return ItineraryStatus.completed;
     case 'ongoing':
+      return ItineraryStatus.ongoing;
     case 'upcoming':
     case 'pending':
       return ItineraryStatus.upcoming;

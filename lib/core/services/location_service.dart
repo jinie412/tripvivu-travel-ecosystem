@@ -43,6 +43,32 @@ class LocationService {
     );
   }
 
+  /// Stream vị trí realtime — emit khi người dùng di chuyển >= [distanceFilter] m.
+  /// Yêu cầu quyền/dịch vụ đã được cấp (kiểm tra trước qua [getCurrentLocation]).
+  ///
+  /// Mặc định dùng `medium` accuracy: tên Phường/Xã chỉ đổi sau hàng trăm mét
+  /// nên không cần GPS chính xác cao -> tiết kiệm pin.
+  Stream<Position> positionStream({int distanceFilter = 100}) {
+    return Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        distanceFilter: distanceFilter,
+      ),
+    );
+  }
+
+  /// Reverse-geocode một toạ độ ra (ward, province) — public để cubit gọi lại
+  /// khi vị trí thay đổi mà không cần lấy lại GPS.
+  Future<UserLocation> reverseGeocode(double lat, double lng) async {
+    final geo = await _reverseGeocode(lat, lng);
+    return UserLocation(
+      latitude: lat,
+      longitude: lng,
+      ward: geo.$1,
+      province: geo.$2,
+    );
+  }
+
   /// Kiểm tra dịch vụ + quyền, rồi lấy toạ độ hiện tại.
   Future<Position> _resolvePosition() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();

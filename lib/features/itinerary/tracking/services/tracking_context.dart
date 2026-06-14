@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/tracking_models.dart';
+import '../tracking_config.dart';
 
 /// Ngữ cảnh theo dõi được lưu xuống đĩa để **background isolate** (geofence
 /// callback / AlarmManager) có thể tự gọi BE mà không cần DI của app.
@@ -43,7 +44,7 @@ class TrackingContext {
         touristId: j['touristId']?.toString() ?? '',
         itineraryId: j['itineraryId']?.toString() ?? '',
         date: j['date']?.toString() ?? '',
-        radiusM: (j['radiusM'] as num?)?.toInt() ?? 100,
+        radiusM: (j['radiusM'] as num?)?.toInt() ?? TrackingConfig.radiusM,
         places: ((j['places'] as Map?) ?? const {}).map(
           (k, v) => MapEntry(
             k.toString(),
@@ -67,7 +68,7 @@ class TrackingPlaceMeta {
   factory TrackingPlaceMeta.fromJson(Map<String, dynamic> j) =>
       TrackingPlaceMeta(
         name: j['name']?.toString() ?? 'địa điểm',
-        dwellSeconds: (j['dwell'] as num?)?.toInt() ?? 120,
+        dwellSeconds: (j['dwell'] as num?)?.toInt() ?? TrackingConfig.dwellSeconds,
       );
 }
 
@@ -116,6 +117,43 @@ class TrackingContextStore {
   static Future<void> clearNextDate() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_nextDateKey);
+  }
+
+  // ── Food spots persistence (lat/lng của quán ăn trong lịch trình) ──────────
+  static const _foodSpotsKey = 'tracking_food_spots';
+
+  static Future<void> saveFoodSpots(String json) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_foodSpotsKey, json);
+  }
+
+  static Future<String?> loadFoodSpots() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    return prefs.getString(_foodSpotsKey);
+  }
+
+  static Future<void> clearFoodSpots() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_foodSpotsKey);
+  }
+
+  // ── Last callback error (debug) ─────────────────────────────────────────────
+  static const _lastErrorKey = 'tracking_last_callback_error';
+
+  static Future<void> saveLastError(String error) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastErrorKey, '[${DateTime.now().toIso8601String()}] $error');
+  }
+
+  static Future<String?> loadLastError() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastErrorKey);
+  }
+
+  static Future<void> clearLastError() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastErrorKey);
   }
 
   /// Tạo context từ danh sách geofence của ngày.

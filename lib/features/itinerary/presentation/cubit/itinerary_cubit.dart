@@ -556,6 +556,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         if (itinerary.id == id) {
           return itinerary.copyWith(
             status: isOngoing ? ItineraryStatus.ongoing : ItineraryStatus.upcoming,
+            trackingActive: isOngoing,
           );
         }
         return itinerary;

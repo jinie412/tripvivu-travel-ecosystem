@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:native_geofence/native_geofence.dart';
 
 import '../data/models/tracking_models.dart';
+import '../tracking_config.dart';
 import 'tracking_context.dart';
 import 'tracking_http.dart';
 
@@ -18,10 +19,15 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
   DartPluginRegistrant.ensureInitialized();
 
   final ctx = await TrackingContextStore.load();
-  if (ctx == null || ctx.baseUrl.isEmpty) return;
+  if (ctx == null || ctx.baseUrl.isEmpty) {
+    debugPrint('[Geofence] ERR: context null hoặc baseUrl rỗng');
+    return;
+  }
 
   final eventType = _eventTypeOf(params.event);
   if (eventType == null) return;
+
+  debugPrint('[Geofence] $eventType fired for ${params.geofences.length} region(s). touristId=${ctx.touristId}');
 
   final dio = await buildTrackingDio(ctx.baseUrl);
 
@@ -34,10 +40,12 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
         'touristId': ctx.touristId,
         'eventType': eventType,
         'occurredAt': DateTime.now().toIso8601String(),
-        if (eventType == 'DWELL') 'dwellSeconds': meta?.dwellSeconds ?? 120,
+        if (eventType == 'DWELL') 'dwellSeconds': meta?.dwellSeconds ?? TrackingConfig.dwellSeconds,
       });
 
       final result = GeofenceEventResult.fromAny(res.data);
+      debugPrint('[Geofence] $eventType → detailId=$detailId status=${result.status}');
+
       // Đủ dwell -> "Đã ghé" -> bắn push "Bạn đã đến [Tên địa điểm]".
       if (eventType == 'DWELL' && result.status == VisitStatus.visited) {
         await _showArrivalNotification(
@@ -45,8 +53,10 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
           placeName: result.name ?? meta?.name ?? 'địa điểm',
         );
       }
-    } catch (_) {
-      // Nuốt lỗi mạng ở isolate nền — lần event sau sẽ thử lại.
+    } catch (e) {
+      // Ghi log để trace qua ADB logcat: adb logcat | grep Geofence
+      debugPrint('[Geofence] ERR send event $eventType detailId=$detailId: $e');
+      await TrackingContextStore.saveLastError('$eventType $detailId: $e');
     }
   }
 }

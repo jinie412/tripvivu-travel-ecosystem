@@ -15,11 +15,13 @@ import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
-import 'package:travel_advisor_mobile/features/home/presentation/screens/see_all_screen.dart';
-import 'package:travel_advisor_mobile/features/home/presentation/widgets/detailed_place_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_section.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
@@ -837,47 +839,90 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ItineraryCubit, ItineraryState>(
-      listenWhen: (prev, curr) {
-        final hasSuggestion = curr is ItineraryLoaded && curr.suggestedDays != null;
-        final wasNoSuggestion = prev is! ItineraryLoaded || prev.suggestedDays == null;
-        return hasSuggestion && wasNoSuggestion;
-      },
-      listener: (context, _) => _showReorderSuggestionBanner(),
-      child: Scaffold(
-      body: _ItineraryDetailView(
-        selectedDay: _selectedDay,
-        isPublic: _isPublic,
-        onDayChanged: _onDayChanged,
-        onPublicChanged: (v) => setState(() => _isPublic = v),
-        onAddPlaceTap: _showAddPlaceScreen,
-        mapController: _mapController,
-        onMapCreated: (controller) => _mapController = controller,
-        scrollController: _scrollController,
-        activityKeys: _activityKeys,
-        onActivityTap: _zoomToActivity,
-        onActivityLongPress: _navigateToPlaceDetail,
-        onEditActivity: _onEditActivity,
-        onReplaceActivity: _onReplaceActivity,
-        onDeleteActivity: _onDeleteActivity,
-        onRateActivity: _onRateActivity,
-        onEditTime: _onEditTime,
-        onDirectionTap: _launchDirections,
-        onShareTap: _showShareSheet,
-        onMarkerTap: (id) => _scrollToActivity(id),
-        highlightedActivityId: _highlightedActivityId,
-        isEditMode: _isEditMode,
-        onEditModeTap: _onEditModeTap,
-        onDiscardTap: _onDiscardChanges,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showPreOrderDemo,
-        label: Text('Demo Đặt món'),
-        icon: const Icon(Icons.restaurant),
-        backgroundColor: AppColors.primary,
-      ),
-      ),
+    return BlocListener<TrackingCubit, TrackingState>(
+      listenWhen: (p, c) =>
+          c.nearbyRestaurantName != null &&
+          c.nearbyRestaurantName != p.nearbyRestaurantName,
+      listener: (ctx, state) => _showFoodProximityPopup(ctx, state),
+      child: BlocListener<ItineraryCubit, ItineraryState>(
+          listenWhen: (prev, curr) {
+            final hasSuggestion =
+                curr is ItineraryLoaded && curr.suggestedDays != null;
+            final wasNoSuggestion =
+                prev is! ItineraryLoaded || prev.suggestedDays == null;
+            return hasSuggestion && wasNoSuggestion;
+          },
+          listener: (context, _) => _showReorderSuggestionBanner(),
+          child: Scaffold(
+            body: _ItineraryDetailView(
+              selectedDay: _selectedDay,
+              isPublic: _isPublic,
+              onDayChanged: _onDayChanged,
+              onPublicChanged: (v) => setState(() => _isPublic = v),
+              onAddPlaceTap: _showAddPlaceScreen,
+              mapController: _mapController,
+              onMapCreated: (controller) => _mapController = controller,
+              scrollController: _scrollController,
+              activityKeys: _activityKeys,
+              onActivityTap: _zoomToActivity,
+              onActivityLongPress: _navigateToPlaceDetail,
+              onEditActivity: _onEditActivity,
+              onReplaceActivity: _onReplaceActivity,
+              onDeleteActivity: _onDeleteActivity,
+              onRateActivity: _onRateActivity,
+              onEditTime: _onEditTime,
+              onDirectionTap: _launchDirections,
+              onShareTap: _showShareSheet,
+              onMarkerTap: (id) => _scrollToActivity(id),
+              highlightedActivityId: _highlightedActivityId,
+              isEditMode: _isEditMode,
+              onEditModeTap: _onEditModeTap,
+              onDiscardTap: _onDiscardChanges,
+            ),
+          ),
+        ),
     );
+  }
+
+  void _showFoodProximityPopup(BuildContext ctx, TrackingState state) {
+    final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
+    final detailId = state.nearbyRestaurantDetailId ?? '';
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PreOrderPopup(
+        title: 'Quán ăn gần bạn!',
+        message:
+            'Bạn đang trong bán kính ${TrackingConfig.foodProximityKm.toInt()} km. Đặt trước để không phải chờ?',
+        restaurantName: name,
+        estimatedWaitMinutes: 15,
+        rating: 0,
+        reviewCount: 0,
+        onOrderTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          Navigator.push(
+            ctx,
+            MaterialPageRoute(
+              builder: (_) => FoodMenuScreen(
+                placeId: detailId,
+                restaurantName: name,
+              ),
+            ),
+          );
+        },
+        onSkipTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+        },
+      ),
+    ).then((_) {
+      // Đóng popup → dismiss để không hiện lại ngay
+      if (ctx.mounted) {
+        ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+      }
+    });
   }
 }
 
@@ -1178,43 +1223,66 @@ class _ItineraryDetailView extends StatelessWidget {
             date: currentDayData.date,
             itineraryStatus: itin.status,
             activities: currentDayData.activities,
+            showStartButton: false,
+            dbTrackingActive: itin.trackingActive,
+            onStopped: () =>
+                context.read<ItineraryCubit>().toggleItineraryStatus(itin.id, false),
           ),
-          ...currentDayData.activities.asMap().entries.map((entry) {
-            final index = entry.key;
-            final activity = entry.value;
+          // Dùng Builder để đọc TrackingCubit (được provide ở ItineraryDetailScreen)
+          // và truyền trackingStatus cho từng TimelineActivityCard.
+          Builder(builder: (context) {
+            final tracking = context.watch<TrackingCubit>().state;
             final activities = currentDayData.activities;
-            final key = activityKeys.putIfAbsent(activity.id, () => GlobalKey());
-            final nextActivity = index < activities.length - 1 ? activities[index + 1] : null;
-            final nextTransport = nextActivity == null
-                ? null
-                : (activities[index].transportInfo?.isNotEmpty == true
-                    ? activities[index].transportInfo
-                    : _estimateTransit(
-                        activity.latitude, activity.longitude,
-                        nextActivity.latitude, nextActivity.longitude,
-                      ));
+            return Column(
+              children: activities.asMap().entries.map((entry) {
+                final index = entry.key;
+                final activity = entry.value;
+                final key = activityKeys.putIfAbsent(activity.id, () => GlobalKey());
+                final nextActivity =
+                    index < activities.length - 1 ? activities[index + 1] : null;
+                final nextTransport = nextActivity == null
+                    ? null
+                    : (activities[index].transportInfo?.isNotEmpty == true
+                        ? activities[index].transportInfo
+                        : _estimateTransit(
+                            activity.latitude, activity.longitude,
+                            nextActivity.latitude, nextActivity.longitude,
+                          ));
+                // Lấy trạng thái tracking theo itineraryDetailId (= activity.id)
+                final TrackingPlaceStatus? trackingStatus =
+                    tracking.isActive ? tracking.byDetailId(activity.id) : null;
 
-            return TimelineActivityCard(
-              key: key,
-              activity: activity,
-              day: selectedDay,
-              isFirst: index == 0,
-              isLast: index == activities.length - 1,
-              nextTransportInfo: nextTransport,
-              onAddTap: onAddPlaceTap,
-              onEditTap: () => onEditActivity(activity),
-              onReplaceTap: () => onReplaceActivity(activity),
-              onDeleteTap: () => onDeleteActivity(activity),
-              onRateTap: () => onRateActivity(activity),
-              onCardTap: () => onActivityTap(activity),
-              onCardLongPress: () => onActivityLongPress(activity),
-              isHighlighted: highlightedActivityId == activity.id,
-              onStartTimeTap: () => onEditTime(activity, true, index == activities.length - 1),
-              onEndTimeTap: () => onEditTime(activity, false, index == activities.length - 1),
-              isEditMode: isEditMode,
-              onDirectionTap: nextActivity != null
-                  ? () => onDirectionTap(activity, nextActivity)
-                  : null,
+                return TimelineActivityCard(
+                  key: key,
+                  activity: activity,
+                  day: selectedDay,
+                  isFirst: index == 0,
+                  isLast: index == activities.length - 1,
+                  nextTransportInfo: nextTransport,
+                  onAddTap: onAddPlaceTap,
+                  onEditTap: () => onEditActivity(activity),
+                  onReplaceTap: () => onReplaceActivity(activity),
+                  onDeleteTap: () => onDeleteActivity(activity),
+                  onRateTap: () => onRateActivity(activity),
+                  onCardTap: () => onActivityTap(activity),
+                  onCardLongPress: () => onActivityLongPress(activity),
+                  isHighlighted: highlightedActivityId == activity.id,
+                  onStartTimeTap: () =>
+                      onEditTime(activity, true, index == activities.length - 1),
+                  onEndTimeTap: () =>
+                      onEditTime(activity, false, index == activities.length - 1),
+                  isEditMode: isEditMode,
+                  onDirectionTap: nextActivity != null
+                      ? () => onDirectionTap(activity, nextActivity)
+                      : null,
+                  trackingStatus: trackingStatus,
+                  onCheckIn: trackingStatus != null
+                      ? () =>
+                          context.read<TrackingCubit>().manualCheckIn(activity.id)
+                      : null,
+                  isCheckingIn: tracking.checkingInDetailId == activity.id,
+                );
+              }).toList(),
             );
           }),
           const SizedBox(height: AppSizes.s40),

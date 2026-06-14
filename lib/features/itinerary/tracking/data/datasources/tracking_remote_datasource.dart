@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 
 import '../models/tracking_models.dart';
+import '../../tracking_config.dart';
 
 /// Gọi 6 endpoint BE module `itinerary-tracking` (base `/itinerary/tracking`).
 class TrackingRemoteDataSource {
@@ -20,7 +21,7 @@ class TrackingRemoteDataSource {
     required String itineraryId,
     required String touristId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) async {
     final res = await _dio.post('$_base/start', data: {
       'itineraryId': itineraryId,
@@ -35,7 +36,7 @@ class TrackingRemoteDataSource {
   Future<List<TrackingGeofence>> geofences({
     required String itineraryId,
     required DateTime date,
-    int radiusM = 100,
+    int radiusM = TrackingConfig.radiusM,
   }) async {
     final res = await _dio.get('$_base/geofences', queryParameters: {
       'itineraryId': itineraryId,

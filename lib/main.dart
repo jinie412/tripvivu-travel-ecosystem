@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:app_links/app_links.dart';
@@ -27,8 +29,8 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
   await initializeDateFormatting('vi_VN', null);
-  // AlarmManager cho theo dõi lịch trình (đăng ký lại geofence sáng hôm sau).
-  if (!kIsWeb) {
+  // AlarmManager chỉ hỗ trợ Android — guard để không crash trên iOS/web.
+  if (!kIsWeb && Platform.isAndroid) {
     await AndroidAlarmManager.initialize();
   }
   await initDependencies();
