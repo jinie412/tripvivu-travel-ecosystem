@@ -30,7 +30,10 @@ abstract class ItineraryDataSource {
 
   /// Gọi POST /itinerary/plan → trả về itineraryId.
   Future<String> createItinerary(CreateItineraryRequestModel request);
-  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days);
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  );
 }
 
 // // ─────────────────────────────────────────────────────────────────────────────
@@ -480,9 +483,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     final token = await storage.read(key: 'access_token');
 
     final res = await http.get(
-      Uri.parse('$baseUrl/itinerary/my-itineraries').replace(
-        queryParameters: {'userId': userId},
-      ),
+      Uri.parse(
+        '$baseUrl/itinerary/my-itineraries',
+      ).replace(queryParameters: {'userId': userId}),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -492,7 +495,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       final list = data['itineraries'] as List;
-      return list.map<ItineraryModel>((e) => ItineraryModel.fromJson(e)).toList();
+      return list
+          .map<ItineraryModel>((e) => ItineraryModel.fromJson(e))
+          .toList();
     } else {
       throw Exception('Failed to load itineraries');
     }
@@ -560,7 +565,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       body: jsonEncode(body),
     );
     if (res.statusCode != 200) {
-      throw Exception('Failed to update activity: ${res.statusCode}\n${res.body}');
+      throw Exception(
+        'Failed to update activity: ${res.statusCode}\n${res.body}',
+      );
     }
   }
 
@@ -609,15 +616,22 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days) async {
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  ) async {
     final List<Map<String, dynamic>> daysJson = days.map((day) {
       return {
         'dayNumber': day.dayNumber,
-        'activities': day.activities.map((act) => {
-          'id': act.id,
-          'startTime': act.startTime,
-          'endTime': act.endTime,
-        }).toList(),
+        'activities': day.activities
+            .map(
+              (act) => {
+                'id': act.id,
+                'startTime': act.startTime,
+                'endTime': act.endTime,
+              },
+            )
+            .toList(),
       };
     }).toList();
 
@@ -651,7 +665,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final executionTimeSeconds = data['executionTimeSeconds'];
       final warning = data['warning'];
       if (executionTimeSeconds != null) {
-        debugPrint('Itinerary generation completed in ${executionTimeSeconds}s');
+        debugPrint(
+          'Itinerary generation completed in ${executionTimeSeconds}s',
+        );
       }
       if (warning is String && warning.isNotEmpty) {
         debugPrint('Itinerary generation warning: $warning');
@@ -713,10 +729,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
     return ItineraryDayModel(
       dayNumber: dayNumber,
-      date: _dateFromLabel(
-        data['date'] ?? data['dateLabel'],
-        startDate.add(Duration(days: dayNumber - 1)),
-      ),
+      // UI uses the itinerary start_date as the source of truth.
+      // Keep any legacy day date/dateLabel columns in DB untouched.
+      date: startDate.add(Duration(days: dayNumber - 1)),
       temperature: _asInt(data['weatherTemp'] ?? data['temperature'], 0),
       totalDuration: (data['activeTimeStr'] ?? data['total_duration'] ?? '')
           .toString(),
@@ -753,22 +768,6 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
   DateTime _parseDate(dynamic value) {
     return DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
-  }
-
-  DateTime _dateFromLabel(dynamic value, DateTime fallback) {
-    final text = value?.toString() ?? '';
-    final parsed = DateTime.tryParse(text);
-    if (parsed != null) return parsed;
-
-    final parts = text.split('/');
-    if (parts.length == 2) {
-      final day = int.tryParse(parts[0]);
-      final month = int.tryParse(parts[1]);
-      if (day != null && month != null) {
-        return DateTime(fallback.year, month, day);
-      }
-    }
-    return fallback;
   }
 
   int _asInt(dynamic value, [int fallback = 0]) {

@@ -12,7 +12,7 @@ import 'trip_planner_step3_screen.dart';
 class TripPlannerStep2Screen extends StatelessWidget {
   const TripPlannerStep2Screen({super.key});
 
-  // ── Pickers ────────────────────────────────────────────────────────────────
+  // â”€â”€ Pickers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _pickDate(
     BuildContext context, {
@@ -44,13 +44,22 @@ class TripPlannerStep2Screen extends StatelessWidget {
   }
 
   Future<void> _pickTripIntent(BuildContext context, String? current) async {
-    final picked = await showModalBottomSheet<String>(
+    final picked = await showModalBottomSheet<List<String>>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _TripIntentSheet(current: current),
+      builder: (_) => _TripIntentSheet(current: _parseTripIntents(current)),
     );
     if (picked == null || !context.mounted) return;
-    context.read<TripPlannerCubit>().updateTripIntent(picked);
+    context.read<TripPlannerCubit>().updateTripIntents(picked);
+  }
+
+  List<String> _parseTripIntents(String? value) {
+    if (value == null || value.trim().isEmpty) return const [];
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 
   @override
@@ -70,15 +79,36 @@ class TripPlannerStep2Screen extends StatelessWidget {
         ),
         title: Column(
           children: [
-            const Text('Tạo lịch trình mới', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            const Text(
+              'Tạo lịch trình mới',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text('Bước 2/3', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(
+              'Bước 2/3',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-            child: const Text('Hủy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -88,10 +118,22 @@ class TripPlannerStep2Screen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Stack(
               children: [
-                Container(height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2))),
+                Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 FractionallySizedBox(
                   widthFactor: 0.66,
-                  child: Container(height: 4, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))),
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -114,28 +156,44 @@ class TripPlannerStep2Screen extends StatelessWidget {
                         DatePickingField(
                           label: 'TỪ NGÀY',
                           date: tripForm.startDate,
-                          onTap: () => _pickDate(context, isStart: true, currentStart: tripForm.startDate, currentEnd: tripForm.endDate),
+                          onTap: () => _pickDate(
+                            context,
+                            isStart: true,
+                            currentStart: tripForm.startDate,
+                            currentEnd: tripForm.endDate,
+                          ),
                         ),
                         DatePickingField(
                           label: 'ĐẾN NGÀY',
                           date: tripForm.endDate,
-                          onTap: () => _pickDate(context, isStart: false, currentStart: tripForm.startDate, currentEnd: tripForm.endDate),
+                          onTap: () => _pickDate(
+                            context,
+                            isStart: false,
+                            currentStart: tripForm.startDate,
+                            currentEnd: tripForm.endDate,
+                          ),
                         ),
                         const SizedBox(height: 32),
-                        const _SectionTitle(title: 'THỜI GIAN HOẠT ĐỘNG TRONG NGÀY'),
+                        const _SectionTitle(
+                          title: 'THỜI GIAN HOẠT ĐỘNG TRONG NGÀY',
+                        ),
                         const SizedBox(height: 16),
                         TimePickingCard(
                           startTime: tripForm.startTime,
                           endTime: tripForm.endTime,
-                          onStartChanged: (t) => context.read<TripPlannerCubit>().updateStartTime(t),
-                          onEndChanged: (t) => context.read<TripPlannerCubit>().updateEndTime(t),
+                          onStartChanged: (t) => context
+                              .read<TripPlannerCubit>()
+                              .updateStartTime(t),
+                          onEndChanged: (t) =>
+                              context.read<TripPlannerCubit>().updateEndTime(t),
                         ),
                         const SizedBox(height: 32),
                         const _SectionTitle(title: 'MỤC ĐÍCH CHUYẾN ĐI'),
                         const SizedBox(height: 16),
                         _TripIntentButton(
                           selected: tripForm.tripIntent,
-                          onTap: () => _pickTripIntent(context, tripForm.tripIntent),
+                          onTap: () =>
+                              _pickTripIntent(context, tripForm.tripIntent),
                         ),
                         const SizedBox(height: 32),
                         const _SectionTitle(title: 'SỐ LƯỢNG THÀNH VIÊN'),
@@ -143,10 +201,16 @@ class TripPlannerStep2Screen extends StatelessWidget {
                         MemberCounterCard(
                           adultCount: tripForm.adultCount,
                           childCount: tripForm.childCount,
-                          onAdultIncrease: () => context.read<TripPlannerCubit>().increaseAdults(),
-                          onAdultDecrease: () => context.read<TripPlannerCubit>().decreaseAdults(),
-                          onChildIncrease: () => context.read<TripPlannerCubit>().increaseChildren(),
-                          onChildDecrease: () => context.read<TripPlannerCubit>().decreaseChildren(),
+                          onAdultIncrease: () =>
+                              context.read<TripPlannerCubit>().increaseAdults(),
+                          onAdultDecrease: () =>
+                              context.read<TripPlannerCubit>().decreaseAdults(),
+                          onChildIncrease: () => context
+                              .read<TripPlannerCubit>()
+                              .increaseChildren(),
+                          onChildDecrease: () => context
+                              .read<TripPlannerCubit>()
+                              .decreaseChildren(),
                         ),
                         const SizedBox(height: 60),
                       ],
@@ -172,15 +236,28 @@ class TripPlannerStep2Screen extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Tiếp tục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text(
+                          'Tiếp tục',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                         SizedBox(width: 8),
-                        Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                        Icon(
+                          Icons.arrow_forward,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ],
                     ),
                   ),
@@ -195,7 +272,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
   }
 }
 
-// ── Trip Intent selector button ──────────────────────────────────────────────
+// â”€â”€ Trip Intent selector button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TripIntentButton extends StatelessWidget {
   final String? selected;
@@ -212,7 +289,9 @@ class _TripIntentButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: AppColors.inputBorder.withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
           children: [
@@ -224,11 +303,16 @@ class _TripIntentButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: selected != null ? AppColors.textPrimary : AppColors.textSecondary,
+                  color: selected != null
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
                 ),
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+            const Icon(
+              Icons.keyboard_arrow_down,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),
@@ -236,11 +320,28 @@ class _TripIntentButton extends StatelessWidget {
   }
 }
 
-// ── Trip Intent bottom sheet ─────────────────────────────────────────────────
+// â”€â”€ Trip Intent bottom sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class _TripIntentSheet extends StatelessWidget {
-  final String? current;
-  const _TripIntentSheet({this.current});
+class _TripIntentSheet extends StatefulWidget {
+  final List<String> current;
+  const _TripIntentSheet({required this.current});
+
+  @override
+  State<_TripIntentSheet> createState() => _TripIntentSheetState();
+}
+
+class _TripIntentSheetState extends State<_TripIntentSheet> {
+  late final Set<String> _selected = widget.current.toSet();
+
+  void _toggle(String intent) {
+    setState(() {
+      if (_selected.contains(intent)) {
+        _selected.remove(intent);
+      } else {
+        _selected.add(intent);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,48 +350,104 @@ class _TripIntentSheet extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(color: AppColors.inputBorder, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(height: 16),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              'Mục đích chuyến đi',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.inputBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          ...kTripIntents.map((intent) => ListTile(
-                leading: Icon(
-                  Icons.circle,
-                  size: 10,
-                  color: intent == current ? AppColors.primary : AppColors.inputBorder,
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Mục đích chuyến đi',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                title: Text(
-                  intent,
-                  style: TextStyle(
-                    fontWeight: intent == current ? FontWeight.w700 : FontWeight.w500,
-                    color: intent == current ? AppColors.primary : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Có thể chọn nhiều mục đích',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: kTripIntents.map((intent) {
+                    final selected = _selected.contains(intent);
+                    return CheckboxListTile(
+                      value: selected,
+                      onChanged: (_) => _toggle(intent),
+                      activeColor: AppColors.primary,
+                      checkColor: Colors.white,
+                      controlAffinity: ListTileControlAffinity.trailing,
+                      title: Text(
+                        intent,
+                        style: TextStyle(
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(_selected.clear),
+                      child: const Text('Xóa chọn'),
+                    ),
                   ),
-                ),
-                trailing: intent == current ? const Icon(Icons.check, color: AppColors.primary) : null,
-                onTap: () => Navigator.of(context).pop(intent),
-              )),
-          const SizedBox(height: 16),
-        ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          Navigator.of(context).pop(_selected.toList()),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Áp dụng'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-
-// ── Section title ─────────────────────────────────────────────────────────────
+// â”€â”€ Section title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SectionTitle extends StatelessWidget {
   final String title;
@@ -300,7 +457,12 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary, letterSpacing: 0.5),
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
+        letterSpacing: 0.5,
+      ),
     );
   }
 }

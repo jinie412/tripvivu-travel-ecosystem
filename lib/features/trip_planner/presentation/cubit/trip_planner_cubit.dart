@@ -17,7 +17,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
         ),
       );
 
-  // ── Bước 1: Địa điểm ────────────────────────────────────────────────────────
+  // â”€â”€ BÆ°á»›c 1: Äá»‹a Ä‘iá»ƒm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void updateDeparture(String name, String id) {
     state.maybeWhen(
@@ -83,12 +83,12 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     );
   }
 
-  // ── Bước 2: Thời gian & Chủ đề ──────────────────────────────────────────────
+  // â”€â”€ BÆ°á»›c 2: Thá»i gian & Chá»§ Ä‘á» â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void updateStartDate(DateTime date) {
     state.maybeWhen(
       loaded: (form) {
-        // Đảm bảo endDate không trước startDate
+        // Äáº£m báº£o endDate khÃ´ng trÆ°á»›c startDate
         final end = form.endDate != null && form.endDate!.isBefore(date)
             ? date
             : form.endDate;
@@ -136,7 +136,23 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     );
   }
 
-  // ── Bước 2: Thành viên ──────────────────────────────────────────────────────
+  void updateTripIntents(List<String> intents) {
+    state.maybeWhen(
+      loaded: (form) {
+        final valid = intents.where(kTripIntents.contains).toList();
+        emit(
+          TripPlannerState.loaded(
+            tripForm: form.copyWith(
+              tripIntent: valid.isEmpty ? null : valid.join(', '),
+            ),
+          ),
+        );
+      },
+      orElse: () {},
+    );
+  }
+
+  // â”€â”€ BÆ°á»›c 2: ThÃ nh viÃªn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void increaseAdults() {
     state.maybeWhen(
@@ -190,7 +206,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     );
   }
 
-  // ── Bước 3: Ngân sách & Ẩm thực ─────────────────────────────────────────────
+  // â”€â”€ BÆ°á»›c 3: NgÃ¢n sÃ¡ch & áº¨m thá»±c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void updateBudget(double amount) {
     state.maybeWhen(
@@ -220,7 +236,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     );
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────────────
+  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void goNextStep() {
     state.maybeWhen(
@@ -252,7 +268,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     );
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> submitTripPlan() async {
     final form = state.whenOrNull(loaded: (f) => f);
@@ -260,38 +276,40 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
     // Validation
     if (form.departureLocationId == null || form.departureLocationId!.isEmpty) {
-      emit(TripPlannerState.error('Vui lòng chọn điểm khởi hành'));
+      emit(TripPlannerState.error('Vui lÃ²ng chá»n Ä‘iá»ƒm khá»Ÿi hÃ nh'));
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.destinationLocationId == null ||
         form.destinationLocationId!.isEmpty) {
-      emit(TripPlannerState.error('Vui lòng chọn điểm đến'));
+      emit(TripPlannerState.error('Vui lÃ²ng chá»n Ä‘iá»ƒm Ä‘áº¿n'));
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.departureLocationId == form.destinationLocationId) {
       emit(
         TripPlannerState.error(
-          'Điểm khởi hành và điểm đến không được trùng nhau',
+          'Äiá»ƒm khá»Ÿi hÃ nh vÃ  Ä‘iá»ƒm Ä‘áº¿n khÃ´ng Ä‘Æ°á»£c trÃ¹ng nhau',
         ),
       );
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.startDate == null) {
-      emit(TripPlannerState.error('Vui lòng chọn ngày bắt đầu'));
+      emit(TripPlannerState.error('Vui lÃ²ng chá»n ngÃ y báº¯t Ä‘áº§u'));
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.endDate == null) {
-      emit(TripPlannerState.error('Vui lòng chọn ngày kết thúc'));
+      emit(TripPlannerState.error('Vui lÃ²ng chá»n ngÃ y káº¿t thÃºc'));
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.endDate!.isBefore(form.startDate!)) {
       emit(
-        TripPlannerState.error('Ngày kết thúc không được trước ngày bắt đầu'),
+        TripPlannerState.error(
+          'NgÃ y káº¿t thÃºc khÃ´ng Ä‘Æ°á»£c trÆ°á»›c ngÃ y báº¯t Ä‘áº§u',
+        ),
       );
       emit(TripPlannerState.loaded(tripForm: form));
       return;
@@ -299,17 +317,28 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     final dailyStartTime = form.startTime ?? '07:00';
     final dailyEndTime = form.endTime ?? '22:00';
     if (!_isValidTimeRange(dailyStartTime, dailyEndTime)) {
-      emit(TripPlannerState.error('Giờ kết thúc phải sau giờ bắt đầu'));
+      emit(
+        TripPlannerState.error(
+          'Giá» káº¿t thÃºc pháº£i sau giá» báº¯t Ä‘áº§u',
+        ),
+      );
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
-    if (form.tripIntent != null && !kTripIntents.contains(form.tripIntent)) {
-      emit(TripPlannerState.error('Mục đích chuyến đi không hợp lệ'));
+    final selectedTripIntents = _parseTripIntents(form.tripIntent);
+    if (selectedTripIntents.any((intent) => !kTripIntents.contains(intent))) {
+      emit(
+        TripPlannerState.error('Má»¥c Ä‘Ã­ch chuyáº¿n Ä‘i khÃ´ng há»£p lá»‡'),
+      );
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
     if (form.adultCount < 1) {
-      emit(TripPlannerState.error('Chuyến đi phải có ít nhất 1 người lớn'));
+      emit(
+        TripPlannerState.error(
+          'Chuyáº¿n Ä‘i pháº£i cÃ³ Ã­t nháº¥t 1 ngÆ°á»i lá»›n',
+        ),
+      );
       emit(TripPlannerState.loaded(tripForm: form));
       return;
     }
@@ -329,7 +358,9 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           endDate: _formatDate(form.endDate),
           dailyStartTime: dailyStartTime,
           dailyEndTime: dailyEndTime,
-          tripIntent: form.tripIntent ?? kTripIntents.first,
+          tripIntent: selectedTripIntents.isEmpty
+              ? kTripIntents.first
+              : selectedTripIntents.join(', '),
           adultCount: form.adultCount,
           childCount: form.childCount,
           budget: form.budget,
@@ -344,7 +375,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   String _formatDate(DateTime? date) {
     if (date == null) {
@@ -376,6 +407,15 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
       case TripType.oneWay:
         return 'ONE_WAY';
     }
+  }
+
+  List<String> _parseTripIntents(String? value) {
+    if (value == null || value.trim().isEmpty) return const [];
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 
   String _transportToApi(Transportation t) {

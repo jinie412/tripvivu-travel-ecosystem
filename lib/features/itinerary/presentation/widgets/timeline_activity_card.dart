@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
-
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
@@ -123,13 +122,15 @@ class TimelineActivityCard extends StatelessWidget {
 
   bool get _isAccommodationStart {
     final category = (activity.category ?? '').toLowerCase();
-    final isAccommodation = category.contains('lưu trú') ||
+    final isAccommodation =
+        category.contains('lưu trú') ||
         category.contains('luu tru') ||
         category.contains('khách sạn') ||
         category.contains('khach san') ||
         category.contains('hotel');
     return isAccommodation && activity.startTime == activity.endTime;
   }
+
   Widget _buildItem(
     BuildContext context, {
     required String time,
@@ -158,7 +159,10 @@ class TimelineActivityCard extends StatelessWidget {
                         onTap: isStartTime ? onStartTimeTap : onEndTimeTap,
                         borderRadius: BorderRadius.circular(4),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 2,
+                            vertical: 2,
+                          ),
                           child: Text(
                             time,
                             style: AppTextStylesExt.bodySmall.copyWith(
@@ -172,7 +176,10 @@ class TimelineActivityCard extends StatelessWidget {
                         ),
                       )
                     : Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 2,
+                        ),
                         child: Text(
                           time,
                           style: AppTextStylesExt.bodySmall.copyWith(
@@ -185,7 +192,9 @@ class TimelineActivityCard extends StatelessWidget {
                 const SizedBox(height: AppSizes.s8),
                 isCompleted
                     ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 5), // padding 5 + size 20 = 30 height
+                        padding: EdgeInsets.symmetric(
+                          vertical: 5,
+                        ), // padding 5 + size 20 = 30 height
                         child: Icon(
                           Icons.check_circle,
                           size: 20,
@@ -198,7 +207,11 @@ class TimelineActivityCard extends StatelessWidget {
                           color: AppColorsExt.profileBlue.withAlpha(25),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, size: 18, color: AppColorsExt.profileBlue),
+                        child: Icon(
+                          icon,
+                          size: 18,
+                          color: AppColorsExt.profileBlue,
+                        ),
                       ),
                 if (showLine)
                   Expanded(
@@ -218,12 +231,14 @@ class TimelineActivityCard extends StatelessWidget {
           // Content Area
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isTransition ? AppSizes.s12 : AppSizes.s8),
+              padding: EdgeInsets.only(
+                bottom: isTransition ? AppSizes.s12 : AppSizes.s8,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 38),
+                  const SizedBox(height: 22),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -238,9 +253,17 @@ class TimelineActivityCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _smallEditAction(Icons.swap_horiz_rounded, const Color(0xFFF59E0B), onReplaceTap),
+                            _smallEditAction(
+                              Icons.swap_horiz_rounded,
+                              const Color(0xFFF59E0B),
+                              onReplaceTap,
+                            ),
                             const SizedBox(width: 6),
-                            _smallEditAction(Icons.delete_outline_rounded, const Color(0xFFEF4444), onDeleteTap),
+                            _smallEditAction(
+                              Icons.delete_outline_rounded,
+                              const Color(0xFFEF4444),
+                              onDeleteTap,
+                            ),
                           ],
                         ),
                     ],
@@ -268,17 +291,17 @@ class TimelineActivityCard extends StatelessWidget {
     return InkWell(
       onTap: onCardTap,
       onLongPress: onCardLongPress,
-      borderRadius: BorderRadius.circular(AppSizes.r24),
+      borderRadius: BorderRadius.circular(AppSizes.r16),
       child: Container(
         padding: const EdgeInsets.only(right: AppSizes.s8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppSizes.r24),
+          borderRadius: BorderRadius.circular(AppSizes.r16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(12),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
           border: Border.all(
@@ -292,9 +315,9 @@ class TimelineActivityCard extends StatelessWidget {
           children: [
             NetImage(
               url: activity.imageUrl,
-              width: 100,
-              height: 125,
-              borderRadius: AppSizes.r24,
+              width: 82,
+              height: 104,
+              borderRadius: AppSizes.r16,
               fit: BoxFit.cover,
             ),
             const SizedBox(width: AppSizes.s12),
@@ -344,7 +367,11 @@ class TimelineActivityCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, color: Color(0xFFFFC107), size: 13),
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFC107),
+                              size: 13,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
@@ -363,7 +390,11 @@ class TimelineActivityCard extends StatelessWidget {
                                 ? Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Icons.star_rounded, size: 12, color: Color(0xFF10B981)),
+                                      const Icon(
+                                        Icons.star_rounded,
+                                        size: 12,
+                                        color: Color(0xFF10B981),
+                                      ),
                                       const SizedBox(width: 2),
                                       Text(
                                         '$userRating',
@@ -376,9 +407,14 @@ class TimelineActivityCard extends StatelessWidget {
                                     ],
                                   )
                                 : Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                                      color: const Color(
+                                        0xFF2563EB,
+                                      ).withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: const Text(
@@ -493,7 +529,10 @@ class TimelineActivityCard extends StatelessWidget {
 
   Widget _buildTransitionChip() {
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.s16,
+        vertical: AppSizes.s8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.r24),
@@ -529,7 +568,9 @@ class TimelineActivityCard extends StatelessWidget {
           Icon(
             Icons.directions,
             size: 16,
-            color: onDirectionTap != null ? AppColors.primary : AppColorsExt.textHint,
+            color: onDirectionTap != null
+                ? AppColors.primary
+                : AppColorsExt.textHint,
           ),
         ],
       ),
@@ -537,10 +578,7 @@ class TimelineActivityCard extends StatelessWidget {
 
     if (onDirectionTap == null) return chip;
 
-    return GestureDetector(
-      onTap: onDirectionTap,
-      child: chip,
-    );
+    return GestureDetector(onTap: onDirectionTap, child: chip);
   }
 }
 
@@ -552,7 +590,7 @@ class _DashedLinePainter extends CustomPainter {
       ..color = AppColorsExt.divider
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
-    
+
     while (startY < size.height) {
       canvas.drawLine(Offset(0, startY), Offset(0, startY + dashHeight), paint);
       startY += dashHeight + dashSpace;
