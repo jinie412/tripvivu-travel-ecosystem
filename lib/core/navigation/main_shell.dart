@@ -15,6 +15,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itin
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_screen.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/screens/profile_screen.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/widgets/profile_drawer.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/screens/saved_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
@@ -108,50 +109,77 @@ class _MainShellState extends State<MainShell> {
       providers: [
         BlocProvider(create: (_) => sl<ItineraryCubit>()..loadData()),
         BlocProvider(create: (_) => sl<ProfileCubit>()..loadProfile()),
+        BlocProvider(create: (_) => sl<TrackingCubit>()),
         BlocProvider(create: (_) => TabCubit()),
       ],
-      child: BlocBuilder<TabCubit, int>(
-        builder: (context, currentIndex) {
-          // Bắt trường hợp Profile đã load xong trước khi Widget build (ví dụ Hot Reload)
-          final currentState = context.read<ProfileCubit>().state;
-          if (currentState is ProfileLoaded && _notificationChannel == null) {
-            _listenToNotifications(currentState.profile.id);
-          }
+      child: _TrackingRestorer(
+        child: BlocBuilder<TabCubit, int>(
+          builder: (context, currentIndex) {
+            // Bắt trường hợp Profile đã load xong trước khi Widget build (ví dụ Hot Reload)
+            final currentState = context.read<ProfileCubit>().state;
+            if (currentState is ProfileLoaded && _notificationChannel == null) {
+              _listenToNotifications(currentState.profile.id);
+            }
 
-          return BlocListener<ProfileCubit, ProfileState>(
-            listener: (context, profileState) {
-              if (profileState is ProfileLoaded && _notificationChannel == null) {
-                _listenToNotifications(profileState.profile.id);
-              }
-            },
-            child: Scaffold(
-              key: _scaffoldKey,
-              drawer: const ProfileDrawer(),
-              endDrawer: const NotificationDrawer(),
-              body: IndexedStack(
-                index: currentIndex,
-                children: _pages,
+            return BlocListener<ProfileCubit, ProfileState>(
+              listener: (context, profileState) {
+                if (profileState is ProfileLoaded && _notificationChannel == null) {
+                  _listenToNotifications(profileState.profile.id);
+                }
+              },
+              child: Scaffold(
+                key: _scaffoldKey,
+                drawer: const ProfileDrawer(),
+                endDrawer: const NotificationDrawer(),
+                body: IndexedStack(
+                  index: currentIndex,
+                  children: _pages,
+                ),
+                bottomNavigationBar: SharedBottomNav(
+                  currentIndex: currentIndex,
+                  onTap: (i) {
+                    if (i == 2) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const TripPlannerScreen(),
+                        ),
+                      );
+                      return;
+                    }
+                    context.read<TabCubit>().changeTab(i);
+                  },
+                ),
               ),
-              bottomNavigationBar: SharedBottomNav(
-                currentIndex: currentIndex,
-                onTap: (i) {
-                  if (i == 2) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const TripPlannerScreen(),
-                      ),
-                    );
-                    return;
-                  }
-                  context.read<TabCubit>().changeTab(i);
-                },
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
+}
+
+/// Widget đặt bên trong MultiBlocProvider để gọi restoreIfActive() từ đúng
+/// descendant context — tránh lỗi ProviderNotFoundException khi gọi từ
+/// ancestor context trong initState() của _MainShellState.
+class _TrackingRestorer extends StatefulWidget {
+  final Widget child;
+  const _TrackingRestorer({required this.child});
+
+  @override
+  State<_TrackingRestorer> createState() => _TrackingRestorerState();
+}
+
+class _TrackingRestorerState extends State<_TrackingRestorer> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<TrackingCubit>().restoreIfActive();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // ─── Notch Painter ────────────────────────────────────────────────────────────

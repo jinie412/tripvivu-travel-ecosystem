@@ -168,29 +168,14 @@ class ExploreCubit extends Cubit<ExploreState> {
     required int page,
     int limit = 10,
   }) async {
-    final fromCategory = await _safeLoad<List<CityRestaurant>>(
+    return _safeLoad<List<CityRestaurant>>(
       () => _getRestaurantsByCategories(
-        // Try broader synonyms because category naming can vary on backend data.
-        categories: const ['ẩm thực', 'nhà hàng', 'ăn uống'],
+        categories: const ['ẩm thực'],
         page: page,
         limitPerCategory: limit,
       ),
       const <CityRestaurant>[],
     );
-
-    if (fromCategory.isNotEmpty) {
-      return fromCategory;
-    }
-
-    // Fallback to explore home payload when /explore/places has no matched
-    // category data for the current environment.
-    final home = await _safeLoad<ExploreHomeData>(_getExploreHome.call, _emptyHome);
-    if (home.restaurants.isEmpty) {
-      return const <CityRestaurant>[];
-    }
-
-    final start = (page - 1) * limit;
-    return home.restaurants.skip(start).take(limit).toList();
   }
 
   Future<List<CityHotel>> loadAllHotels({bool refresh = false}) async {

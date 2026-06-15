@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
@@ -50,12 +51,17 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
-                builder: (_) => BlocProvider(
-                  create: (_) {
-                    final cubit = sl<ItineraryCubit>();
-                    cubit.loadData().then((_) => cubit.selectItinerary(itineraryId));
-                    return cubit;
-                  },
+                builder: (_) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) {
+                        final cubit = sl<ItineraryCubit>();
+                        cubit.loadData().then((_) => cubit.selectItinerary(itineraryId));
+                        return cubit;
+                      },
+                    ),
+                    BlocProvider(create: (_) => sl<TrackingCubit>()),
+                  ],
                   child: ItinerarySummaryScreen(itineraryId: itineraryId),
                 ),
               ),

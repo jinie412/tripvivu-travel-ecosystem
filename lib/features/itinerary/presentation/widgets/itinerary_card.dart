@@ -20,6 +20,7 @@ class ItineraryCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onStartToggle;
+  final Widget? bottomChild;
 
   const ItineraryCard({
     super.key,
@@ -28,6 +29,7 @@ class ItineraryCard extends StatelessWidget {
     this.onDelete,
     this.onTap,
     this.onStartToggle,
+    this.bottomChild,
   });
 
   @override
@@ -149,53 +151,6 @@ class ItineraryCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                      if (_shouldShowStart(item))
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.only(left: 12, right: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item.status == ItineraryStatus.ongoing ? 'ĐANG DIỄN RA' : 'BẮT ĐẦU LỊCH TRÌNH',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: item.status == ItineraryStatus.ongoing ? const Color(0xFF2563EB) : const Color(0xFF4B5563),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Transform.scale(
-                                  scale: 0.65,
-                                  child: Switch(
-                                    value: item.status == ItineraryStatus.ongoing,
-                                    onChanged: onStartToggle,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    activeThumbColor: Colors.white,
-                                    activeTrackColor: const Color(0xFF2563EB),
-                                    inactiveThumbColor: Colors.white,
-                                    inactiveTrackColor: const Color(0xFFD1D5DB),
-                                    trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -285,6 +240,10 @@ class ItineraryCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (bottomChild != null) ...[
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+                  bottomChild!,
+                ],
               ],
             ),
           ),

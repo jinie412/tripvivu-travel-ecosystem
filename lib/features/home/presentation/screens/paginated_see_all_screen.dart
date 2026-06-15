@@ -8,6 +8,8 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final Future<List<T>> Function(int page, int limit) pageLoader;
   final Widget Function(BuildContext context, T item) itemBuilder;
   final String emptyMessage;
+  // Pre-seeded items from the home state — shown instantly while page 1 loads.
+  final List<T> initialItems;
 
   const PaginatedSeeAllScreen({
     super.key,
@@ -16,6 +18,7 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
     required this.itemBuilder,
     this.pageSize = 10,
     this.emptyMessage = 'Không có dữ liệu để hiển thị.',
+    this.initialItems = const [],
   });
 
   @override
@@ -36,7 +39,39 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadFirstPage();
+    if (widget.initialItems.isNotEmpty) {
+      // Show preloaded items immediately, then refresh page 1 in the background.
+      _items.addAll(widget.initialItems);
+      _isInitialLoading = false;
+      _refreshPage1();
+    } else {
+      _loadFirstPage();
+    }
+  }
+
+  // Loads page 1 and replaces the pre-seeded items with the real first page.
+  Future<void> _refreshPage1() async {
+    try {
+      final items = await widget.pageLoader(1, widget.pageSize);
+      if (!mounted) return;
+      // API returned nothing but we already have pre-seeded items — keep them
+      // instead of showing an empty list, and stop further pagination.
+      if (items.isEmpty && _items.isNotEmpty) {
+        setState(() => _hasMore = false);
+        return;
+      }
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(items);
+        _hasMore = items.length >= widget.pageSize;
+        _currentPage = 2;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      // Keep showing pre-seeded items; stop pagination.
+      setState(() => _hasMore = false);
+    }
   }
 
   @override

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
-import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {

@@ -1090,9 +1090,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       final updatedList = currentState.itineraries.map((itinerary) {
         if (itinerary.id == id) {
           return itinerary.copyWith(
-            status: isOngoing
-                ? ItineraryStatus.ongoing
-                : ItineraryStatus.upcoming,
+            status: isOngoing ? ItineraryStatus.ongoing : ItineraryStatus.upcoming,
+            trackingActive: isOngoing,
           );
         }
         return itinerary;

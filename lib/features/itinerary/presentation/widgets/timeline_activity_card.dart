@@ -5,6 +5,7 @@ import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
 import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 class TimelineActivityCard extends StatelessWidget {
@@ -26,6 +27,15 @@ class TimelineActivityCard extends StatelessWidget {
   final bool isEditMode;
   final String? nextTransportInfo;
 
+  /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
+  final TrackingPlaceStatus? trackingStatus;
+
+  /// Callback check-in thủ công "Tôi đã đến" khi tracking active.
+  final VoidCallback? onCheckIn;
+
+  /// Đang xử lý check-in (hiện loading spinner thay nút).
+  final bool isCheckingIn;
+
   const TimelineActivityCard({
     super.key,
     required this.activity,
@@ -45,6 +55,9 @@ class TimelineActivityCard extends StatelessWidget {
     this.isHighlighted = false,
     this.isEditMode = false,
     this.nextTransportInfo,
+    this.trackingStatus,
+    this.onCheckIn,
+    this.isCheckingIn = false,
   });
 
   String _formatReviewCount(int? count) {
@@ -87,7 +100,9 @@ class TimelineActivityCard extends StatelessWidget {
           icon: isAccommodationStart ? Icons.hotel_rounded : Icons.location_on,
           content: _buildActivityCard(context),
           showLine: true,
-          isCompleted: activity.status == ActivityStatus.daDi,
+          isCompleted:
+              activity.status == ActivityStatus.daDi ||
+              trackingStatus?.status == VisitStatus.visited,
           isEditMode: isEditMode,
         ),
 
@@ -429,12 +444,129 @@ class TimelineActivityCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    // ── Tracking: badge "Đã ghé" hoặc nút "Tôi đã đến" ──────
+                    if (trackingStatus != null) ...[
+                      const SizedBox(height: AppSizes.s8),
+                      _buildTrackingRow(),
+                    ],
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTrackingRow() {
+    final status = trackingStatus!.status;
+    if (status == VisitStatus.visited) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 11,
+                  color: Color(0xFF10B981),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Đã đến nơi',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    if (status == VisitStatus.skipped) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE53935).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.remove_circle_outline,
+                  size: 11,
+                  color: Color(0xFFE53935),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Đã bỏ qua',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE53935),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    // notVisited → nút check-in thủ công
+    return GestureDetector(
+      onTap: isCheckingIn ? null : onCheckIn,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+          ),
+        ),
+        child: isCheckingIn
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: Color(0xFF2563EB),
+                ),
+              )
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 11,
+                    color: Color(0xFF2563EB),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Tôi đã đến',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

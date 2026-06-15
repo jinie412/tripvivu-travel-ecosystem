@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
 
 import 'itinerary_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
@@ -416,8 +417,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    '${_getStatusText(itin)} '
-                                    ' • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
+                                    '${_getStatusText(itin)} • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.white,
@@ -1168,12 +1168,16 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   void _navigateToDetail(BuildContext context, ItineraryDetailEntity itin) {
-    final cubit = context.read<ItineraryCubit>();
+    final itinCubit = context.read<ItineraryCubit>();
+    final trackingCubit = context.read<TrackingCubit>();
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: cubit,
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: itinCubit),
+            BlocProvider.value(value: trackingCubit),
+          ],
           child: ItineraryDetailScreen(
             itineraryId: itin.id,
             initialDetail: itin,

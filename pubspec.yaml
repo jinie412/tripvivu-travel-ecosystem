@@ -80,6 +80,13 @@ dependencies:
   permission_handler: ^12.0.1
   url_launcher: ^6.3.2
 
+  # Theo dõi lịch trình: geofence chạy nền + AlarmManager đăng ký lại geofence sáng hôm sau
+  native_geofence: ^1.1.1
+  android_alarm_manager_plus: ^4.0.4
+
+  # Phát hiện thay đổi kết nối mạng → refresh tracking status ngay khi có mạng
+  connectivity_plus: ^6.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -25,7 +25,7 @@ class RelatedPlacesSection extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              'Các địa điểm liên quan',
+              'Có thể bạn sẽ thích',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
           ),

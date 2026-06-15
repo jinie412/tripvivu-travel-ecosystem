@@ -49,6 +49,7 @@ class ItineraryDetailEntity {
   final List<VisitedRestaurant> visitedRestaurants;
   
   final List<double> centerCoordinate;
+  final bool trackingActive;
 
   const ItineraryDetailEntity({
     required this.id,
@@ -71,6 +72,7 @@ class ItineraryDetailEntity {
     this.notes = const [],
     this.visitedRestaurants = const [],
     this.centerCoordinate = const [],
+    this.trackingActive = false,
   });
 
   ItineraryDetailEntity copyWith({
@@ -94,6 +96,7 @@ class ItineraryDetailEntity {
     List<String>? notes,
     List<VisitedRestaurant>? visitedRestaurants,
     List<double>? centerCoordinate,
+    bool? trackingActive,
   }) {
     return ItineraryDetailEntity(
       id: id ?? this.id,
@@ -116,6 +119,7 @@ class ItineraryDetailEntity {
       notes: notes ?? this.notes,
       visitedRestaurants: visitedRestaurants ?? this.visitedRestaurants,
       centerCoordinate: centerCoordinate ?? this.centerCoordinate,
+      trackingActive: trackingActive ?? this.trackingActive,
     );
   }
 }

@@ -21,6 +21,7 @@ class ItineraryDetailModel {
   final List<String> notes;
   final List<double> centerCoordinate;
   final List<VisitedRestaurantModel> visitedRestaurants;
+  final bool trackingActive;
 
   const ItineraryDetailModel({
     required this.id,
@@ -41,6 +42,7 @@ class ItineraryDetailModel {
     this.notes = const [],
     this.visitedRestaurants = const [],
     this.centerCoordinate = const [],
+    this.trackingActive = false,
   });
 
   factory ItineraryDetailModel.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class ItineraryDetailModel {
       notes: (json['notes'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       centerCoordinate: ((json['centerCoordinate'] ?? json['center_coordinate']) as List?)?.map((e) => (e as num).toDouble()).toList() ?? const [],
       visitedRestaurants: ((json['visitedRestaurants'] ?? json['visited_restaurants']) as List?)?.map((e) => VisitedRestaurantModel.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      trackingActive: json['tracking_active'] == true,
     );
   }
 
@@ -108,6 +111,7 @@ class ItineraryDetailModel {
       notes: notes,
       visitedRestaurants: visitedRestaurants.map((e) => e.toEntity()).toList(),
       centerCoordinate: centerCoordinate,
+      trackingActive: trackingActive,
     );
   }
 }

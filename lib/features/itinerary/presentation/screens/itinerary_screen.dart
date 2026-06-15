@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_card.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
 
 import 'itinerary_summary_screen.dart';
 
@@ -175,110 +178,29 @@ class _ItineraryViewState extends State<_ItineraryView> {
               final item = state.itineraries[index - 1];
               void onCardTap() async {
                 cubit.selectItinerary(item.id);
+                  final trackingCubit = context.read<TrackingCubit>();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => BlocProvider.value(
-                      value: cubit,
+                    builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: cubit),
+                        BlocProvider.value(value: trackingCubit),
+                        ],
                       child: ItinerarySummaryScreen(itineraryId: item.id),
                     ),
                   ),
                 );
               }
 
-              return ItineraryCard(
-                item: item,
-                onTap: onCardTap,
-                onEdit: () {},
-                onDelete: () => cubit.deleteItem(item.id),
-                onStartToggle: (val) {
-                  if (val) {
-                    final hasOngoing = state.itineraries.any(
-                      (i) => i.status == ItineraryStatus.ongoing,
-                    );
-                    if (hasOngoing && item.status != ItineraryStatus.ongoing) {
-                      showDialog(
-                        context: context,
-                        builder: (context) => Dialog(
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 64,
-                                  height: 64,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFEF2F2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.warning_amber_rounded,
-                                      color: Color(0xFFEF4444),
-                                      size: 32,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Đang có chuyến đi khác!',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1C1C1E),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Bạn đang có một lịch trình đang diễn ra.\nVui lòng hoàn thành chuyến đi hiện tại để có thể bắt đầu lịch trình mới.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF6B7280),
-                                    height: 1.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: ElevatedButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2563EB),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: Text(
-                                      'Đã hiểu',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                  }
-                  cubit.toggleItineraryStatus(item.id, val);
-                },
-              );
-            }, childCount: state.itineraries.length + 2),
+                return _ItineraryCardWithStart(
+                  item: item,
+                  onCardTap: onCardTap,
+                  onDelete: () => cubit.deleteItem(item.id),
+                );
+              },
+              childCount: state.itineraries.length + 2,
+            ),
           ),
       ],
     );
@@ -372,7 +294,213 @@ class _ItineraryViewState extends State<_ItineraryView> {
       ),
     );
   }
+
 }
+
+/// Card lịch trình + nút "BẮT ĐẦU / ĐANG DIỄN RA" nhúng vào cuối card.
+class _ItineraryCardWithStart extends StatelessWidget {
+  final ItineraryEntity item;
+  final VoidCallback onCardTap;
+  final VoidCallback onDelete;
+
+  const _ItineraryCardWithStart({
+    required this.item,
+    required this.onCardTap,
+    required this.onDelete,
+  });
+
+  // TODO(date-restriction): Bật lại khi muốn giới hạn nút chỉ hiện vào ngày lịch trình.
+  bool get _shouldShowStart => item.status != ItineraryStatus.completed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ItineraryCard(
+      item: item,
+      onTap: onCardTap,
+      onEdit: () {},
+      onDelete: onDelete,
+      bottomChild: _shouldShowStart ? _StartButton(item: item) : null,
+    );
+  }
+}
+
+class _StartButton extends StatefulWidget {
+  final ItineraryEntity item;
+  const _StartButton({required this.item});
+
+  @override
+  State<_StartButton> createState() => _StartButtonState();
+}
+
+class _StartButtonState extends State<_StartButton> {
+  bool _loading = false;
+
+  bool _isOngoing(TrackingState trackingState) {
+    if (widget.item.trackingActive) return true;
+    return trackingState.isActive && trackingState.itineraryId == widget.item.id;
+  }
+
+  Future<void> _onTap(bool isOngoing) async {
+    if (isOngoing) {
+      await _confirmStop();
+      return;
+    }
+
+    final cubit = context.read<TrackingCubit>();
+    final itinState = context.read<ItineraryCubit>().state;
+    final hasConflict = (cubit.state.isActive && cubit.state.itineraryId != widget.item.id) ||
+        (itinState is ItineraryLoaded &&
+            itinState.itineraries.any(
+              (i) => i.id != widget.item.id && i.trackingActive,
+            ));
+    if (hasConflict) {
+      _showConflictDialog();
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final perm = await TrackingPermissions.ensure();
+      if (!mounted) return;
+
+      if (perm != TrackingPermResult.granted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(TrackingPermissions.messageFor(perm)),
+          action: perm == TrackingPermResult.deniedBackground
+              ? SnackBarAction(label: 'Mở Cài đặt', onPressed: openAppSettings)
+              : null,
+        ));
+        return;
+      }
+
+      final date = widget.item.startDate ?? DateTime.now();
+      await context.read<TrackingCubit>().start(
+        itineraryId: widget.item.id,
+        date: date,
+      );
+      if (!mounted) return;
+      context.read<ItineraryCubit>().toggleItineraryStatus(widget.item.id, true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirmStop() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dừng theo dõi?'),
+        content: const Text('Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dừng')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await context.read<TrackingCubit>().stop();
+    if (!mounted) return;
+    context.read<ItineraryCubit>().toggleItineraryStatus(widget.item.id, false);
+  }
+
+  void _showConflictDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(color: Color(0xFFFEF2F2), shape: BoxShape.circle),
+                child: const Center(child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 32)),
+              ),
+              const SizedBox(height: 16),
+              const Text('Đang có chuyến đi khác!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1C1C1E))),
+              const SizedBox(height: 8),
+              const Text(
+                'Bạn đang có một lịch trình đang diễn ra.\nVui lòng hoàn thành chuyến đi hiện tại để bắt đầu lịch trình mới.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Đã hiểu',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<TrackingCubit, TrackingState>(
+      buildWhen: (p, c) => p.isActive != c.isActive || p.itineraryId != c.itineraryId,
+      builder: (context, trackingState) {
+        final isOngoing = _isOngoing(trackingState);
+        final color = isOngoing ? const Color(0xFF2563EB) : const Color(0xFF0E9E87);
+        final bgColor = isOngoing ? const Color(0xFFEFF6FF) : const Color(0xFFE8FDF8);
+
+        return GestureDetector(
+          onTap: _loading ? null : () => _onTap(isOngoing),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: bgColor,
+            child: Row(
+              children: [
+                if (_loading)
+                  SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                  )
+                else
+                  Icon(
+                    isOngoing ? Icons.location_searching : Icons.play_circle_outline_rounded,
+                    size: 16,
+                    color: color,
+                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isOngoing ? 'ĐANG DIỄN RA' : 'BẮT ĐẦU LỊCH TRÌNH',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color, letterSpacing: 0.5),
+                  ),
+                ),
+                Icon(
+                  isOngoing ? Icons.stop_circle_outlined : Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: color,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
 
 class _SearchEmptyView extends StatelessWidget {
   final String query;

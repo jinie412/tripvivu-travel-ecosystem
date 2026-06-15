@@ -17,6 +17,7 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/paginated_see_all_screen.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
@@ -47,6 +48,7 @@ class ExploreScreen extends StatelessWidget {
         BlocProvider(
           create: (_) => sl<NotificationCubit>()..loadNotifications(),
         ),
+        BlocProvider(create: (_) => sl<LocationCubit>()..fetchLocation()),
       ],
       child: const _ExploreView(),
     );
@@ -240,13 +242,20 @@ class _ExploreViewState extends State<_ExploreView> {
         .catchError((_) {});
   }
 
+  ExploreLoaded? get _loadedState {
+    final s = context.read<ExploreCubit>().state;
+    return s is ExploreLoaded ? s : null;
+  }
+
   Future<void> _openSuggestionSeeAll() async {
+    final initial = _loadedState?.suggestions ?? const <TripSuggestion>[];
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<TripSuggestion>(
           title: 'Lịch trình gợi ý',
           pageSize: _pageSize,
+          initialItems: initial,
           pageLoader: (page, limit) =>
               context.read<ExploreCubit>().loadSuggestionsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
@@ -269,12 +278,14 @@ class _ExploreViewState extends State<_ExploreView> {
   }
 
   Future<void> _openDestinationSeeAll() async {
+    final initial = _loadedState?.destinations ?? const <Destination>[];
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<Destination>(
           title: 'Điểm đến nổi bật',
           pageSize: _pageSize,
+          initialItems: initial,
           pageLoader: (page, limit) =>
               context.read<ExploreCubit>().loadDestinationsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
@@ -305,12 +316,14 @@ class _ExploreViewState extends State<_ExploreView> {
   }
 
   Future<void> _openRestaurantSeeAll() async {
+    final initial = _loadedState?.restaurants ?? const <CityRestaurant>[];
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<CityRestaurant>(
           title: 'Nhà hàng tiêu biểu',
           pageSize: _pageSize,
+          initialItems: initial,
           pageLoader: (page, limit) =>
               context.read<ExploreCubit>().loadRestaurantsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
@@ -333,12 +346,14 @@ class _ExploreViewState extends State<_ExploreView> {
   }
 
   Future<void> _openHotelSeeAll() async {
+    final initial = _loadedState?.hotels ?? const <CityHotel>[];
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<CityHotel>(
           title: 'Khách sạn nổi bật',
           pageSize: _pageSize,
+          initialItems: initial,
           pageLoader: (page, limit) =>
               context.read<ExploreCubit>().loadHotelsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
