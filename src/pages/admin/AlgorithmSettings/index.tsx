@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
-import { Bell, ChevronDown, Info, RotateCcw } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Bell, ChevronDown, Info, Loader2, RotateCcw } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import {
+  PipelineHistoryItem,
+  algorithmPipelineAPI,
+  formatPipelineDateTime,
+  formatPipelineDuration,
+} from '../../../services/algorithmPipelineAPI';
 import './AlgorithmSettings.css';
 
 // ── Static default data ──────────────────────────────────────────────────────
@@ -29,37 +35,6 @@ const DEFAULT_TOPICS_C5 = [
   { name: 'Không khí', window: 30, minCount: 10, similarity: 0.60 },
 ];
 
-const HISTORY_ROWS = [
-  {
-    algo: 'Phân loại đánh giá',
-    date: '22/10/2023 14:32',
-    duration: '1h 30 phút',
-    status: 'done' as const,
-    result: 'Đã phân loại 350 đánh giá mới',
-  },
-  {
-    algo: 'Gợi ý địa điểm',
-    date: '21/10/2023 02:00',
-    duration: '12m 40s',
-    status: 'done' as const,
-    result: 'Cập nhật 45 gợi ý cho người dùng',
-  },
-  {
-    algo: 'Phát hiện xung đột',
-    date: '20/10/2023 02:00',
-    duration: '2m 15s',
-    status: 'error' as const,
-    result: 'Lỗi kết nối cơ sở dữ liệu (7/min/số)',
-  },
-  {
-    algo: 'Gợi ý địa điểm',
-    date: '19/10/2023 02:00',
-    duration: '18m 20s',
-    status: 'done' as const,
-    result: 'Xử lý 1,200 địa điểm cho duyệt',
-  },
-];
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const hoursToLabel = (hours: number): string => {
@@ -79,6 +54,22 @@ const Tip: React.FC<{ text: string }> = ({ text }) => (
     <Info size={13} className="as-tooltip__icon" />
     <span className="as-tooltip__bubble">{text}</span>
   </span>
+);
+
+// ── Toggle switch ─────────────────────────────────────────────────────────────
+
+const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({
+  checked,
+  onChange,
+}) => (
+  <button
+    role="switch"
+    aria-checked={checked}
+    className={`as-toggle${checked ? ' as-toggle--on' : ''}`}
+    onClick={() => onChange(!checked)}
+  >
+    <span className="as-toggle__thumb" />
+  </button>
 );
 
 // ── Accordion card ────────────────────────────────────────────────────────────
@@ -121,6 +112,100 @@ const AccordionCard: React.FC<CardProps> = ({
   </div>
 );
 
+// ── Pipeline run panel ────────────────────────────────────────────────────────
+
+interface PipelinePanelProps {
+  title: string;
+  icon: React.ReactNode;
+  autoEnabled: boolean;
+  onAutoChange: (v: boolean) => void;
+  frequency: string;
+  onFrequencyChange: (v: string) => void;
+  runTime: string;
+  onRunTimeChange: (v: string) => void;
+  onRunNow: () => void;
+  isRunning: boolean;
+  lastRun?: string;
+  available?: boolean;
+}
+
+const PipelinePanel: React.FC<PipelinePanelProps> = ({
+  title,
+  icon,
+  autoEnabled,
+  onAutoChange,
+  frequency,
+  onFrequencyChange,
+  runTime,
+  onRunTimeChange,
+  onRunNow,
+  isRunning,
+  lastRun,
+  available = true,
+}) => (
+  <div className="as-pipeline-panel">
+    <div className="as-pipeline-panel__header">
+      <div className="as-pipeline-panel__title">
+        <span className="as-pipeline-panel__icon">{icon}</span>
+        {title}
+      </div>
+      <div className="as-pipeline-panel__auto">
+        <span className="as-pipeline-panel__auto-label">Tự động</span>
+        <Toggle checked={autoEnabled} onChange={onAutoChange} />
+      </div>
+    </div>
+
+    <div className="as-pipeline-panel__schedule">
+      <div className="as-pipeline-panel__field">
+        <label className="as-pipeline-panel__field-label">ĐỊNH KỲ</label>
+        <select
+          className="as-select as-select--sm"
+          value={frequency}
+          onChange={e => onFrequencyChange(e.target.value)}
+          disabled={!autoEnabled}
+        >
+          <option value="daily">Hàng ngày</option>
+          <option value="weekly">Hàng tuần</option>
+          <option value="monthly">Hàng tháng</option>
+        </select>
+      </div>
+      <div className="as-pipeline-panel__field">
+        <label className="as-pipeline-panel__field-label">GIỜ CHẠY</label>
+        <input
+          type="time"
+          className="as-input as-input--sm"
+          value={runTime}
+          onChange={e => onRunTimeChange(e.target.value)}
+          disabled={!autoEnabled}
+        />
+      </div>
+    </div>
+
+    <div className="as-pipeline-panel__footer">
+      <div className="as-pipeline-panel__last-run">
+        <span className="as-pipeline-panel__last-run-label">Chạy thủ công</span>
+        {lastRun && (
+          <span className="as-pipeline-panel__last-run-time">Lần cuối: {lastRun}</span>
+        )}
+      </div>
+      <button
+        className={`as-btn-primary${(!available || isRunning) ? ' as-btn-primary--disabled' : ''}`}
+        onClick={onRunNow}
+        disabled={!available || isRunning}
+        title={!available ? 'Tính năng chưa được triển khai' : undefined}
+      >
+        {isRunning ? (
+          <>
+            <Loader2 size={14} className="as-spin" />
+            Đang chạy...
+          </>
+        ) : (
+          'Chạy ngay'
+        )}
+      </button>
+    </div>
+  </div>
+);
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -172,6 +257,68 @@ export const AlgorithmSettings: React.FC = () => {
   const [temperature, setTemperature] = useState(1.0);
   const [maxHistory, setMaxHistory] = useState(50);
 
+  // ── Pipeline: Phân loại đánh giá ──
+  const [reviewAutoEnabled, setReviewAutoEnabled] = useState(false);
+  const [reviewFrequency, setReviewFrequency] = useState('daily');
+  const [reviewRunTime, setReviewRunTime] = useState('02:00');
+  const [reviewRunning, setReviewRunning] = useState(false);
+  const [reviewLastRun, setReviewLastRun] = useState<string | undefined>(undefined);
+
+  // ── History ──
+  const [historyRows, setHistoryRows] = useState<PipelineHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [runResult, setRunResult] = useState<string | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      setHistoryLoading(true);
+      const data = await algorithmPipelineAPI.getHistory(20);
+      setHistoryRows(data.history);
+    } catch {
+      // lịch sử không tải được — giữ dữ liệu cũ
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  const handleRunReviewPipeline = async () => {
+    setReviewRunning(true);
+    setRunResult(null);
+    try {
+      const result = await algorithmPipelineAPI.runPipeline({
+        no_pretrained: false,
+        topic_other_threshold: topicThreshold,
+        candidate_mode: conflictMode === 'all' ? 'all' : 'topk',
+        promotion_mode: upgradeMode === 'representative' ? 'representative' : 'all',
+        dry_run: false,
+      });
+      setReviewLastRun(formatPipelineDateTime(result.completed_at));
+      setRunResult(
+        `Hoàn thành: xử lý ${result.total_reviews} đánh giá, ` +
+        `${result.conflicts_detected} xung đột, ` +
+        `${result.long_term_summaries} tóm tắt dài hạn.`
+      );
+      await loadHistory();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi không xác định';
+      setRunResult(`Lỗi: ${message}`);
+    } finally {
+      setReviewRunning(false);
+    }
+  };
+
+  // Dọn polling khi unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
   return (
     <div className="page-container as-page">
       {/* ── Page header ── */}
@@ -201,6 +348,36 @@ export const AlgorithmSettings: React.FC = () => {
             <button className="as-banner__close" onClick={() => setBanner(null)} aria-label="Đóng">×</button>
           </div>
         )}
+
+        {/* Run result banner */}
+        {runResult && (
+          <div
+            className={`as-banner${runResult.startsWith('Lỗi') ? ' as-banner--error' : ' as-banner--success'}`}
+            role="alert"
+          >
+            <Info size={14} />
+            <span>{runResult}</span>
+            <button className="as-banner__close" onClick={() => setRunResult(null)} aria-label="Đóng">×</button>
+          </div>
+        )}
+
+        {/* ━━ Pipeline control panels ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div className="as-pipeline-row">
+          <PipelinePanel
+            title="Phân loại đánh giá"
+            icon={<span className="as-pipeline-panel__icon-emoji">📋</span>}
+            autoEnabled={reviewAutoEnabled}
+            onAutoChange={setReviewAutoEnabled}
+            frequency={reviewFrequency}
+            onFrequencyChange={setReviewFrequency}
+            runTime={reviewRunTime}
+            onRunTimeChange={setReviewRunTime}
+            onRunNow={handleRunReviewPipeline}
+            isRunning={reviewRunning}
+            lastRun={reviewLastRun}
+            available={true}
+          />
+        </div>
 
         {/* ━━ Card 1: Tham số thuật toán chung ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <AccordionCard
@@ -614,6 +791,10 @@ export const AlgorithmSettings: React.FC = () => {
               <span className="as-history__dot" />
               Lịch sử chạy thuật toán
             </span>
+            <button className="as-btn-ghost as-btn-ghost--sm" onClick={loadHistory} disabled={historyLoading}>
+              {historyLoading ? <Loader2 size={12} className="as-spin" /> : <RotateCcw size={12} />}
+              Làm mới
+            </button>
           </div>
           <div className="as-table-wrap">
             <table className="as-table">
@@ -621,26 +802,38 @@ export const AlgorithmSettings: React.FC = () => {
                 <tr>
                   <th>Thuật toán</th>
                   <th>Ngày chạy</th>
+                  <th>Thời gian xử lý</th>
                   <th>Trạng thái</th>
-                  <th>Kết quả chi tiết</th>
+                  <th>Kết quả tóm tắt</th>
                 </tr>
               </thead>
               <tbody>
-                {HISTORY_ROWS.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="as-fw500">{row.algo}</td>
-                    <td className="as-muted">{row.date}</td>
-                    <td>
-                      <span className={`as-badge as-badge--${row.status}`}>
-                        <span className="as-badge__dot" />
-                        {row.status === 'done' ? 'Hoàn thành' : 'Thất bại'}
-                      </span>
-                    </td>
-                    <td className={row.status === 'error' ? 'as-err-text' : 'as-muted'}>
-                      {row.result}
+                {historyRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="as-muted" style={{ textAlign: 'center', padding: '20px' }}>
+                      {historyLoading ? 'Đang tải...' : 'Chưa có lịch sử chạy trong phiên này.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  historyRows.map((row, idx) => (
+                    <tr key={`${row.run_id}-${idx}`}>
+                      <td className="as-fw500">Phân loại đánh giá</td>
+                      <td className="as-muted">{formatPipelineDateTime(row.started_at)}</td>
+                      <td className="as-muted">{formatPipelineDuration(row.duration_seconds)}</td>
+                      <td>
+                        <span className={`as-badge as-badge--${row.success ? 'done' : 'error'}`}>
+                          <span className="as-badge__dot" />
+                          {row.success ? 'Thành công' : 'Thất bại'}
+                        </span>
+                      </td>
+                      <td className={row.success ? 'as-muted' : 'as-err-text'}>
+                        {row.success
+                          ? `Xử lý ${row.total_reviews} đánh giá — ${row.conflicts_detected} xung đột — ${row.long_term_summaries} tóm tắt dài hạn`
+                          : row.error || 'Lỗi không xác định'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
