@@ -34,10 +34,6 @@ abstract class ItineraryDataSource {
     String id,
     List<ItineraryDayEntity> days,
   );
-  Future<void> updateItineraryActivities(
-    String id,
-    List<ItineraryDayEntity> days,
-  );
 }
 
 // // ─────────────────────────────────────────────────────────────────────────────
