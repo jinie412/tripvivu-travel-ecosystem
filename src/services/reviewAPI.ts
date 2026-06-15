@@ -12,6 +12,7 @@ interface BackendReviewItem {
   rating: number;
   review_content: string | null;
   main_topic: string | null;
+  time_label: string | null;
   status: BackendReviewStatus;
   created_at: string;
 }
@@ -47,6 +48,7 @@ interface BackendReviewDetailResponse {
   };
   rating: number;
   main_topic: string | null;
+  time_label: string | null;
   review_content: string | null;
   images: Array<{ url: string }>;
   status: BackendReviewStatus;
@@ -157,15 +159,15 @@ const mapStatus = (status: BackendReviewStatus): Review['status'] => {
 };
 
 const mapClassification = (
-  topic: string | null,
+  timeLabel: string | null,
 ): 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại' => {
-  if (topic === 'short_term') {
+  if (timeLabel === 'short-term') {
     return 'Ngắn hạn';
   }
-  if (topic === 'long_term') {
+  if (timeLabel === 'long-term') {
     return 'Dài hạn';
   }
-  if (topic === 'unknown') {
+  if (timeLabel === 'amb') {
     return 'Cần xử lý';
   }
   return 'Chưa phân loại';
@@ -180,7 +182,7 @@ const mapReview = (item: BackendReviewItem): Review => ({
   rating: item.rating,
   date: formatDateTime(item.created_at),
   status: mapStatus(item.status),
-  classification: mapClassification(item.main_topic),
+  classification: mapClassification(item.time_label),
 });
 
 const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo => ({
@@ -196,7 +198,7 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   content: item.review_content || '(Không có nội dung)',
   images: item.images.map((image) => image.url),
   status: mapStatus(item.status),
-  classification: mapClassification(item.main_topic),
+  classification: mapClassification(item.time_label),
   reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
   adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
