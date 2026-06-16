@@ -32,6 +32,10 @@ export const LocationTable: React.FC<LocationTableProps> = ({
   onReject,
 }) => {
   const navigate = useNavigate();
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const visiblePages = Array.from(new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])).filter(
+    (page) => page >= 1 && page <= totalPages,
+  );
 
   // Adjust wait status UI to be more orange as per design, we can use an inline style override or just active/locked
   const renderBadge = (status: string) => {
@@ -48,13 +52,15 @@ export const LocationTable: React.FC<LocationTableProps> = ({
     }
     return (
       <div style={{ display: 'inline-flex' }}>
-        <span style={{
-          padding: '4px 12px',
-          borderRadius: '100px',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          ...customStyle
-        }} className={`badge badge-${type}`}>
+        <span
+          style={{
+            padding: '4px 12px',
+            borderRadius: '100px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            ...customStyle,
+          }}
+          className={`badge badge-${type}`}>
           {status}
         </span>
       </div>
@@ -86,11 +92,17 @@ export const LocationTable: React.FC<LocationTableProps> = ({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={8} className="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+              <td colSpan={8} className="text-center py-4 text-muted">
+                Đang tải dữ liệu...
+              </td>
             </tr>
           ) : (
             locations.map((loc) => (
-              <tr key={loc.id} className="table-row-hover" style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/locations/${loc.id}`)}>
+              <tr
+                key={loc.id}
+                className="table-row-hover"
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/admin/locations/${loc.id}`)}>
                 <td className="td-checkbox" data-label="" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
@@ -107,6 +119,8 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                     <img
                       src={loc.image || defaultLocationImage}
                       alt={loc.name}
+                      loading="lazy"
+                      decoding="async"
                       onError={(event) => {
                         event.currentTarget.onerror = null;
                         event.currentTarget.src = defaultLocationImage;
@@ -144,8 +158,7 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                           title="Duyệt"
                           onClick={() => {
                             void onApprove(loc.id);
-                          }}
-                        >
+                          }}>
                           <Check size={16} />
                         </button>
                         <button
@@ -154,8 +167,7 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                           onClick={() => {
                             const reason = window.prompt('Nhập lý do từ chối địa điểm (không bắt buộc):') || undefined;
                             void onReject(loc.id, reason);
-                          }}
-                        >
+                          }}>
                           <X size={16} />
                         </button>
                       </>
@@ -174,41 +186,30 @@ export const LocationTable: React.FC<LocationTableProps> = ({
       {/* Pagination */}
       <div className="pagination-wrapper">
         <span className="pagination-info">
-          Hiển thị <b>{totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}</b> trong <b>{totalItems.toLocaleString()}</b> kết quả
+          Hiển thị{' '}
+          <b>
+            {totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}
+          </b>{' '}
+          trong <b>{totalItems.toLocaleString()}</b> kết quả
         </span>
         <div className="pagination">
-          <button
-            className="page-nav"
-            disabled={currentPage === 1}
-            onClick={() => onPageChange(currentPage - 1)}
-          >
+          <button className="page-nav" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>
             &lt;
           </button>
 
-          {Array.from({ length: Math.ceil(totalItems / itemsPerPage) || 1 }).map((_, index) => {
-            const pageNumber = index + 1;
-            // Only show ~5 pages to match design if too many, but for now simple mapper
-            if (pageNumber > 3 && pageNumber < Math.ceil(totalItems / itemsPerPage)) {
-              if (pageNumber === 4) return <span key={pageNumber} className="page-dots">...</span>;
-              return null;
-            }
-
-            return (
-              <button
-                key={pageNumber}
-                className={`page-item ${currentPage === pageNumber ? 'active' : ''}`}
-                onClick={() => onPageChange(pageNumber)}
-              >
+          {visiblePages.map((pageNumber, index) => (
+            <React.Fragment key={pageNumber}>
+              {index > 0 && pageNumber - visiblePages[index - 1] > 1 && <span className="page-dots">...</span>}
+              <button className={`page-item ${currentPage === pageNumber ? 'active' : ''}`} onClick={() => onPageChange(pageNumber)}>
                 {pageNumber}
               </button>
-            );
-          })}
+            </React.Fragment>
+          ))}
 
           <button
             className="page-nav"
-            disabled={currentPage === Math.ceil(totalItems / itemsPerPage) || totalItems === 0}
-            onClick={() => onPageChange(currentPage + 1)}
-          >
+            disabled={currentPage === totalPages || totalItems === 0}
+            onClick={() => onPageChange(currentPage + 1)}>
             &gt;
           </button>
         </div>
