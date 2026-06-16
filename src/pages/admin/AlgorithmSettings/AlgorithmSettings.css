@@ -211,8 +211,12 @@
   margin-bottom: 4px;
 }
 
-.as-row--2col { grid-template-columns: 1fr 1fr; }
-.as-row--3col { grid-template-columns: 1fr 1fr 1fr; }
+.as-row--2col {
+  grid-template-columns: 1fr 1fr;
+}
+.as-row--3col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
 
 .as-stack {
   display: flex;
@@ -292,6 +296,55 @@
   color: var(--text-muted);
 }
 
+.as-hint--block {
+  display: block;
+  margin-top: 4px;
+}
+
+.as-section-title {
+  margin: 18px 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.as-inline-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0 14px;
+}
+
+.as-inline-status--compact {
+  padding: 8px 0;
+}
+
+.as-status-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.as-toggle-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  border-top: 0.5px solid var(--border-color);
+  border-bottom: 0.5px solid var(--border-color);
+}
+
+.as-loading-line,
+.as-validation-line {
+  margin-top: 10px;
+}
+
+.as-inline-banner {
+  margin-top: 10px;
+}
+
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
 
 .as-btn-primary {
@@ -333,6 +386,11 @@
   color: var(--primary-blue);
 }
 
+.as-btn-ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* ── Tooltip ───────────────────────────────────────────────────────────────── */
 
 .as-tooltip {
@@ -356,16 +414,19 @@
   color: #fff;
   font-size: 0.72rem;
   font-weight: 400;
-  padding: 5px 10px;
+  padding: 7px 10px;
   border-radius: var(--border-radius-sm);
   white-space: normal;
-  max-width: 220px;
-  text-align: center;
+  width: max-content;
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 48px));
+  text-align: left;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
   z-index: 100;
-  line-height: 1.4;
+  line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .as-tooltip:hover .as-tooltip__bubble {
@@ -523,6 +584,26 @@
 
 .as-fw500 {
   font-weight: 500;
+}
+
+.as-quota-table th,
+.as-quota-table td {
+  text-align: center;
+}
+
+.as-quota-table th:first-child,
+.as-quota-table td:first-child {
+  text-align: left;
+  min-width: 180px;
+}
+
+.as-quota-total--warn {
+  color: #92400e !important;
+  font-weight: 700;
+}
+
+.as-quota-warning {
+  color: #92400e;
 }
 
 /* ── Radio group ───────────────────────────────────────────────────────────── */
@@ -818,7 +899,9 @@
 /* ── Spinner animation ─────────────────────────────────────────────────────── */
 
 @keyframes as-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .as-spin {
