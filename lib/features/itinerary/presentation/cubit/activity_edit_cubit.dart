@@ -2,17 +2,24 @@ import 'activity_edit_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 
 class ActivityEditCubit extends Cubit<ActivityEditState> {
-  ActivityEditCubit() : super(const ActivityEditLoading());
+  final UpdateActivityUseCase? _updateActivityUseCase;
+  String? _itineraryId;
 
-  void initEdit(ItineraryActivityEntity activity) {
+  ActivityEditCubit({UpdateActivityUseCase? updateActivityUseCase})
+      : _updateActivityUseCase = updateActivityUseCase,
+        super(const ActivityEditLoading());
+
+  void initEdit(ItineraryActivityEntity activity, {String? itineraryId}) {
+    _itineraryId = itineraryId;
     emit(ActivityEditInitial(
       activity: activity,
       startTime: activity.startTime,
       endTime: activity.endTime,
-      notes: 'Mua quà lưu niệm cho gia đình ở đây. Nhớ mặc cả giá xuống 30-50%.', // Mock note
-      actualCost: 150000.0, // Mock initial actual cost
+      notes: '',
+      actualCost: 0.0,
       isEditing: false,
     ));
   }
@@ -49,34 +56,33 @@ class ActivityEditCubit extends Cubit<ActivityEditState> {
     final currentState = state;
     if (currentState is! ActivityEditInitial) return;
 
-    final endTime = currentState.endTime;
-    final actualCost = currentState.actualCost;
     emit(const ActivityEditLoading());
-    
-    try {
-      // Mock network delay
-      await Future.delayed(const Duration(milliseconds: 800));
-      print('Applying changes with Actual Cost: $actualCost');
-      
-      // Simulating a potential conflict for demo purposes if end time is 11:00 or later
-      if (endTime.startsWith('11:') || endTime.startsWith('12:')) {
-         emit(ActivityEditConflictDetected(
-          message: 'Lịch trình của bạn đang gặp xung đột về thời gian tại Dinh Độc Lập.',
-          activity: currentState.activity,
-          notes: currentState.notes,
-          startTime: currentState.startTime,
-          endTime: currentState.endTime,
-        ));
-      } else {
+
+    final itineraryId = _itineraryId;
+    final useCase = _updateActivityUseCase;
+
+    if (itineraryId != null && useCase != null) {
+      try {
+        await useCase(
+          itineraryId,
+          currentState.activity.id,
+          arrivalTime: currentState.startTime,
+          departureTime: currentState.endTime,
+          actualCost: currentState.actualCost,
+          userNotes: currentState.notes.isNotEmpty ? currentState.notes : null,
+        );
         emit(const ActivityEditSuccess());
+      } catch (e) {
+        emit(ActivityEditError(e.toString()));
       }
-    } catch (e) {
-      emit(ActivityEditError(e.toString()));
+    } else {
+      // Demo/mock fallback
+      await Future.delayed(const Duration(milliseconds: 800));
+      emit(const ActivityEditSuccess());
     }
   }
 
   void resolveConflict(int option) {
-    // Logic to handle conflict resolution options A, B, C
     emit(const ActivityEditSuccess());
   }
 }

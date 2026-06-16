@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class DaySelectorChip extends StatelessWidget {
   final int dayNumber;
   final int locationCount;
+  final String? dateLabel;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -10,6 +11,7 @@ class DaySelectorChip extends StatelessWidget {
     super.key,
     required this.dayNumber,
     required this.locationCount,
+    this.dateLabel,
     required this.isSelected,
     required this.onTap,
   });
@@ -17,8 +19,10 @@ class DaySelectorChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Teal color from the image (Roughly AppColors.primary or teal)
-    final activeColor = isSelected ? const Color(0xFF4FB3BF) : const Color(0xFF94A3B8);
-    
+    final activeColor = isSelected
+        ? const Color(0xFF4FB3BF)
+        : const Color(0xFF94A3B8);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -35,13 +39,14 @@ class DaySelectorChip extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              '${15 + dayNumber}/6', // Simplified mock date logic from image
-              style: TextStyle(
-                fontSize: 12,
-                color: activeColor.withAlpha(isSelected ? 255 : 180),
+            if (dateLabel != null)
+              Text(
+                dateLabel!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: activeColor.withAlpha(isSelected ? 255 : 180),
+                ),
               ),
-            ),
             const SizedBox(height: 8),
             Container(
               width: 24,

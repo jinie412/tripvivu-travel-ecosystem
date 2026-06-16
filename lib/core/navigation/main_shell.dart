@@ -12,6 +12,7 @@ import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/explore_screen.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/notification_drawer.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_screen.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/screens/profile_screen.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/widgets/profile_drawer.dart';
@@ -107,8 +108,8 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => sl<ItineraryCubit>()..loadData()),
-        BlocProvider(create: (_) => sl<ProfileCubit>()..loadProfile()),
+        BlocProvider(create: (_) => sl<ItineraryCubit>()),
+        BlocProvider(create: (_) => sl<ProfileCubit>()),
         BlocProvider(create: (_) => sl<TrackingCubit>()),
         BlocProvider(create: (_) => TabCubit()),
       ],
@@ -145,6 +146,14 @@ class _MainShellState extends State<MainShell> {
                         ),
                       );
                       return;
+                    }
+                    if (i == 1) {
+                      final cubit = context.read<ItineraryCubit>();
+                      if (cubit.state is ItineraryInitial) cubit.loadData();
+                    }
+                    if (i == 4) {
+                      final cubit = context.read<ProfileCubit>();
+                      if (cubit.state is ProfileInitial) cubit.loadProfile();
                     }
                     context.read<TabCubit>().changeTab(i);
                   },

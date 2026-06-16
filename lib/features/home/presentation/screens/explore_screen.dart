@@ -402,6 +402,12 @@ class _ExploreViewState extends State<_ExploreView> {
   }
 
   Widget _buildContent(BuildContext context, ExploreLoaded state) {
+    final screenW = MediaQuery.of(context).size.width;
+    final suggestionCardH  = screenW * 0.88 * (9 / 16) + 100;
+    final destinationCardH = screenW * 0.35 * (1 / 1)  + 64;
+    final restaurantCardH  = screenW * 0.45 * (3 / 4)  + 80;
+    final hotelCardH       = screenW * 0.45 * (3 / 4)  + 100;
+
     return CustomScrollView(
       slivers: [
         if (state.currentItinerary != null)
@@ -437,7 +443,7 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 268,
+                  height: suggestionCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.88),
                     padEnds: false,
@@ -493,7 +499,7 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 168,
+                  height: destinationCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.35),
                     padEnds: false,
@@ -554,7 +560,7 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 202,
+                  height: restaurantCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.45),
                     padEnds: false,
@@ -608,7 +614,7 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 202,
+                  height: hotelCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.45),
                     padEnds: false,

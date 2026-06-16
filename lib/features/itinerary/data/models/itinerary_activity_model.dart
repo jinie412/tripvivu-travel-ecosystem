@@ -7,6 +7,8 @@ part 'itinerary_activity_model.g.dart';
 @JsonSerializable()
 class ItineraryActivityModel {
   final String id;
+  @JsonKey(name: 'place_id')
+  final String? placeId;
   final String title;
   @JsonKey(name: 'start_time')
   final String startTime;
@@ -35,6 +37,7 @@ class ItineraryActivityModel {
 
   const ItineraryActivityModel({
     required this.id,
+    this.placeId,
     required this.title,
     required this.startTime,
     required this.endTime,
@@ -94,6 +97,7 @@ class ItineraryActivityModel {
 
     return ItineraryActivityEntity(
       id: id,
+      placeId: placeId,
       title: title,
       startTime: _trimSeconds(startTime),
       endTime: _trimSeconds(endTime),

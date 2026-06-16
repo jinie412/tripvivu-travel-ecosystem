@@ -57,5 +57,8 @@ class ItineraryEntity with _$ItineraryEntity {
     /// GPS tracking đang bật trên thiết bị (nguồn gốc từ cột tracking_active trong DB).
     /// Khác với [status]: status = vòng đời chuyến đi; trackingActive = tracking có đang chạy không.
     @Default(false) bool trackingActive,
+
+    /// Danh sách ảnh địa điểm trong lịch trình (tối đa 5, từ place_images của API).
+    @Default([]) List<String> placeImages,
   }) = _ItineraryEntity;
 }

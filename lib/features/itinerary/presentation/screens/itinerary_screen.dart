@@ -27,8 +27,35 @@ class ItineraryScreen extends StatelessWidget {
   }
 }
 
-class _ItineraryView extends StatelessWidget {
+class _ItineraryView extends StatefulWidget {
   const _ItineraryView();
+
+  @override
+  State<_ItineraryView> createState() => _ItineraryViewState();
+}
+
+class _ItineraryViewState extends State<_ItineraryView> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearchOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchTextChanged);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchTextChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +84,7 @@ class _ItineraryView extends StatelessWidget {
 
   Widget _buildLoadedView(BuildContext context, ItineraryLoaded state) {
     final cubit = context.read<ItineraryCubit>();
+    final hasSearch = state.searchQuery.isNotEmpty || _isSearchOpen;
 
     return CustomScrollView(
       slivers: [
@@ -84,26 +112,39 @@ class _ItineraryView extends StatelessWidget {
                   ),
                 ),
                 if (state.itineraries.isNotEmpty) ...[
-                  _iconButton(Icons.search, () {}),
+                  _iconButton(Icons.search, () {
+                    setState(() => _isSearchOpen = true);
+                    _searchFocusNode.requestFocus();
+                  }),
                 ],
               ],
             ),
           ),
         ),
 
-        if (state.itineraries.isNotEmpty) ...[
+        if (hasSearch)
           SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: ItineraryFilterChips(
-              activeFilter: state.activeFilter,
-              activeSubFilter: state.activeCompletedFilter,
-              onChanged: (status) => cubit.filterBy(status),
-              onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+              child: _buildSearchField(context, state),
             ),
           ),
+
+        if (state.itineraries.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: ItineraryFilterChips(
+                activeFilter: state.activeFilter,
+                activeSubFilter: state.activeCompletedFilter,
+                onChanged: (status) => cubit.filterBy(status),
+                onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
+              ),
+            ),
           ),
-          if (state.itineraries.isNotEmpty && state.activeFilter == null)
+          if (state.itineraries.isNotEmpty &&
+              state.activeFilter == null &&
+              !hasSearch)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(top: 16),
@@ -112,7 +153,12 @@ class _ItineraryView extends StatelessWidget {
             ),
         ],
 
-        if (state.itineraries.isEmpty)
+        if (state.itineraries.isEmpty && hasSearch)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _SearchEmptyView(query: state.searchQuery),
+          )
+        else if (state.itineraries.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
             child: ItineraryEmptyView(
@@ -123,30 +169,29 @@ class _ItineraryView extends StatelessWidget {
           )
         else
           SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index == 0) return const SizedBox(height: 16);
-                if (index == state.itineraries.length + 1) {
-                  return const SizedBox(height: 100);
-                }
+            delegate: SliverChildBuilderDelegate((context, index) {
+              if (index == 0) return const SizedBox(height: 16);
+              if (index == state.itineraries.length + 1) {
+                return const SizedBox(height: 100);
+              }
 
-                final item = state.itineraries[index - 1];
-                void onCardTap() async {
-                  cubit.selectItinerary(item.id);
+              final item = state.itineraries[index - 1];
+              void onCardTap() async {
+                cubit.selectItinerary(item.id);
                   final trackingCubit = context.read<TrackingCubit>();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MultiBlocProvider(
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
                         providers: [
                           BlocProvider.value(value: cubit),
-                          BlocProvider.value(value: trackingCubit),
+                        BlocProvider.value(value: trackingCubit),
                         ],
-                        child: ItinerarySummaryScreen(itineraryId: item.id),
-                      ),
+                      child: ItinerarySummaryScreen(itineraryId: item.id),
                     ),
-                  );
-                }
+                  ),
+                );
+              }
 
                 return _ItineraryCardWithStart(
                   item: item,
@@ -163,6 +208,75 @@ class _ItineraryView extends StatelessWidget {
 
   Widget _buildLoadingShimmer() {
     return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildSearchField(BuildContext context, ItineraryLoaded state) {
+    final cubit = context.read<ItineraryCubit>();
+
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        textInputAction: TextInputAction.search,
+        onChanged: cubit.searchByTitle,
+        decoration: InputDecoration(
+          hintText: 'Tìm lịch trình...',
+          prefixIcon: const Icon(
+            Icons.search,
+            size: 20,
+            color: Color(0xFF64748B),
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (state.isSearching)
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_searchController.text.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  color: const Color(0xFF64748B),
+                  onPressed: () {
+                    _searchController.clear();
+                    cubit.clearSearch();
+                  },
+                ),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_up, size: 22),
+                color: const Color(0xFF64748B),
+                onPressed: () {
+                  _searchController.clear();
+                  cubit.clearSearch();
+                  setState(() => _isSearchOpen = false);
+                  _searchFocusNode.unfocus();
+                },
+              ),
+            ],
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
   }
 
   Widget _iconButton(IconData icon, VoidCallback onTap) {
@@ -386,3 +500,59 @@ class _StartButtonState extends State<_StartButton> {
   }
 }
 
+
+
+class _SearchEmptyView extends StatelessWidget {
+  final String query;
+
+  const _SearchEmptyView({required this.query});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEFF6FF),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.search_off,
+                color: Color(0xFF1A6EBD),
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Không tìm thấy lịch trình',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              query.isEmpty
+                  ? 'Thử nhập tên lịch trình khác.'
+                  : 'Không có kết quả phù hợp với "$query".',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

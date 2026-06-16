@@ -253,6 +253,11 @@ class _OverviewTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.of(context).size.width;
+    final activityCardH   = screenW * 0.45 * (1 / 1) + 48;
+    final restaurantCardH = screenW * 0.45 * (3 / 4) + 64;
+    final hotelCardH      = screenW * 0.55 * (3 / 4) + 80;
+
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -323,7 +328,7 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 160,
+            height: activityCardH,
             child: PageView.builder(
               controller: activityController,
               padEnds: false,
@@ -369,7 +374,7 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 185,
+            height: restaurantCardH,
             child: PageView.builder(
               controller: restaurantController,
               padEnds: false,
@@ -415,7 +420,7 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 215,
+            height: hotelCardH,
             child: PageView.builder(
               controller: hotelController,
               padEnds: false,

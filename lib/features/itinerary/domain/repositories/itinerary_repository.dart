@@ -2,24 +2,35 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 
-/// Hợp đồng (Interface) cho tầng Data.
-///
-/// Tầng Domain chỉ biết interface này.
-/// Tầng Data sẽ cung cấp implementation cụ thể (Mock hoặc Remote).
 abstract class ItineraryRepository {
-  /// Lấy danh sách lịch trình, tùy chọn lọc theo [status].
-  Future<List<ItineraryEntity>> getItineraries({ItineraryStatus? status});
-
-  /// Lấy thống kê tổng quan (tổng / đã đi / sắp đi / nháp).
+  Future<List<ItineraryEntity>> getItineraries({
+    ItineraryStatus? status,
+    String? query,
+  });
   Future<ItinerarySummary> getSummary();
-
-  /// Lấy chi tiết một lịch trình theo [id].
   Future<ItineraryDetailEntity> getItineraryDetail(String id);
-
-  /// Xóa một lịch trình theo [id].
   Future<void> deleteItinerary(String id);
+  Future<void> toggleVisibility(String id, bool isPublic);
+  Future<void> updateItineraryTitle(String id, String title);
+  Future<void> updateActivity(
+    String itineraryId,
+    String activityId, {
+    String? arrivalTime,
+    String? departureTime,
+    double? actualCost,
+    String? userNotes,
+    bool? isLocked,
+  });
+  Future<void> deleteActivity(String itineraryId, String activityId);
 
   /// Cập nhật danh sách hoạt động/thời gian của lịch trình theo [id].
-  Future<void> updateItineraryActivities(String id, List<ItineraryDayEntity> days);
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  );
+
+  /// Tạo lịch trình mới qua AI pipeline, trả về itineraryId.
+  Future<String> createItinerary(CreateItineraryParams params);
 }

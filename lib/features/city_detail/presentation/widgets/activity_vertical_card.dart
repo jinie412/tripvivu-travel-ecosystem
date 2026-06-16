@@ -116,11 +116,15 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            '(${widget.item.reviewCount ~/ 1000 >= 1 ? "${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k" : widget.item.reviewCount})',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 13,
+                          Expanded(
+                            child: Text(
+                              '(${widget.item.reviewCount ~/ 1000 >= 1 ? "${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k" : widget.item.reviewCount})',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -130,11 +134,15 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                         children: [
                           Icon(Icons.location_on_outlined, color: Colors.grey[600], size: 14),
                           const SizedBox(width: 4),
-                          Text(
-                            widget.item.address,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
+                          Expanded(
+                            child: Text(
+                              widget.item.address,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
