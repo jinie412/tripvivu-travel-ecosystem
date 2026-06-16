@@ -27,6 +27,8 @@ import { ReviewManagement } from '../pages/admin/ReviewManagement';
 import { ReviewDetail } from '../pages/admin/ReviewDetail';
 import { ItineraryReviewDetail } from '../pages/admin/ItineraryReviewDetail';
 import { AlgorithmSettings } from '../pages/admin/AlgorithmSettings';
+import { AlgorithmRunner } from '../pages/admin/AlgorithmRunner';
+import { AlgorithmRunHistory } from '../pages/admin/AlgorithmRunHistory';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -63,6 +65,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/admin/reviews/:id" element={<ReviewDetail />} />
         <Route path="/admin/itinerary-reviews/:id" element={<ItineraryReviewDetail />} />
         <Route path="/admin/algorithm-settings" element={<AlgorithmSettings />} />
+        <Route path="/admin/algorithm-runner" element={<AlgorithmRunner />} />
+        <Route path="/admin/algorithm-history" element={<AlgorithmRunHistory />} />
       </Route>
 
       {/* Default Redirect */}

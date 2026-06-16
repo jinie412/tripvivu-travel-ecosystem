@@ -1,0 +1,163 @@
+/* ── Page shell ────────────────────────────────────────────────────────────── */
+
+.arh-page {
+  padding: 24px 32px;
+  background-color: var(--bg-main);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.page-container.arh-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.arh-page .page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.arh-page .breadcrumb {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.arh-page .active-bread {
+  color: var(--primary-blue);
+  font-weight: 500;
+}
+
+.arh-page .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.arh-page .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+/* ── Content ── */
+
+.arh-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Card ── */
+
+.arh-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.arh-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.arh-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-blue);
+  flex-shrink: 0;
+}
+
+.arh-card__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Table ── */
+
+.arh-table-wrap {
+  overflow-x: auto;
+}
+
+.arh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.arh-table th {
+  padding: 10px 20px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-main);
+}
+
+.arh-table td {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.arh-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.arh-table tbody tr:hover {
+  background: var(--bg-hover, rgba(0,0,0,0.02));
+}
+
+.arh-fw500 { font-weight: 500; }
+.arh-muted { color: var(--text-muted); }
+.arh-err-text { color: var(--error, #ef4444); font-weight: 500; }
+
+/* ── Status badges ── */
+
+.arh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.arh-badge--done {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.arh-badge--error {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.arh-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}

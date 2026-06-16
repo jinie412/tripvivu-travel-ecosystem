@@ -1,0 +1,363 @@
+/* ── Page shell ─────────────────────────────────────────────────────────────── */
+
+.ar-page {
+  padding: 24px 32px;
+  background-color: var(--bg-main);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.page-container.ar-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.ar-page .page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.ar-page .breadcrumb {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.ar-page .active-bread {
+  color: var(--primary-blue);
+  font-weight: 500;
+}
+
+.ar-page .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ar-page .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  transition: all 0.2s;
+}
+
+.ar-page .icon-btn:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.ar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Accordion ───────────────────────────────────────────────────────────────── */
+
+.ar-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 0.5px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+/* ── Dropdown item ───────────────────────────────────────────────────────────── */
+
+.ar-dropdown {
+  border-bottom: 0.5px solid var(--border-color);
+}
+
+.ar-dropdown:last-child {
+  border-bottom: none;
+}
+
+/* ── Dropdown header ─────────────────────────────────────────────────────────── */
+
+.ar-dropdown__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.ar-dropdown__header:hover {
+  background: var(--bg-main);
+}
+
+.ar-dropdown--open > .ar-dropdown__header {
+  background: var(--bg-main);
+}
+
+.ar-dropdown__chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.ar-dropdown--open .ar-dropdown__chevron {
+  transform: rotate(180deg);
+}
+
+.ar-dropdown__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  flex: 1;
+}
+
+.ar-dropdown__toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ar-dropdown__auto-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Dropdown body ───────────────────────────────────────────────────────────── */
+
+.ar-dropdown__body {
+  padding: 0 20px 20px;
+  border-top: 0.5px solid var(--border-color);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ar-dropdown__desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 16px 0 0;
+}
+
+/* ── Schedule fields ─────────────────────────────────────────────────────────── */
+
+.ar-dropdown__schedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  transition: opacity 0.2s;
+}
+
+.ar-dropdown__schedule--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ar-dropdown__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 140px;
+  flex: 1;
+}
+
+.ar-dropdown__field-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────── */
+
+.ar-dropdown__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 0.5px solid var(--border-color);
+}
+
+.ar-dropdown__last-run {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ar-dropdown__last-run-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ar-dropdown__last-run-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── Badge ───────────────────────────────────────────────────────────────────── */
+
+.ar-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ar-badge--active {
+  background: var(--status-active-bg, #dcfce7);
+  color: var(--status-active-text, #166534);
+}
+
+.ar-badge--inactive {
+  background: var(--bg-main);
+  color: var(--text-muted);
+  border: 0.5px solid var(--border-color);
+}
+
+/* ── Form controls ───────────────────────────────────────────────────────────── */
+
+.ar-input,
+.ar-select {
+  padding: 8px 12px;
+  border: 0.5px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.ar-input:focus,
+.ar-select:focus {
+  border-color: var(--primary-blue);
+  outline: none;
+}
+
+.ar-select { cursor: pointer; }
+
+/* ── Toggle ──────────────────────────────────────────────────────────────────── */
+
+.ar-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--border-color);
+  transition: background 0.2s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.ar-toggle--on { background: var(--primary-blue); }
+
+.ar-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.ar-toggle--on .ar-toggle__thumb { left: calc(100% - 18px); }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+
+.ar-btn-primary {
+  padding: 8px 18px;
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ar-btn-primary:hover { background: var(--primary-blue-hover); }
+
+.ar-btn-primary--disabled,
+.ar-btn-primary:disabled {
+  background: var(--text-muted) !important;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* ── Banner ──────────────────────────────────────────────────────────────────── */
+
+.ar-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--border-radius-md);
+  font-size: 0.8rem;
+}
+
+.ar-banner--success {
+  background: #f0fdf4;
+  border: 0.5px solid var(--success-green, #22c55e);
+  color: #166534;
+}
+
+.ar-banner--error {
+  background: #fff5f5;
+  border: 0.5px solid var(--danger-red);
+  color: #991b1b;
+}
+
+.ar-banner__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+
+.ar-banner__close:hover { color: var(--text-primary); }
+
+/* ── Spinner ─────────────────────────────────────────────────────────────────── */
+
+@keyframes ar-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ar-spin { animation: ar-spin 0.8s linear infinite; }

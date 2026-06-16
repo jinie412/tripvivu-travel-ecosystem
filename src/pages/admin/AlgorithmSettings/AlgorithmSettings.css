@@ -58,7 +58,52 @@
 .as-content {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Algorithm group box ───────────────────────────────────────────────────── */
+
+.as-group {
+  border: 0.5px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.as-group__header {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  padding: 12px 20px;
+  background: var(--bg-main);
+  border-bottom: 0.5px solid var(--border-color);
+}
+
+.as-group__stripe {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--primary-blue);
+  flex-shrink: 0;
+}
+
+.as-group__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Cards inside a group: flatten borders and radii for seamless stacking */
+.as-group__body .as-card {
+  border: none;
+  border-bottom: 0.5px solid var(--border-color);
+  border-radius: 0;
+  background: var(--bg-surface);
+}
+
+.as-group__body .as-card:last-child {
+  border-bottom: none;
 }
 
 /* ── Change banner ─────────────────────────────────────────────────────────── */
@@ -583,12 +628,18 @@
 
 .as-pipeline-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 4px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .as-pipeline-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
   .as-pipeline-row {
     grid-template-columns: 1fr;
   }

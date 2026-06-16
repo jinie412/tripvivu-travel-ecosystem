@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
-import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays, SlidersHorizontal, History, Play } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -41,6 +41,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     location.pathname.startsWith('/admin/reviews') ||
     location.pathname.startsWith('/admin/itinerary-reviews');
   const isAlgoActive = location.pathname.startsWith('/admin/algorithm-settings');
+  const isAlgoRunnerActive = location.pathname.startsWith('/admin/algorithm-runner');
+  const isAlgoHistoryActive = location.pathname.startsWith('/admin/algorithm-history');
 
   const [reviewOpen, setReviewOpen] = useState(isReviewActive);
 
@@ -126,6 +128,18 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               className={`menu-item ${isAlgoActive ? 'active' : ''}`}>
               <SlidersHorizontal size={20} />
               <span>Thiết lập thuật toán</span>
+            </Link>
+            <Link
+              to="/admin/algorithm-runner"
+              className={`menu-item ${isAlgoRunnerActive ? 'active' : ''}`}>
+              <Play size={20} />
+              <span>Lịch chạy thuật toán</span>
+            </Link>
+            <Link
+              to="/admin/algorithm-history"
+              className={`menu-item ${isAlgoHistoryActive ? 'active' : ''}`}>
+              <History size={20} />
+              <span>Lịch sử chạy thuật toán</span>
             </Link>
           </div>
         </div>
