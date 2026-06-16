@@ -10,10 +10,6 @@ import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
-/// Reusable itinerary list card.
-///
-/// Shows the trip name, date badge, cost, visited-place progress, optional
-/// start toggle, and the place-image slideshow returned by the list API.
 class ItineraryCard extends StatelessWidget {
   final ItineraryEntity item;
   final VoidCallback? onEdit;

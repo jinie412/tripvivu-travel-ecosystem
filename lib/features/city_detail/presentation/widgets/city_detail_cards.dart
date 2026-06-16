@@ -152,25 +152,28 @@ class ActivityCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 112,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 1 / 1,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -210,25 +213,28 @@ class RestaurantCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 108,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -294,25 +300,28 @@ class HotelCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Text(

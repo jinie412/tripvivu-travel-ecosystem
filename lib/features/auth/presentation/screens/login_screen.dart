@@ -62,19 +62,11 @@ class _LoginViewState extends State<_LoginView> {
           // Token được parse bởi datasource và lưu vào SecureStorage
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
-            // Navigate to home immediately
             Navigator.pushReplacementNamed(context, '/home');
-            // After 2 seconds from successful login, reload the page.
-            Future.delayed(const Duration(seconds: 2), () {
-              if (!context.mounted) return;
-              if (kIsWeb) {
-                // For web: perform full browser reload
-                reloadPage();
-              } else {
-                // For mobile/desktop: re-navigate to /home to force a refresh
-                Navigator.pushReplacementNamed(context, '/home');
-              }
-            });
+            // Web cần reload để flush auth state trong browser storage
+            if (kIsWeb) {
+              Future.delayed(const Duration(milliseconds: 100), reloadPage);
+            }
           });
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
