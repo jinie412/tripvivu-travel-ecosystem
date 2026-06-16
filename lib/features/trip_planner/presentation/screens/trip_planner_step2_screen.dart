@@ -44,10 +44,11 @@ class TripPlannerStep2Screen extends StatelessWidget {
   }
 
   Future<void> _pickTripIntent(BuildContext context, String? current) async {
+    final currentList = _parseTripIntents(current);
     final picked = await showModalBottomSheet<List<String>>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _TripIntentSheet(current: _parseTripIntents(current)),
+      builder: (_) => _TripIntentSheet(current: currentList),
     );
     if (picked == null || !context.mounted) return;
     context.read<TripPlannerCubit>().updateTripIntents(picked);
@@ -60,6 +61,12 @@ class TripPlannerStep2Screen extends StatelessWidget {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList();
+  }
+
+  static String _formatTripIntentLabel(List<String> selected) {
+    if (selected.isEmpty) return 'Chọn loại hình du lịch';
+    if (selected.length <= 2) return selected.join(', ');
+    return '${selected.length} loại hình đã chọn';
   }
 
   @override
@@ -188,10 +195,13 @@ class TripPlannerStep2Screen extends StatelessWidget {
                               context.read<TripPlannerCubit>().updateEndTime(t),
                         ),
                         const SizedBox(height: 32),
-                        const _SectionTitle(title: 'MỤC ĐÍCH CHUYẾN ĐI'),
+                        const _SectionTitle(title: 'LOẠI HÌNH DU LỊCH'),
                         const SizedBox(height: 16),
                         _TripIntentButton(
-                          selected: tripForm.tripIntent,
+                          selected: _parseTripIntents(tripForm.tripIntent),
+                          label: _formatTripIntentLabel(
+                            _parseTripIntents(tripForm.tripIntent),
+                          ),
                           onTap: () =>
                               _pickTripIntent(context, tripForm.tripIntent),
                         ),
@@ -275,13 +285,19 @@ class TripPlannerStep2Screen extends StatelessWidget {
 // â”€â”€ Trip Intent selector button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TripIntentButton extends StatelessWidget {
-  final String? selected;
+  final List<String> selected;
+  final String label;
   final VoidCallback onTap;
 
-  const _TripIntentButton({required this.selected, required this.onTap});
+  const _TripIntentButton({
+    required this.selected,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasSelection = selected.isNotEmpty;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -299,11 +315,11 @@ class _TripIntentButton extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                selected ?? 'Chọn mục đích chuyến đi',
+                label,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: selected != null
+                  color: hasSelection
                       ? AppColors.textPrimary
                       : AppColors.textSecondary,
                 ),
@@ -331,13 +347,25 @@ class _TripIntentSheet extends StatefulWidget {
 }
 
 class _TripIntentSheetState extends State<_TripIntentSheet> {
-  late final Set<String> _selected = widget.current.toSet();
+  late final List<String> _selected = List.of(widget.current);
 
   void _toggle(String intent) {
     setState(() {
+      if (intent == kGeneralTripIntent) {
+        if (_selected.contains(kGeneralTripIntent)) {
+          _selected.clear();
+        } else {
+          _selected
+            ..clear()
+            ..add(kGeneralTripIntent);
+        }
+        return;
+      }
+      // Specific intent: bỏ general nếu đang có
+      _selected.remove(kGeneralTripIntent);
       if (_selected.contains(intent)) {
         _selected.remove(intent);
-      } else {
+      } else if (_selected.length < kMaxTripIntents) {
         _selected.add(intent);
       }
     });
@@ -380,7 +408,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                'Có thể chọn nhiều mục đích',
+                'Có thể chọn nhiều (tối đa 3)',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -393,22 +421,29 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
               child: SingleChildScrollView(
                 child: Column(
                   children: kTripIntents.map((intent) {
-                    final selected = _selected.contains(intent);
+                    final isSelected = _selected.contains(intent);
+                    final atMax = _selected.length >= kMaxTripIntents &&
+                        !_selected.contains(kGeneralTripIntent);
+                    final canToggle = isSelected ||
+                        intent == kGeneralTripIntent ||
+                        !atMax;
                     return CheckboxListTile(
-                      value: selected,
-                      onChanged: (_) => _toggle(intent),
+                      value: isSelected,
+                      onChanged: canToggle ? (_) => _toggle(intent) : null,
                       activeColor: AppColors.primary,
                       checkColor: Colors.white,
                       controlAffinity: ListTileControlAffinity.trailing,
                       title: Text(
                         intent,
                         style: TextStyle(
-                          fontWeight: selected
+                          fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,
-                          color: selected
+                          color: isSelected
                               ? AppColors.primary
-                              : AppColors.textPrimary,
+                              : canToggle
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     );
@@ -422,7 +457,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => setState(_selected.clear),
+                      onPressed: () => setState(() => _selected.clear()),
                       child: const Text('Xóa chọn'),
                     ),
                   ),
@@ -430,7 +465,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () =>
-                          Navigator.of(context).pop(_selected.toList()),
+                          Navigator.of(context).pop(List.of(_selected)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
