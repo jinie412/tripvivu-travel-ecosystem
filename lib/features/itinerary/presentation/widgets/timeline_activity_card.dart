@@ -68,6 +68,17 @@ class TimelineActivityCard extends StatelessWidget {
     return count.toString();
   }
 
+  String _formatPrice(double price) {
+    if (price >= 1_000_000) {
+      final m = price / 1_000_000;
+      return '${m == m.truncate() ? m.toInt() : m.toStringAsFixed(1)}M₫';
+    }
+    if (price >= 1_000) {
+      return '${(price / 1_000).truncate()}k₫';
+    }
+    return '${price.toInt()}₫';
+  }
+
   String _durationLabel() {
     if (_isAccommodationStart) return 'Nơi ở & điểm xuất phát';
     List<int> parts(String t) => t.split(':').map(int.parse).toList();
@@ -398,6 +409,35 @@ class TimelineActivityCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (activity.price > 0)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.local_activity_outlined,
+                                size: 12,
+                                color: Color(0xFF6366F1),
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                _formatPrice(activity.price),
+                                style: AppTextStylesExt.bodySmall.copyWith(
+                                  color: const Color(0xFF6366F1),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (activity.isFree)
+                          Text(
+                            'Miễn phí',
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              color: const Color(0xFF10B981),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
                         if (activity.status == ActivityStatus.daDi)
                           GestureDetector(
                             onTap: onRateTap,
