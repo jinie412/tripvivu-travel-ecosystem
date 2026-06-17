@@ -20,12 +20,23 @@ class BudgetSliderSection extends StatefulWidget {
 
 class _BudgetSliderSectionState extends State<BudgetSliderSection> {
   late final TextEditingController _controller;
+  late final FocusNode _focusNode;
   late bool _unlimited;
+
+  /// Các mức ngân sách gợi ý (đơn vị: VND/người)
+  static const List<_BudgetPreset> _presets = [
+    _BudgetPreset(label: '5tr', value: 5000000),
+    _BudgetPreset(label: '10tr', value: 10000000),
+    _BudgetPreset(label: '15tr', value: 15000000),
+    _BudgetPreset(label: '20tr', value: 20000000),
+    _BudgetPreset(label: '30tr', value: 30000000),
+  ];
 
   @override
   void initState() {
     super.initState();
     _unlimited = widget.currentBudget <= 0;
+    _focusNode = FocusNode();
     _controller = TextEditingController(
       text: _unlimited ? '' : widget.currentBudget.round().toString(),
     );
@@ -43,7 +54,35 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _selectPreset(double value) {
+    setState(() {
+      _unlimited = false;
+      _controller.text = value.round().toString();
+    });
+    widget.onChanged(value);
+    _focusNode.unfocus();
+  }
+
+  /// Được gọi khi user tap vào TextField trong lúc đang _unlimited.
+  /// Tự động tắt unlimited để user không cần bấm toggle trước.
+  void _onTextFieldTap() {
+    if (_unlimited) {
+      setState(() => _unlimited = false);
+    }
+  }
+
+  void _toggleUnlimited() {
+    setState(() {
+      _unlimited = !_unlimited;
+      if (_unlimited) {
+        _controller.clear();
+        widget.onChanged(0);
+      }
+    });
   }
 
   @override
@@ -104,12 +143,13 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
         const SizedBox(height: 12),
         TextField(
           controller: _controller,
-          enabled: !_unlimited,
+          focusNode: _focusNode,
+          // Không disabled — tap vào sẽ tự tắt unlimited qua _onTextFieldTap
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
-            labelText: 'Ngân sách dự kiến',
-            hintText: 'Nhập số tiền',
+            labelText: 'Ngân sách dự kiến / người',
+            hintText: _unlimited ? 'Bấm để nhập ngân sách...' : 'Nhập số tiền',
             suffixText: 'VND',
             filled: true,
             fillColor: _unlimited ? const Color(0xFFF8FAFC) : Colors.white,
@@ -119,23 +159,75 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(
+                color: _unlimited
+                    ? const Color(0xFFE2E8F0)
+                    : const Color(0xFFCBD5E1),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
+          onTap: _onTextFieldTap,
           onChanged: (value) {
+            if (_unlimited) return;
             final amount = double.tryParse(value) ?? 0;
             widget.onChanged(amount);
           },
+        ),
+        const SizedBox(height: 10),
+        // ── Nút gợi ý nhanh ──────────────────────────────────────────────
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _presets.map((preset) {
+            final isSelected =
+                !_unlimited && widget.currentBudget.round() == preset.value;
+            return GestureDetector(
+              // Cho phép tap ngay cả khi _unlimited — _selectPreset sẽ tắt unlimited
+              onTap: () => _selectPreset(preset.value.toDouble()),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary
+                      : _unlimited
+                          ? const Color(0xFFF1F5F9)
+                          : AppColors.primary.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : _unlimited
+                            ? const Color(0xFFE2E8F0)
+                            : AppColors.primary.withValues(alpha: 0.35),
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  preset.label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected
+                        ? Colors.white
+                        : _unlimited
+                            ? const Color(0xFFB0BEC5)
+                            : AppColors.primary,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
         const SizedBox(height: 8),
         Text(
           _unlimited
               ? 'Hệ thống sẽ không giới hạn lịch trình theo ngân sách.'
-              : 'Đang đặt giới hạn: ${formatter.format(widget.currentBudget)}',
+              : 'Đang đặt giới hạn: ${formatter.format(widget.currentBudget)} / người',
           style: const TextStyle(
             fontSize: 12,
             color: AppColors.textSecondary,
@@ -145,14 +237,10 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
       ],
     );
   }
+}
 
-  void _toggleUnlimited() {
-    setState(() {
-      _unlimited = !_unlimited;
-      if (_unlimited) {
-        _controller.clear();
-        widget.onChanged(0);
-      }
-    });
-  }
+class _BudgetPreset {
+  final String label;
+  final int value;
+  const _BudgetPreset({required this.label, required this.value});
 }
