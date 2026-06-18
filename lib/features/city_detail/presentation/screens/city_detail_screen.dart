@@ -253,6 +253,11 @@ class _OverviewTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.of(context).size.width;
+    final activityCardH   = screenW * 0.45 * (1 / 1) + 48;
+    final restaurantCardH = screenW * 0.45 * (3 / 4) + 64;
+    final hotelCardH      = screenW * 0.55 * (3 / 4) + 80;
+
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -310,20 +315,20 @@ class _OverviewTabContent extends StatelessWidget {
         PageDots(count: overviewItineraries.length, current: itineraryIndex),
         const SizedBox(height: 16),
 
-        // ── HOẠT ĐỘNG THAM QUAN ───────────────────────────────────
+        // ── HOẠT ĐỘNG THAM QUAN & GIẢI TRÍ ────────────────────────
         SectionHeader(
-          title: 'Hoạt động tham quan',
+          title: 'Hoạt động tham quan & giải trí',
           onSeeAll: () => onTabSelected(2),
         ),
         const SizedBox(height: 12),
         if (overviewActivities.isEmpty)
           const _SectionEmptyState(
             height: 120,
-            message: 'Chưa có hoạt động tham quan cho tỉnh/thành phố này.',
+            message: 'Chưa có hoạt động tham quan & giải trí cho tỉnh/thành phố này.',
           )
         else
           SizedBox(
-            height: 160,
+            height: activityCardH,
             child: PageView.builder(
               controller: activityController,
               padEnds: false,
@@ -369,7 +374,7 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 185,
+            height: restaurantCardH,
             child: PageView.builder(
               controller: restaurantController,
               padEnds: false,
@@ -415,7 +420,7 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 300,
+            height: hotelCardH,
             child: PageView.builder(
               controller: hotelController,
               padEnds: false,
@@ -446,7 +451,7 @@ class _OverviewTabContent extends StatelessWidget {
           ),
         const SizedBox(height: 4),
         PageDots(count: overviewHotels.length, current: hotelIndex),
-        const SizedBox(height: 100),
+        SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
       ],
     );
   }
@@ -746,7 +751,7 @@ class _HotelTabContent extends StatelessWidget {
             child: HotelVerticalCard(item: item),
           ),
         ),
-        const SizedBox(height: 100),
+        SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
       ],
     );
   }

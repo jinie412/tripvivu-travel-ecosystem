@@ -7,6 +7,8 @@ part 'itinerary_activity_model.g.dart';
 @JsonSerializable()
 class ItineraryActivityModel {
   final String id;
+  @JsonKey(name: 'place_id')
+  final String? placeId;
   final String title;
   @JsonKey(name: 'start_time')
   final String startTime;
@@ -29,10 +31,13 @@ class ItineraryActivityModel {
   final double? rating;
   @JsonKey(name: 'review_count')
   final int? reviewCount;
-  final String? status; // chuaDi, dangDi, daDi, diQua
+  final String? status;
+  @JsonKey(name: 'open_hour_compressed')
+  final String? openHourCompressed;
 
   const ItineraryActivityModel({
     required this.id,
+    this.placeId,
     required this.title,
     required this.startTime,
     required this.endTime,
@@ -49,12 +54,40 @@ class ItineraryActivityModel {
     this.rating,
     this.reviewCount,
     this.status,
+    this.openHourCompressed,
   });
 
-  factory ItineraryActivityModel.fromJson(Map<String, dynamic> json) =>
-      _$ItineraryActivityModelFromJson(json);
+  factory ItineraryActivityModel.fromJson(Map<String, dynamic> json) {
+    return ItineraryActivityModel(
+      id: json['id'] ?? '',
+      title: json['title'] ?? json['placeName'] ?? '',
+      startTime: json['start_time'] ?? json['startTime'] ?? '',
+      endTime: json['end_time'] ?? json['endTime'] ?? '',
+      locationName: json['location_name'] ?? json['locationName'] ?? json['placeName'] ?? '',
+      address: json['address'] ?? '',
+      imageUrl: json['image_url'] ?? json['imageUrl'] ?? '',
+      price: (json['price'] ?? 0.0).toDouble(),
+      currency: json['currency'] ?? 'VNĐ',
+      transportInfo: json['transport_info'] ?? json['transportInfo'] ?? (json['transitToNext'] != null ? (json['transitToNext']['durationStr'] ?? '') : ''),
+      isFree: json['is_free'] ?? json['isFree'] ?? (json['priceLabel'] == 'MIỄN PHÍ'),
+      category: json['category'],
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : (json['lat'] != null ? (json['lat'] as num).toDouble() : null),
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : (json['lng'] != null ? (json['lng'] as num).toDouble() : null),
+      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      reviewCount: json['review_count'] ?? json['reviewCount'],
+      status: json['status'],
+      openHourCompressed: json['open_hour_compressed']?.toString(),
+    );
+  }
 
   Map<String, dynamic> toJson() => _$ItineraryActivityModelToJson(this);
+
+  /// Strip seconds from "HH:mm:ss" → "HH:mm". Leaves "HH:mm" unchanged.
+  static String _trimSeconds(String time) {
+    final parts = time.split(':');
+    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    return time;
+  }
 
   ItineraryActivityEntity toEntity() {
     ActivityStatus entityStatus = ActivityStatus.chuaDi;
@@ -64,9 +97,10 @@ class ItineraryActivityModel {
 
     return ItineraryActivityEntity(
       id: id,
+      placeId: placeId,
       title: title,
-      startTime: startTime,
-      endTime: endTime,
+      startTime: _trimSeconds(startTime),
+      endTime: _trimSeconds(endTime),
       locationName: locationName,
       address: address,
       imageUrl: imageUrl,
@@ -80,6 +114,7 @@ class ItineraryActivityModel {
       rating: rating,
       reviewCount: reviewCount,
       status: entityStatus,
+      openHourCompressed: openHourCompressed,
     );
   }
 }

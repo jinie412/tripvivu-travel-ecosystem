@@ -9,5 +9,7 @@ class TripPlannerState with _$TripPlannerState {
   const factory TripPlannerState.initial() = _Initial;
   const factory TripPlannerState.loading() = _Loading;
   const factory TripPlannerState.loaded({required TripForm tripForm}) = _Loaded;
+  const factory TripPlannerState.generating() = _Generating;
+  const factory TripPlannerState.success({required String itineraryId}) = _Success;
   const factory TripPlannerState.error(String message) = _Error;
 }

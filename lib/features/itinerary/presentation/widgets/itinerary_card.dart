@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,15 +10,13 @@ import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
-/// Card lịch trình (Sắp đi / Nháp) — có ảnh, badge ngày, progress bar.
-///
-/// Vuốt sang trái để hiện nút Sửa (xanh) + Xóa (đỏ).
 class ItineraryCard extends StatelessWidget {
   final ItineraryEntity item;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
   final ValueChanged<bool>? onStartToggle;
+  final Widget? bottomChild;
 
   const ItineraryCard({
     super.key,
@@ -25,6 +25,7 @@ class ItineraryCard extends StatelessWidget {
     this.onDelete,
     this.onTap,
     this.onStartToggle,
+    this.bottomChild,
   });
 
   @override
@@ -72,14 +73,17 @@ class ItineraryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Ảnh + badge ngày ──────────────────────────────────────────
+                // ── Ảnh slideshow + badge ngày ───────────────────────────────
                 SizedBox(
                   height: 150,
                   width: double.infinity,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      _buildImage(),
+                      _PlaceImageSlideshow(
+                        images: item.placeImages,
+                        placeholderColor: item.placeholderColor,
+                      ),
                       // Gradient overlay phía dưới để text dễ đọc.
                       Positioned(
                         bottom: 0,
@@ -140,53 +144,6 @@ class ItineraryCard extends StatelessWidget {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ),
-                        ),
-                      if (_shouldShowStart(item))
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.only(left: 12, right: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item.status == ItineraryStatus.ongoing ? 'ĐANG DIỄN RA' : 'BẮT ĐẦU LỊCH TRÌNH',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: item.status == ItineraryStatus.ongoing ? const Color(0xFF2563EB) : const Color(0xFF4B5563),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Transform.scale(
-                                  scale: 0.65,
-                                  child: Switch(
-                                    value: item.status == ItineraryStatus.ongoing,
-                                    onChanged: onStartToggle,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    activeThumbColor: Colors.white,
-                                    activeTrackColor: const Color(0xFF2563EB),
-                                    inactiveThumbColor: Colors.white,
-                                    inactiveTrackColor: const Color(0xFFD1D5DB),
-                                    trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         ),
@@ -279,6 +236,10 @@ class ItineraryCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (bottomChild != null) ...[
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+                  bottomChild!,
+                ],
               ],
             ),
           ),
@@ -287,20 +248,7 @@ class ItineraryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage() {
-    if (item.imageUrl == null || item.imageUrl!.isEmpty) {
-      return Container(color: Color(item.placeholderColor));
-    }
-    return CachedNetworkImage(
-      imageUrl: item.imageUrl!,
-      fit: BoxFit.cover,
-      placeholder: (context, url) => Container(color: Color(item.placeholderColor)),
-      errorWidget: (context, url, error) => Container(color: Color(item.placeholderColor)),
-    );
-  }
-
   Widget _buildProgressBar() {
-    final percent = (item.progress * 100).toInt();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -339,18 +287,139 @@ class ItineraryCard extends StatelessWidget {
 
   String _formatCost(double cost, String currency) {
     if (cost <= 0) return 'Chưa có';
-    final fmt = NumberFormat('#,###', 'vi_VN');
-    return '${fmt.format(cost)} $currency';
+    if (cost >= 1000000000) {
+      final val = cost / 1000000000;
+      final display = val == val.truncateToDouble()
+          ? val.toInt().toString()
+          : NumberFormat('#,##0.#', 'vi_VN').format(val);
+      return '$display tỷ $currency';
+    }
+    if (cost >= 1000000) {
+      final val = cost / 1000000;
+      final display = val == val.truncateToDouble()
+          ? val.toInt().toString()
+          : NumberFormat('#,##0.#', 'vi_VN').format(val);
+      return '$display triệu $currency';
+    }
+    return '${NumberFormat('#,###', 'vi_VN').format(cost)} $currency';
   }
 
   bool _shouldShowStart(ItineraryEntity item) {
     if (item.status == ItineraryStatus.completed) return false;
     if (item.status == ItineraryStatus.ongoing) return true;
     if (item.startDate == null) return false;
-    
+
     final today = DateTime.now();
     final start = item.startDate!;
-    
+
     return start.year == today.year && start.month == today.month && start.day == today.day;
+  }
+}
+
+/// Renders the place images returned by `place_images` in the list API.
+///
+/// Behavior:
+/// - 0 images: fallback to the placeholder color.
+/// - 1 image: static image, no timer and no dots.
+/// - 2+ images: auto-advancing PageView with a dot indicator.
+class _PlaceImageSlideshow extends StatefulWidget {
+  final List<String> images;
+  final int placeholderColor;
+
+  const _PlaceImageSlideshow({
+    required this.images,
+    required this.placeholderColor,
+  });
+
+  @override
+  State<_PlaceImageSlideshow> createState() => _PlaceImageSlideshowState();
+}
+
+class _PlaceImageSlideshowState extends State<_PlaceImageSlideshow> {
+  late final PageController _pageController;
+  Timer? _timer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startAutoSlide();
+  }
+
+  void _startAutoSlide() {
+    if (widget.images.length <= 1) return;
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final next = (_currentPage + 1) % widget.images.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final images = widget.images;
+    final placeholder = Container(color: Color(widget.placeholderColor));
+
+    if (images.isEmpty) return placeholder;
+
+    if (images.length == 1) {
+      return CachedNetworkImage(
+        imageUrl: images[0],
+        fit: BoxFit.cover,
+        placeholder: (_, _) => placeholder,
+        errorWidget: (_, _, _) => placeholder,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          itemCount: images.length,
+          onPageChanged: (i) => setState(() => _currentPage = i),
+          itemBuilder: (_, i) => CachedNetworkImage(
+            imageUrl: images[i],
+            fit: BoxFit.cover,
+            placeholder: (_, _) => placeholder,
+            errorWidget: (_, _, _) => placeholder,
+          ),
+        ),
+        Positioned(
+          bottom: 10,
+          right: 10,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(images.length, (i) {
+              final isActive = i == _currentPage;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.only(left: 4),
+                width: isActive ? 8 : 5,
+                height: isActive ? 8 : 5,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isActive
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.45),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -1,10 +1,16 @@
 import 'package:get_it/get_it.dart';
 
+import 'package:travel_advisor_mobile/features/city/data/datasources/city_datasource.dart';
+import 'package:travel_advisor_mobile/features/city/data/repositories/city_repository_impl.dart';
+import 'package:travel_advisor_mobile/features/city/domain/repositories/city_repository.dart';
+import 'package:travel_advisor_mobile/features/city/domain/usecases/search_cities_usecase.dart';
 import 'package:travel_advisor_mobile/features/survey/presentation/cubit/survey_cubit.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
-import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/services/location_service.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
 import 'package:travel_advisor_mobile/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
@@ -27,6 +33,13 @@ import 'package:travel_advisor_mobile/features/itinerary/data/repositories/itine
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/usecases/itinerary_usecases.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/datasources/tracking_remote_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/repositories/tracking_repository_impl.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/domain/repositories/tracking_repository.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/domain/usecases/tracking_usecases.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/services/geofence_tracking_service.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/services/tracking_alarm_service.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/data/datasources/place_datasource.dart';
 import 'package:travel_advisor_mobile/features/place/data/repositories/place_repository_impl.dart';
 import 'package:travel_advisor_mobile/features/place/domain/repositories/place_repository.dart';
@@ -73,6 +86,10 @@ Future<void> initDependencies() async {
   // ── Network ────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<DioClient>(() => DioClient());
 
+  // ── Location (vị trí hiện tại + reverse geocoding) ───────────────────────────
+  sl.registerLazySingleton<LocationService>(() => LocationService());
+  sl.registerFactory(() => LocationCubit(sl()));
+
   // ── Auth ───────────────────────────────────────────────────────────────────
   sl.registerLazySingleton<AuthDataSource>(() => RemoteAuthDataSource(sl()));
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl()));
@@ -98,11 +115,7 @@ Future<void> initDependencies() async {
   );
 
   // ── Home ───────────────────────────────────────────────────────────────────
-  if (AppConfig.kUseMockData) {
-    sl.registerLazySingleton<HomeDataSource>(() => MockHomeDataSource());
-  } else {
-    sl.registerLazySingleton<HomeDataSource>(() => RemoteHomeDataSource(sl()));
-  }
+  sl.registerLazySingleton<HomeDataSource>(() => RemoteHomeDataSource(sl()));
   sl.registerLazySingleton<HomeRepository>(() => HomeRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetExploreHomeUseCase(sl()));
   sl.registerLazySingleton(() => GetRestaurantsUseCase(sl()));
@@ -129,11 +142,10 @@ Future<void> initDependencies() async {
     );
 
   // ── Itinerary ──────────────────────────────────────────────────────────────
-  if (AppConfig.kUseMockData) {
-    sl.registerLazySingleton<ItineraryDataSource>(() => MockItineraryDataSource());
-  } else {
-    sl.registerLazySingleton<ItineraryDataSource>(() => RemoteItineraryDataSource());
-  }
+  sl.registerLazySingleton<ItineraryDataSource>(
+    () => RemoteItineraryDataSource(),//MockItineraryDataSource(),
+    // TODO: swap → RemoteItineraryDataSource(sl<DioClient>())
+  );
   sl.registerLazySingleton<ItineraryRepository>(
     () => ItineraryRepositoryImpl(sl()),
   );
@@ -141,12 +153,48 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetItinerarySummaryUseCase(sl()));
   sl.registerLazySingleton(() => DeleteItineraryUseCase(sl()));
   sl.registerLazySingleton(() => GetItineraryDetailUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateItineraryActivitiesUseCase(sl()));
+  sl.registerLazySingleton(() => ToggleVisibilityUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateItineraryTitleUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateActivityUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteActivityUseCase(sl()));
   sl.registerFactory(
     () => ItineraryCubit(
       getItineraries: sl(),
       getSummary: sl(),
       deleteItinerary: sl(),
       getItineraryDetail: sl(),
+      updateActivities: sl(),
+      updateTitle: sl(),
+    ),
+  );
+
+  // ── Itinerary Tracking (geofence + dwell) ───────────────────────────────────
+  sl.registerLazySingleton<TrackingRemoteDataSource>(
+    () => TrackingRemoteDataSource(sl<DioClient>()),
+  );
+  sl.registerLazySingleton<TrackingRepository>(
+    () => TrackingRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton(() => StartTrackingUseCase(sl()));
+  sl.registerLazySingleton(() => GetGeofencesUseCase(sl()));
+  sl.registerLazySingleton(() => SendTrackingEventUseCase(sl()));
+  sl.registerLazySingleton(() => ManualCheckInUseCase(sl()));
+  sl.registerLazySingleton(() => GetTrackingStatusUseCase(sl()));
+  sl.registerLazySingleton(() => EndTrackingDayUseCase(sl()));
+  sl.registerLazySingleton<GeofenceTrackingService>(
+    () => GeofenceTrackingService(),
+  );
+  sl.registerLazySingleton<TrackingAlarmService>(() => TrackingAlarmService());
+  sl.registerFactory(
+    () => TrackingCubit(
+      start: sl(),
+      status: sl(),
+      sendEvent: sl(),
+      checkIn: sl(),
+      endDay: sl(),
+      geofenceSvc: sl(),
+      alarmSvc: sl(),
     ),
   );
 
@@ -197,11 +245,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
-  if (AppConfig.kUseMockData) {
-    sl.registerLazySingleton<CityDetailDataSource>(() => CityDetailMockDataSource());
-  } else {
-    sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));
-  }
+  sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));
   sl.registerLazySingleton<CityDetailRepository>(() => CityDetailRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetCityOverviewUseCase(sl()));
   sl.registerFactory(() => CityDetailCubit(sl()));
@@ -211,11 +255,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => FoodCubit(remote: sl()));
 
   // ── Place ──────────────────────────────────────────────────────────────────
-  if (AppConfig.kUseMockData) {
-    sl.registerLazySingleton<PlaceDataSource>(() => MockPlaceDataSource());
-  } else {
-    sl.registerLazySingleton<PlaceDataSource>(() => RemotePlaceDataSource(sl()));
-  }
+  sl.registerLazySingleton<PlaceDataSource>(() => RemotePlaceDataSource(sl()));
   sl.registerLazySingleton<PlaceRepository>(() => PlaceRepositoryImpl(sl()));
   sl.registerLazySingleton(() => GetPlaceDetailUseCase(sl()));
   sl.registerFactory(() => PlaceDetailCubit(getPlaceDetailUseCase: sl()));
@@ -236,8 +276,14 @@ Future<void> initDependencies() async {
     ),
   );
 
+  // ── City ──────────────────────────────────────────────────────────────────
+  sl.registerLazySingleton<CityDataSource>(() => RemoteCityDataSource(sl()));
+  sl.registerLazySingleton<CityRepository>(() => CityRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => SearchCitiesUseCase(sl()));
+
   // ── Trip Planner ───────────────────────────────────────────────────────────
-  sl.registerFactory(() => TripPlannerCubit());
+  sl.registerLazySingleton(() => CreateItineraryUseCase(sl()));
+  sl.registerFactory(() => TripPlannerCubit(createItinerary: sl()));
 
   // ── Survey ─────────────────────────────────────────────────────────────────
   sl.registerFactory(() => SurveyCubit());

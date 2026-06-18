@@ -189,22 +189,14 @@ class MapBottomSheet extends StatelessWidget {
   }
 
   Future<void> _openExternalMap(BuildContext context) async {
-    final String url = MapUtils.getDirectionUrl(latitude, longitude, name: name);
-    final Uri uri = Uri.parse(url);
-    
+    final Uri uri = Uri.parse(MapUtils.getDirectionUrl(latitude, longitude, name: name));
     try {
-      // Thử mở trực tiếp bằng ứng dụng ngoài (Google Maps)
-      bool launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      
-      if (!launched && context.mounted) {
-        // Nếu không mở được app Maps, thử mở qua trình duyệt
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      debugPrint('Error launching map: $e');
+      debugPrint('_openExternalMap failed: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể mở ứng dụng bản đồ')),
+          const SnackBar(content: Text('Không thể mở bản đồ')),
         );
       }
     }

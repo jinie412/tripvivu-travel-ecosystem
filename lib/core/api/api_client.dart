@@ -11,7 +11,6 @@ class ApiClient {
       url,
       headers: {
         'Content-Type': 'application/json',
-        // nếu có auth thì thêm
         'Authorization': 'Bearer TOKEN',
       },
     );

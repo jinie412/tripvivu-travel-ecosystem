@@ -1,11 +1,11 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
-import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 import 'itinerary_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 
 import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
@@ -13,59 +13,170 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_stat_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_review_dialog.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
 
-/// 🔧 CHẾ ĐỘ THIẾT KẾ: Set true để dùng dữ liệu mẫu, false để dùng API
+/// ðŸ”§ CHáº¾ Äá»˜ THIáº¾T Káº¾: Set true đá»ƒ dÃ¹ng dá»¯ liá»‡u máº«u, false đá»ƒ dÃ¹ng API
 const bool _useMockData = AppConfig.kUseMockData;
 
-class ItinerarySummaryScreen extends StatelessWidget {
+class ItinerarySummaryScreen extends StatefulWidget {
   final String itineraryId;
 
   const ItinerarySummaryScreen({super.key, required this.itineraryId});
 
   @override
+  State<ItinerarySummaryScreen> createState() => _ItinerarySummaryScreenState();
+}
+
+class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (!_useMockData) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final cubit = context.read<ItineraryCubit>();
+        final state = cubit.state;
+        final alreadyLoaded =
+            state is ItineraryLoaded &&
+            state.selectedItinerary?.id == widget.itineraryId;
+        if (!alreadyLoaded) {
+          cubit.ensureItinerarySelected(widget.itineraryId);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const _ItinerarySummaryView();
+    return _ItinerarySummaryView(itineraryId: widget.itineraryId);
   }
 }
 
 class _ItinerarySummaryView extends StatelessWidget {
-  const _ItinerarySummaryView();
+  final String itineraryId;
+  const _ItinerarySummaryView({required this.itineraryId});
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ItineraryCubit, ItineraryState>(
       builder: (context, state) {
-        if (!_useMockData) {
-          if (state is ItineraryLoading) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
-          }
-          if (state is ItineraryError) {
-            return Scaffold(body: Center(child: Text(state.message)));
-          }
+        if (_useMockData) {
+          final itin = _generateMockData();
+          return _buildContent(context, itin);
         }
 
-        final itin = _useMockData ? _generateMockData() : (state as ItineraryLoaded).selectedItinerary!;
-        
-        // 🔧 DEMO SYNC: Check for overall itinerary rating
-        final double? userItineraryRating = DemoReviewStore.itineraryOverallRatings[itin.id];
-        
-        final now = DateTime.now();
-        final bool isPast = now.isAfter(itin.endDate);
-        final bool canReview = isPast || itin.status == 'ONGOING' || itin.status == 'COMPLETED';
-        final dateFormatter = DateFormat('dd ThMM');
-        final dateRange = '${dateFormatter.format(itin.startDate)} - ${dateFormatter.format(itin.endDate)}, ${itin.startDate.year}';
+        if (state is ItineraryLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (state is ItineraryError) {
+          return Scaffold(body: Center(child: Text(state.message)));
+        }
+        if (state is ItineraryLoaded && state.selectedItinerary == null) {
+          if (state.detailError != null) {
+            return _buildDetailErrorScaffold(context);
+          }
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (state is! ItineraryLoaded) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFFBFDFF),
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: Container(
-              margin: const EdgeInsets.only(left: 16),
+        final itin = state.selectedItinerary!;
+        return _buildContent(context, itin);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, ItineraryDetailEntity itin) {
+    final now = DateTime.now();
+    final bool canReview =
+        now.isAfter(itin.endDate) ||
+        itin.status == 'ONGOING' ||
+        itin.status == 'COMPLETED';
+    final dateFormatter = DateFormat('dd/MM');
+    final dateRange =
+        '${dateFormatter.format(itin.startDate)} - ${dateFormatter.format(itin.endDate)}, ${itin.startDate.year}';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFBFDFF),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Color(0xFF1C1C1E),
+              size: 16,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        title: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              color: Colors.white.withValues(alpha: 0.5),
+              child: const Text(
+                'Tóm tắt lịch trình',
+                style: TextStyle(
+                  color: Color(0xFF1C1C1E),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          // NÃºt chá»‰nh sá»­a tiÃªu đá»
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(1, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.edit_rounded,
+                color: Color(0xFF2563EB),
+                size: 20,
+              ),
+              onPressed: () => _showEditTitleDialog(context, itin),
+            ),
+          ),
+          if (canReview)
+            Container(
+              margin: const EdgeInsets.only(right: 16),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.9),
                 shape: BoxShape.circle,
@@ -73,176 +184,128 @@ class _ItinerarySummaryView extends StatelessWidget {
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    offset: const Offset(1, 2),
                   ),
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1C1C1E), size: 16),
-                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  Icons.stars_rounded,
+                  color: Color(0xFF10B981),
+                  size: 24,
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => ItineraryReviewDialog(
+                      itineraryId: itin.id,
+                      itineraryTitle: itin.title,
+                      totalLocations: itin.totalLocations,
+                      visitedLocations: itin.visitedLocations,
+                    ),
+                  );
+                },
               ),
             ),
-            title: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  color: Colors.white.withValues(alpha: 0.5),
-                  child: const Text(
-                    'Tóm tắt lịch trình',
-                    style: TextStyle(
-                      color: Color(0xFF1C1C1E),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            centerTitle: true,
-            actions: [
-              // Nút chỉnh sửa tiêu đề
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(1, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.edit_rounded, color: Color(0xFF2563EB), size: 20),
-                  onPressed: () => _showEditTitleDialog(context, itin),
-                ),
-              ),
-              if (canReview)
-                Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(1, 2),
-                      ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.stars_rounded, color: Color(0xFF10B981), size: 24),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => ItineraryReviewDialog(
-                          itineraryId: itin.id,
-                          itineraryTitle: itin.title,
-                          totalLocations: itin.totalLocations,
-                          visitedLocations: itin.visitedLocations,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-          body: Stack(
-            children: [
-              SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header với Glassmorphism Image Card ──
-                    _buildDestinationHeader(context, itin, dateRange),
-                    
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // â”€â”€ Header vá»›i Glassmorphism Image Card â”€â”€
+                _buildDestinationHeader(context, itin, dateRange),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 32),
+                      Row(
                         children: [
-                          const SizedBox(height: 32),
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2563EB),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Tổng quan chuyến đi',
-                                style: TextStyle(
-                                  fontSize: 20, 
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
+                          Container(
+                            width: 4,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                          const SizedBox(height: 20),
-                          _buildStatsGrid(itin),
-                          
-                          if (itin.visitedRestaurants.isNotEmpty) ...[
-                            const SizedBox(height: 36),
-                            const SectionHeader(title: 'Món ăn đã đặt'),
-                            const SizedBox(height: 12),
-                            _buildCulinarySection(itin),
-                          ],
-                          
-                          const SizedBox(height: 36),
-                          const SectionHeader(title: 'Lịch trình rút gọn'),
-                          const SizedBox(height: 12),
-                          ...itin.days.take(3).map((day) => ShortItineraryItem(
-                            dayNumber: day.dayNumber,
-                            date: DateFormat('dd ThMM').format(day.date),
-                            title: day.activities.isNotEmpty ? day.activities.first.title : 'Đang lên kế hoạch',
-                            icon: _getIconForDay(day.dayNumber),
-                            onTap: () => _navigateToDetail(context, itin),
-                          )),
-                          
-                          const SizedBox(height: 36),
-                          _buildBudgetSection(itin),
-                          
-                          if (itin.notes.isNotEmpty) ...[
-                            const SizedBox(height: 36),
-                            _buildNotesSection(itin.notes),
-                          ],
-                          
-                          const SizedBox(height: 120), // Spacing for bottom button
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Tổng quan chuyến đi',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.5,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      _buildStatsGrid(itin),
+
+                      if (itin.visitedRestaurants.isNotEmpty) ...[
+                        const SizedBox(height: 36),
+                        const SectionHeader(title: 'Món ăn đã đặt'),
+                        const SizedBox(height: 12),
+                        _buildCulinarySection(itin),
+                      ],
+
+                      const SizedBox(height: 36),
+                      const SectionHeader(title: 'Lịch trình rút gọn'),
+                      const SizedBox(height: 12),
+                      ...itin.days
+                          .take(3)
+                          .map(
+                            (day) => ShortItineraryItem(
+                              dayNumber: day.dayNumber,
+                              date: DateFormat('dd/MM').format(day.date),
+                              title: _shortDayTitle(day),
+                              icon: _shortDayIcon(day),
+                              onTap: () => _navigateToDetail(context, itin),
+                            ),
+                          ),
+
+                      const SizedBox(height: 36),
+                      _buildBudgetSection(itin),
+
+                      if (itin.notes.isNotEmpty) ...[
+                        const SizedBox(height: 36),
+                        _buildNotesSection(itin.notes),
+                      ],
+
+                      const SizedBox(height: 120), // Spacing for bottom button
+                    ],
+                  ),
                 ),
-              ),
-              // ── Nút xem chi tiết ở dưới cùng (Floating effect) ──
-              Positioned(
-                bottom: 30,
-                left: 20,
-                right: 20,
-                child: _buildActionBtn(context, itin),
-              ),
-            ],
+              ],
+            ),
           ),
-        );
-      },
+          // â”€â”€ NÃºt xem chi tiáº¿t á»Ÿ dÆ°á»›i cÃ¹ng (Floating effect) â”€â”€
+          Positioned(
+            bottom: 30,
+            left: 20,
+            right: 20,
+            child: _buildActionBtn(context, itin),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDestinationHeader(BuildContext context, ItineraryDetailEntity itin, String dateRange) {
-    return Container(
+  Widget _buildDestinationHeader(
+    BuildContext context,
+    ItineraryDetailEntity itin,
+    String dateRange,
+  ) {
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.45,
       width: double.infinity,
       child: Stack(
@@ -250,7 +313,7 @@ class _ItinerarySummaryView extends StatelessWidget {
           // Background Image
           Positioned.fill(
             child: Image.network(
-              'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80', // Hình ảnh biển Phú Quốc
+              'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80', // HÃ¬nh áº£nh biá»ƒn PhÃº Quá»‘c
               fit: BoxFit.cover,
             ),
           ),
@@ -286,7 +349,9 @@ class _ItinerarySummaryView extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,13 +365,19 @@ class _ItinerarySummaryView extends StatelessWidget {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.location_on, size: 14, color: Colors.blue.shade300),
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 14,
+                                      color: Colors.blue.shade300,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'ĐIỂM ĐẾN',
                                       style: TextStyle(
-                                        fontSize: 10, 
-                                        color: Colors.white.withValues(alpha: 0.7), 
+                                        fontSize: 10,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 2,
                                       ),
@@ -329,23 +400,26 @@ class _ItinerarySummaryView extends StatelessWidget {
                                 Text(
                                   itin.destination,
                                   style: const TextStyle(
-                                    fontSize: 32, 
-                                    fontWeight: FontWeight.w900, 
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w900,
                                     color: Colors.white,
                                     letterSpacing: -0.5,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    _getStatusText(itin) + ' • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
+                                    '${_getStatusText(itin)} • ${itin.visitedLocations}/${itin.totalLocations} địa điểm',
                                     style: const TextStyle(
-                                      fontSize: 12, 
+                                      fontSize: 12,
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -360,19 +434,27 @@ class _ItinerarySummaryView extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(18),
                             ),
-                            child: const Icon(Icons.flight_takeoff, color: Colors.white, size: 24),
+                            child: const Icon(
+                              Icons.flight_takeoff,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          Icon(Icons.calendar_month, color: Colors.white.withValues(alpha: 0.6), size: 16),
+                          Icon(
+                            Icons.calendar_month,
+                            color: Colors.white.withValues(alpha: 0.6),
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             dateRange,
                             style: TextStyle(
-                              fontSize: 14, 
+                              fontSize: 14,
                               color: Colors.white.withValues(alpha: 0.9),
                               fontWeight: FontWeight.w500,
                             ),
@@ -391,13 +473,22 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   void _showEditTitleDialog(BuildContext context, ItineraryDetailEntity itin) {
-    final TextEditingController controller = TextEditingController(text: itin.title);
-    
+    final TextEditingController controller = TextEditingController(
+      text: itin.title,
+    );
+    // Capture cubit và scaffoldMessenger trước khi showDialog,
+    // vì context bên trong builder của dialog không thuộc subtree của BlocProvider.
+    final cubit = context.read<ItineraryCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Chỉnh sửa tên lịch trình', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Chỉnh sửa tên lịch trình',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: controller,
           decoration: InputDecoration(
@@ -413,27 +504,29 @@ class _ItinerarySummaryView extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Hủy', style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton(
             onPressed: () {
-              // Ở chế độ Demo ta chỉ đóng dialog, trong thực tế sẽ gọi Cubit
               final newTitle = controller.text.trim();
               if (newTitle.isNotEmpty) {
-                // context.read<ItineraryCubit>().updateTitle(itin.id, newTitle);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã đổi tên thành: $newTitle'),
+                Navigator.pop(dialogContext);
+                cubit.updateItineraryTitle(itin.id, newTitle);
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Đang cập nhật tên lịch trình...'),
                     behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 1),
                   ),
                 );
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2563EB),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Lưu', style: TextStyle(color: Colors.white)),
           ),
@@ -450,7 +543,131 @@ class _ItinerarySummaryView extends StatelessWidget {
     return 'Lịch trình';
   }
 
+  Widget _buildDetailErrorScaffold(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFBFDFF),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.only(left: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Color(0xFF1C1C1E),
+              size: 16,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF2F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 48,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Không thể tải lịch trình',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1C1C1E),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Đã xảy ra lỗi khi tải chi tiết lịch trình.\nVui lòng kiểm tra kết nối mạng và thử lại.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () => context
+                      .read<ItineraryCubit>()
+                      .ensureItinerarySelected(itineraryId),
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  label: const Text(
+                    'Thử lại',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B7280),
+                    side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Quay lại',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsGrid(ItineraryDetailEntity itin) {
+    final hotelCount = _uniqueHotelCount(itin);
+    final visitCount = itin.days.fold<int>(
+      0,
+      (sum, day) => sum + _visitActivities(day).length,
+    );
+
     return Column(
       children: [
         Row(
@@ -458,7 +675,7 @@ class _ItinerarySummaryView extends StatelessWidget {
             Expanded(
               child: _StatCardV2(
                 label: 'Thời gian',
-                value: '${itin.durationDays} Ngày',
+                value: '${itin.durationDays} ngày',
                 icon: Icons.calendar_today_rounded,
                 color: const Color(0xFF3B82F6),
               ),
@@ -467,7 +684,7 @@ class _ItinerarySummaryView extends StatelessWidget {
             Expanded(
               child: _StatCardV2(
                 label: 'Hoạt động',
-                value: '${itin.activitiesCount} điểm',
+                value: '$visitCount điểm',
                 icon: Icons.explore_rounded,
                 color: const Color(0xFFF59E0B),
               ),
@@ -480,7 +697,7 @@ class _ItinerarySummaryView extends StatelessWidget {
             Expanded(
               child: _StatCardV2(
                 label: 'Chỗ ở',
-                value: '${itin.hotelsCount} khách sạn',
+                value: hotelCount > 0 ? '$hotelCount khách sạn' : 'Chưa chọn',
                 icon: Icons.hotel_rounded,
                 color: const Color(0xFFEC4899),
               ),
@@ -489,8 +706,8 @@ class _ItinerarySummaryView extends StatelessWidget {
             Expanded(
               child: _StatCardV2(
                 label: 'Di chuyển',
-                value: '${itin.transportTurns} lượt',
-                icon: Icons.local_taxi_rounded,
+                value: itin.transportTurns > 0 ? '${itin.transportTurns} chặng' : 'Theo lộ trình',
+                icon: Icons.directions_car_filled_rounded,
                 color: const Color(0xFF10B981),
               ),
             ),
@@ -501,9 +718,13 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   Widget _buildBudgetSection(ItineraryDetailEntity itin) {
-    final progress = itin.spentBudget / itin.estimatedBudget;
     final formatter = NumberFormat('#,###', 'vi_VN');
-    final bool isOverBudget = progress > 1.0;
+    final hasBudgetLimit = itin.estimatedBudget > 0;
+    final progress = hasBudgetLimit
+        ? (itin.spentBudget / itin.estimatedBudget).clamp(0.0, 1.0)
+        : 0.0;
+    final bool isOverBudget =
+        hasBudgetLimit && itin.spentBudget > itin.estimatedBudget;
     final overAmount = itin.spentBudget - itin.estimatedBudget;
 
     return Container(
@@ -528,11 +749,18 @@ class _ItinerarySummaryView extends StatelessWidget {
             children: [
               const Text(
                 'Ngân sách chuyến đi',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               if (isOverBudget)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(12),
@@ -540,9 +768,9 @@ class _ItinerarySummaryView extends StatelessWidget {
                   child: Text(
                     'Vượt ${formatter.format(overAmount)} ${itin.currency}',
                     style: const TextStyle(
-                      fontSize: 12, 
-                      color: Color(0xFFB91C1C), 
-                      fontWeight: FontWeight.bold
+                      fontSize: 12,
+                      color: Color(0xFFB91C1C),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -555,56 +783,109 @@ class _ItinerarySummaryView extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Dự kiến (Cho 4 người)', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  const Text(
+                    'Dự kiến',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                  ),
                   const SizedBox(height: 6),
                   Text(
-                    '${formatter.format(itin.estimatedBudget)} ${itin.currency}', 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1E3A8A))
+                    hasBudgetLimit
+                        ? '${formatter.format(itin.estimatedBudget)} ${itin.currency}'
+                        : 'Không giới hạn',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1E3A8A),
+                    ),
                   ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('Tổng chi tiêu', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  const Text(
+                    'Tổng chi tiêu',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                  ),
                   const SizedBox(height: 6),
                   Text(
-                    '${formatter.format(itin.spentBudget)} ${itin.currency}', 
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF334155))
+                    '${formatter.format(itin.spentBudget)} ${itin.currency}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF334155),
+                    ),
                   ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 20),
-          Stack(
-            children: [
-              Container(
-                height: 12,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
+          if (hasBudgetLimit)
+            Stack(
+              children: [
+                Container(
+                  height: 12,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
-              ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return Container(
-                    height: 12,
-                    width: constraints.maxWidth * (progress > 1 ? 1 : progress),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isOverBudget 
-                          ? [const Color(0xFFEF4444), const Color(0xFFF87171)] 
-                          : [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Container(
+                      height: 12,
+                      width: constraints.maxWidth * progress,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isOverBudget
+                              ? [
+                                  const Color(0xFFEF4444),
+                                  const Color(0xFFF87171),
+                                ]
+                              : [
+                                  const Color(0xFF3B82F6),
+                                  const Color(0xFF60A5FA),
+                                ],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  );
-                }
+                    );
+                  },
+                ),
+              ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-            ],
-          ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.all_inclusive_rounded,
+                    size: 18,
+                    color: Color(0xFF2563EB),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Không áp dụng giới hạn ngân sách cho chuyến đi này',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -612,14 +893,13 @@ class _ItinerarySummaryView extends StatelessWidget {
 
   Widget _buildActionBtn(BuildContext context, ItineraryDetailEntity itin) {
     final now = DateTime.now();
-    // Logic xét trạng thái dựa trên thời gian thực
-    final bool isPast = now.isAfter(itin.endDate);
+    // Logic xÃ©t tráº¡ng thÃ¡i dá»±a trÃªn thá»i gian thá»±c
     final bool isFuture = now.isBefore(itin.startDate);
-    
+
     String btnText = 'XEM CHI TIẾT LỊCH TRÌNH';
     Color btnColor = const Color(0xFF1E3A8A);
     IconData btnIcon = Icons.arrow_forward;
-    VoidCallback onPressed = () => _navigateToDetail(context, itin);
+    void onPressed() => _navigateToDetail(context, itin);
 
     if (isFuture) {
       btnText = 'BẮT ĐẦU LỊCH TRÌNH';
@@ -643,7 +923,9 @@ class _ItinerarySummaryView extends StatelessWidget {
           backgroundColor: btnColor,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 54),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           elevation: 0,
         ),
         child: Row(
@@ -668,7 +950,10 @@ class _ItinerarySummaryView extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          style: BorderStyle.solid,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -681,41 +966,60 @@ class _ItinerarySummaryView extends StatelessWidget {
                   color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.tips_and_updates_rounded, size: 20, color: Color(0xFFF59E0B)),
+                child: const Icon(
+                  Icons.tips_and_updates_rounded,
+                  size: 20,
+                  color: Color(0xFFF59E0B),
+                ),
               ),
               const SizedBox(width: 12),
               const Text(
                 'Ghi chú cho chuyến đi',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E293B),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          ...notes.map((note) => Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+          ...notes.map(
+            (note) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Icon(
+                      Icons.check_circle_outline,
+                      size: 14,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      note,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF475569),
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF3B82F6)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    note, 
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF475569), height: 1.5, fontWeight: FontWeight.w500)
-                  )
-                ),
-              ],
-            ),
-          )),
+          ),
         ],
       ),
     );
@@ -723,8 +1027,8 @@ class _ItinerarySummaryView extends StatelessWidget {
 
   Widget _buildCulinarySection(ItineraryDetailEntity itin) {
     final formatter = NumberFormat('#,###', 'vi_VN');
-    
-    // Tính tổng tất cả món ăn
+
+    // TÃ­nh tá»•ng táº¥t cáº£ món Äƒn
     double grandTotal = 0;
     for (var restaurant in itin.visitedRestaurants) {
       for (var dish in restaurant.dishes) {
@@ -751,7 +1055,7 @@ class _ItinerarySummaryView extends StatelessWidget {
           ...itin.visitedRestaurants.map((food) {
             return _CulinaryExpandableItem(food: food);
           }),
-          // Dòng tổng cộng chung
+          // DÃ²ng tá»•ng cá»™ng chung
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -785,11 +1089,11 @@ class _ItinerarySummaryView extends StatelessWidget {
     final now = DateTime.now();
     return ItineraryDetailEntity(
       id: 'mock_123',
-      title: 'Kỳ nghỉ Hè Phú Quốc 2024',
-      destination: 'Phú Quốc',
-      startDate: now.subtract(const Duration(days: 5)), 
-      endDate: now.subtract(const Duration(days: 1)), // Kết thúc ngày hôm qua
-      status: 'COMPLETED', // Để kiểm tra trạng thái Đánh giá
+      title: 'Ká»³ nghá»‰ HÃ¨ PhÃº Quá»‘c 2024',
+      destination: 'PhÃº Quá»‘c',
+      startDate: now.subtract(const Duration(days: 5)),
+      endDate: now.subtract(const Duration(days: 1)), // Káº¿t thÃºc ngÃ y hÃ´m qua
+      status: 'COMPLETED', // Äá»ƒ kiá»ƒm tra tráº¡ng thÃ¡i ÄÃ¡nh giÃ¡
       durationDays: 4,
       activitiesCount: 12,
       hotelsCount: 1,
@@ -807,11 +1111,11 @@ class _ItinerarySummaryView extends StatelessWidget {
           activities: [
             const ItineraryActivityEntity(
               id: 'a1',
-              title: 'Check-in VinWonders Phú Quốc',
+              title: 'Check-in VinWonders PhÃº Quá»‘c',
               startTime: '09:00',
               endTime: '12:00',
               locationName: 'VinWonders',
-              address: 'Gành Dầu, Phú Quốc',
+              address: 'GÃ nh Dáº§u, PhÃº Quá»‘c',
               imageUrl: '',
             ),
           ],
@@ -825,36 +1129,38 @@ class _ItinerarySummaryView extends StatelessWidget {
           activities: [
             const ItineraryActivityEntity(
               id: 'a2',
-              title: 'Lặn ngắm san hô Hòn Móng Tay',
+              title: 'Láº·n ngáº¯m san hÃ´ HÃ²n MÃ³ng Tay',
               startTime: '08:00',
               endTime: '11:00',
-              locationName: 'Hòn Móng Tay',
-              address: 'Phía Nam Đảo',
+              locationName: 'HÃ²n MÃ³ng Tay',
+              address: 'PhÃ­a Nam Äáº£o',
               imageUrl: '',
             ),
           ],
         ),
       ],
       notes: [
-        'Mang theo kem chống nắng và mũ rộng vành.',
-        'Đừng quên mang bằng lái xe để thuê xe máy.',
-        'Đặt trước vé Buffet ở VinWonders để được giá tốt.'
+        'Mang theo kem chá»‘ng náº¯ng vÃ  mÅ© rá»™ng vÃ nh.',
+        'Äá»«ng quÃªn mang báº±ng lÃ¡i xe đá»ƒ thuÃª xe mÃ¡y.',
+        'Äáº·t trÆ°á»›c vÃ© Buffet á»Ÿ VinWonders đá»ƒ đÆ°á»£c giÃ¡ tá»‘t.',
       ],
       visitedRestaurants: [
         const VisitedRestaurant(
-          name: 'Bún Quậy Kiến Xây',
-          imageUrl: 'https://images.unsplash.com/photo-1582878826629-29b7adcontent1?w=200&q=80',
+          name: 'BÃºn Quáº­y Kiáº¿n XÃ¢y',
+          imageUrl:
+              'https://images.unsplash.com/photo-1582878826629-29b7adcontent1?w=200&q=80',
           dishes: [
-            VisitedDish(name: 'Tô đặc biệt', price: 65000, quantity: 2),
-            VisitedDish(name: 'Nước mía', price: 10000, quantity: 2),
+            VisitedDish(name: 'TÃ´ đáº·c biá»‡t', price: 65000, quantity: 2),
+            VisitedDish(name: 'NÆ°á»›c mÃ­a', price: 10000, quantity: 2),
           ],
         ),
         const VisitedRestaurant(
-          name: 'Hải Sản Xin Chào',
-          imageUrl: 'https://images.unsplash.com/photo-1551733938-466a382CONTENT3?w=200&q=80',
+          name: 'Háº£i Sáº£n Xin ChÃ o',
+          imageUrl:
+              'https://images.unsplash.com/photo-1551733938-466a382CONTENT3?w=200&q=80',
           dishes: [
-            VisitedDish(name: 'Tôm hùm nướng cốt', price: 1200000, quantity: 1),
-            VisitedDish(name: 'Nghêu hấp sả', price: 120000, quantity: 1),
+            VisitedDish(name: 'TÃ´m hÃ¹m nÆ°á»›ng cá»‘t', price: 1200000, quantity: 1),
+            VisitedDish(name: 'NghÃªu háº¥p sáº£', price: 120000, quantity: 1),
           ],
         ),
       ],
@@ -862,12 +1168,16 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   void _navigateToDetail(BuildContext context, ItineraryDetailEntity itin) {
-    final cubit = context.read<ItineraryCubit>();
+    final itinCubit = context.read<ItineraryCubit>();
+    final trackingCubit = context.read<TrackingCubit>();
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: cubit,
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: itinCubit),
+            BlocProvider.value(value: trackingCubit),
+          ],
           child: ItineraryDetailScreen(
             itineraryId: itin.id,
             initialDetail: itin,
@@ -877,15 +1187,68 @@ class _ItinerarySummaryView extends StatelessWidget {
     );
   }
 
-  IconData _getIconForDay(int day) {
-    switch (day) {
-      case 1: return Icons.flight_land_outlined;
-      case 2: return Icons.camera_alt_outlined;
-      case 3: return Icons.restaurant_outlined;
-      case 4: return Icons.shopping_bag_outlined;
-      default: return Icons.explore_outlined;
-    }
+  bool _isHotelStart(ItineraryActivityEntity activity) {
+    final category = (activity.category ?? '').toLowerCase();
+    final title = activity.title.toLowerCase();
+    final sameTime = activity.startTime == activity.endTime;
+    return sameTime &&
+        (category.contains('lưu trú') ||
+            category.contains('khách sạn') ||
+            category.contains('hotel') ||
+            title.contains('hotel') ||
+            title.contains('khách sạn'));
   }
+
+  List<ItineraryActivityEntity> _visitActivities(ItineraryDayEntity day) {
+    return day.activities.where((activity) => !_isHotelStart(activity)).toList();
+  }
+
+  ItineraryActivityEntity? _firstVisitActivity(ItineraryDayEntity day) {
+    final visits = _visitActivities(day);
+    return visits.isEmpty ? null : visits.first;
+  }
+
+  String _shortDayTitle(ItineraryDayEntity day) {
+    final firstVisit = _firstVisitActivity(day);
+    final visitCount = _visitActivities(day).length;
+    if (firstVisit == null) return 'Chưa có điểm tham quan';
+    return '$visitCount điểm tham quan • ${firstVisit.title}';
+  }
+
+  IconData _shortDayIcon(ItineraryDayEntity day) {
+    final firstVisit = _firstVisitActivity(day);
+    if (firstVisit == null) return Icons.event_note_rounded;
+    return _getIconForCategory(firstVisit);
+  }
+
+  int _uniqueHotelCount(ItineraryDetailEntity itin) {
+    final hotels = <String>{};
+    for (final day in itin.days) {
+      for (final activity in day.activities.where(_isHotelStart)) {
+        final key = activity.placeId?.isNotEmpty == true
+            ? activity.placeId!
+            : activity.title.toLowerCase();
+        hotels.add(key);
+      }
+    }
+    if (hotels.isNotEmpty) return hotels.length;
+    return itin.hotelsCount > 0 ? 1 : 0;
+  }
+
+  IconData _getIconForCategory(ItineraryActivityEntity activity) {
+    final category = (activity.category ?? '').toLowerCase();
+    if (category.contains('ẩm thực') || category.contains('restaurant')) {
+      return Icons.restaurant_rounded;
+    }
+    if (category.contains('giải trí') || category.contains('vui chơi')) {
+      return Icons.attractions_rounded;
+    }
+    if (category.contains('thể thao') || category.contains('thư giãn')) {
+      return Icons.spa_rounded;
+    }
+    return Icons.place_rounded;
+  }
+
 }
 
 class _StatCardV2 extends StatelessWidget {
@@ -931,12 +1294,20 @@ class _StatCardV2 extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1E293B),
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -949,7 +1320,8 @@ class _CulinaryExpandableItem extends StatefulWidget {
   const _CulinaryExpandableItem({required this.food});
 
   @override
-  State<_CulinaryExpandableItem> createState() => _CulinaryExpandableItemState();
+  State<_CulinaryExpandableItem> createState() =>
+      _CulinaryExpandableItemState();
 }
 
 class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
@@ -979,7 +1351,11 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
                     color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF2563EB), size: 22),
+                  child: const Icon(
+                    Icons.restaurant_menu_rounded,
+                    color: Color(0xFF2563EB),
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -999,14 +1375,28 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
                         children: [
                           Text(
                             '${widget.food.dishes.length} món',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          Container(width: 3, height: 3, decoration: const BoxDecoration(color: Color(0xFFCBD5E1), shape: BoxShape.circle)),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFCBD5E1),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             '${formatter.format(subTotal)} đ',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF2563EB),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -1040,11 +1430,18 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
                     children: [
                       Text(
                         dish.name,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF334155),
+                        ),
                       ),
                       Text(
                         '${formatter.format(dish.price)} đ x ${dish.quantity}',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ],
                   ),
@@ -1060,3 +1457,5 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
     );
   }
 }
+
+

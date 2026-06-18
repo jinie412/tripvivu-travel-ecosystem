@@ -1,7 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'see_all_screen.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
@@ -9,13 +10,17 @@ import 'package:travel_advisor_mobile/core/widgets/page_dots.dart';
 import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart' as city_cards;
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart'
+    as city_cards;
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/screens/paginated_see_all_screen.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/current_itinerary_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/explore_header.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_itinerary_card.dart';
@@ -40,7 +45,10 @@ class ExploreScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<ExploreCubit>()..loadData()),
-        BlocProvider(create: (_) => sl<NotificationCubit>()..loadNotifications()),
+        BlocProvider(
+          create: (_) => sl<NotificationCubit>()..loadNotifications(),
+        ),
+        BlocProvider(create: (_) => sl<LocationCubit>()..fetchLocation()),
       ],
       child: const _ExploreView(),
     );
@@ -55,6 +63,7 @@ class _ExploreView extends StatefulWidget {
 }
 
 class _ExploreViewState extends State<_ExploreView> {
+  static const int _pageSize = 10;
   int _suggestionPage = 0;
   int _activityPage = 0;
   int _restaurantPage = 0;
@@ -75,7 +84,9 @@ class _ExploreViewState extends State<_ExploreView> {
     if (value) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Chế độ hành trình đã bật. Hệ thống sẽ tự động gợi ý món ăn khi bạn đến gần điểm dừng.'),
+          content: Text(
+            'Chế độ hành trình đã bật. Hệ thống sẽ tự động gợi ý món ăn khi bạn đến gần điểm dừng.',
+          ),
           duration: Duration(seconds: 3),
         ),
       );
@@ -93,7 +104,8 @@ class _ExploreViewState extends State<_ExploreView> {
     }
 
     final exploreState = context.read<ExploreCubit>().state;
-    if (exploreState is! ExploreLoaded || exploreState.currentItinerary == null) {
+    if (exploreState is! ExploreLoaded ||
+        exploreState.currentItinerary == null) {
       return;
     }
 
@@ -131,13 +143,16 @@ class _ExploreViewState extends State<_ExploreView> {
 
     OrderPopupData popupData;
     try {
-      popupData = await sl<FoodRemoteDataSource>().getOrderPopup(currentPlace.placeId);
+      popupData = await sl<FoodRemoteDataSource>().getOrderPopup(
+        currentPlace.placeId,
+      );
     } catch (_) {
       popupData = OrderPopupData(
         placeId: currentPlace.placeId,
         placeName: currentPlace.placeName,
         title: 'Gợi ý cho bạn',
-        message: 'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
+        message:
+            'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
         estimatedWaitMinutes: 20,
         rating: 0,
         reviewCount: 0,
@@ -201,26 +216,163 @@ class _ExploreViewState extends State<_ExploreView> {
 
   void _showTripCompletionPopup() {
     final exploreState = context.read<ExploreCubit>().state;
-    if (exploreState is! ExploreLoaded || exploreState.currentItinerary == null) {
+    if (exploreState is! ExploreLoaded ||
+        exploreState.currentItinerary == null) {
       return;
     }
 
     final itinerary = exploreState.currentItinerary!;
 
-    sl<ReviewRepository>().getPopupData(itinerary.id).then((popupData) {
-      if (!mounted || !popupData.showPopup) {
-        return;
-      }
+    sl<ReviewRepository>()
+        .getPopupData(itinerary.id)
+        .then((popupData) {
+          if (!mounted || !popupData.showPopup) {
+            return;
+          }
 
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (context) => ItineraryRatingPopup(
-          itineraryId: popupData.itineraryId,
-          itineraryTitle: popupData.itineraryTitle,
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) => ItineraryRatingPopup(
+              itineraryId: popupData.itineraryId,
+              itineraryTitle: popupData.itineraryTitle,
+            ),
+          );
+        })
+        .catchError((_) {});
+  }
+
+  ExploreLoaded? get _loadedState {
+    final s = context.read<ExploreCubit>().state;
+    return s is ExploreLoaded ? s : null;
+  }
+
+  Future<void> _openSuggestionSeeAll() async {
+    final initial = _loadedState?.suggestions ?? const <TripSuggestion>[];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaginatedSeeAllScreen<TripSuggestion>(
+          title: 'Lịch trình gợi ý',
+          pageSize: _pageSize,
+          initialItems: initial,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadSuggestionsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider<ItineraryCubit>(
+                    create: (_) => sl<ItineraryCubit>()..loadData(),
+                    child: ItinerarySummaryScreen(itineraryId: item.id),
+                  ),
+                ),
+              );
+            },
+            child: HomeItineraryCard(item: item),
+          ),
         ),
-      );
-    }).catchError((_) {});
+      ),
+    );
+  }
+
+  Future<void> _openDestinationSeeAll() async {
+    final initial = _loadedState?.destinations ?? const <Destination>[];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaginatedSeeAllScreen<Destination>(
+          title: 'Điểm đến nổi bật',
+          pageSize: _pageSize,
+          initialItems: initial,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadDestinationsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CityDetailScreen(
+                    cityId: item.id,
+                    cityName: item.name,
+                  ),
+                ),
+              );
+            },
+            child: ActivityVerticalCard(
+              item: CityActivity(
+                id: item.id,
+                name: item.name,
+                imageUrl: item.imageUrl ?? '',
+                rating: 4.5,
+                reviewCount: 120,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRestaurantSeeAll() async {
+    final initial = _loadedState?.restaurants ?? const <CityRestaurant>[];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaginatedSeeAllScreen<CityRestaurant>(
+          title: 'Nhà hàng tiêu biểu',
+          pageSize: _pageSize,
+          initialItems: initial,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadRestaurantsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) => sl<PlaceDetailCubit>(),
+                    child: PlaceDetailScreen(placeId: item.id),
+                  ),
+                ),
+              );
+            },
+            child: RestaurantVerticalCard(item: item),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openHotelSeeAll() async {
+    final initial = _loadedState?.hotels ?? const <CityHotel>[];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaginatedSeeAllScreen<CityHotel>(
+          title: 'Khách sạn nổi bật',
+          pageSize: _pageSize,
+          initialItems: initial,
+          pageLoader: (page, limit) =>
+              context.read<ExploreCubit>().loadHotelsPage(page: page, limit: limit),
+          itemBuilder: (context, item) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (_) => sl<PlaceDetailCubit>(),
+                    child: PlaceDetailScreen(placeId: item.id),
+                  ),
+                ),
+              );
+            },
+            child: HotelVerticalCard(item: item),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -250,6 +402,12 @@ class _ExploreViewState extends State<_ExploreView> {
   }
 
   Widget _buildContent(BuildContext context, ExploreLoaded state) {
+    final screenW = MediaQuery.of(context).size.width;
+    final suggestionCardH  = screenW * 0.88 * (9 / 16) + 100;
+    final destinationCardH = screenW * 0.35 * (1 / 1)  + 64;
+    final restaurantCardH  = screenW * 0.45 * (3 / 4)  + 80;
+    final hotelCardH       = screenW * 0.45 * (3 / 4)  + 100;
+
     return CustomScrollView(
       slivers: [
         if (state.currentItinerary != null)
@@ -279,39 +437,13 @@ class _ExploreViewState extends State<_ExploreView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                SectionHeader(title: 'Lịch trình gợi ý', onSeeAll: () {
-                  final items = state.allSuggestions.map((item) => CityItinerary(
-                    id: item.id,
-                    title: item.title,
-                    authorName: item.authorName,
-                    authorAvatar: item.authorAvatar.isNotEmpty
-                        ? item.authorAvatar
-                        : 'https://i.pravatar.cc/100?u=${item.id}',
-                    imageUrl: item.imageUrl ?? '',
-                    duration: item.days.toLowerCase(),
-                    views: item.views,
-                    likes: item.likes,
-                  )).toList();
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => SeeAllScreen(
-                      title: 'Lịch trình gợi ý',
-                      items: items.map((item) => GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => BlocProvider<ItineraryCubit>(
-                              create: (_) => sl<ItineraryCubit>()..loadData(),
-                              child: ItinerarySummaryScreen(itineraryId: item.id),
-                            ),
-                          ));
-                        },
-                        child: ItineraryVerticalCard(item: item),
-                      )).toList(),
-                    ),
-                  ));
-                }),
+                SectionHeader(
+                  title: 'Lịch trình gợi ý',
+                  onSeeAll: () => _openSuggestionSeeAll(),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 268,
+                  height: suggestionCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.88),
                     padEnds: false,
@@ -321,15 +453,24 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.suggestions[i];
                       return Padding(
-                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 16 : 0,
+                          right: 12,
+                        ),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BlocProvider<ItineraryCubit>(
-                                create: (_) => sl<ItineraryCubit>()..loadData(),
-                                child: ItinerarySummaryScreen(itineraryId: item.id),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlocProvider<ItineraryCubit>(
+                                  create: (_) =>
+                                      sl<ItineraryCubit>()..loadData(),
+                                  child: ItinerarySummaryScreen(
+                                    itineraryId: item.id,
+                                  ),
+                                ),
                               ),
-                            ));
+                            );
                           },
                           child: HomeItineraryCard(item: item),
                         ),
@@ -337,7 +478,10 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.suggestions.take(5).length, current: _suggestionPage),
+                PageDots(
+                  count: state.suggestions.take(5).length,
+                  current: _suggestionPage,
+                ),
               ],
             ),
           ),
@@ -349,34 +493,13 @@ class _ExploreViewState extends State<_ExploreView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                SectionHeader(title: 'Điểm đến nổi bật', onSeeAll: () {
-                  final items = state.allDestinations.map((item) => CityActivity(
-                    id: item.id,
-                    name: item.name,
-                    imageUrl: item.imageUrl ?? '',
-                    rating: 4.5,
-                    reviewCount: 120,
-                  )).toList();
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => SeeAllScreen(
-                      title: 'Điểm đến nổi bật',
-                      items: items.map((item) => GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => CityDetailScreen(
-                              cityId: item.id,
-                              cityName: item.name,
-                            ),
-                          ));
-                        },
-                        child: ActivityVerticalCard(item: item),
-                      )).toList(),
-                    ),
-                  ));
-                }),
+                SectionHeader(
+                  title: 'Điểm đến nổi bật',
+                  onSeeAll: () => _openDestinationSeeAll(),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 168,
+                  height: destinationCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.35),
                     padEnds: false,
@@ -386,15 +509,21 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.destinations[i];
                       return Padding(
-                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 16 : 0,
+                          right: 12,
+                        ),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => CityDetailScreen(
-                                cityId: item.id,
-                                cityName: item.name,
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CityDetailScreen(
+                                  cityId: item.id,
+                                  cityName: item.name,
+                                ),
                               ),
-                            ));
+                            );
                           },
                           child: city_cards.ActivityCard(
                             item: CityActivity(
@@ -410,7 +539,10 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.destinations.take(5).length, current: _activityPage),
+                PageDots(
+                  count: state.destinations.take(5).length,
+                  current: _activityPage,
+                ),
               ],
             ),
           ),
@@ -422,27 +554,13 @@ class _ExploreViewState extends State<_ExploreView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                SectionHeader(title: 'Nhà hàng tiêu biểu', onSeeAll: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => SeeAllScreen(
-                      title: 'Nhà hàng tiêu biểu',
-                      items: state.allRestaurants.map((item) => GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (_) => sl<PlaceDetailCubit>(),
-                              child: PlaceDetailScreen(placeId: item.id),
-                            ),
-                          ));
-                        },
-                        child: RestaurantVerticalCard(item: item),
-                      )).toList(),
-                    ),
-                  ));
-                }),
+                SectionHeader(
+                  title: 'Nhà hàng tiêu biểu',
+                  onSeeAll: () => _openRestaurantSeeAll(),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 185,
+                  height: restaurantCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.45),
                     padEnds: false,
@@ -452,15 +570,21 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.restaurants[i];
                       return Padding(
-                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 16 : 0,
+                          right: 12,
+                        ),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BlocProvider(
-                                create: (_) => sl<PlaceDetailCubit>(),
-                                child: PlaceDetailScreen(placeId: item.id),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlocProvider(
+                                  create: (_) => sl<PlaceDetailCubit>(),
+                                  child: PlaceDetailScreen(placeId: item.id),
+                                ),
                               ),
-                            ));
+                            );
                           },
                           child: city_cards.RestaurantCard(item: item),
                         ),
@@ -468,7 +592,11 @@ class _ExploreViewState extends State<_ExploreView> {
                     },
                   ),
                 ),
-                PageDots(count: state.restaurants.take(5).length, current: _restaurantPage),
+                const SizedBox(height: 4),
+                PageDots(
+                  count: state.restaurants.take(5).length,
+                  current: _restaurantPage,
+                ),
               ],
             ),
           ),
@@ -480,27 +608,13 @@ class _ExploreViewState extends State<_ExploreView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                SectionHeader(title: 'Khách sạn nổi bật', onSeeAll: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => SeeAllScreen(
-                      title: 'Khách sạn nổi bật',
-                      items: state.allHotels.map((item) => GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (_) => sl<PlaceDetailCubit>(),
-                              child: PlaceDetailScreen(placeId: item.id),
-                            ),
-                          ));
-                        },
-                        child: HotelVerticalCard(item: item),
-                      )).toList(),
-                    ),
-                  ));
-                }),
+                SectionHeader(
+                  title: 'Khách sạn nổi bật',
+                  onSeeAll: () => _openHotelSeeAll(),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 185,
+                  height: hotelCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.45),
                     padEnds: false,
@@ -510,33 +624,41 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.hotels[i];
                       return Padding(
-                        padding: EdgeInsets.only(left: i == 0 ? 16 : 0, right: 12),
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 16 : 0,
+                          right: 12,
+                        ),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => BlocProvider(
-                                create: (_) => sl<PlaceDetailCubit>(),
-                                child: PlaceDetailScreen(placeId: item.id),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlocProvider(
+                                  create: (_) => sl<PlaceDetailCubit>(),
+                                  child: PlaceDetailScreen(placeId: item.id),
+                                ),
                               ),
-                            ));
+                            );
                           },
-                          child: city_cards.HotelCard(
-                            item: item,
-                          ),
+                          child: city_cards.HotelCard(item: item),
                         ),
                       );
                     },
                   ),
                 ),
-                PageDots(count: state.hotels.take(5).length, current: _hotelPage),
+                const SizedBox(height: 10),
+                PageDots(
+                  count: state.hotels.take(5).length,
+                  current: _hotelPage,
+                ),
               ],
             ),
           ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        SliverToBoxAdapter(
+          child: SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+        ),
       ],
     );
   }
 }
-
-

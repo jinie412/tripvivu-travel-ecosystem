@@ -51,6 +51,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            // Tắt R8/shrink: Mapbox + androidx.window tham chiếu vài class tùy chọn
+            // không có trên classpath -> R8 fail. Bản test không cần minify.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")

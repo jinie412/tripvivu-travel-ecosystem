@@ -6,6 +6,8 @@ import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_state.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/screens/search_screen.dart';
 
 class ExploreHeader extends StatelessWidget {
@@ -57,9 +59,37 @@ class ExploreHeader extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSizes.s2),
-                    Text(
-                      'QUẬN 1, HỒ CHÍ MINH',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    BlocBuilder<LocationCubit, LocationState>(
+                      builder: (context, state) {
+                        String text;
+                        if (state is LocationLoaded) {
+                          text = state.location.displayText;
+                        } else if (state is LocationLoading) {
+                          text = 'ĐANG LẤY VỊ TRÍ...';
+                        } else if (state is LocationError) {
+                          text = state.permissionDenied
+                              ? 'NHẤN ĐỂ CẤP QUYỀN VỊ TRÍ'
+                              : 'NHẤN ĐỂ THỬ LẠI';
+                        } else {
+                          text = 'ĐANG LẤY VỊ TRÍ...';
+                        }
+                        return GestureDetector(
+                          onTap: state is LocationError
+                              ? () =>
+                                  context.read<LocationCubit>().fetchLocation()
+                              : null,
+                          child: Text(
+                            text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

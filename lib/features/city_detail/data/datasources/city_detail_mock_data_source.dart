@@ -445,12 +445,19 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
   }
 
   Map<String, dynamic> _normalizeHotel(Map<String, dynamic> item) {
+    final normalizedAddress = _readString(item['address']).isNotEmpty
+      ? _readString(item['address'])
+      : (_readString(item['city']).isNotEmpty
+        ? _readString(item['city'])
+        : _readString(item['location']));
+
     return {
       'id': _readString(item['id']),
       'name': _readString(item['name']),
       'imageUrl': _readImageUrl(item),
       'rating': _readDouble(item['rating'] ?? item['average_rating']),
       'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': normalizedAddress,
       'price': _readString(item['price']).isNotEmpty
           ? _readString(item['price'])
           : 'Liên hệ',

@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:app_links/app_links.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'core/di/injection_container.dart';
@@ -26,6 +30,10 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
   await initializeDateFormatting('vi_VN', null);
+  // AlarmManager chỉ hỗ trợ Android — guard để không crash trên iOS/web.
+  if (!kIsWeb && Platform.isAndroid) {
+    await AndroidAlarmManager.initialize();
+  }
   await initDependencies();
   
   // ✅ KHỞI TẠO MAPBOX SDK
@@ -104,6 +112,16 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
       title: 'GP Travel Advisor',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      locale: const Locale('vi'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi'),
+        Locale('en'),
+      ],
       home: kSkipLogin ? const MainShell() : const LoginScreen(),
       routes: {
         '/home': (context) => const MainShell(),

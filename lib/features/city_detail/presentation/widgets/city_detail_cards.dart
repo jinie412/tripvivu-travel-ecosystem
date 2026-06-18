@@ -152,25 +152,28 @@ class ActivityCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 112,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 1 / 1,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -207,27 +210,31 @@ class RestaurantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -256,6 +263,21 @@ class RestaurantCard extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 3),
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                item.address.trim().isEmpty ? 'Đang cập nhật địa chỉ' : item.address,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -278,34 +300,37 @@ class HotelCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
+        AspectRatio(
+          aspectRatio: 4 / 3,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
+                ),
               ),
-            ),
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: LikeButton(size: 16),
-            ),
-          ],
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: LikeButton(size: 16),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           item.name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
             const Icon(Icons.star, color: Colors.amber, size: 14),
@@ -325,21 +350,40 @@ class HotelCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 1),
         RichText(
           text: TextSpan(
             style: const TextStyle(color: Colors.black, fontSize: 13),
             children: [
+              const TextSpan(
+                text: 'Từ ',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
               TextSpan(
                 text: item.price,
                 style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
-              TextSpan(
-                text: ' / đêm',
-                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              const TextSpan(
+                text: '/đêm',
+                style: TextStyle(color: Colors.grey, fontSize: 11),
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 3),
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                item.address,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ],
     );

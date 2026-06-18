@@ -7,9 +7,10 @@ import 'register_screen.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
-import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
+import 'package:travel_advisor_mobile/core/utils/reload.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
@@ -60,8 +61,11 @@ class _LoginViewState extends State<_LoginView> {
           // Lưu tokens sau khi login thành công
           // Token được parse bởi datasource và lưu vào SecureStorage
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
+            if (!context.mounted) return;
+            Navigator.pushReplacementNamed(context, '/home');
+            // Web cần reload để flush auth state trong browser storage
+            if (kIsWeb) {
+              Future.delayed(const Duration(milliseconds: 100), reloadPage);
             }
           });
         } else if (state is AuthError) {

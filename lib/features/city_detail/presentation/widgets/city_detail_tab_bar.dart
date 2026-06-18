@@ -15,7 +15,7 @@ class CityDetailTabBar extends StatelessWidget {
   final List<Map<String, dynamic>> tabs = const [
     {'icon': Icons.menu_book_outlined, 'label': 'Tổng quan'},
     {'icon': Icons.map_outlined, 'label': 'Lịch trình'},
-    {'icon': Icons.camera_alt_outlined, 'label': 'Hoạt động tham quan'},
+    {'icon': Icons.camera_alt_outlined, 'label': 'Hoạt động tham quan & giải trí'},
     {'icon': Icons.restaurant_outlined, 'label': 'Nhà hàng'},
     {'icon': Icons.apartment_outlined, 'label': 'Khách sạn'},
   ];

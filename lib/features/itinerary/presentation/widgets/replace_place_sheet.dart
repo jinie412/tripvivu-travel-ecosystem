@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
@@ -6,159 +7,28 @@ import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
-// ─── Internal data model ──────────────────────────────────────────────────────
-
-class _PlaceSuggestion {
-  final String id;
-  final String name;
-  final String address;
-  final String category;
-  final double rating;
-  final int reviewCount;
-  final double? price;
-  final bool isFree;
-  final String imageUrl;
-  final List<String> tags;
-  final double? distanceKm;
-  final bool isFeatured;
-
-  const _PlaceSuggestion({
-    required this.id,
-    required this.name,
-    required this.address,
-    required this.category,
-    required this.rating,
-    required this.reviewCount,
-    this.price,
-    this.isFree = false,
-    required this.imageUrl,
-    this.tags = const [],
-    this.distanceKm,
-    this.isFeatured = false,
-  });
-}
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const _kSuggestions = [
-  _PlaceSuggestion(
-    id: 'p1',
-    name: 'Cầu Vàng Bà Nà Hills',
-    address: 'Bà Nà Hills, Đà Nẵng',
-    category: 'Tham quan',
-    rating: 4.9,
-    reviewCount: 12800,
-    price: 750000,
-    imageUrl: 'https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?w=600&q=80',
-    tags: ['Cùng danh mục', 'Được đánh giá cao'],
-    distanceKm: 3.2,
-    isFeatured: true,
-  ),
-  _PlaceSuggestion(
-    id: 'p2',
-    name: 'Ngũ Hành Sơn',
-    address: 'Quận Ngũ Hành Sơn, Đà Nẵng',
-    category: 'Tham quan',
-    rating: 4.7,
-    reviewCount: 8500,
-    price: 40000,
-    imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80',
-    tags: ['Cùng danh mục', 'Gần khu vực'],
-    distanceKm: 1.8,
-    isFeatured: true,
-  ),
-  _PlaceSuggestion(
-    id: 'p3',
-    name: 'Bảo tàng Mỹ Thuật Đà Nẵng',
-    address: '78 Lê Duẩn, Hải Châu, Đà Nẵng',
-    category: 'Tham quan',
-    rating: 4.4,
-    reviewCount: 2100,
-    isFree: true,
-    imageUrl: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&q=80',
-    tags: ['Cùng danh mục', 'Miễn phí'],
-    distanceKm: 0.5,
-    isFeatured: true,
-  ),
-  _PlaceSuggestion(
-    id: 'p4',
-    name: 'Mì Quảng Bà Mua',
-    address: '19-21 Trần Bình Trọng, Đà Nẵng',
-    category: 'Ăn uống',
-    rating: 4.6,
-    reviewCount: 3200,
-    price: 60000,
-    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&q=80',
-    tags: ['Phổ biến', 'Ẩm thực địa phương'],
-    distanceKm: 1.2,
-  ),
-  _PlaceSuggestion(
-    id: 'p5',
-    name: 'Chùa Linh Ứng Sơn Trà',
-    address: 'Bán đảo Sơn Trà, Đà Nẵng',
-    category: 'Tham quan',
-    rating: 4.8,
-    reviewCount: 15000,
-    isFree: true,
-    imageUrl: 'https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?w=600&q=80',
-    tags: ['Cùng danh mục', 'Miễn phí', 'Phổ biến'],
-    distanceKm: 5.5,
-  ),
-  _PlaceSuggestion(
-    id: 'p6',
-    name: 'Khu vui chơi Sun World',
-    address: 'Bà Nà Hills, Đà Nẵng',
-    category: 'Giải trí',
-    rating: 4.7,
-    reviewCount: 20000,
-    price: 850000,
-    imageUrl: 'https://images.unsplash.com/photo-1531804055935-76f44d7c3621?w=600&q=80',
-    tags: ['Giải trí', 'Gia đình'],
-    distanceKm: 4.0,
-  ),
-  _PlaceSuggestion(
-    id: 'p7',
-    name: 'Chợ Cồn Đà Nẵng',
-    address: 'Ông Ích Khiêm, Hải Châu, Đà Nẵng',
-    category: 'Mua sắm',
-    rating: 4.2,
-    reviewCount: 1800,
-    isFree: true,
-    imageUrl: 'https://images.unsplash.com/photo-1555636222-cae831e670b3?w=600&q=80',
-    tags: ['Mua sắm', 'Ẩm thực'],
-    distanceKm: 0.8,
-  ),
-  _PlaceSuggestion(
-    id: 'p8',
-    name: 'Công viên APEC',
-    address: 'Đường 2/9, Hải Châu, Đà Nẵng',
-    category: 'Tham quan',
-    rating: 4.3,
-    reviewCount: 900,
-    isFree: true,
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80',
-    tags: ['Cùng danh mục', 'Gần khu vực'],
-    distanceKm: 0.3,
-  ),
-];
+import '../../data/datasources/nearby_places_api.dart';
 
 
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
 class ReplacePlaceSheet extends StatefulWidget {
   final ItineraryActivityEntity currentActivity;
-  final Function(String placeId, String placeName) onReplace;
+  final Function(NearbyPlaceModel place) onReplace;
+  final List<String>? existingIds;
 
   const ReplacePlaceSheet({
     super.key,
     required this.currentActivity,
     required this.onReplace,
+    this.existingIds,
   });
 
   static void show(
     BuildContext context, {
     required ItineraryActivityEntity activity,
-    required Function(String placeId, String placeName) onReplace,
+    required Function(NearbyPlaceModel place) onReplace,
+    List<String>? existingIds,
   }) {
     showModalBottomSheet(
       context: context,
@@ -167,6 +37,7 @@ class ReplacePlaceSheet extends StatefulWidget {
       builder: (_) => ReplacePlaceSheet(
         currentActivity: activity,
         onReplace: onReplace,
+        existingIds: existingIds,
       ),
     );
   }
@@ -179,18 +50,57 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
-  List<_PlaceSuggestion> get _listItems {
-    return _kSuggestions.where((p) {
-      return _searchQuery.isEmpty ||
-          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          p.address.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+
+  bool _isLoading = true;
+  List<NearbyPlaceModel> _sameCategoryPlaces = [];
+  List<NearbyPlaceModel> _otherPlaces = [];
+
+  List<NearbyPlaceModel> _applySearch(List<NearbyPlaceModel> list) {
+    if (_searchQuery.isEmpty) return list;
+    final q = _searchQuery.toLowerCase();
+    return list
+        .where((p) =>
+            p.name.toLowerCase().contains(q) ||
+            p.address.toLowerCase().contains(q))
+        .toList();
   }
+
+  List<NearbyPlaceModel> get _filteredSame => _applySearch(_sameCategoryPlaces);
+  List<NearbyPlaceModel> get _filteredOthers => _applySearch(_otherPlaces);
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    _loadNearbyPlaces();
+  }
+
+  Future<void> _loadNearbyPlaces() async {
+    try {
+      final lat = widget.currentActivity.latitude ?? 16.047079;
+      final lng = widget.currentActivity.longitude ?? 108.206230;
+      final places = await NearbyPlacesApi.getNearbyPlaces(
+        lat,
+        lng,
+        excludeIds: widget.existingIds,
+        preferCategory: widget.currentActivity.category,
+        radius: 10,
+      );
+
+      if (mounted) {
+        setState(() {
+          _sameCategoryPlaces = places.where((p) => p.isSameCategory).toList();
+          _otherPlaces = places.where((p) => !p.isSameCategory).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _onSearchChanged() {
@@ -226,15 +136,106 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     return const Color(0xFF8B5CF6);
   }
 
-  void _onSelect(_PlaceSuggestion place) {
-    widget.onReplace(place.id, place.name);
+  void _onSelect(NearbyPlaceModel place) async {
+    // Validate opening hours dựa theo giờ hiện tại của activity đang thay thế
+    if (place.openHourCompressed != null) {
+      final slot = _openSlotForDay(
+          place.openHourCompressed!, DateTime.now());
+      final hoursStr = slot != null ? '${slot.$1} – ${slot.$2}' : 'không xác định';
+      final outside = slot != null
+          ? !_isWithinHours(widget.currentActivity.startTime, slot.$1, slot.$2)
+          : false;
+      if (outside) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.r16)),
+            title: const Text('Ngoài giờ mở cửa',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            content: Text(
+              '"${place.name}" mở cửa từ $hoursStr.\n\n'
+              'Thời gian tham quan dự kiến ${widget.currentActivity.startTime} '
+              'nằm ngoài khung giờ mở cửa. Bạn có muốn tiếp tục thay thế không?',
+              style: const TextStyle(height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy',
+                    style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColorsExt.warning,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.r8)),
+                  elevation: 0,
+                ),
+                child: const Text('Tiếp tục thay thế',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true || !mounted) return;
+      }
+    }
+
+    widget.onReplace(place);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Đã thay thế bằng "${place.name}"'),
         backgroundColor: AppColorsExt.success,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r12)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.r12)),
+      ),
+    );
+  }
+
+  (String, String)? _openSlotForDay(String jsonStr, DateTime date) {
+    try {
+      const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      final Map<String, dynamic> map = jsonDecode(jsonStr);
+      final slots = map[dayNames[date.weekday - 1]] as List?;
+      if (slots == null || slots.isEmpty) return null;
+      final slot = slots[0] as List;
+      return ((slot[0] as String).substring(0, 5), (slot[1] as String).substring(0, 5));
+    } catch (_) { return null; }
+  }
+
+  bool _isWithinHours(String time, String openTime, String closeTime) {
+    int toMins(String t) {
+      final p = t.split(':');
+      return int.parse(p[0]) * 60 + int.parse(p[1]);
+    }
+    final t = toMins(time);
+    final o = toMins(openTime);
+    final c = toMins(closeTime);
+    return c >= o ? (t >= o && t <= c) : (t >= o || t <= c);
+  }
+
+  Widget _buildList(List<NearbyPlaceModel> places) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
+      itemCount: places.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSizes.s12),
+      itemBuilder: (_, i) => _ListCard(
+        place: places[i],
+        onSelect: () => _onSelect(places[i]),
+        fmt: _fmt,
+        fmtPrice: _fmtPrice,
+        tagColor: _tagColor,
       ),
     );
   }
@@ -268,41 +269,56 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                 onClose: () => Navigator.pop(context),
               ),
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _SectionTitle(
-                      icon: Icons.auto_awesome_rounded,
-                      iconColor: AppColorsExt.warning,
-                      title: _searchQuery.isNotEmpty
-                          ? 'Kết quả tìm kiếm (${_listItems.length})'
-                          : 'Gợi ý',
-                    ),
-                    if (_listItems.isEmpty)
-                      _EmptyState(isSearching: _searchQuery.isNotEmpty)
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
-                        itemCount: _listItems.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: AppSizes.s12),
-                        itemBuilder: (_, i) => _ListCard(
-                          place: _listItems[i],
-                          onSelect: () => _onSelect(_listItems[i]),
-                          fmt: _fmt,
-                          fmtPrice: _fmtPrice,
-                          tagColor: _tagColor,
+                child: Builder(builder: (_) {
+                  final samePlaces = _filteredSame;
+                  final otherPlaces = _filteredOthers;
+                  final totalSearch = samePlaces.length + otherPlaces.length;
+
+                  return ListView(
+                    controller: scrollController,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      if (_isLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(AppSizes.s32),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_searchQuery.isNotEmpty) ...[
+                        _SectionTitle(
+                          icon: Icons.search_rounded,
+                          iconColor: AppColors.primary,
+                          title: 'Kết quả tìm kiếm ($totalSearch)',
                         ),
-                      ),
-                    const SizedBox(height: AppSizes.s20),
-                    _ManualAddButton(
-                      onTap: () => _showManualAddDialog(context),
-                    ),
-                    const SizedBox(height: AppSizes.s32),
-                  ],
-                ),
+                        if (totalSearch == 0)
+                          const _EmptyState(isSearching: true)
+                        else
+                          _buildList([...samePlaces, ...otherPlaces]),
+                      ] else ...[
+                        if (samePlaces.isNotEmpty) ...[
+                          _SectionTitle(
+                            icon: Icons.auto_awesome_rounded,
+                            iconColor: AppColorsExt.warning,
+                            title: 'Cùng loại: ${widget.currentActivity.category}',
+                          ),
+                          _buildList(samePlaces),
+                        ],
+                        if (otherPlaces.isNotEmpty) ...[
+                          _SectionTitle(
+                            icon: Icons.location_on_rounded,
+                            iconColor: AppColors.primary,
+                            title: 'Gợi ý gần đây',
+                          ),
+                          _buildList(otherPlaces),
+                        ],
+                        if (samePlaces.isEmpty && otherPlaces.isEmpty)
+                          const _EmptyState(isSearching: false),
+                      ],
+                      const SizedBox(height: AppSizes.s20),
+                      _ManualAddButton(onTap: () => _showManualAddDialog(context)),
+                      const SizedBox(height: AppSizes.s32),
+                    ],
+                  );
+                }),
               ),
             ],
           ),
@@ -356,7 +372,15 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             onPressed: () {
               final name = ctrl.text.trim();
               if (name.isNotEmpty) {
-                widget.onReplace('custom_${DateTime.now().millisecondsSinceEpoch}', name);
+                widget.onReplace(NearbyPlaceModel(
+                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                  name: name,
+                  address: '',
+                  category: 'Tham quan',
+                  rating: 0,
+                  reviewCount: 0,
+                  imageUrl: 'https://placehold.co/1080x720?text=New+Place',
+                ));
                 Navigator.pop(ctx);
                 Navigator.pop(context);
               }
@@ -586,7 +610,7 @@ class _SectionTitle extends StatelessWidget {
 // ─── List card ────────────────────────────────────────────────────────────────
 
 class _ListCard extends StatelessWidget {
-  final _PlaceSuggestion place;
+  final NearbyPlaceModel place;
   final VoidCallback onSelect;
   final String Function(int) fmt;
   final String Function(double) fmtPrice;
@@ -687,21 +711,21 @@ class _ListCard extends StatelessWidget {
                   const SizedBox(height: AppSizes.s4),
                   Wrap(
                     spacing: 4,
-                    children: place.tags.take(2).map((tag) {
-                      return Container(
+                    children: [
+                      Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
-                          color: tagColor(tag).withValues(alpha: 0.1),
+                          color: AppColorsExt.success.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(tag,
+                        child: Text(place.category,
                             style: TextStyle(
                                 fontSize: 9,
-                                color: tagColor(tag),
+                                color: AppColorsExt.success,
                                 fontWeight: FontWeight.w600)),
-                      );
-                    }).toList(),
+                      ),
+                    ],
                   ),
                 ],
               ),

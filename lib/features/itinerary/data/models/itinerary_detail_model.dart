@@ -21,6 +21,7 @@ class ItineraryDetailModel {
   final List<String> notes;
   final List<double> centerCoordinate;
   final List<VisitedRestaurantModel> visitedRestaurants;
+  final bool trackingActive;
 
   const ItineraryDetailModel({
     required this.id,
@@ -41,7 +42,54 @@ class ItineraryDetailModel {
     this.notes = const [],
     this.visitedRestaurants = const [],
     this.centerCoordinate = const [],
+    this.trackingActive = false,
   });
+
+  factory ItineraryDetailModel.fromJson(Map<String, dynamic> json) {
+    DateTime start = DateTime.now();
+    DateTime end = DateTime.now();
+
+    if (json['startDate'] != null) {
+      start = DateTime.tryParse(json['startDate'].toString()) ?? DateTime.now();
+    } else if (json['start_date'] != null) {
+      start = DateTime.tryParse(json['start_date'].toString()) ?? DateTime.now();
+    } else if (json['dateRangeLabel'] != null) {
+      // e.g. "12 Th06 - 15 Th06, 2026", let's try to parse or fallback
+      final parts = json['dateRangeLabel'].toString().split('-');
+      if (parts.isNotEmpty) {
+        // Just fallback to now
+        start = DateTime.now();
+      }
+    }
+
+    if (json['endDate'] != null) {
+      end = DateTime.tryParse(json['endDate'].toString()) ?? DateTime.now();
+    } else if (json['end_date'] != null) {
+      end = DateTime.tryParse(json['end_date'].toString()) ?? DateTime.now();
+    }
+
+    return ItineraryDetailModel(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      destination: json['destination'] ?? '',
+      startDate: start,
+      endDate: end,
+      status: json['status'] ?? '',
+      isPublic: json['isPublic'] ?? json['is_public'] ?? true,
+      durationDays: json['durationDays'] ?? json['duration_days'] ?? json['totalDays'] ?? 0,
+      activitiesCount: json['activitiesCount'] ?? json['activities_count'] ?? json['totalPlaces'] ?? 0,
+      hotelsCount: json['hotelsCount'] ?? json['hotels_count'] ?? 0,
+      transportTurns: json['transportTurns'] ?? json['transport_turns'] ?? 0,
+      estimatedBudget: (json['estimatedBudget'] ?? json['estimated_budget'] ?? json['totalBudget'] ?? 0.0).toDouble(),
+      spentBudget: (json['spentBudget'] ?? json['spent_budget'] ?? 0.0).toDouble(),
+      currency: json['currency'] ?? 'VNĐ',
+      days: (json['days'] as List?)?.map((e) => ItineraryDayModel.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      notes: (json['notes'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      centerCoordinate: ((json['centerCoordinate'] ?? json['center_coordinate']) as List?)?.map((e) => (e as num).toDouble()).toList() ?? const [],
+      visitedRestaurants: ((json['visitedRestaurants'] ?? json['visited_restaurants']) as List?)?.map((e) => VisitedRestaurantModel.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      trackingActive: json['tracking_active'] == true,
+    );
+  }
 
   ItineraryDetailEntity toEntity() {
     return ItineraryDetailEntity(
@@ -63,6 +111,7 @@ class ItineraryDetailModel {
       notes: notes,
       visitedRestaurants: visitedRestaurants.map((e) => e.toEntity()).toList(),
       centerCoordinate: centerCoordinate,
+      trackingActive: trackingActive,
     );
   }
 }
@@ -77,6 +126,14 @@ class VisitedRestaurantModel {
     required this.dishes,
     required this.imageUrl,
   });
+
+  factory VisitedRestaurantModel.fromJson(Map<String, dynamic> json) {
+    return VisitedRestaurantModel(
+      name: json['name'] ?? '',
+      dishes: (json['dishes'] as List?)?.map((e) => VisitedDishModel.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
+      imageUrl: json['imageUrl'] ?? json['image_url'] ?? '',
+    );
+  }
 
   VisitedRestaurant toEntity() => VisitedRestaurant(
         name: name,
@@ -95,6 +152,14 @@ class VisitedDishModel {
     required this.price,
     this.quantity = 1,
   });
+
+  factory VisitedDishModel.fromJson(Map<String, dynamic> json) {
+    return VisitedDishModel(
+      name: json['name'] ?? '',
+      price: (json['price'] ?? 0.0).toDouble(),
+      quantity: json['quantity'] ?? 1,
+    );
+  }
 
   VisitedDish toEntity() => VisitedDish(
         name: name,
