@@ -7,3 +7,8 @@ const kTripIntents = [
   'Nghỉ dưỡng & Biển',
   'Đô thị & Vui chơi',
 ];
+
+// Option exclusive: không trộn với intent cụ thể
+const kGeneralTripIntent = 'Khám phá tổng hợp';
+
+const kMaxTripIntents = 3;

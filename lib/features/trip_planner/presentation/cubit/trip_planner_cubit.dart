@@ -139,11 +139,11 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   void updateTripIntents(List<String> intents) {
     state.maybeWhen(
       loaded: (form) {
-        final valid = intents.where(kTripIntents.contains).toList();
+        final normalized = _normalizeTripIntents(intents);
         emit(
           TripPlannerState.loaded(
             tripForm: form.copyWith(
-              tripIntent: valid.isEmpty ? null : valid.join(', '),
+              tripIntent: normalized.isEmpty ? null : normalized.join(', '),
             ),
           ),
         );
@@ -379,7 +379,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           dailyStartTime: dailyStartTime,
           dailyEndTime: dailyEndTime,
           tripIntent: selectedTripIntents.isEmpty
-              ? kTripIntents.first
+              ? kGeneralTripIntent
               : selectedTripIntents.join(', '),
           adultCount: form.adultCount,
           childCount: form.childCount,
@@ -447,13 +447,33 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     }
   }
 
-  List<String> _parseTripIntents(String? value) {
-    if (value == null || value.trim().isEmpty) return const [];
-    return value
+  List<String> _parseTripIntents(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const [];
+    final seen = <String>{};
+    final parsed = raw
         .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
+        .map((v) => v.trim())
+        .where(kTripIntents.contains)
+        .where(seen.add)
         .toList();
+    if (parsed.length > 1 && parsed.contains(kGeneralTripIntent)) {
+      return parsed.where((v) => v != kGeneralTripIntent).toList();
+    }
+    return parsed;
+  }
+
+  List<String> _normalizeTripIntents(List<String> intents) {
+    if (intents.isEmpty) return const [];
+    final seen = <String>{};
+    final valid = intents
+        .where(kTripIntents.contains)
+        .where(seen.add)
+        .toList();
+    // Safety net: nếu general trộn với specific, bỏ general
+    if (valid.length > 1 && valid.contains(kGeneralTripIntent)) {
+      return valid.where((v) => v != kGeneralTripIntent).take(kMaxTripIntents).toList();
+    }
+    return valid.take(kMaxTripIntents).toList();
   }
 
   String _transportToApi(Transportation t) {
