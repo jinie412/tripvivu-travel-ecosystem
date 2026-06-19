@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:math' show sqrt, sin, cos, atan2, pi;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'activity_edit_screen.dart';
@@ -38,11 +40,13 @@ import 'package:travel_advisor_mobile/core/utils/map_utils.dart';
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
   final ItineraryDetailEntity? initialDetail;
+  final int initialDay;
 
   const ItineraryDetailScreen({
     super.key,
     required this.itineraryId,
     this.initialDetail,
+    this.initialDay = 1,
   });
 
   @override
@@ -50,9 +54,10 @@ class ItineraryDetailScreen extends StatefulWidget {
 }
 
 class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
-  int _selectedDay = 1;
+  late int _selectedDay = widget.initialDay;
   bool _isPublic = true;
   bool _isEditMode = false;
+  bool _isMapLoaded = false;
   ItineraryDetailEntity? _editSnapshot;
   MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
@@ -436,12 +441,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       // ── Validation: kiểm tra tính hợp lệ trước khi cho phép thay đổi ──────
       final newMin = pickedTime.hour * 60 + pickedTime.minute;
 
-      int _toMinutes(String t) {
+      int toMinutes(String t) {
         final p = t.split(':');
         return int.parse(p[0]) * 60 + int.parse(p[1]);
       }
 
-      Future<void> _showTimeError(String message) async {
+      Future<void> showTimeError(String message) async {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -477,16 +482,16 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
 
       if (isStart) {
         // Đang chỉnh giờ ĐẾN → phải trước giờ RỜI hiện tại
-        final endMin = _toMinutes(activity.endTime);
+        final endMin = toMinutes(activity.endTime);
         if (newMin >= endMin) {
-          await _showTimeError(
+          await showTimeError(
             'Giờ đến ($newTime) phải trước giờ rời (${activity.endTime}) của cùng địa điểm.\n\n'
             'Vui lòng chọn lại thời gian.',
           );
           return; // Không áp dụng thay đổi
         }
         if (endMin - newMin > 4 * 60) {
-          await _showTimeError(
+          await showTimeError(
             'Khoảng thời gian tham quan quá dài (hơn 4 tiếng).\n\n'
             'Vui lòng chọn giờ đến hợp lý hơn.',
           );
@@ -494,16 +499,16 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         }
       } else {
         // Đang chỉnh giờ RỜI → phải sau giờ ĐẾN hiện tại
-        final startMin = _toMinutes(activity.startTime);
+        final startMin = toMinutes(activity.startTime);
         if (newMin <= startMin) {
-          await _showTimeError(
+          await showTimeError(
             'Giờ rời ($newTime) phải sau giờ đến (${activity.startTime}) của cùng địa điểm.\n\n'
             'Vui lòng chọn lại thời gian.',
           );
           return; // Không áp dụng thay đổi
         }
         if (newMin - startMin > 4 * 60) {
-          await _showTimeError(
+          await showTimeError(
             'Khoảng thời gian tham quan quá dài (hơn 4 tiếng).\n\n'
             'Vui lòng chọn giờ rời hợp lý hơn.',
           );
@@ -525,14 +530,14 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             final closeMin = toM(slot.$2);
             final label = isStart ? 'đến' : 'rời';
             if (newMin < openMin) {
-              await _showTimeError(
+              await showTimeError(
                 '${activity.title} chưa mở cửa lúc $newTime.\n\n'
                 'Địa điểm mở cửa từ ${slot.$1} – ${slot.$2}. Vui lòng chọn giờ $label sau ${slot.$1}.',
               );
               return;
             }
             if (newMin > closeMin) {
-              await _showTimeError(
+              await showTimeError(
                 '${activity.title} đã đóng cửa lúc ${slot.$2}.\n\n'
                 'Giờ $label $newTime vượt quá giờ đóng cửa. Vui lòng chọn trước ${slot.$2}.',
               );
@@ -1015,42 +1020,44 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           c.nearbyRestaurantName != p.nearbyRestaurantName,
       listener: (ctx, state) => _showFoodProximityPopup(ctx, state),
       child: BlocListener<ItineraryCubit, ItineraryState>(
-          listenWhen: (prev, curr) {
-            final hasSuggestion =
-                curr is ItineraryLoaded && curr.suggestedDays != null;
-            final wasNoSuggestion =
-                prev is! ItineraryLoaded || prev.suggestedDays == null;
-            return hasSuggestion && wasNoSuggestion;
-          },
-          listener: (context, _) => _showReorderSuggestionBanner(),
-          child: Scaffold(
-            body: _ItineraryDetailView(
-              selectedDay: _selectedDay,
-              isPublic: _isPublic,
-              onDayChanged: _onDayChanged,
-              onPublicChanged: (v) => setState(() => _isPublic = v),
-              onAddPlaceTap: _showAddPlaceScreen,
-              mapController: _mapController,
-              onMapCreated: (controller) => _mapController = controller,
-              scrollController: _scrollController,
-              activityKeys: _activityKeys,
-              onActivityTap: _zoomToActivity,
-              onActivityLongPress: _navigateToPlaceDetail,
-              onEditActivity: _onEditActivity,
-              onReplaceActivity: _onReplaceActivity,
-              onDeleteActivity: _onDeleteActivity,
-              onRateActivity: _onRateActivity,
-              onEditTime: _onEditTime,
-              onDirectionTap: _launchDirections,
-              onShareTap: _showShareSheet,
-              onMarkerTap: (id) => _scrollToActivity(id),
-              highlightedActivityId: _highlightedActivityId,
-              isEditMode: _isEditMode,
-              onEditModeTap: _onEditModeTap,
-              onDiscardTap: _onDiscardChanges,
-            ),
+        listenWhen: (prev, curr) {
+          final hasSuggestion =
+              curr is ItineraryLoaded && curr.suggestedDays != null;
+          final wasNoSuggestion =
+              prev is! ItineraryLoaded || prev.suggestedDays == null;
+          return hasSuggestion && wasNoSuggestion;
+        },
+        listener: (context, _) => _showReorderSuggestionBanner(),
+        child: Scaffold(
+          body: _ItineraryDetailView(
+            selectedDay: _selectedDay,
+            isPublic: _isPublic,
+            onDayChanged: _onDayChanged,
+            onPublicChanged: (v) => setState(() => _isPublic = v),
+            onAddPlaceTap: _showAddPlaceScreen,
+            mapController: _mapController,
+            onMapCreated: (controller) => _mapController = controller,
+            isMapLoaded: _isMapLoaded,
+            onLoadMapTap: () => setState(() => _isMapLoaded = true),
+            scrollController: _scrollController,
+            activityKeys: _activityKeys,
+            onActivityTap: _zoomToActivity,
+            onActivityLongPress: _navigateToPlaceDetail,
+            onEditActivity: _onEditActivity,
+            onReplaceActivity: _onReplaceActivity,
+            onDeleteActivity: _onDeleteActivity,
+            onRateActivity: _onRateActivity,
+            onEditTime: _onEditTime,
+            onDirectionTap: _launchDirections,
+            onShareTap: _showShareSheet,
+            onMarkerTap: (id) => _scrollToActivity(id),
+            highlightedActivityId: _highlightedActivityId,
+            isEditMode: _isEditMode,
+            onEditModeTap: _onEditModeTap,
+            onDiscardTap: _onDiscardChanges,
           ),
         ),
+      ),
     );
   }
 
@@ -1075,10 +1082,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           Navigator.push(
             ctx,
             MaterialPageRoute(
-              builder: (_) => FoodMenuScreen(
-                placeId: detailId,
-                restaurantName: name,
-              ),
+              builder: (_) =>
+                  FoodMenuScreen(placeId: detailId, restaurantName: name),
             ),
           );
         },
@@ -1096,6 +1101,332 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 }
 
+class _DayCostSummaryCard extends StatelessWidget {
+  final ItineraryDayEntity day;
+  final List<ItineraryActivityEntity> visitActivities;
+  final bool Function(ItineraryActivityEntity activity) isHotelStart;
+
+  const _DayCostSummaryCard({
+    required this.day,
+    required this.visitActivities,
+    required this.isHotelStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    final hotelCost = day.activities
+        .where(isHotelStart)
+        .fold<double>(0, (sum, activity) => sum + activity.price);
+    final placeCost = visitActivities.fold<double>(
+      0,
+      (sum, activity) => sum + activity.price,
+    );
+    final selfDriveCost = (day.dayBudget - hotelCost - placeCost)
+        .clamp(0, double.infinity)
+        .toDouble();
+    final visitedCount = visitActivities
+        .where((activity) => activity.status == ActivityStatus.daDi)
+        .length;
+    final totalCost = day.dayBudget > 0
+        ? day.dayBudget
+        : placeCost + hotelCost + selfDriveCost;
+
+    String money(double value) => '${formatter.format(value)} ${day.currency}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Chi ph\u00ed trong ng\u00e0y',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Text(
+                '$visitedCount/${visitActivities.length} \u0111\u00e3 \u0111i',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _DayCostRow(
+            icon: Icons.receipt_long_rounded,
+            label: 'T\u1ed5ng ng\u00e0y',
+            value: money(totalCost),
+            color: const Color(0xFF10B981),
+          ),
+          _DayCostRow(
+            icon: Icons.place_rounded,
+            label: '\u0110\u1ecba \u0111i\u1ec3m & \u0103n u\u1ed1ng',
+            value: money(placeCost),
+            color: const Color(0xFFF59E0B),
+          ),
+          _DayCostRow(
+            icon: Icons.hotel_rounded,
+            label: 'L\u01b0u tr\u00fa',
+            value: money(hotelCost),
+            color: const Color(0xFF0F766E),
+          ),
+          _DayCostRow(
+            icon: Icons.two_wheeler_rounded,
+            label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
+            value: money(selfDriveCost),
+            color: const Color(0xFF2563EB),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayCostRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _DayCostRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF475569),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LazyMapPreview extends StatelessWidget {
+  final ItineraryDayEntity day;
+  final VoidCallback onLoadMapTap;
+
+  const _LazyMapPreview({required this.day, required this.onLoadMapTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final pointCount = day.activities.where((activity) {
+      final sameTime = activity.startTime == activity.endTime;
+      final category = (activity.category ?? '').toLowerCase();
+      final title = activity.title.toLowerCase();
+      final isHotel =
+          category.contains('lưu trú') ||
+          category.contains('khách sạn') ||
+          category.contains('hotel') ||
+          title.contains('hotel') ||
+          title.contains('khách sạn');
+      return !(sameTime && isHotel);
+    }).length;
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFEFF6FF), Color(0xFFF8FAFC)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.28,
+              child: CustomPaint(painter: _MapPreviewGridPainter()),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 72,
+            left: 24,
+            right: 24,
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDBEAFE),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.map_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Ngày ${day.dayNumber} • $pointCount điểm',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Bản đồ sẽ chỉ tải khi bạn cần xem tuyến đường.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: onLoadMapTap,
+                    icon: const Icon(Icons.route_rounded, size: 18),
+                    label: const Text('Xem'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapPreviewGridPainter extends CustomPainter {
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2563EB)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    const gap = 42.0;
+    for (double x = -gap; x < size.width + gap; x += gap) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
+    }
+    for (double y = 0; y < size.height + gap; y += gap) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y - size.width), paint);
+    }
+
+    final routePaint = Paint()
+      ..color = const Color(0xFFF97316)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..moveTo(size.width * 0.12, size.height * 0.25)
+      ..cubicTo(
+        size.width * 0.34,
+        size.height * 0.18,
+        size.width * 0.46,
+        size.height * 0.48,
+        size.width * 0.68,
+        size.height * 0.38,
+      )
+      ..cubicTo(
+        size.width * 0.82,
+        size.height * 0.32,
+        size.width * 0.9,
+        size.height * 0.55,
+        size.width * 0.78,
+        size.height * 0.7,
+      );
+    canvas.drawPath(path, routePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _ItineraryDetailView extends StatelessWidget {
   final int selectedDay;
   final bool isPublic;
@@ -1104,6 +1435,8 @@ class _ItineraryDetailView extends StatelessWidget {
   final VoidCallback onAddPlaceTap;
   final MapboxMap? mapController;
   final Function(MapboxMap) onMapCreated;
+  final bool isMapLoaded;
+  final VoidCallback onLoadMapTap;
   final ScrollController scrollController;
   final Map<String, GlobalKey> activityKeys;
   final Function(ItineraryActivityEntity) onActivityTap;
@@ -1130,6 +1463,8 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onAddPlaceTap,
     this.mapController,
     required this.onMapCreated,
+    required this.isMapLoaded,
+    required this.onLoadMapTap,
     required this.scrollController,
     required this.activityKeys,
     required this.onActivityTap,
@@ -1192,18 +1527,24 @@ class _ItineraryDetailView extends StatelessWidget {
               (d) => d.dayNumber == selectedDay,
               orElse: () => itin.days.first,
             );
+            final canReview = _canReviewItinerary(itin);
 
             return Stack(
               children: [
                 // ✅ MAP CHIẾM TOÀN MÀN HÌNH (full-screen, tương tác hoàn toàn)
                 Positioned.fill(
-                  child: ItineraryMapView(
-                    activities: currentDayData.activities,
-                    allDays: itin.days,
-                    selectedDay: selectedDay,
-                    onMarkerTap: onMarkerTap,
-                    onMapCreated: onMapCreated,
-                  ),
+                  child: isMapLoaded
+                      ? ItineraryMapView(
+                          activities: currentDayData.activities,
+                          allDays: itin.days,
+                          selectedDay: selectedDay,
+                          onMarkerTap: onMarkerTap,
+                          onMapCreated: onMapCreated,
+                        )
+                      : _LazyMapPreview(
+                          day: currentDayData,
+                          onLoadMapTap: onLoadMapTap,
+                        ),
                 ),
 
                 // ✅ BOTTOM SHEET KÉO LÊN/XUỐNG (DraggableScrollableSheet)
@@ -1222,7 +1563,7 @@ class _ItineraryDetailView extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 20,
                             offset: const Offset(0, -4),
                           ),
@@ -1274,26 +1615,6 @@ class _ItineraryDetailView extends StatelessWidget {
                         Icons.arrow_back_ios_new,
                         () => Navigator.pop(context),
                       ),
-                      if (itin.status == 'COMPLETED' ||
-                          itin.status == 'ONGOING' ||
-                          itin.endDate.isBefore(DateTime.now()))
-                        Padding(
-                          padding: const EdgeInsets.only(left: AppSizes.s12),
-                          child: _floatingCircleButton(
-                            Icons.star_outline_rounded,
-                            () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => ItineraryReviewDialog(
-                                  itineraryId: itin.id,
-                                  itineraryTitle: itin.title,
-                                  totalLocations: itin.totalLocations,
-                                  visitedLocations: itin.visitedLocations,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
                       const Spacer(),
                       if (isEditMode) ...[
                         _floatingCircleButton(
@@ -1301,6 +1622,20 @@ class _ItineraryDetailView extends StatelessWidget {
                           onDiscardTap,
                           iconColor: const Color(0xFFEF4444),
                         ),
+                        const SizedBox(width: AppSizes.s12),
+                      ],
+                      if (canReview) ...[
+                        _floatingCircleButton(Icons.star_outline_rounded, () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => ItineraryReviewDialog(
+                              itineraryId: itin.id,
+                              itineraryTitle: itin.title,
+                              totalLocations: itin.totalLocations,
+                              visitedLocations: itin.visitedLocations,
+                            ),
+                          );
+                        }),
                         const SizedBox(width: AppSizes.s12),
                       ],
                       _floatingCircleButton(
@@ -1322,6 +1657,16 @@ class _ItineraryDetailView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  bool _canReviewItinerary(ItineraryDetailEntity itin) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final endDate = DateUtils.dateOnly(itin.endDate);
+    final status = itin.status.toUpperCase();
+    final hasStarted =
+        status == 'ONGOING' || status == 'COMPLETED' || itin.trackingActive;
+
+    return today.isAfter(endDate) && hasStarted && itin.visitedLocations > 0;
   }
 
   Widget _buildContentCard(
@@ -1429,6 +1774,12 @@ class _ItineraryDetailView extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s16),
           // ── Theo dõi lịch trình (geofence + dwell) ──────────────────────
+          _DayCostSummaryCard(
+            day: currentDayData,
+            visitActivities: _visitActivities(currentDayData),
+            isHotelStart: _isHotelStart,
+          ),
+          const SizedBox(height: AppSizes.s16),
           TrackingSection(
             itineraryId: itin.id,
             date: currentDayData.date,
@@ -1436,65 +1787,82 @@ class _ItineraryDetailView extends StatelessWidget {
             activities: currentDayData.activities,
             showStartButton: false,
             dbTrackingActive: itin.trackingActive,
-            onStopped: () =>
-                context.read<ItineraryCubit>().toggleItineraryStatus(itin.id, false),
+            onStopped: () => context
+                .read<ItineraryCubit>()
+                .toggleItineraryStatus(itin.id, false),
           ),
           // Dùng Builder để đọc TrackingCubit (được provide ở ItineraryDetailScreen)
           // và truyền trackingStatus cho từng TimelineActivityCard.
-          Builder(builder: (context) {
-            final tracking = context.watch<TrackingCubit>().state;
-            final activities = visibleActivities;
-            return Column(
-              children: activities.asMap().entries.map((entry) {
-                final index = entry.key;
-                final activity = entry.value;
-                final key = activityKeys.putIfAbsent(activity.id, () => GlobalKey());
-                final nextActivity =
-                    index < activities.length - 1 ? activities[index + 1] : null;
-                final nextTransport = nextActivity == null
-                    ? null
-                    : (activities[index].transportInfo?.isNotEmpty == true
-                        ? activities[index].transportInfo
-                        : _estimateTransit(
-                            activity.latitude, activity.longitude,
-                            nextActivity.latitude, nextActivity.longitude,
-                          ));
-                // Lấy trạng thái tracking theo itineraryDetailId (= activity.id)
-                final TrackingPlaceStatus? trackingStatus =
-                    tracking.isActive ? tracking.byDetailId(activity.id) : null;
-                return TimelineActivityCard(
-                  key: key,
-                  activity: activity,
-                  day: selectedDay,
-                  isFirst: index == 0,
-                  isLast: index == activities.length - 1,
-                  nextTransportInfo: nextTransport,
-                  onAddTap: onAddPlaceTap,
-                  onEditTap: () => onEditActivity(activity),
-                  onReplaceTap: () => onReplaceActivity(activity),
-                  onDeleteTap: () => onDeleteActivity(activity),
-                  onRateTap: () => onRateActivity(activity),
-                  onCardTap: () => onActivityTap(activity),
-                  onCardLongPress: () => onActivityLongPress(activity),
-                  isHighlighted: highlightedActivityId == activity.id,
-                  onStartTimeTap: () =>
-                      onEditTime(activity, true, index == activities.length - 1),
-                  onEndTimeTap: () =>
-                      onEditTime(activity, false, index == activities.length - 1),
-                  isEditMode: isEditMode,
-                  onDirectionTap: nextActivity != null
-                      ? () => onDirectionTap(activity, nextActivity)
-                      : null,
-                  trackingStatus: trackingStatus,
-                  onCheckIn: trackingStatus != null
-                      ? () =>
-                          context.read<TrackingCubit>().manualCheckIn(activity.id)
-                      : null,
-                  isCheckingIn: tracking.checkingInDetailId == activity.id,
-                );
-              }).toList(),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final tracking = context.watch<TrackingCubit>().state;
+              final activities = visibleActivities;
+              return Column(
+                children: activities.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final activity = entry.value;
+                  final key = activityKeys.putIfAbsent(
+                    activity.id,
+                    () => GlobalKey(),
+                  );
+                  final nextActivity = index < activities.length - 1
+                      ? activities[index + 1]
+                      : null;
+                  final nextTransport = nextActivity == null
+                      ? null
+                      : (activities[index].transportInfo?.isNotEmpty == true
+                            ? activities[index].transportInfo
+                            : _estimateTransit(
+                                activity.latitude,
+                                activity.longitude,
+                                nextActivity.latitude,
+                                nextActivity.longitude,
+                              ));
+                  // Lấy trạng thái tracking theo itineraryDetailId (= activity.id)
+                  final TrackingPlaceStatus? trackingStatus = tracking.isActive
+                      ? tracking.byDetailId(activity.id)
+                      : null;
+                  return TimelineActivityCard(
+                    key: key,
+                    activity: activity,
+                    day: selectedDay,
+                    isFirst: index == 0,
+                    isLast: index == activities.length - 1,
+                    nextTransportInfo: nextTransport,
+                    onAddTap: onAddPlaceTap,
+                    onEditTap: () => onEditActivity(activity),
+                    onReplaceTap: () => onReplaceActivity(activity),
+                    onDeleteTap: () => onDeleteActivity(activity),
+                    onRateTap: () => onRateActivity(activity),
+                    onCardTap: () => onActivityTap(activity),
+                    onCardLongPress: () => onActivityLongPress(activity),
+                    isHighlighted: highlightedActivityId == activity.id,
+                    onStartTimeTap: () => onEditTime(
+                      activity,
+                      true,
+                      index == activities.length - 1,
+                    ),
+                    onEndTimeTap: () => onEditTime(
+                      activity,
+                      false,
+                      index == activities.length - 1,
+                    ),
+                    isEditMode: isEditMode,
+                    onDirectionTap: nextActivity != null
+                        ? () => onDirectionTap(activity, nextActivity)
+                        : null,
+                    trackingStatus: trackingStatus,
+                    onCheckIn: trackingStatus != null
+                        ? () => context.read<TrackingCubit>().manualCheckIn(
+                            activity.id,
+                          )
+                        : null,
+                    isCheckingIn: tracking.checkingInDetailId == activity.id,
+                  );
+                }).toList(),
+              );
+            },
+          ),
           const SizedBox(height: AppSizes.s40),
         ],
       ),

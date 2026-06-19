@@ -51,10 +51,6 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
   RemoteReviewDataSource(this._client);
 
-  String _requireTouristId() {
-    throw UnimplementedError('Use AuthUtils.requireCurrentUserId() instead');
-  }
-
   int _parseDayLabel(String label) {
     final normalized = label.toUpperCase().trim();
     final match = RegExp(r'(\d+)').firstMatch(normalized);
@@ -84,7 +80,8 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
     final data = response.data as Map<String, dynamic>;
     final itinerary =
-        (data['itinerary'] as Map<String, dynamic>?) ?? const <String, dynamic>{};
+        (data['itinerary'] as Map<String, dynamic>?) ??
+        const <String, dynamic>{};
     final places = (data['places'] as List?) ?? const [];
     return ItineraryReviewModel(
       id: (itinerary['id'] ?? itineraryId).toString(),
@@ -97,6 +94,9 @@ class RemoteReviewDataSource implements ReviewDataSource {
       status: ((itinerary['status'] ?? 'completed').toString()).toUpperCase(),
       locations: places
           .whereType<Map<String, dynamic>>()
+          .where(
+            (item) => item['is_visited'] == true || item['isVisited'] == true,
+          )
           .map(
             (item) => LocationReviewModel(
               id: (item['itinerary_detail_id'] ?? '').toString(),
@@ -117,15 +117,13 @@ class RemoteReviewDataSource implements ReviewDataSource {
     final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itinerary-reviews/popup',
-      queryParameters: {
-        'tourist_id': touristId,
-        'itinerary_id': itineraryId,
-      },
+      queryParameters: {'tourist_id': touristId, 'itinerary_id': itineraryId},
     );
 
     final data = response.data as Map<String, dynamic>;
     final itinerary =
-        (data['itinerary'] as Map<String, dynamic>?) ?? const <String, dynamic>{};
+        (data['itinerary'] as Map<String, dynamic>?) ??
+        const <String, dynamic>{};
 
     return ItineraryReviewPopupData(
       showPopup: data['show_popup'] == true,
@@ -140,10 +138,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
     final touristId = await AuthUtils.requireCurrentUserId();
     await _client.dio.post(
       '/itinerary-reviews/popup/dismiss',
-      data: {
-        'tourist_id': touristId,
-        'itinerary_id': itineraryId,
-      },
+      data: {'tourist_id': touristId, 'itinerary_id': itineraryId},
     );
   }
 
@@ -160,8 +155,12 @@ class RemoteReviewDataSource implements ReviewDataSource {
 
     // Để pass qua @IsUUID('4') của NestJS trong chế độ Demo
     final isDemo = AppConfig.kUseMockData;
-    final validItineraryId = isDemo ? '11111111-1111-4111-a111-111111111111' : itineraryId;
-    final validTouristId = isDemo ? '22222222-2222-4222-a222-222222222222' : touristId;
+    final validItineraryId = isDemo
+        ? '11111111-1111-4111-a111-111111111111'
+        : itineraryId;
+    final validTouristId = isDemo
+        ? '22222222-2222-4222-a222-222222222222'
+        : touristId;
 
     await _client.dio.post(
       '/itinerary-reviews/$validItineraryId/submit',
@@ -175,7 +174,9 @@ class RemoteReviewDataSource implements ReviewDataSource {
           'place_reviews': placeReviews
               .map(
                 (item) => {
-                  'itinerary_detail_id': isDemo ? '33333333-3333-4333-a333-333333333333' : item.itineraryDetailId,
+                  'itinerary_detail_id': isDemo
+                      ? '33333333-3333-4333-a333-333333333333'
+                      : item.itineraryDetailId,
                   'rating': item.rating,
                   if (item.content != null && item.content!.trim().isNotEmpty)
                     'content': item.content,

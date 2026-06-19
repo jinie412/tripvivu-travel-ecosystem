@@ -885,7 +885,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
         mapbox.PointAnnotationOptions(
           geometry: mapbox.Point(coordinates: _userPosition!),
           image: icon,
-          iconSize: 1.15,
+          iconSize: 1.38,
           iconAnchor: mapbox.IconAnchor.CENTER,
         ),
       );

@@ -269,6 +269,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       id: (data['id'] ?? '').toString(),
       title: (data['title'] ?? data['destination'] ?? 'Lịch trình').toString(),
       destination: (data['destination'] ?? '').toString(),
+      tripIntent: (data['tripIntent'] ?? data['trip_intent'])?.toString(),
       startDate: startDate,
       endDate: endDate,
       status: (data['status'] ?? 'DRAFT').toString(),
@@ -286,7 +287,13 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       estimatedBudget: _asDouble(
         data['totalBudget'] ?? data['estimatedBudget'],
       ),
-      spentBudget: _asDouble(data['spentBudget']),
+      spentBudget: _asDouble(data['spentBudget'] ?? data['spent_budget']),
+      placeCost: _asDouble(data['placeCost'] ?? data['place_cost']),
+      hotelCost: _asDouble(data['hotelCost'] ?? data['hotel_cost']),
+      transportCost: _asDouble(data['transportCost'] ?? data['transport_cost']),
+      rideHailingTransportCost: _asDouble(
+        data['rideHailingTransportCost'] ?? data['ride_hailing_transport_cost'],
+      ),
       days: days,
       notes: ((data['notes'] as List?) ?? const [])
           .map((e) => e.toString())

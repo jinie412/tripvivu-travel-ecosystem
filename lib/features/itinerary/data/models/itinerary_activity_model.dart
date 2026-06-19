@@ -63,19 +63,44 @@ class ItineraryActivityModel {
       title: json['title'] ?? json['placeName'] ?? '',
       startTime: json['start_time'] ?? json['startTime'] ?? '',
       endTime: json['end_time'] ?? json['endTime'] ?? '',
-      locationName: json['location_name'] ?? json['locationName'] ?? json['placeName'] ?? '',
+      locationName:
+          json['location_name'] ??
+          json['locationName'] ??
+          json['placeName'] ??
+          '',
       address: json['address'] ?? '',
       imageUrl: json['image_url'] ?? json['imageUrl'] ?? '',
       price: (json['price'] ?? 0.0).toDouble(),
       currency: json['currency'] ?? 'VNĐ',
-      transportInfo: json['transport_info'] ?? json['transportInfo'] ?? (json['transitToNext'] != null ? (json['transitToNext']['durationStr'] ?? '') : ''),
-      isFree: json['is_free'] ?? json['isFree'] ?? (json['priceLabel'] == 'MIỄN PHÍ'),
+      transportInfo:
+          json['transport_info'] ??
+          json['transportInfo'] ??
+          (json['transitToNext'] != null
+              ? (json['transitToNext']['durationStr'] ?? '')
+              : ''),
+      isFree:
+          json['is_free'] ??
+          json['isFree'] ??
+          (json['priceLabel'] == 'MIỄN PHÍ'),
       category: json['category'],
-      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : (json['lat'] != null ? (json['lat'] as num).toDouble() : null),
-      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : (json['lng'] != null ? (json['lng'] as num).toDouble() : null),
-      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      latitude: json['latitude'] != null
+          ? (json['latitude'] as num).toDouble()
+          : (json['lat'] != null ? (json['lat'] as num).toDouble() : null),
+      longitude: json['longitude'] != null
+          ? (json['longitude'] as num).toDouble()
+          : (json['lng'] != null ? (json['lng'] as num).toDouble() : null),
+      rating: json['rating'] != null
+          ? (json['rating'] as num).toDouble()
+          : null,
       reviewCount: json['review_count'] ?? json['reviewCount'],
-      status: json['status'],
+      status:
+          (json['is_completed'] == true ||
+              json['isCompleted'] == true ||
+              json['is_visited'] == true ||
+              json['is_visted'] == true ||
+              json['isVisited'] == true)
+          ? 'completed'
+          : json['status']?.toString(),
       openHourCompressed: json['open_hour_compressed']?.toString(),
     );
   }
@@ -91,9 +116,21 @@ class ItineraryActivityModel {
 
   ItineraryActivityEntity toEntity() {
     ActivityStatus entityStatus = ActivityStatus.chuaDi;
-    if (status == 'dangDi') entityStatus = ActivityStatus.dangDi;
-    if (status == 'daDi') entityStatus = ActivityStatus.daDi;
-    if (status == 'diQua') entityStatus = ActivityStatus.diQua;
+    final normalizedStatus = (status ?? '').toLowerCase();
+    if (normalizedStatus == 'dangdi' || normalizedStatus == 'in_progress') {
+      entityStatus = ActivityStatus.dangDi;
+    }
+    if (normalizedStatus == 'dadi' ||
+        normalizedStatus == 'visited' ||
+        normalizedStatus == 'completed' ||
+        normalizedStatus == 'complete' ||
+        normalizedStatus == 'done' ||
+        normalizedStatus == 'true') {
+      entityStatus = ActivityStatus.daDi;
+    }
+    if (normalizedStatus == 'diqua' || normalizedStatus == 'passed') {
+      entityStatus = ActivityStatus.diQua;
+    }
 
     return ItineraryActivityEntity(
       id: id,

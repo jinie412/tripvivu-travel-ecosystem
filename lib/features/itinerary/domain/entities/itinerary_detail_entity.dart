@@ -28,26 +28,31 @@ class ItineraryDetailEntity {
   final String id;
   final String title;
   final String destination;
+  final String? tripIntent;
   final DateTime startDate;
   final DateTime endDate;
   final String status;
   final bool isPublic;
-  
+
   final int durationDays;
   final int activitiesCount;
   final int totalLocations;
   final int visitedLocations;
   final int hotelsCount;
   final int transportTurns;
-  
+
   final double estimatedBudget;
   final double spentBudget;
+  final double placeCost;
+  final double hotelCost;
+  final double transportCost;
+  final double rideHailingTransportCost;
   final String currency;
-  
+
   final List<ItineraryDayEntity> days;
   final List<String> notes;
   final List<VisitedRestaurant> visitedRestaurants;
-  
+
   final List<double> centerCoordinate;
   final bool trackingActive;
 
@@ -55,6 +60,7 @@ class ItineraryDetailEntity {
     required this.id,
     required this.title,
     required this.destination,
+    this.tripIntent,
     required this.startDate,
     required this.endDate,
     required this.status,
@@ -67,6 +73,10 @@ class ItineraryDetailEntity {
     required this.transportTurns,
     required this.estimatedBudget,
     required this.spentBudget,
+    this.placeCost = 0,
+    this.hotelCost = 0,
+    this.transportCost = 0,
+    this.rideHailingTransportCost = 0,
     this.currency = 'VNĐ',
     this.days = const [],
     this.notes = const [],
@@ -79,6 +89,7 @@ class ItineraryDetailEntity {
     String? id,
     String? title,
     String? destination,
+    String? tripIntent,
     DateTime? startDate,
     DateTime? endDate,
     String? status,
@@ -91,6 +102,10 @@ class ItineraryDetailEntity {
     int? transportTurns,
     double? estimatedBudget,
     double? spentBudget,
+    double? placeCost,
+    double? hotelCost,
+    double? transportCost,
+    double? rideHailingTransportCost,
     String? currency,
     List<ItineraryDayEntity>? days,
     List<String>? notes,
@@ -102,6 +117,7 @@ class ItineraryDetailEntity {
       id: id ?? this.id,
       title: title ?? this.title,
       destination: destination ?? this.destination,
+      tripIntent: tripIntent ?? this.tripIntent,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       status: status ?? this.status,
@@ -114,6 +130,11 @@ class ItineraryDetailEntity {
       transportTurns: transportTurns ?? this.transportTurns,
       estimatedBudget: estimatedBudget ?? this.estimatedBudget,
       spentBudget: spentBudget ?? this.spentBudget,
+      placeCost: placeCost ?? this.placeCost,
+      hotelCost: hotelCost ?? this.hotelCost,
+      transportCost: transportCost ?? this.transportCost,
+      rideHailingTransportCost:
+          rideHailingTransportCost ?? this.rideHailingTransportCost,
       currency: currency ?? this.currency,
       days: days ?? this.days,
       notes: notes ?? this.notes,
