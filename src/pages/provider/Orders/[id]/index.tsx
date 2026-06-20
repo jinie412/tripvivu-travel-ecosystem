@@ -211,7 +211,7 @@ const OrderDetailPage: React.FC = () => {
                            </tr>
                         </thead>
                         <tbody>
-                           {orderData.items.map((item, idx) => (
+                           {orderData.items.map((item: any, idx: any) => (
                               <tr key={idx} style={{ borderBottom: '1px solid #F8FAFC' }}>
                                  <td style={{ padding: '20px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
                                  <td style={{ padding: '20px 32px', fontSize: '14px', color: '#64748b', textAlign: 'center' }}>{item.quantity}</td>

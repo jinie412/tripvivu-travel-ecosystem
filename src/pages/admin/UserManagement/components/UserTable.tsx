@@ -180,12 +180,12 @@ export const UserTable = memo<UserTableProps>(function UserTable({
                     </div>
                   </td>
                   <td className="td-role" data-label="Vai trò">
-                    <Badge label={formatRoleLabel(user.role)} type={getRoleBadgeType(user.role)} />
+                    <Badge label={formatRoleLabel(user.role)} type={getRoleBadgeType(user.role) as any} />
                   </td>
                   <td className="td-status" data-label="Trạng thái">
                     <Badge
                       label={formatStatusLabel(user.activeStatus)}
-                      type={getStatusBadgeType(user.activeStatus)}
+                      type={getStatusBadgeType(user.activeStatus) as any}
                       showDot={true}
                     />
                   </td>

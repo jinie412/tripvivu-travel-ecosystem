@@ -11,7 +11,7 @@ interface StatCardProps {
   icon: React.ReactNode;
   label: string;
   value: string | number;
-  change: string;
+  change?: string;
   badge?: string;
   color?: string;
 }
