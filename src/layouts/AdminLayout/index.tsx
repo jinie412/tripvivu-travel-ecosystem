@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminLayout.css';
-import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays, SlidersHorizontal, History, Play } from 'lucide-react';
+import { LayoutDashboard, Users, MapPin, Star, LogOut, ChevronDown, MapPinned, CalendarDays, SlidersHorizontal, History, Play, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -145,6 +145,13 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
 
         <div className="sidebar-footer">
+          <Link
+            to="/admin/profile"
+            className={`menu-item ${location.pathname === '/admin/profile' ? 'active' : ''}`}
+            style={{ marginBottom: '8px' }}>
+            <User size={20} />
+            <span>Hồ sơ cá nhân</span>
+          </Link>
           <button
             onClick={handleLogout}
             className="menu-item logout"

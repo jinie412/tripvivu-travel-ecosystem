@@ -29,6 +29,7 @@ import { ItineraryReviewDetail } from '../pages/admin/ItineraryReviewDetail';
 import { AlgorithmSettings } from '../pages/admin/AlgorithmSettings';
 import { AlgorithmRunner } from '../pages/admin/AlgorithmRunner';
 import { AlgorithmRunHistory } from '../pages/admin/AlgorithmRunHistory';
+import AdminProfilePage from '../pages/admin/Profile';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -67,6 +68,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/admin/algorithm-settings" element={<AlgorithmSettings />} />
         <Route path="/admin/algorithm-runner" element={<AlgorithmRunner />} />
         <Route path="/admin/algorithm-history" element={<AlgorithmRunHistory />} />
+        <Route path="/admin/profile" element={<AdminProfilePage />} />
       </Route>
 
       {/* Default Redirect */}
