@@ -16,7 +16,6 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/explore_state.dart';
-import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/location_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/paginated_see_all_screen.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
@@ -38,6 +37,7 @@ import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/widgets/visible_place_tracker.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -47,9 +47,6 @@ class ExploreScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<ExploreCubit>()..loadData()),
-        BlocProvider(
-          create: (_) => sl<NotificationCubit>()..loadNotifications(),
-        ),
         BlocProvider(create: (_) => sl<LocationCubit>()..fetchLocation()),
       ],
       child: const _ExploreView(),
@@ -66,6 +63,7 @@ class _ExploreView extends StatefulWidget {
 
 class _ExploreViewState extends State<_ExploreView> {
   static const int _pageSize = 10;
+  StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
   int _suggestionPage = 0;
   int _activityPage = 0;
   int _restaurantPage = 0;
@@ -74,6 +72,23 @@ class _ExploreViewState extends State<_ExploreView> {
   List<OrderEligiblePlace> _orderPlaces = const [];
   int _currentOrderPlaceIndex = 0;
   bool _isLoadingOrderPlaces = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _favoriteSubscription = sl<FavoriteRemoteDataSource>().changes.listen((
+      event,
+    ) {
+      if (!mounted) return;
+      context.read<ExploreCubit>().applyFavoriteChange(event);
+    });
+  }
+
+  @override
+  void dispose() {
+    _favoriteSubscription?.cancel();
+    super.dispose();
+  }
 
   void _onToggleItinerary(bool value) {
     setState(() => _isItineraryStarted = value);
@@ -249,6 +264,73 @@ class _ExploreViewState extends State<_ExploreView> {
     return s is ExploreLoaded ? s : null;
   }
 
+  Future<void> _setPlaceFavorite(String placeId, bool isFavorite) async {
+    try {
+      await sl<FavoriteRemoteDataSource>().setPlaceFavorite(
+        placeId,
+        isFavorite,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorite
+                ? 'Đã lưu vào danh mục yêu thích'
+                : 'Đã bỏ khỏi danh mục yêu thích',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa thể cập nhật yêu thích, vui lòng thử lại'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _setItineraryFavorite(
+    String itineraryId,
+    bool isFavorite,
+  ) async {
+    try {
+      await sl<FavoriteRemoteDataSource>().setItineraryFavorite(
+        itineraryId,
+        isFavorite,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorite
+                ? 'Đã lưu vào danh mục yêu thích'
+                : 'Đã bỏ khỏi danh mục yêu thích',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa thể cập nhật yêu thích, vui lòng thử lại'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _openSuggestionSeeAll() async {
     final initial = _loadedState?.suggestions ?? const <TripSuggestion>[];
     Navigator.push(
@@ -258,8 +340,14 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Lịch trình gợi ý',
           pageSize: _pageSize,
           initialItems: initial,
-          pageLoader: (page, limit) =>
-              context.read<ExploreCubit>().loadSuggestionsPage(page: page, limit: limit),
+          favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
+          favoriteMapper: (item, event) =>
+              event.type == FavoriteTargetType.itinerary && event.id == item.id
+              ? item.copyWith(isFavorite: event.isFavorite)
+              : item,
+          pageLoader: (page, limit) => context
+              .read<ExploreCubit>()
+              .loadSuggestionsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -272,7 +360,11 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
               );
             },
-            child: HomeItineraryCard(item: item),
+            child: HomeItineraryCard(
+              item: item,
+              onFavoriteChanged: (value) =>
+                  _setItineraryFavorite(item.id, value),
+            ),
           ),
         ),
       ),
@@ -288,21 +380,21 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Điểm đến nổi bật',
           pageSize: _pageSize,
           initialItems: initial,
-          pageLoader: (page, limit) =>
-              context.read<ExploreCubit>().loadDestinationsPage(page: page, limit: limit),
+          pageLoader: (page, limit) => context
+              .read<ExploreCubit>()
+              .loadDestinationsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CityDetailScreen(
-                    cityId: item.id,
-                    cityName: item.name,
-                  ),
+                  builder: (_) =>
+                      CityDetailScreen(cityId: item.id, cityName: item.name),
                 ),
               );
             },
             child: ActivityVerticalCard(
+              showFavorite: false,
               item: CityActivity(
                 id: item.id,
                 name: item.name,
@@ -326,8 +418,14 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Nhà hàng tiêu biểu',
           pageSize: _pageSize,
           initialItems: initial,
-          pageLoader: (page, limit) =>
-              context.read<ExploreCubit>().loadRestaurantsPage(page: page, limit: limit),
+          favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
+          favoriteMapper: (item, event) =>
+              event.type == FavoriteTargetType.place && event.id == item.id
+              ? item.copyWith(isFavorite: event.isFavorite)
+              : item,
+          pageLoader: (page, limit) => context
+              .read<ExploreCubit>()
+              .loadRestaurantsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -340,7 +438,10 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
               );
             },
-            child: RestaurantVerticalCard(item: item),
+            child: RestaurantVerticalCard(
+              item: item,
+              onFavoriteChanged: (value) => _setPlaceFavorite(item.id, value),
+            ),
           ),
         ),
       ),
@@ -356,8 +457,14 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Khách sạn nổi bật',
           pageSize: _pageSize,
           initialItems: initial,
-          pageLoader: (page, limit) =>
-              context.read<ExploreCubit>().loadHotelsPage(page: page, limit: limit),
+          favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
+          favoriteMapper: (item, event) =>
+              event.type == FavoriteTargetType.place && event.id == item.id
+              ? item.copyWith(isFavorite: event.isFavorite)
+              : item,
+          pageLoader: (page, limit) => context
+              .read<ExploreCubit>()
+              .loadHotelsPage(page: page, limit: limit),
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -370,7 +477,10 @@ class _ExploreViewState extends State<_ExploreView> {
                 ),
               );
             },
-            child: HotelVerticalCard(item: item),
+            child: HotelVerticalCard(
+              item: item,
+              onFavoriteChanged: (value) => _setPlaceFavorite(item.id, value),
+            ),
           ),
         ),
       ),
@@ -405,10 +515,10 @@ class _ExploreViewState extends State<_ExploreView> {
 
   Widget _buildContent(BuildContext context, ExploreLoaded state) {
     final screenW = MediaQuery.of(context).size.width;
-    final suggestionCardH  = screenW * 0.88 * (9 / 16) + 100;
-    final destinationCardH = screenW * 0.35 * (1 / 1)  + 64;
-    final restaurantCardH  = screenW * 0.45 * (3 / 4)  + 80;
-    final hotelCardH       = screenW * 0.45 * (3 / 4)  + 100;
+    final suggestionCardH = screenW * 0.88 * (9 / 16) + 100;
+    final destinationCardH = screenW * 0.35 * (1 / 1) + 64;
+    final restaurantCardH = screenW * 0.45 * (3 / 4) + 80;
+    final hotelCardH = screenW * 0.45 * (3 / 4) + 100;
 
     return CustomScrollView(
       slivers: [
@@ -474,7 +584,11 @@ class _ExploreViewState extends State<_ExploreView> {
                               ),
                             );
                           },
-                          child: HomeItineraryCard(item: item),
+                          child: HomeItineraryCard(
+                            item: item,
+                            onFavoriteChanged: (value) =>
+                                _setItineraryFavorite(item.id, value),
+                          ),
                         ),
                       );
                     },
@@ -528,6 +642,7 @@ class _ExploreViewState extends State<_ExploreView> {
                             );
                           },
                           child: city_cards.ActivityCard(
+                            showFavorite: false,
                             item: CityActivity(
                               id: item.id,
                               name: item.name,
@@ -591,7 +706,11 @@ class _ExploreViewState extends State<_ExploreView> {
                                 ),
                               );
                             },
-                            child: city_cards.RestaurantCard(item: item),
+                            child: city_cards.RestaurantCard(
+                            item: item,
+                            onFavoriteChanged: (value) =>
+                                _setPlaceFavorite(item.id, value),
+                          ),
                           ),
                         ),
                       );
@@ -634,22 +753,22 @@ class _ExploreViewState extends State<_ExploreView> {
                           left: i == 0 ? 16 : 0,
                           right: 12,
                         ),
-                        child: VisiblePlaceTracker(
-                          placeId: item.id,
-                          child: GestureDetector(
-                            onTap: () {
-                              sl<ActivityService>().trackClick(item.id);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (_) => sl<PlaceDetailCubit>(),
-                                    child: PlaceDetailScreen(placeId: item.id),
-                                  ),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlocProvider(
+                                  create: (_) => sl<PlaceDetailCubit>(),
+                                  child: PlaceDetailScreen(placeId: item.id),
                                 ),
-                              );
-                            },
-                            child: city_cards.HotelCard(item: item),
+                              ),
+                            );
+                          },
+                          child: city_cards.HotelCard(
+                            item: item,
+                            onFavoriteChanged: (value) =>
+                                _setPlaceFavorite(item.id, value),
                           ),
                         ),
                       );

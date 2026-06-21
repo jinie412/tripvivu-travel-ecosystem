@@ -24,6 +24,8 @@ class PlaceDetailModel {
   final String? openingHours;
   @JsonKey(name: 'close_time')
   final String? closingHours;
+  @JsonKey(name: 'open_hour_compressed')
+  final String? openHourCompressed;
   final String? phone;
   final List<PlaceReviewModel> reviews;
   @JsonKey(name: 'related_places')
@@ -47,6 +49,7 @@ class PlaceDetailModel {
     required this.description,
     this.openingHours,
     this.closingHours,
+    this.openHourCompressed,
     this.phone,
     this.reviews = const [],
     this.relatedPlaces = const [],
@@ -55,7 +58,8 @@ class PlaceDetailModel {
     this.longitude,
   });
 
-  factory PlaceDetailModel.fromJson(Map<String, dynamic> json) => _$PlaceDetailModelFromJson(json);
+  factory PlaceDetailModel.fromJson(Map<String, dynamic> json) =>
+      _$PlaceDetailModelFromJson(json);
   Map<String, dynamic> toJson() => _$PlaceDetailModelToJson(this);
 
   PlaceDetailEntity toEntity() => PlaceDetailEntity(
@@ -72,6 +76,7 @@ class PlaceDetailModel {
     description: description,
     openingHours: openingHours,
     closingHours: closingHours,
+    openHourCompressed: openHourCompressed,
     phone: phone,
     reviews: reviews.map((e) => e.toEntity()).toList(),
     relatedPlaces: relatedPlaces.map((e) => e.toEntity()).toList(),

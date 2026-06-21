@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_state.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_contact_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_description_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_gallery_section.dart';
@@ -33,6 +34,8 @@ class PlaceDetailScreen extends StatefulWidget {
 }
 
 class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
+  StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
+
   final _activityService = sl<ActivityService>();
   Timer? _dwellTimer;
   bool _viewTracked = false;
@@ -40,15 +43,24 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _favoriteSubscription = sl<FavoriteRemoteDataSource>().changes.listen((
+      event,
+    ) {
+      if (!mounted ||
+          event.type != FavoriteTargetType.place ||
+          event.id != widget.placeId) {
+        return;
+      }
+
+      context.read<PlaceDetailCubit>().syncFavoriteState(
+        event.id,
+        event.isFavorite,
+      );
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PlaceDetailCubit>().loadPlaceDetail(widget.placeId);
     });
-  }
-
-  @override
-  void dispose() {
-    _dwellTimer?.cancel();
-    super.dispose();
   }
 
   void _startDwellTimer() {
@@ -103,6 +115,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   }
 
   @override
+  void dispose() {
+    _favoriteSubscription?.cancel();
+    _dwellTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -117,6 +136,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+
           if (state is PlaceDetailError) {
             return Center(
               child: Column(
@@ -128,7 +148,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context
+                        
                         .read<PlaceDetailCubit>()
+                        
                         .loadPlaceDetail(widget.placeId),
                     child: const Text('Thử lại'),
                   ),
@@ -137,6 +159,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             );
           }
 
+
           if (state is PlaceDetailLoaded) {
             final place = state.placeDetail;
             return SingleChildScrollView(
@@ -144,7 +167,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 children: [
                   PlaceHeader(
                     imageUrl: place.images.isNotEmpty
+                       
                         ? place.images[0]
+                       
                         : 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&q=80',
                     isFavorite: place.isFavorite,
                     onBack: () => Navigator.pop(context),
@@ -166,7 +191,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       }
                     },
                   ),
-                  
+
                   // 2. Title, Rating, Location, Vibes
                   PlaceInfoSection(
                     name: place.name,
@@ -181,15 +206,18 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       place.address,
                     ),
                   ),
-                  
+
                   // 3. Image Gallery
                   PlaceGallerySection(images: place.images),
 
+                  // 4. Description
+
                   PlaceDescriptionSection(description: place.description),
 
+                  // 5. Contact Info (Hours, Phone, Address)
+
                   PlaceContactSection(
-                    openingTime: place.openingHours,
-                    closingTime: place.closingHours,
+                    openHourCompressed: place.openHourCompressed,
                     phone: place.phone,
                     address: place.address,
                     onLocationTap: () => _showMap(
@@ -200,7 +228,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       place.address,
                     ),
                   ),
-                  
+
                   // 6. Reviews Section
                   PlaceReviewSection(
                     rating: place.rating,
@@ -208,8 +236,10 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     reviews: place.reviews,
                   ),
 
+                  // 7. Related Places - ONLY SHOW if showRelatedPlaces is true
                   if (widget.showRelatedPlaces)
                     RelatedPlacesSection(relatedPlaces: place.relatedPlaces),
+
 
                   const SizedBox(height: 60),
                 ],
@@ -223,7 +253,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  void _showMap(BuildContext context, double lat, double lng, String title, String address) {
+  void _showMap(
+    BuildContext context,
+    double lat,
+    double lng,
+    String title,
+    String address,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

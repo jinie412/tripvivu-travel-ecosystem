@@ -8,7 +8,13 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggest
 
 class HomeItineraryCard extends StatelessWidget {
   final TripSuggestion item;
-  const HomeItineraryCard({super.key, required this.item});
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const HomeItineraryCard({
+    super.key,
+    required this.item,
+    this.onFavoriteChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -43,10 +49,13 @@ class HomeItineraryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Positioned(
+              Positioned(
                 top: 12,
                 right: 12,
-                child: LikeButton(),
+                child: LikeButton(
+                  isLiked: item.isFavorite,
+                  onChanged: onFavoriteChanged,
+                ),
               ),
             ],
           ),

@@ -232,7 +232,19 @@ class TripPlannerStep2Screen extends StatelessWidget {
                   color: AppColors.background,
                   child: ElevatedButton(
                     onPressed: () {
-                      context.read<TripPlannerCubit>().goNextStep();
+                      final cubit = context.read<TripPlannerCubit>();
+                      final error = cubit.validateStep2();
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      cubit.goNextStep();
                       Navigator.push(
                         context,
                         MaterialPageRoute(

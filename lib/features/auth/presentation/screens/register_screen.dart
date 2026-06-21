@@ -323,8 +323,13 @@ class _RegisterViewState extends State<_RegisterView> {
                         prefixIcon: Icons.phone_rounded,
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            (v?.isEmpty ?? true) ? 'Vui lòng nhập SĐT' : null,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Vui lòng nhập số điện thoại';
+                          if (!RegExp(r'^0[0-9]{9}$').hasMatch(v)) {
+                            return 'Số điện thoại phải có đúng 10 chữ số và bắt đầu bằng 0';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -348,11 +353,13 @@ class _RegisterViewState extends State<_RegisterView> {
                           ),
                         ),
                         validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'Vui lòng nhập mật khẩu';
-                          }
-                          if (v.length < 6) {
-                            return 'Mật khẩu phải có ít nhất 6 ký tự';
+                          if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
+                          if (v.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
+                          if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ hoa';
+                          if (!RegExp(r'[a-z]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ thường';
+                          if (!RegExp(r'[0-9]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ số';
+                          if (!RegExp(r'[@$!%*?&.#]').hasMatch(v)) {
+                            return r'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (@$!%*?&.#)';
                           }
                           return null;
                         },
@@ -380,9 +387,8 @@ class _RegisterViewState extends State<_RegisterView> {
                           ),
                         ),
                         validator: (v) {
-                          if (v != _passwordController.text) {
-                            return 'Mật khẩu không khớp';
-                          }
+                          if (v == null || v.isEmpty) return 'Vui lòng xác nhận mật khẩu';
+                          if (v != _passwordController.text) return 'Mật khẩu không khớp';
                           return null;
                         },
                       ),

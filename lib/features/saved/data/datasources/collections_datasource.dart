@@ -28,6 +28,7 @@ class RemoteCollectionsDataSource implements CollectionsDataSource {
         'page': page,
         'limit': limit,
       },
+      options: _client.forceRefreshOptions,
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -52,6 +53,7 @@ class RemoteCollectionsDataSource implements CollectionsDataSource {
         'page': page,
         'limit': limit,
       },
+      options: _client.forceRefreshOptions,
     );
 
     final data = response.data as Map<String, dynamic>;

@@ -1,5 +1,6 @@
 import 'package:travel_advisor_mobile/features/auth/data/datasources/auth_datasource.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 
 /// Concrete implementation of [AuthRepository].
@@ -63,4 +64,10 @@ class AuthRepositoryImpl implements AuthRepository {
       newPassword: newPassword,
     );
   }
+
+  @override
+  Future<UserEntity?> checkSession() => _dataSource.restoreSession();
+
+  @override
+  Future<void> logout() => _dataSource.logout();
 }

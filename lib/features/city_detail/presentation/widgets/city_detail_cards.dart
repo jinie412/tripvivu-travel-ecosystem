@@ -7,19 +7,45 @@ import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_
 
 class LikeButton extends StatefulWidget {
   final double size;
-  const LikeButton({super.key, this.size = 20});
+  final bool isLiked;
+  final ValueChanged<bool>? onChanged;
+
+  const LikeButton({
+    super.key,
+    this.size = 20,
+    this.isLiked = false,
+    this.onChanged,
+  });
 
   @override
   State<LikeButton> createState() => _LikeButtonState();
 }
 
 class _LikeButtonState extends State<LikeButton> {
-  bool _isLiked = false;
+  late bool _isLiked;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.isLiked;
+  }
+
+  @override
+  void didUpdateWidget(covariant LikeButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isLiked != widget.isLiked) {
+      _isLiked = widget.isLiked;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => setState(() => _isLiked = !_isLiked),
+      onTap: () {
+        final next = !_isLiked;
+        setState(() => _isLiked = next);
+        widget.onChanged?.call(next);
+      },
       child: CircleAvatar(
         radius: widget.size * 0.9,
         backgroundColor: Colors.white,
@@ -35,7 +61,15 @@ class _LikeButtonState extends State<LikeButton> {
 
 class ItineraryCard extends StatelessWidget {
   final CityItinerary item;
-  const ItineraryCard({super.key, required this.item});
+  final bool isFavorite;
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const ItineraryCard({
+    super.key,
+    required this.item,
+    this.isFavorite = false,
+    this.onFavoriteChanged,
+  });
 
   Widget _buildImageFallback() {
     return Container(
@@ -82,10 +116,13 @@ class ItineraryCard extends StatelessWidget {
                 ),
               ),
             ),
-            const Positioned(
+            Positioned(
               top: 12,
               right: 12,
-              child: LikeButton(),
+              child: LikeButton(
+                isLiked: isFavorite,
+                onChanged: onFavoriteChanged,
+              ),
             ),
           ],
         ),
@@ -137,7 +174,15 @@ class ItineraryCard extends StatelessWidget {
 
 class ActivityCard extends StatelessWidget {
   final CityActivity item;
-  const ActivityCard({super.key, required this.item});
+  final bool showFavorite;
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const ActivityCard({
+    super.key,
+    required this.item,
+    this.showFavorite = true,
+    this.onFavoriteChanged,
+  });
 
   Widget _buildImageFallback() {
     return Container(
@@ -167,11 +212,16 @@ class ActivityCard extends StatelessWidget {
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
               ),
-              const Positioned(
-                top: 8,
-                right: 8,
-                child: LikeButton(size: 16),
-              ),
+              if (showFavorite)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: LikeButton(
+                    size: 16,
+                    isLiked: item.isFavorite,
+                    onChanged: onFavoriteChanged,
+                  ),
+                ),
             ],
           ),
         ),
@@ -197,7 +247,13 @@ class ActivityCard extends StatelessWidget {
 
 class RestaurantCard extends StatelessWidget {
   final CityRestaurant item;
-  const RestaurantCard({super.key, required this.item});
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const RestaurantCard({
+    super.key,
+    required this.item,
+    this.onFavoriteChanged,
+  });
 
   Widget _buildImageFallback() {
     return Container(
@@ -228,10 +284,14 @@ class RestaurantCard extends StatelessWidget {
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
               ),
-              const Positioned(
+              Positioned(
                 top: 8,
                 right: 8,
-                child: LikeButton(size: 16),
+                child: LikeButton(
+                  size: 16,
+                  isLiked: item.isFavorite,
+                  onChanged: onFavoriteChanged,
+                ),
               ),
             ],
           ),
@@ -285,7 +345,13 @@ class RestaurantCard extends StatelessWidget {
 
 class HotelCard extends StatelessWidget {
   final CityHotel item;
-  const HotelCard({super.key, required this.item});
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const HotelCard({
+    super.key,
+    required this.item,
+    this.onFavoriteChanged,
+  });
 
   Widget _buildImageFallback() {
     return Container(
@@ -315,10 +381,14 @@ class HotelCard extends StatelessWidget {
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
               ),
-              const Positioned(
+              Positioned(
                 top: 8,
                 right: 8,
-                child: LikeButton(size: 16),
+                child: LikeButton(
+                  size: 16,
+                  isLiked: item.isFavorite,
+                  onChanged: onFavoriteChanged,
+                ),
               ),
             ],
           ),

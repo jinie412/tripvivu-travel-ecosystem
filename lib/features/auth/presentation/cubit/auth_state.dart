@@ -1,12 +1,35 @@
 import 'package:equatable/equatable.dart';
 
 import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
   @override
   List<Object?> get props => [];
 }
+
+// ── Session states (dùng cho AuthGate) ──────────────────────────────────────
+
+/// App đang kiểm tra session trong storage — hiển thị splash screen.
+class AuthChecking extends AuthState {
+  const AuthChecking();
+}
+
+/// Session hợp lệ — user đã đăng nhập (từ storage hoặc login thủ công).
+class AuthAuthenticated extends AuthState {
+  final UserEntity user;
+  const AuthAuthenticated(this.user);
+  @override
+  List<Object?> get props => [user];
+}
+
+/// Không có session hợp lệ — điều hướng về LoginScreen.
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
+
+// ── Action states (dùng cho LoginScreen, RegisterScreen, v.v.) ──────────────
 
 class AuthInitial extends AuthState {
   const AuthInitial();

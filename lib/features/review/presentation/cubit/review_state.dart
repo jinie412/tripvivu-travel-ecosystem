@@ -1,4 +1,5 @@
 import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_media_item.dart';
 
 abstract class ReviewState {}
 
@@ -11,8 +12,11 @@ class ReviewLoaded extends ReviewState {
   final int selectedDay;
   final double generalRating;
   final String generalComment;
+  final List<String> generalTags;
   final bool applyToAllLocations;
-  final List<String> mediaPaths;
+  final List<ReviewMediaItem> itineraryMedia;
+  final Map<String, List<ReviewMediaItem>> locationMediaByDetailId;
+  final Map<String, double?> locationRatingsBeforeApplyAll;
   final bool isSubmitting;
 
   ReviewLoaded({
@@ -20,8 +24,11 @@ class ReviewLoaded extends ReviewState {
     this.selectedDay = 0,
     this.generalRating = 0.0,
     this.generalComment = '',
+    this.generalTags = const [],
     this.applyToAllLocations = true,
-    this.mediaPaths = const [],
+    this.itineraryMedia = const [],
+    this.locationMediaByDetailId = const {},
+    this.locationRatingsBeforeApplyAll = const {},
     this.isSubmitting = false,
   });
 
@@ -30,8 +37,11 @@ class ReviewLoaded extends ReviewState {
     int? selectedDay,
     double? generalRating,
     String? generalComment,
+    List<String>? generalTags,
     bool? applyToAllLocations,
-    List<String>? mediaPaths,
+    List<ReviewMediaItem>? itineraryMedia,
+    Map<String, List<ReviewMediaItem>>? locationMediaByDetailId,
+    Map<String, double?>? locationRatingsBeforeApplyAll,
     bool? isSubmitting,
   }) {
     return ReviewLoaded(
@@ -39,8 +49,13 @@ class ReviewLoaded extends ReviewState {
       selectedDay: selectedDay ?? this.selectedDay,
       generalRating: generalRating ?? this.generalRating,
       generalComment: generalComment ?? this.generalComment,
+      generalTags: generalTags ?? this.generalTags,
       applyToAllLocations: applyToAllLocations ?? this.applyToAllLocations,
-      mediaPaths: mediaPaths ?? this.mediaPaths,
+      itineraryMedia: itineraryMedia ?? this.itineraryMedia,
+      locationMediaByDetailId:
+          locationMediaByDetailId ?? this.locationMediaByDetailId,
+      locationRatingsBeforeApplyAll:
+          locationRatingsBeforeApplyAll ?? this.locationRatingsBeforeApplyAll,
       isSubmitting: isSubmitting ?? this.isSubmitting,
     );
   }

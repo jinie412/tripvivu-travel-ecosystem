@@ -7,6 +7,7 @@ import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/profile/data/models/activity_item_model.dart';
 import 'package:travel_advisor_mobile/features/profile/data/models/profile_model.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 
 abstract class ProfileDataSource {
   Future<ProfileModel> getProfile();
@@ -27,14 +28,90 @@ class RemoteProfileDataSource implements ProfileDataSource {
 
   @override
   Future<ProfileModel> getProfile() async {
-    final response = await dioClient.dio.get('/profile/tourist/me');
-    return _parseProfileData(response.data as Map<String, dynamic>);
+    final touristId = await AuthUtils.requireCurrentUserId();
+    final responses = await Future.wait([
+      dioClient.dio.get('/profile/tourist/me'),
+      dioClient.dio.get(
+        '/reviews',
+        queryParameters: {'tourist_id': touristId, 'status': 'pending'},
+      ),
+    ]);
+    final profile = _parseProfileData(
+      responses[0].data as Map<String, dynamic>,
+    );
+    final reviewData = Map<String, dynamic>.from(responses[1].data as Map);
+    final counts = reviewData['counts'] is Map
+        ? Map<String, dynamic>.from(reviewData['counts'] as Map)
+        : const <String, dynamic>{};
+    return ProfileModel(
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      avatarUrl: profile.avatarUrl,
+      membershipTier: profile.membershipTier,
+      reviewPendingCount: (counts['pending'] as num?)?.toInt() ?? 0,
+      gender: profile.gender,
+      phoneNumber: profile.phoneNumber,
+      travelPreferences: profile.travelPreferences,
+    );
   }
 
   @override
   Future<List<ActivityItemModel>> getRecentActivities() async {
     // Chưa có API — trả về danh sách rỗng
-    return [];
+    final touristId = await AuthUtils.requireCurrentUserId();
+    final response = await dioClient.dio.get(
+      '/reviews',
+      queryParameters: {'tourist_id': touristId, 'status': 'all'},
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final reviewed = ((data['reviewed'] as List?) ?? const []).whereType<Map>();
+    final pending = ((data['pending'] as List?) ?? const []).whereType<Map>();
+    final result = <ActivityItemModel>[];
+
+    void addLatest(
+      Iterable<Map> source,
+      String kind,
+      ActivityType type,
+      ActivityStatus itemStatus,
+    ) {
+      Map? row;
+      for (final item in source) {
+        if (item['kind'] == kind) {
+          row = item;
+          break;
+        }
+      }
+      if (row == null) return;
+      final itineraryId = (row['itinerary_id'] ?? '').toString();
+      final detailId = (row['itinerary_detail_id'] ?? '').toString();
+      result.add(
+        ActivityItemModel(
+          id: '$kind:$itineraryId:$detailId:${row['review_id'] ?? ''}',
+          title: (row['title'] ?? 'Đánh giá').toString(),
+          type: type,
+          status: itemStatus,
+          rating: (row['rating'] as num?)?.toDouble(),
+          date: DateTime.tryParse((row['reviewed_at'] ?? '').toString()),
+        ),
+      );
+    }
+
+    addLatest(reviewed, 'itinerary', ActivityType.rated, ActivityStatus.none);
+    addLatest(reviewed, 'place', ActivityType.rated, ActivityStatus.none);
+    addLatest(
+      pending,
+      'itinerary',
+      ActivityType.reviewPending,
+      ActivityStatus.pendingReview,
+    );
+    addLatest(
+      pending,
+      'place',
+      ActivityType.reviewPending,
+      ActivityStatus.pendingReview,
+    );
+    return result;
   }
 
   @override

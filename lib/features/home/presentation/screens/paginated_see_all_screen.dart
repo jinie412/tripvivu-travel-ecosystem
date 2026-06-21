@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final String title;
@@ -10,6 +13,8 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final String emptyMessage;
   // Pre-seeded items from the home state — shown instantly while page 1 loads.
   final List<T> initialItems;
+  final Stream<FavoriteChangedEvent>? favoriteChanges;
+  final T Function(T item, FavoriteChangedEvent event)? favoriteMapper;
 
   const PaginatedSeeAllScreen({
     super.key,
@@ -19,6 +24,8 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
     this.pageSize = 10,
     this.emptyMessage = 'Không có dữ liệu để hiển thị.',
     this.initialItems = const [],
+    this.favoriteChanges,
+    this.favoriteMapper,
   });
 
   @override
@@ -28,6 +35,7 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
 class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   final ScrollController _scrollController = ScrollController();
   final List<T> _items = [];
+  StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
 
   bool _isInitialLoading = true;
   bool _isLoadingMore = false;
@@ -39,6 +47,7 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _favoriteSubscription = widget.favoriteChanges?.listen(_onFavoriteChanged);
     if (widget.initialItems.isNotEmpty) {
       // Show preloaded items immediately, then refresh page 1 in the background.
       _items.addAll(widget.initialItems);
@@ -74,8 +83,22 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
     }
   }
 
+  void _onFavoriteChanged(FavoriteChangedEvent event) {
+    final mapper = widget.favoriteMapper;
+    if (!mounted || mapper == null || _items.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      for (var i = 0; i < _items.length; i++) {
+        _items[i] = mapper(_items[i], event);
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _favoriteSubscription?.cancel();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();

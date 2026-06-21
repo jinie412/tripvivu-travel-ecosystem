@@ -18,6 +18,7 @@ class TripSuggestionModel {
     @JsonKey(name: 'image_gallery', defaultValue: <String>[])
   final List<String> imageGallery;
   final int placeholderColor;
+  final bool isFavorite;
 
   const TripSuggestionModel({
     required this.id,
@@ -31,6 +32,7 @@ class TripSuggestionModel {
     this.imageUrl,
     this.imageGallery = const <String>[],
     this.placeholderColor = 0xFF4A90D9,
+    this.isFavorite = false,
   });
 
   TripSuggestion toEntity() => TripSuggestion(
@@ -45,5 +47,6 @@ class TripSuggestionModel {
         imageUrl: imageUrl,
         imageUrls: imageGallery,
         placeholderColor: placeholderColor,
+        isFavorite: isFavorite,
       );
 }

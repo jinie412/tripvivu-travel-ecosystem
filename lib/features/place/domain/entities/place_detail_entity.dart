@@ -20,6 +20,7 @@ class PlaceDetailEntity with _$PlaceDetailEntity {
     required String description,
     String? openingHours,
     String? closingHours,
+    String? openHourCompressed,
     String? phone,
     @Default([]) List<PlaceReviewEntity> reviews,
     @Default([]) List<PlaceEntity> relatedPlaces,

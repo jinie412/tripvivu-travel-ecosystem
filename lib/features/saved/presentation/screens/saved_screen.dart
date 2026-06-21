@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +15,7 @@ import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cu
 import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_state.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/widgets/saved_itinerary_card.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -22,10 +25,24 @@ class SavedScreen extends StatefulWidget {
 }
 
 class _SavedScreenState extends State<SavedScreen> {
+  StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
+
   @override
   void initState() {
     super.initState();
     context.read<SavedCubit>().loadSavedContent();
+    _favoriteSubscription = sl<FavoriteRemoteDataSource>().changes.listen((event) {
+      if (!mounted) return;
+      final cubit = context.read<SavedCubit>();
+      cubit.applyFavoriteChange(event);
+      cubit.loadSavedContent(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _favoriteSubscription?.cancel();
+    super.dispose();
   }
 
   @override

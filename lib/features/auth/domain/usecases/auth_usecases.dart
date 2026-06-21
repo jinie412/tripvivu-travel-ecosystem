@@ -1,4 +1,5 @@
 import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/repositories/auth_repository.dart';
 
 /// Use-case: Đăng nhập.
@@ -86,4 +87,21 @@ class LoginWithGoogleUseCase {
   Future<LoginResult> call() async {
     return await repository.loginWithGoogle();
   }
+}
+
+/// Use-case: Kiểm tra và khôi phục session khi app khởi động.
+/// Trả về UserEntity nếu session hợp lệ, null nếu chưa đăng nhập.
+class CheckSessionUseCase {
+  final AuthRepository _repository;
+  CheckSessionUseCase(this._repository);
+
+  Future<UserEntity?> call() => _repository.checkSession();
+}
+
+/// Use-case: Đăng xuất — xóa token, signOut Supabase.
+class LogoutUseCase {
+  final AuthRepository _repository;
+  LogoutUseCase(this._repository);
+
+  Future<void> call() => _repository.logout();
 }

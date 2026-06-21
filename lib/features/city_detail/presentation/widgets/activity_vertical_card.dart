@@ -6,7 +6,15 @@ import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_
 
 class ActivityVerticalCard extends StatefulWidget {
   final CityActivity item;
-  const ActivityVerticalCard({super.key, required this.item});
+  final bool showFavorite;
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const ActivityVerticalCard({
+    super.key,
+    required this.item,
+    this.showFavorite = true,
+    this.onFavoriteChanged,
+  });
 
   @override
   State<ActivityVerticalCard> createState() => _ActivityVerticalCardState();
@@ -21,10 +29,19 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
     _isFavorite = widget.item.isFavorite;
   }
 
+  @override
+  void didUpdateWidget(covariant ActivityVerticalCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.isFavorite != widget.item.isFavorite) {
+      _isFavorite = widget.item.isFavorite;
+    }
+  }
+
   void _toggleFavorite() {
     setState(() {
       _isFavorite = !_isFavorite;
     });
+    widget.onFavoriteChanged?.call(_isFavorite);
     if (_isFavorite) {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -46,7 +63,7 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -93,14 +110,15 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: _toggleFavorite,
-                            child: Icon(
-                              _isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: _isFavorite ? Colors.red : Colors.grey,
-                              size: 24,
+                          if (widget.showFavorite)
+                            GestureDetector(
+                              onTap: _toggleFavorite,
+                              child: Icon(
+                                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: _isFavorite ? Colors.red : Colors.grey,
+                                size: 24,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),

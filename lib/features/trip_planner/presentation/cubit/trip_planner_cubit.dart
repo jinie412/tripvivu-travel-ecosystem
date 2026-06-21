@@ -258,6 +258,34 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
   // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  // ── Validation per step ─────────────────────────────────────────────────────
+
+  String? validateStep1() {
+    final form = state.whenOrNull(loaded: (f) => f);
+    if (form == null) return null;
+    if (form.departureLocationId == null || form.departureLocationId!.isEmpty) {
+      return 'Vui lòng chọn điểm khởi hành';
+    }
+    if (form.destinationLocationId == null || form.destinationLocationId!.isEmpty) {
+      return 'Vui lòng chọn điểm đến';
+    }
+    if (form.departureLocationId == form.destinationLocationId) {
+      return 'Điểm khởi hành và điểm đến không được trùng nhau';
+    }
+    return null;
+  }
+
+  String? validateStep2() {
+    final form = state.whenOrNull(loaded: (f) => f);
+    if (form == null) return null;
+    if (form.startDate == null) return 'Vui lòng chọn ngày bắt đầu';
+    if (form.endDate == null) return 'Vui lòng chọn ngày kết thúc';
+    if (form.tripIntent == null || form.tripIntent!.trim().isEmpty) {
+      return 'Vui lòng chọn ít nhất một loại hình du lịch';
+    }
+    return null;
+  }
+
   void goNextStep() {
     state.maybeWhen(
       loaded: (form) {

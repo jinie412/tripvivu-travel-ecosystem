@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 
 import 'itinerary_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
@@ -15,8 +16,9 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_review_dialog.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 /// Chế độ thiết kế: true dùng dữ liệu mẫu, false dùng API.
 const bool _useMockData = AppConfig.kUseMockData;
@@ -104,7 +106,7 @@ class _ItinerarySummaryView extends StatelessWidget {
     final costSnapshot = _buildCostSnapshot(itin, trackingState);
     final totalVisitCount = costSnapshot.totalVisitCount;
     final visitedVisitCount = costSnapshot.visitedCount;
-    final canReview = _canReviewItinerary(itin, now, visitedVisitCount);
+    final canReview = _canReviewItinerary(itin, now);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFBFDFF),
@@ -153,24 +155,91 @@ class _ItinerarySummaryView extends StatelessWidget {
           ),
         ),
         centerTitle: true,
-        actions: canReview
-            ? [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: _summaryCircleButton(Icons.star_outline_rounded, () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => ItineraryReviewDialog(
-                        itineraryId: itin.id,
-                        itineraryTitle: itin.title,
-                        totalLocations: totalVisitCount,
-                        visitedLocations: visitedVisitCount,
-                      ),
-                    );
-                  }),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(1, 2),
                 ),
-              ]
-            : null,
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.edit_rounded,
+                color: Color(0xFF2563EB),
+                size: 20,
+              ),
+              onPressed: () => _showEditTitleDialog(context, itin),
+            ),
+          ),
+          if (itin.isPublic)
+            Container(
+              margin: EdgeInsets.only(right: canReview ? 8 : 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(1, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: Icon(
+                  itin.isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: itin.isFavorite
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF2563EB),
+                  size: 22,
+                ),
+                onPressed: () => _toggleFavorite(context, itin),
+              ),
+            ),
+          if (canReview)
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(1, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.stars_rounded,
+                  color: Color(0xFF10B981),
+                  size: 24,
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => ItineraryRatingPopup(
+                      itineraryId: itin.id,
+                      itineraryTitle: itin.title,
+                      totalLocations: itin.totalLocations,
+                      visitedLocations: itin.visitedLocations,
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+
       ),
       body: Stack(
         children: [
@@ -272,7 +341,53 @@ class _ItinerarySummaryView extends StatelessWidget {
           ),
         ],
       ),
-    );
+      );
+  }
+
+  Future<void> _toggleFavorite(
+    BuildContext context,
+    ItineraryDetailEntity itin,
+  ) async {
+    if (!itin.isPublic) {
+      return;
+    }
+
+    final cubit = context.read<ItineraryCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final nextFavorite = !itin.isFavorite;
+
+    cubit.setSelectedItineraryFavorite(nextFavorite);
+
+    try {
+      await sl<FavoriteRemoteDataSource>().setItineraryFavorite(
+        itin.id,
+        nextFavorite,
+      );
+      if (!context.mounted) return;
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            nextFavorite
+                ? 'Đã lưu vào danh mục yêu thích'
+                : 'Đã bỏ khỏi danh mục yêu thích',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      cubit.setSelectedItineraryFavorite(itin.isFavorite);
+      if (!context.mounted) return;
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Chưa thể cập nhật yêu thích, vui lòng thử lại'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _buildDestinationHeader(
@@ -504,30 +619,13 @@ class _ItinerarySummaryView extends StatelessWidget {
   bool _canReviewItinerary(
     ItineraryDetailEntity itin,
     DateTime now,
-    int visitedCount,
   ) {
     final today = DateUtils.dateOnly(now);
     final endDate = DateUtils.dateOnly(itin.endDate);
     final status = itin.status.toUpperCase();
     final hasStarted =
         status == 'ONGOING' || status == 'COMPLETED' || itin.trackingActive;
-    return today.isAfter(endDate) && hasStarted && visitedCount > 0;
-  }
-
-  Widget _summaryCircleButton(IconData icon, VoidCallback onTap) {
-    return Material(
-      color: Colors.black.withAlpha(120),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 18, color: Colors.white),
-        ),
-      ),
-    );
+    return !today.isBefore(endDate) && hasStarted;
   }
 
   void _showEditTitleDialog(BuildContext context, ItineraryDetailEntity itin) {

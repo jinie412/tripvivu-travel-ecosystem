@@ -11,6 +11,7 @@ class ItineraryDetailModel {
   final DateTime endDate;
   final String status;
   final bool isPublic;
+  final bool isFavorite;
   final int durationDays;
   final int activitiesCount;
   final int totalLocations;
@@ -39,6 +40,7 @@ class ItineraryDetailModel {
     required this.endDate,
     required this.status,
     this.isPublic = true,
+    this.isFavorite = false,
     required this.durationDays,
     required this.activitiesCount,
     this.totalLocations = 0,
@@ -92,6 +94,7 @@ class ItineraryDetailModel {
       endDate: end,
       status: json['status'] ?? '',
       isPublic: json['isPublic'] ?? json['is_public'] ?? true,
+      isFavorite: json['isFavorite'] == true || json['is_favorite'] == true,
       durationDays:
           json['durationDays'] ??
           json['duration_days'] ??
@@ -166,6 +169,7 @@ class ItineraryDetailModel {
       endDate: endDate,
       status: status,
       isPublic: isPublic,
+      isFavorite: isFavorite,
       durationDays: durationDays,
       activitiesCount: activitiesCount,
       totalLocations: totalLocations,

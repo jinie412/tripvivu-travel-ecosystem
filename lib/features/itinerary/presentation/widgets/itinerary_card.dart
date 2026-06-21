@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
 
 class ItineraryCard extends StatelessWidget {
   final ItineraryEntity item;
@@ -49,7 +50,10 @@ class ItineraryCard extends StatelessWidget {
                 children: [
                   Icon(Icons.delete_outline, size: 22),
                   SizedBox(height: 4),
-                  Text('Xóa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Xóa',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ],
               ),
             ),
@@ -110,7 +114,9 @@ class ItineraryCard extends StatelessWidget {
                           left: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(12),
@@ -132,9 +138,13 @@ class ItineraryCard extends StatelessWidget {
                           left: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF50), // Green for completed
+                              color: const Color(
+                                0xFF4CAF50,
+                              ), // Green for completed
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -173,29 +183,44 @@ class ItineraryCard extends StatelessWidget {
                           ),
                           if (item.status == ItineraryStatus.completed)
                             GestureDetector(
-                              onTap: () {
+                              onTap: () async {
+                                if (item.rating != null) {
+                                  await openReviewedItineraryReview(
+                                    context,
+                                    item.id,
+                                  );
+                                  return;
+                                }
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => RateItineraryScreen(
                                       itineraryId: item.id,
-                                      isReadOnly: item.rating != null,
                                     ),
                                   ),
                                 );
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: item.rating == null ? AppColors.primary : const Color(0xFFF1F5F9),
+                                  color: item.rating == null
+                                      ? AppColors.primary
+                                      : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  item.rating == null ? 'Đánh giá' : 'Xem đánh giá',
+                                  item.rating == null
+                                      ? 'Đánh giá'
+                                      : 'Xem đánh giá',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: item.rating == null ? Colors.white : const Color(0xFF64748B),
+                                    color: item.rating == null
+                                        ? Colors.white
+                                        : const Color(0xFF64748B),
                                   ),
                                 ),
                               ),
@@ -206,8 +231,11 @@ class ItineraryCard extends StatelessWidget {
                       // Chi phí + Số ngày
                       Row(
                         children: [
-                          Icon(Icons.monetization_on_outlined,
-                              size: 14, color: AppColors.primary),
+                          Icon(
+                            Icons.monetization_on_outlined,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             _formatCost(item.estimatedCost, item.currency),
@@ -218,8 +246,11 @@ class ItineraryCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          const Icon(Icons.calendar_today_outlined,
-                              size: 14, color: Color(0xFF6B7280)),
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 14,
+                            color: Color(0xFF6B7280),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${item.durationDays} Ngày',
@@ -237,7 +268,11 @@ class ItineraryCard extends StatelessWidget {
                   ),
                 ),
                 if (bottomChild != null) ...[
-                  const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFF3F4F6),
+                  ),
                   bottomChild!,
                 ],
               ],
@@ -312,7 +347,9 @@ class ItineraryCard extends StatelessWidget {
     final today = DateTime.now();
     final start = item.startDate!;
 
-    return start.year == today.year && start.month == today.month && start.day == today.day;
+    return start.year == today.year &&
+        start.month == today.month &&
+        start.day == today.day;
   }
 }
 

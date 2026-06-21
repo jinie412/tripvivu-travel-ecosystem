@@ -165,9 +165,15 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   Future<ItineraryDetailModel> getItineraryDetail(String id) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
+    final touristId = await AuthUtils.getCurrentUserId();
 
     final res = await http.get(
-      Uri.parse('$baseUrl/itinerary/$id'),
+      Uri.parse('$baseUrl/itinerary/$id').replace(
+        queryParameters: {
+          if (touristId != null && touristId.isNotEmpty)
+            'tourist_id': touristId,
+        },
+      ),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -274,6 +280,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       endDate: endDate,
       status: (data['status'] ?? 'DRAFT').toString(),
       isPublic: data['isPublic'] == true || data['is_public'] == true,
+      isFavorite: data['isFavorite'] == true || data['is_favorite'] == true,
       durationDays: _asInt(
         data['totalDays'] ?? data['durationDays'],
         days.length,

@@ -11,6 +11,7 @@ import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/c
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
 
 import 'itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_empty_view.dart';
@@ -163,7 +164,11 @@ class _ItineraryViewState extends State<_ItineraryView> {
             hasScrollBody: false,
             child: ItineraryEmptyView(
               onCreateTap: () {
-                // TODO: navigate to create itinerary screen
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const TripPlannerScreen(),
+                  ),
+                );
               },
             ),
           )

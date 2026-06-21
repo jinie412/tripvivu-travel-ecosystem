@@ -1111,6 +1111,22 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
+  void setSelectedItineraryFavorite(bool isFavorite) {
+    final currentState = state;
+    if (currentState is! ItineraryLoaded ||
+        currentState.selectedItinerary == null) {
+      return;
+    }
+
+    emit(
+      currentState.copyWith(
+        selectedItinerary: currentState.selectedItinerary!.copyWith(
+          isFavorite: isFavorite,
+        ),
+      ),
+    );
+  }
+
   void updateActivityTimeSingle(
     String activityId, {
     String? startTime,
