@@ -26,18 +26,20 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Create env file
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
+          echo "VITE_SWAGGER_URL=${{ secrets.VITE_SWAGGER_URL }}" >> .env
+          echo "VITE_TOKEN_KEY=${{ secrets.VITE_TOKEN_KEY }}" >> .env
+          echo "VITE_API_TIMEOUT=${{ secrets.VITE_API_TIMEOUT }}" >> .env
+          echo "VITE_APP_NAME=${{ secrets.VITE_APP_NAME }}" >> .env
+          echo "VITE_ENV=${{ secrets.VITE_ENV }}" >> .env
+          echo "VITE_FRONTEND_URL=${{ secrets.VITE_FRONTEND_URL }}" >> .env
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
       - name: Build web app
         run: npm run build
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_SWAGGER_URL: ${{ secrets.VITE_SWAGGER_URL }}
-          VITE_TOKEN_KEY: ${{ secrets.VITE_TOKEN_KEY }}
-          VITE_API_TIMEOUT: ${{ secrets.VITE_API_TIMEOUT }}
-          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
-          VITE_ENV: ${{ secrets.VITE_ENV }}
-          VITE_FRONTEND_URL: ${{ secrets.VITE_FRONTEND_URL }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Login DO Registry
         uses: docker/login-action@v3
