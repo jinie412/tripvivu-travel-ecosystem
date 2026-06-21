@@ -3,10 +3,10 @@ name: CD - Web Deploy
 on:
   push:
     branches:
-      - develop
+      - feature/deploy-updates
 
 env:
-  REGISTRY: registry.digitalocean.com/graduation
+  REGISTRY: registry.digitalocean.com/graduation-travel
   IMAGE_NAME: frontend
 
 jobs:
@@ -28,6 +28,16 @@ jobs:
 
       - name: Build web app
         run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SWAGGER_URL: ${{ secrets.VITE_SWAGGER_URL }}
+          VITE_TOKEN_KEY: ${{ secrets.VITE_TOKEN_KEY }}
+          VITE_API_TIMEOUT: ${{ secrets.VITE_API_TIMEOUT }}
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+          VITE_ENV: ${{ secrets.VITE_ENV }}
+          VITE_FRONTEND_URL: ${{ secrets.VITE_FRONTEND_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Login DO Registry
         uses: docker/login-action@v3
