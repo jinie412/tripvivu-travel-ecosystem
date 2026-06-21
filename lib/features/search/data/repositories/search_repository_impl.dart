@@ -2,6 +2,7 @@
 
 import 'package:travel_advisor_mobile/features/search/data/datasources/search_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
+import 'package:travel_advisor_mobile/features/search/domain/entities/search_results.dart';
 import 'package:travel_advisor_mobile/features/search/domain/repositories/search_repository.dart';
 import 'package:travel_advisor_mobile/features/search/data/datasources/search_local_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/data/models/search_location_model.dart';
@@ -37,4 +38,13 @@ class SearchRepositoryImpl implements SearchRepository {
     );
     await localDataSource.saveRecentSearch(model);
   }
+
+  @override
+  Future<SearchMultiResults> searchAll(String query) =>
+      remoteDataSource.searchAll(query);
+
+  @override
+  Future<SearchPageResult> searchByType(
+          String query, SearchType type, int page, int limit) =>
+      remoteDataSource.searchByType(query, type, page, limit);
 }

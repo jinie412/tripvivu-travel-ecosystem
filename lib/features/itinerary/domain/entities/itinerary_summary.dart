@@ -15,6 +15,9 @@ class ItinerarySummary with _$ItinerarySummary {
     /// Số lịch trình sắp đi.
     @Default(0) int upcoming,
 
+    /// Số lịch trình đang diễn ra.
+    @Default(0) int ongoing,
+
     /// Số lịch trình đang tạo (nháp).
     @Default(0) int draft,
   }) = _ItinerarySummary;

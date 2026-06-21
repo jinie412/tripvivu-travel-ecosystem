@@ -34,8 +34,12 @@ import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/
 
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -68,34 +72,81 @@ class _ExploreViewState extends State<_ExploreView> {
   int _activityPage = 0;
   int _restaurantPage = 0;
   int _hotelPage = 0;
-  bool _isItineraryStarted = false;
   List<OrderEligiblePlace> _orderPlaces = const [];
   int _currentOrderPlaceIndex = 0;
   bool _isLoadingOrderPlaces = false;
 
-  void _onToggleItinerary(bool value) {
-    setState(() => _isItineraryStarted = value);
+  bool get _isTrackingActive {
+    if (!mounted) return false;
+    return context.read<TrackingCubit>().state.isActive;
+  }
+
+  Future<void> _onToggleItinerary(bool value, String itineraryId) async {
+    final trackingCubit = context.read<TrackingCubit>();
+    final itineraryCubit = context.read<ItineraryCubit>();
+
     if (!value) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Dừng theo dõi?'),
+          content: const Text(
+            'Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Huỷ'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Dừng'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+      await trackingCubit.stop();
+      if (!mounted) return;
+      itineraryCubit.toggleItineraryStatus(itineraryId, false);
       _orderPlaces = const [];
       _currentOrderPlaceIndex = 0;
       return;
     }
 
-    if (value) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Chế độ hành trình đã bật. Hệ thống sẽ tự động gợi ý món ăn khi bạn đến gần điểm dừng.',
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
-
-      Future.delayed(const Duration(seconds: 4), () {
-        if (!mounted || !_isItineraryStarted) return;
-        _showNextPreOrderNotification();
-      });
+    final perm = await TrackingPermissions.ensure();
+    if (!mounted) return;
+    if (perm != TrackingPermResult.granted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(TrackingPermissions.messageFor(perm)),
+        action: perm == TrackingPermResult.deniedBackground
+            ? SnackBarAction(label: 'Mở Cài đặt', onPressed: openAppSettings)
+            : null,
+      ));
+      return;
     }
+
+    await trackingCubit.start(
+      itineraryId: itineraryId,
+      date: DateTime.now(),
+    );
+    if (!mounted || !trackingCubit.state.isActive) return;
+
+    itineraryCubit.toggleItineraryStatus(itineraryId, true);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Chế độ hành trình đã bật. Hệ thống sẽ tự động gợi ý món ăn khi bạn đến gần điểm dừng.',
+        ),
+        duration: Duration(seconds: 3),
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted || !_isTrackingActive) return;
+      _showNextPreOrderNotification();
+    });
   }
 
   Future<void> _prepareOrderPlaces() async {
@@ -127,13 +178,13 @@ class _ExploreViewState extends State<_ExploreView> {
 
   Future<void> _showNextPreOrderNotification() async {
     await _prepareOrderPlaces();
-    if (!mounted || !_isItineraryStarted) {
+    if (!mounted || !_isTrackingActive) {
       return;
     }
 
     if (_currentOrderPlaceIndex >= _orderPlaces.length) {
       Future.delayed(const Duration(seconds: 6), () {
-        if (!mounted || !_isItineraryStarted) return;
+        if (!mounted || !_isTrackingActive) return;
         _showTripCompletionPopup();
       });
       return;
@@ -159,7 +210,7 @@ class _ExploreViewState extends State<_ExploreView> {
       );
     }
 
-    if (!mounted || !_isItineraryStarted) {
+    if (!mounted || !_isTrackingActive) {
       return;
     }
 
@@ -171,7 +222,7 @@ class _ExploreViewState extends State<_ExploreView> {
       movedToNext = true;
       _currentOrderPlaceIndex += 1;
       Future.delayed(const Duration(seconds: 4), () {
-        if (!mounted || !_isItineraryStarted) {
+        if (!mounted || !_isTrackingActive) {
           return;
         }
         _showNextPreOrderNotification();
@@ -420,10 +471,21 @@ class _ExploreViewState extends State<_ExploreView> {
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: CurrentItineraryCard(
-                    item: state.currentItinerary,
-                    isStarted: _isItineraryStarted,
-                    onToggle: _onToggleItinerary,
+                  child: BlocBuilder<TrackingCubit, TrackingState>(
+                    buildWhen: (p, c) =>
+                        p.isActive != c.isActive ||
+                        p.itineraryId != c.itineraryId,
+                    builder: (context, trackingState) {
+                      final currentId = state.currentItinerary?.id ?? '';
+                      final isStarted = trackingState.isActive &&
+                          trackingState.itineraryId == currentId;
+                      return CurrentItineraryCard(
+                        item: state.currentItinerary,
+                        isStarted: isStarted,
+                        onToggle: (v) =>
+                            _onToggleItinerary(v, currentId),
+                      );
+                    },
                   ),
                 ),
               ],

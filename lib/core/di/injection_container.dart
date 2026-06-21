@@ -69,7 +69,10 @@ import 'package:travel_advisor_mobile/features/search/data/repositories/search_r
 import 'package:travel_advisor_mobile/features/search/domain/repositories/search_repository.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/get_recent_searches.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/search_locations.dart';
+import 'package:travel_advisor_mobile/features/search/domain/usecases/search_all_usecase.dart';
+import 'package:travel_advisor_mobile/features/search/domain/usecases/search_by_type_usecase.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_cubit.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_all_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:travel_advisor_mobile/features/search/data/datasources/search_local_datasource.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/save_recent_search.dart';
@@ -242,7 +245,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetRecentSearches(sl()));
   sl.registerLazySingleton(() => SearchLocations(sl()));
   sl.registerLazySingleton(() => SaveRecentSearch(sl()));
-  sl.registerFactory(() => SearchCubit(sl(), sl(), sl()));
+  sl.registerLazySingleton(() => SearchAllUseCase(sl()));
+  sl.registerLazySingleton(() => SearchByTypeUseCase(sl()));
+  sl.registerFactory(() => SearchCubit(sl(), sl(), sl())); // GetRecentSearches, SearchLocations, SaveRecentSearch
+  sl.registerFactory(() => SearchAllCubit(sl()));
 
   // ── City Detail ────────────────────────────────────────────────────────────
   sl.registerLazySingleton<CityDetailDataSource>(() => RemoteCityDetailDataSource(sl()));

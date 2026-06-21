@@ -121,6 +121,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           total: 5,
           draft: 2,
           upcoming: 1,
+          ongoing: 1,
           completed: 1,
         );
         final mockItineraries = [

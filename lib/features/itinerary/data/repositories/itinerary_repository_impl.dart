@@ -40,6 +40,9 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       completed: entities
           .where((e) => e.status == ItineraryStatus.completed)
           .length,
+      ongoing: entities
+          .where((e) => e.status == ItineraryStatus.ongoing)
+          .length,
       upcoming: entities
           .where((e) => e.status == ItineraryStatus.upcoming)
           .length,

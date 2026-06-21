@@ -7,12 +7,14 @@ class SearchHeaderWidget extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onClear;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
 
   const SearchHeaderWidget({
     super.key,
     required this.controller,
     required this.onClear,
     this.onChanged,
+    this.onSubmitted,
   });
 
   @override
@@ -59,6 +61,7 @@ class SearchHeaderWidget extends StatelessWidget {
                       autofocus: true,
                       textAlignVertical: TextAlignVertical.center, // Đảm bảo text align center
                       onChanged: onChanged,
+                      onSubmitted: onSubmitted,
                       decoration: InputDecoration(
                         hintText: 'Tìm kiếm thành phố, địa điểm, nhà hàng...',
                         hintStyle: TextStyle(

@@ -85,6 +85,8 @@ class _ItineraryViewState extends State<_ItineraryView> {
   Widget _buildLoadedView(BuildContext context, ItineraryLoaded state) {
     final cubit = context.read<ItineraryCubit>();
     final hasSearch = state.searchQuery.isNotEmpty || _isSearchOpen;
+    // Dùng summary.total để biết user có itinerary nào không (độc lập với filter hiện tại).
+    final hasAnyItineraries = state.summary.total > 0;
 
     return CustomScrollView(
       slivers: [
@@ -111,12 +113,11 @@ class _ItineraryViewState extends State<_ItineraryView> {
                     ),
                   ),
                 ),
-                if (state.itineraries.isNotEmpty) ...[
+                if (hasAnyItineraries)
                   _iconButton(Icons.search, () {
                     setState(() => _isSearchOpen = true);
                     _searchFocusNode.requestFocus();
                   }),
-                ],
               ],
             ),
           ),
@@ -130,7 +131,8 @@ class _ItineraryViewState extends State<_ItineraryView> {
             ),
           ),
 
-        if (state.itineraries.isNotEmpty) ...[
+        // Filter chips luôn hiển thị khi user có ít nhất 1 lịch trình.
+        if (hasAnyItineraries)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 16),
@@ -142,29 +144,39 @@ class _ItineraryViewState extends State<_ItineraryView> {
               ),
             ),
           ),
-          if (state.itineraries.isNotEmpty &&
-              state.activeFilter == null &&
-              !hasSearch)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: ItinerarySummaryGrid(summary: state.summary),
-              ),
+
+        // Summary grid chỉ hiện ở tab "Tất cả", không tìm kiếm, có kết quả.
+        if (hasAnyItineraries &&
+            state.activeFilter == null &&
+            !hasSearch &&
+            state.itineraries.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: ItinerarySummaryGrid(summary: state.summary),
             ),
-        ],
+          ),
 
         if (state.itineraries.isEmpty && hasSearch)
           SliverFillRemaining(
             hasScrollBody: false,
             child: _SearchEmptyView(query: state.searchQuery),
           )
+        else if (state.itineraries.isEmpty && hasAnyItineraries)
+          // User có lịch trình nhưng filter không có kết quả
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _FilterEmptyView(
+              activeFilter: state.activeFilter,
+              onCreateTap: () {},
+            ),
+          )
         else if (state.itineraries.isEmpty)
+          // User chưa có lịch trình nào
           SliverFillRemaining(
             hasScrollBody: false,
             child: ItineraryEmptyView(
-              onCreateTap: () {
-                // TODO: navigate to create itinerary screen
-              },
+              onCreateTap: () {},
             ),
           )
         else
@@ -178,30 +190,30 @@ class _ItineraryViewState extends State<_ItineraryView> {
               final item = state.itineraries[index - 1];
               void onCardTap() async {
                 cubit.selectItinerary(item.id);
-                  final trackingCubit = context.read<TrackingCubit>();
+                final trackingCubit = context.read<TrackingCubit>();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => MultiBlocProvider(
-                        providers: [
-                          BlocProvider.value(value: cubit),
+                      providers: [
+                        BlocProvider.value(value: cubit),
                         BlocProvider.value(value: trackingCubit),
-                        ],
+                      ],
                       child: ItinerarySummaryScreen(itineraryId: item.id),
                     ),
                   ),
                 );
               }
 
-                return _ItineraryCardWithStart(
-                  item: item,
-                  onCardTap: onCardTap,
-                  onDelete: () => cubit.deleteItem(item.id),
-                );
-              },
-              childCount: state.itineraries.length + 2,
-            ),
+              return _ItineraryCardWithStart(
+                item: item,
+                onCardTap: onCardTap,
+                onDelete: () => cubit.deleteItem(item.id),
+              );
+            },
+            childCount: state.itineraries.length + 2,
           ),
+        ),
       ],
     );
   }
@@ -309,8 +321,18 @@ class _ItineraryCardWithStart extends StatelessWidget {
     required this.onDelete,
   });
 
-  // TODO(date-restriction): Bật lại khi muốn giới hạn nút chỉ hiện vào ngày lịch trình.
-  bool get _shouldShowStart => item.status != ItineraryStatus.completed;
+  bool get _shouldShowStart {
+    if (item.status == ItineraryStatus.completed) return false;
+    if (item.status == ItineraryStatus.draft) return false;
+    if (item.status == ItineraryStatus.ongoing) return true;
+    // upcoming: chỉ hiện khi đã tới ngày bắt đầu
+    final start = item.startDate;
+    if (start == null) return false;
+    final now = DateTime.now();
+    final startDay = DateTime(start.year, start.month, start.day);
+    final todayDay = DateTime(now.year, now.month, now.day);
+    return todayDay == startDay;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,10 +395,9 @@ class _StartButtonState extends State<_StartButton> {
         return;
       }
 
-      final date = widget.item.startDate ?? DateTime.now();
       await context.read<TrackingCubit>().start(
         itineraryId: widget.item.id,
-        date: date,
+        date: DateTime.now(),
       );
       if (!mounted) return;
       context.read<ItineraryCubit>().toggleItineraryStatus(widget.item.id, true);
@@ -501,6 +522,97 @@ class _StartButtonState extends State<_StartButton> {
 }
 
 
+
+class _FilterEmptyView extends StatelessWidget {
+  final ItineraryStatus? activeFilter;
+  final VoidCallback? onCreateTap;
+
+  const _FilterEmptyView({this.activeFilter, this.onCreateTap});
+
+  String get _label {
+    switch (activeFilter) {
+      case ItineraryStatus.upcoming:
+        return 'sắp đi';
+      case ItineraryStatus.ongoing:
+        return 'đang diễn ra';
+      case ItineraryStatus.completed:
+        return 'đã kết thúc';
+      case ItineraryStatus.draft:
+        return 'đang tạo';
+      default:
+        return 'này';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 48),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Color(0xFFEFF6FF),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.map_outlined,
+                color: Color(0xFF1A6EBD),
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Chưa có lịch trình $_label',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Bạn chưa có lịch trình nào trong mục này.\nHãy tạo lịch trình mới!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 180,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: onCreateTap,
+                icon: const Icon(Icons.add_circle_outline, size: 18),
+                label: const Text(
+                  'Tạo lịch trình',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A6EBD),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                  shadowColor: const Color(0xFF1A6EBD).withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _SearchEmptyView extends StatelessWidget {
   final String query;

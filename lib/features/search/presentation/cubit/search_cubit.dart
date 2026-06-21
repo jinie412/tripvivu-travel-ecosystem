@@ -30,7 +30,6 @@ class SearchCubit extends Cubit<SearchState> {
     }
   }
 
-  /// Gọi khi user tap vào 1 kết quả search
   Future<void> onLocationSelected(SearchLocation location) async {
     await _saveRecentSearch(location);
   }

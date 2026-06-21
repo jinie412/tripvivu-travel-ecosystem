@@ -7,6 +7,7 @@ import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 
 class CurrentItineraryCard extends StatelessWidget {
   final ItineraryEntity? item;
@@ -29,13 +30,17 @@ class CurrentItineraryCard extends StatelessWidget {
     final fmtDay = '${item!.startDate?.day ?? ''} \u2013 ${item!.endDate?.day ?? ''}';
 
     final cubit = context.read<ItineraryCubit>();
+    final trackingCubit = context.read<TrackingCubit>();
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BlocProvider.value(
-              value: cubit,
+            builder: (_) => MultiBlocProvider(
+              providers: [
+                BlocProvider.value(value: cubit),
+                BlocProvider.value(value: trackingCubit),
+              ],
               child: ItinerarySummaryScreen(itineraryId: item!.id),
             ),
           ),
@@ -91,15 +96,19 @@ class CurrentItineraryCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEFF6FF),
+                            color: isStarted
+                                ? const Color(0xFFFFEDED)
+                                : const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'BẮT ĐẦU LỊCH TRÌNH',
+                            isStarted ? 'DỪNG LỊCH TRÌNH' : 'BẮT ĐẦU LỊCH TRÌNH',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2563EB),
+                              color: isStarted
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF2563EB),
                             ),
                           ),
                         ),
@@ -119,7 +128,13 @@ class CurrentItineraryCard extends StatelessWidget {
                     ),
                   if (onToggle != null) const SizedBox(height: 8),
                   Text(
-                    item!.status == ItineraryStatus.upcoming ? 'SẮP DIỄN RA' : (item!.status == ItineraryStatus.completed ? 'HOÀN THÀNH' : 'ĐANG DIỄN RA'),
+                    isStarted
+                        ? 'ĐANG DIỄN RA'
+                        : (item!.status == ItineraryStatus.upcoming
+                            ? 'SẮP DIỄN RA'
+                            : item!.status == ItineraryStatus.completed
+                                ? 'HOÀN THÀNH'
+                                : 'ĐANG DIỄN RA'),
                     style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 2),

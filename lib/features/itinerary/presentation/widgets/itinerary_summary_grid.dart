@@ -60,10 +60,10 @@ class ItinerarySummaryGrid extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _StatCard(
-                  label: 'Đang tạo',
-                  valueStr: '${summary.draft} lịch trình',
-                  icon: Icons.edit_note_outlined,
-                  iconColor: const Color(0xFF6B7280),
+                  label: 'Đang đi',
+                  valueStr: '${summary.ongoing} lịch trình',
+                  icon: Icons.directions_walk_outlined,
+                  iconColor: const Color(0xFF8B5CF6),
                 ),
               ),
             ],

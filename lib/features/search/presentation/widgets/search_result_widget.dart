@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/city_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
@@ -12,10 +13,15 @@ import 'package:travel_advisor_mobile/features/search/domain/entities/search_loc
 
 class SearchResultWidget extends StatelessWidget {
   final List<SearchLocation> results;
+  /// Gọi khi user bấm "Xem tất cả"
+  final VoidCallback? onViewAll;
+
+  static const _maxVisible = 10;
 
   const SearchResultWidget({
     super.key,
     required this.results,
+    this.onViewAll,
   });
 
   @override
@@ -24,19 +30,18 @@ class SearchResultWidget extends StatelessWidget {
       return const Center(
         child: Text(
           'Không tìm thấy kết quả phù hợp',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.black54,
-          ),
+          style: TextStyle(fontSize: 16, color: Colors.black54),
         ),
       );
     }
+
+    final visible = results.take(_maxVisible).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppSizes.s16),
-        Text(
+        const Text(
           'Tất cả kết quả',
           style: TextStyle(
             fontSize: 18,
@@ -47,33 +52,14 @@ class SearchResultWidget extends StatelessWidget {
         const SizedBox(height: AppSizes.s16),
         Expanded(
           child: ListView.builder(
-            itemCount: results.length,
+            itemCount: visible.length + 1, // +1 cho nút "Xem tất cả"
             itemBuilder: (context, index) {
-              final location = results[index];
+              if (index == visible.length) {
+                return _ViewAllButton(onTap: onViewAll);
+              }
+              final location = visible[index];
               return InkWell(
-                onTap: () {
-                  if (location.type == 'place') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider(
-                          create: (_) => sl<PlaceDetailCubit>(),
-                          child: PlaceDetailScreen(placeId: location.id),
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CityDetailScreen(
-                          cityName: location.name,
-                          cityId: location.id,
-                        ),
-                      ),
-                    );
-                  }
-                },
+                onTap: () => _onTap(context, location),
                 child: _buildResultItem(
                   location.name,
                   location.imageUrl,
@@ -85,6 +71,30 @@ class SearchResultWidget extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  void _onTap(BuildContext context, SearchLocation location) {
+    if (location.type == 'place') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => sl<PlaceDetailCubit>(),
+            child: PlaceDetailScreen(placeId: location.id),
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CityDetailScreen(
+            cityName: location.name,
+            cityId: location.id,
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildResultItem(String title, String imageUrl, String type) {
@@ -103,13 +113,12 @@ class SearchResultWidget extends StatelessWidget {
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
+                    placeholder: (ctx, url) => Container(
                       width: 56,
                       height: 56,
                       color: Colors.grey[200],
                     ),
-                    errorWidget: (context, url, error) =>
-                        _fallbackThumb(fallbackIcon),
+                    errorWidget: (ctx, url, err) => _fallbackThumb(fallbackIcon),
                   ),
           ),
           const SizedBox(width: AppSizes.s16),
@@ -123,6 +132,7 @@ class SearchResultWidget extends StatelessWidget {
               ),
             ),
           ),
+          const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
         ],
       ),
     );
@@ -134,6 +144,33 @@ class SearchResultWidget extends StatelessWidget {
       height: 56,
       color: Colors.grey[200],
       child: Icon(icon, color: Colors.grey[500]),
+    );
+  }
+}
+
+class _ViewAllButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  const _ViewAllButton({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'Xem tất cả kết quả',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              decoration: TextDecoration.underline,
+              decorationColor: AppColors.primary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
