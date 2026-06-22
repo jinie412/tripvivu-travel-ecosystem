@@ -37,29 +37,30 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
   }
 
   void _toggleFavorite() {
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
+    setState(() => _isFavorite = !_isFavorite);
     widget.onFavoriteChanged?.call(_isFavorite);
     if (_isFavorite) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(
           content: Text('Đã lưu vào danh mục yêu thích'),
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-        ),
-      );
+        ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final reviewLabel = widget.item.reviewCount >= 1000
+        ? '(${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k)'
+        : '(${widget.item.reviewCount})';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -68,135 +69,124 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image Section with Favorite Button
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.item.imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(color: Colors.grey[200]),
-                    errorWidget: (context, url, error) => const Icon(Icons.error),
-                  ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: CachedNetworkImage(
+                  imageUrl: widget.item.imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) =>
+                      Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) =>
+                      const Icon(Icons.error),
                 ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: _toggleFavorite,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: _isFavorite ? Colors.red : Colors.black,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Content Section
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.item.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                // Rating Tag
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.item.rating.toString(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _toggleFavorite,
+                            child: Icon(
+                              _isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: _isFavorite ? Colors.red : Colors.grey,
+                              size: 24,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${widget.item.reviewCount ~/ 1000 >= 1 ? "${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k" : widget.item.reviewCount})',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.item.rating.toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              reviewLabel,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
+                      if (widget.item.address.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_outlined,
+                                color: Colors.grey[600], size: 14),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                widget.item.address,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (widget.item.price.isNotEmpty &&
+                          widget.item.price != 'Liên hệ') ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Từ ${widget.item.price}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                // Address row (icon + province/city)
-                if ((widget.item.address).isNotEmpty)
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          widget.item.address,
-                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 12),
-                Text(
-                  'Giá mỗi đêm',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Từ ${widget.item.price}',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

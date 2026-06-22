@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_cubit.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_state.dart';
+import 'package:travel_advisor_mobile/features/search/presentation/screens/search_all_screen.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_header_widget.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_result_widget.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/widgets/search_suggestion_widget.dart';
@@ -22,50 +21,75 @@ class SearchScreen extends StatelessWidget {
   }
 }
 
-class _SearchView extends StatelessWidget {
+class _SearchView extends StatefulWidget {
   const _SearchView();
 
   @override
-  Widget build(BuildContext context) {
-    final searchController = TextEditingController();
+  State<_SearchView> createState() => _SearchViewState();
+}
 
+class _SearchViewState extends State<_SearchView> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _goToSearchAll(BuildContext context) {
+    final q = _searchController.text.trim();
+    if (q.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SearchAllScreen(query: q),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Pure white background as requested
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Search Header (Top Nav)
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s16, AppSizes.s16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSizes.s16, AppSizes.s16, AppSizes.s16, 0),
               child: SearchHeaderWidget(
-                controller: searchController,
+                controller: _searchController,
                 onClear: () {
-                  searchController.clear();
+                  _searchController.clear();
                   context.read<SearchCubit>().onSearchQueryChanged('');
                 },
-                onChanged: (value) => context.read<SearchCubit>().onSearchQueryChanged(value),
+                onChanged: (v) =>
+                    context.read<SearchCubit>().onSearchQueryChanged(v),
+                onSubmitted: (_) => _goToSearchAll(context),
               ),
             ),
-
-            // Main Body: Hint + Recent Searches
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSizes.s16),
                 child: BlocBuilder<SearchCubit, SearchState>(
-                  builder: (context, state) {
-                    return state.when(
-                      initial: () => const Center(child: CircularProgressIndicator()),
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      loaded: (recentSearches) => SearchSuggestionWidget(
-                        recentSearches: recentSearches,
-                      ),
-                      searching: () => const Center(child: CircularProgressIndicator()),
-                      searchResults: (results) => SearchResultWidget(
-                        results: results,
-                      ),
-                      error: (message) => Center(child: Text(message)),
-                    );
-                  },
+                  builder: (context, state) => state.when(
+                    initial: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    loaded: (recent) =>
+                        SearchSuggestionWidget(recentSearches: recent),
+                    searching: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    searchResults: (results) => SearchResultWidget(
+                      results: results,
+                      onViewAll: () => _goToSearchAll(context),
+                    ),
+                    multiResults: (_) => const SizedBox.shrink(),
+                    error: (msg) => Center(child: Text(msg)),
+                  ),
                 ),
               ),
             ),

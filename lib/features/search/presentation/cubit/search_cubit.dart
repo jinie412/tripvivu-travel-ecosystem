@@ -16,6 +16,9 @@ class SearchCubit extends Cubit<SearchState> {
   final ActivityService _activityService;
   Timer? _debounce;
 
+  List<SearchLocation> _cachedRecent = [];
+  String _currentQuery = '';
+
   SearchCubit(
     this._getRecentSearches,
     this._searchLocations,
@@ -23,38 +26,59 @@ class SearchCubit extends Cubit<SearchState> {
     this._activityService,
   ) : super(const SearchState.initial());
 
-  Future<void> loadRecentSearches() async {
-    emit(const SearchState.loading());
+  Future<void> loadRecentSearches({bool silent = false}) async {
+    if (!silent) emit(const SearchState.loading());
     try {
       final recentSearches = await _getRecentSearches();
-      emit(SearchState.loaded(recentSearches));
+      _cachedRecent = recentSearches;
+      if (silent) {
+        // Only update UI if currently showing recent searches, not search results
+        final isShowingRecent = state.maybeWhen(
+          loaded: (_) => true,
+          initial: () => true,
+          orElse: () => false,
+        );
+        if (isShowingRecent) emit(SearchState.loaded(recentSearches));
+      } else {
+        emit(SearchState.loaded(recentSearches));
+      }
     } catch (e) {
-      emit(const SearchState.error('Failed to load recent searches'));
+      if (!silent) emit(const SearchState.error('Failed to load recent searches'));
     }
   }
 
-  /// Gọi khi user tap vào 1 kết quả search
   Future<void> onLocationSelected(SearchLocation location) async {
     await _saveRecentSearch(location);
   }
 
   void onSearchQueryChanged(String query) {
     _debounce?.cancel();
+    _currentQuery = query.trim();
 
-    if (query.trim().isEmpty) {
-      loadRecentSearches();
+    if (_currentQuery.isEmpty) {
+      if (_cachedRecent.isNotEmpty) {
+        emit(SearchState.loaded(_cachedRecent));
+        loadRecentSearches(silent: true);
+      } else {
+        loadRecentSearches();
+      }
       return;
     }
 
     _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final q = _currentQuery;
       emit(const SearchState.searching());
       try {
-        final results = await _searchLocations(query);
-        emit(SearchState.searchResults(results));
-        // Log search action khi có kết quả trả về
-        _activityService.trackSearch();
+        final results = await _searchLocations(q);
+        // Discard nếu user đã xóa/đổi query trong lúc đang fetch
+        if (_currentQuery == q) {
+          emit(SearchState.searchResults(results));
+          _activityService.trackSearch();
+        }
       } catch (e) {
-        emit(const SearchState.error('Failed to search locations'));
+        if (_currentQuery == q) {
+          emit(const SearchState.error('Failed to search locations'));
+        }
       }
     });
   }

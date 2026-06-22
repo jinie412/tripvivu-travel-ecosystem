@@ -36,6 +36,8 @@ class ItineraryFilterChips extends StatelessWidget {
                 const SizedBox(width: 8),
                 _chip(label: 'Sắp đi', value: ItineraryStatus.upcoming),
                 const SizedBox(width: 8),
+                _chip(label: 'Đang đi', value: ItineraryStatus.ongoing),
+                const SizedBox(width: 8),
                 _chip(label: 'Đã kết thúc', value: ItineraryStatus.completed),
                 const SizedBox(width: 8),
                 _chip(label: 'Đang tạo', value: ItineraryStatus.draft),

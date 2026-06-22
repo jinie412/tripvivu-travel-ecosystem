@@ -55,6 +55,7 @@ class DioClient {
             .copyWith(policy: CachePolicy.refresh)
             .toExtra(),
       );
+
 }
 
 /// Đính kèm Bearer token từ SecureStorage vào mỗi request.
