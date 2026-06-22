@@ -18,6 +18,7 @@ class TimelineActivityCard extends StatelessWidget {
   final VoidCallback? onReplaceTap;
   final VoidCallback? onCardTap;
   final VoidCallback? onCardLongPress;
+  final VoidCallback? onViewDetailTap;
   final VoidCallback? onStartTimeTap;
   final VoidCallback? onEndTimeTap;
   final VoidCallback? onRateTap;
@@ -25,6 +26,7 @@ class TimelineActivityCard extends StatelessWidget {
   final int day;
   final bool isHighlighted;
   final bool isEditMode;
+  final bool isOpeningReview;
   final String? nextTransportInfo;
 
   /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
@@ -47,6 +49,7 @@ class TimelineActivityCard extends StatelessWidget {
     this.onReplaceTap,
     this.onCardTap,
     this.onCardLongPress,
+    this.onViewDetailTap,
     this.onStartTimeTap,
     this.onEndTimeTap,
     this.onRateTap,
@@ -54,6 +57,7 @@ class TimelineActivityCard extends StatelessWidget {
     required this.day,
     this.isHighlighted = false,
     this.isEditMode = false,
+    this.isOpeningReview = false,
     this.nextTransportInfo,
     this.trackingStatus,
     this.onCheckIn,
@@ -305,6 +309,10 @@ class TimelineActivityCard extends StatelessWidget {
     );
   }
 
+  bool get _isVisited =>
+      activity.status == ActivityStatus.daDi ||
+      trackingStatus?.status == VisitStatus.visited;
+
   Widget _buildActivityCard(BuildContext context) {
     if (_isAccommodationStart) {
       return _buildAccommodationCard(context);
@@ -438,50 +446,6 @@ class TimelineActivityCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
-                        if (activity.status == ActivityStatus.daDi)
-                          GestureDetector(
-                            onTap: onRateTap,
-                            child: hasUserRated
-                                ? Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.star_rounded,
-                                        size: 12,
-                                        color: Color(0xFF10B981),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        '$userRating',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF10B981),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF2563EB,
-                                      ).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Text(
-                                      'Đánh giá',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFF2563EB),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                          ),
                       ],
                     ),
                     // ── Tracking: badge "Đã ghé" hoặc nút "Tôi đã đến" ──────
@@ -489,8 +453,83 @@ class TimelineActivityCard extends StatelessWidget {
                       const SizedBox(height: AppSizes.s8),
                       _buildTrackingRow(),
                     ],
+                    const SizedBox(height: AppSizes.s8),
+                    _buildCardActions(hasUserRated, userRating),
                   ],
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardActions(bool hasUserRated, double? userRating) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: [
+        _cardActionButton(
+          icon: Icons.open_in_new_rounded,
+          label: 'Xem chi ti\u1ebft \u0111\u1ecba \u0111i\u1ec3m',
+          color: const Color(0xFF2563EB),
+          onTap: onViewDetailTap ?? onCardLongPress,
+        ),
+        if (_isVisited)
+          _cardActionButton(
+            icon: hasUserRated ? Icons.star_rounded : Icons.rate_review_rounded,
+            label: hasUserRated
+                ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
+                : isOpeningReview
+                ? '\u0110ang m\u1edf'
+                : '\u0110\u00e1nh gi\u00e1',
+            color: const Color(0xFF10B981),
+            onTap: isOpeningReview ? null : onRateTap,
+            isLoading: isOpeningReview,
+          ),
+      ],
+    );
+  }
+
+  Widget _cardActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.20)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading)
+              SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              )
+            else
+              Icon(icon, size: 13, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],

@@ -34,7 +34,10 @@ class HomeItineraryCard extends StatelessWidget {
                 top: 12,
                 left: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -93,10 +96,21 @@ class HomeItineraryCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
-            const Icon(Icons.location_on_outlined, size: 12, color: Colors.grey),
-            const SizedBox(width: 4),
-            Flexible(
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Icon(
+              Icons.location_on_outlined,
+              size: 12,
+              color: Colors.grey,
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
               child: Text(
                 item.location,
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -104,15 +118,16 @@ class HomeItineraryCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
             const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
-            const SizedBox(width: 4),
-            Text(item.views, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            const SizedBox(width: 8),
+            Text(
+              item.views,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
             const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
-            const SizedBox(width: 4),
-            Text(item.likes, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            const SizedBox(width: 4),
+            Text(
+              item.likes,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
           ],
         ),
       ],
@@ -120,9 +135,16 @@ class HomeItineraryCard extends StatelessWidget {
   }
 
   Widget _buildItineraryImageGallery() {
-    final gallery = item.imageUrls.where((url) => url.trim().isNotEmpty).take(3).toList();
+    final gallery = item.imageUrls
+        .where((url) => url.trim().isNotEmpty)
+        .where((url) => !_isUnsafeItineraryCoverUrl(url))
+        .take(3)
+        .toList();
 
-    if (gallery.isEmpty && item.imageUrl != null && item.imageUrl!.trim().isNotEmpty) {
+    if (gallery.isEmpty &&
+        item.imageUrl != null &&
+        item.imageUrl!.trim().isNotEmpty &&
+        !_isUnsafeItineraryCoverUrl(item.imageUrl!)) {
       gallery.add(item.imageUrl!.trim());
     }
 
@@ -140,10 +162,7 @@ class HomeItineraryCard extends StatelessWidget {
 
     return Row(
       children: [
-        Expanded(
-          flex: 2,
-          child: _buildNetworkImage(gallery[0]),
-        ),
+        Expanded(flex: 2, child: _buildNetworkImage(gallery[0])),
         const SizedBox(width: 4),
         Expanded(
           child: Column(
@@ -154,8 +173,13 @@ class HomeItineraryCard extends StatelessWidget {
                 child: gallery.length >= 3
                     ? _buildNetworkImage(gallery[2])
                     : Container(
-                        color: Color(item.placeholderColor).withValues(alpha: 0.35),
-                        child: const Icon(Icons.landscape, color: Colors.white54),
+                        color: Color(
+                          item.placeholderColor,
+                        ).withValues(alpha: 0.35),
+                        child: const Icon(
+                          Icons.landscape,
+                          color: Colors.white54,
+                        ),
                       ),
               ),
             ],
@@ -176,5 +200,15 @@ class HomeItineraryCard extends StatelessWidget {
         child: const Icon(Icons.broken_image, color: Colors.white),
       ),
     );
+  }
+
+  bool _isUnsafeItineraryCoverUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      return true;
+    }
+
+    final host = uri.host.toLowerCase();
+    return host == 'tinyurl.vn' || host == 'down-vn.img.susercontent.com';
   }
 }

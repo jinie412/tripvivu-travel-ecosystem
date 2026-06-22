@@ -515,7 +515,7 @@ class _ExploreViewState extends State<_ExploreView> {
 
   Widget _buildContent(BuildContext context, ExploreLoaded state) {
     final screenW = MediaQuery.of(context).size.width;
-    final suggestionCardH = screenW * 0.88 * (9 / 16) + 100;
+    final suggestionCardH = screenW * 0.88 * (9 / 16) + 126;
     final destinationCardH = screenW * 0.35 * (1 / 1) + 64;
     final restaurantCardH = screenW * 0.45 * (3 / 4) + 80;
     final hotelCardH = screenW * 0.45 * (3 / 4) + 100;
@@ -707,10 +707,10 @@ class _ExploreViewState extends State<_ExploreView> {
                               );
                             },
                             child: city_cards.RestaurantCard(
-                            item: item,
-                            onFavoriteChanged: (value) =>
-                                _setPlaceFavorite(item.id, value),
-                          ),
+                              item: item,
+                              onFavoriteChanged: (value) =>
+                                  _setPlaceFavorite(item.id, value),
+                            ),
                           ),
                         ),
                       );

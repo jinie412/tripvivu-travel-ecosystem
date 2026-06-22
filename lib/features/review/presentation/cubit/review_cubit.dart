@@ -463,6 +463,20 @@ class ReviewCubit extends Cubit<ReviewState> {
     }
   }
 
+  void ensureLocationAvailable(LocationReviewEntity location) {
+    if (state is! ReviewLoaded) return;
+
+    final currentState = state as ReviewLoaded;
+    final exists = currentState.itinerary.locations.any(
+      (loc) => loc.id == location.id,
+    );
+    if (exists) return;
+
+    final newItinerary = currentState.itinerary.copyWith(
+      locations: [...currentState.itinerary.locations, location],
+    );
+    emit(currentState.copyWith(itinerary: newItinerary));
+  }
   Future<void> addImages() async {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;

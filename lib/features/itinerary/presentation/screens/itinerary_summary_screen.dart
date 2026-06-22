@@ -19,6 +19,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itin
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/public_visibility_switch.dart';
 
 /// Chế độ thiết kế: true dùng dữ liệu mẫu, false dùng API.
 const bool _useMockData = AppConfig.kUseMockData;
@@ -52,7 +53,10 @@ class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _ItinerarySummaryView(itineraryId: widget.itineraryId);
+    return BlocProvider<TrackingCubit>(
+      create: (_) => sl<TrackingCubit>(),
+      child: _ItinerarySummaryView(itineraryId: widget.itineraryId),
+    );
   }
 }
 
@@ -113,6 +117,8 @@ class _ItinerarySummaryView extends StatelessWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        leadingWidth: 72,
+        titleSpacing: 0,
         elevation: 0,
         leading: Container(
           margin: const EdgeInsets.only(left: 16),
@@ -231,15 +237,14 @@ class _ItinerarySummaryView extends StatelessWidget {
                     builder: (_) => ItineraryRatingPopup(
                       itineraryId: itin.id,
                       itineraryTitle: itin.title,
-                      totalLocations: itin.totalLocations,
-                      visitedLocations: itin.visitedLocations,
+                      totalLocations: totalVisitCount,
+                      visitedLocations: visitedVisitCount,
                     ),
                   );
                 },
               ),
             ),
         ],
-
       ),
       body: Stack(
         children: [
@@ -334,7 +339,7 @@ class _ItinerarySummaryView extends StatelessWidget {
           ),
           // Nút xem chi tiết ở dưới cùng (Floating effect)
           Positioned(
-            bottom: 30,
+            bottom: 16,
             left: 20,
             right: 20,
             child: _buildActionBtn(context, itin),
@@ -390,6 +395,62 @@ class _ItinerarySummaryView extends StatelessWidget {
     }
   }
 
+  Future<void> _confirmVisibilityChange(
+    BuildContext context,
+    ItineraryDetailEntity itin,
+    bool nextValue,
+  ) async {
+    if (nextValue == itin.isPublic) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          nextValue ? 'Công khai lịch trình?' : 'Chuyển về riêng tư?',
+        ),
+        content: Text(
+          nextValue
+              ? 'Lịch trình sẽ hiển thị trong khu vực khám phá công khai.'
+              : 'Người khác sẽ không còn thấy lịch trình này trong khu vực công khai.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await context.read<ItineraryCubit>().toggleVisibility(itin.id, nextValue);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextValue
+                ? 'Đã công khai lịch trình'
+                : 'Đã chuyển lịch trình về riêng tư',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể cập nhật trạng thái công khai'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Widget _buildDestinationHeader(
     BuildContext context,
     ItineraryDetailEntity itin,
@@ -398,211 +459,157 @@ class _ItinerarySummaryView extends StatelessWidget {
     int totalVisitCount,
   ) {
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.45,
+      height: MediaQuery.of(context).size.height * 0.48,
       width: double.infinity,
       child: Stack(
         children: [
-          // Background Image
           Positioned.fill(
             child: Image.network(
-              'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80', // Hình ảnh biển Phú Quốc
+              'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&q=80',
               fit: BoxFit.cover,
             ),
           ),
-          // Gradient Overlay
           Positioned.fill(
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.black.withValues(alpha: 0.1),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.58),
+                    Colors.black.withValues(alpha: 0.10),
+                    Colors.black.withValues(alpha: 0.46),
                   ],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  stops: const [0.0, 0.3, 0.6, 1.0],
+                  stops: const [0.0, 0.55, 1.0],
                 ),
               ),
             ),
           ),
-          // Glass Card for Info
           Positioned(
             left: 20,
             right: 20,
-            bottom: 30,
+            bottom: 18,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(28),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.25),
+                      color: Colors.white.withValues(alpha: 0.28),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 30,
+                        offset: const Offset(0, 14),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.location_on,
-                                      size: 14,
-                                      color: Colors.blue.shade300,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'ĐIỂM ĐẾN',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  itin.destination,
+                            child: Text(
+                              'ĐIỂM ĐẾN',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.8,
+                              ),
+                            ),
+                          ),
+                          PublicVisibilitySwitch(
+                            value: itin.isPublic,
+                            dark: true,
+                            borderless: true,
+                            compact: true,
+                            onChanged: (value) =>
+                                _confirmVisibilityChange(context, itin, value),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        itin.destination,
+                        style: const TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 14),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _showEditTitleDialog(context, itin),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${itin.title} • ${_formatCompactDateRange(itin.startDate, itin.endDate)}',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  itin.title,
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: -0.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withValues(alpha: 0.94),
+                                    height: 1.25,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '${_getStatusText(itin)} • $visitedVisitCount/$totalVisitCount địa điểm',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.22),
                                   ),
                                 ),
-                                if ((itin.tripIntent ?? '')
-                                    .trim()
-                                    .isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.18,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.18,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.local_offer_outlined,
-                                          size: 13,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            'Chủ đề: ${itin.tripIntent!.trim()}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          Material(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(18),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () => _showEditTitleDialog(context, itin),
-                              child: const SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: Icon(
+                                child: const Icon(
                                   Icons.edit_outlined,
+                                  size: 16,
                                   color: Colors.white,
-                                  size: 24,
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          Icon(
-                            Icons.calendar_month,
-                            color: Colors.white.withValues(alpha: 0.6),
-                            size: 16,
+                          _summaryInfoPill(
+                            Icons.route_rounded,
+                            'Lịch trình • $visitedVisitCount/$totalVisitCount địa điểm',
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            dateRange,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontWeight: FontWeight.w500,
+                          _summaryInfoPill(
+                            Icons.calendar_month_rounded,
+                            _formatFullDateRange(itin.startDate, itin.endDate),
+                          ),
+                          if ((itin.tripIntent ?? '').trim().isNotEmpty)
+                            _summaryInfoPill(
+                              Icons.local_offer_outlined,
+                              'Chủ đề: ${itin.tripIntent!.trim()}',
                             ),
-                          ),
                         ],
                       ),
                     ],
@@ -616,16 +623,53 @@ class _ItinerarySummaryView extends StatelessWidget {
     );
   }
 
+  Widget _summaryInfoPill(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.86)),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.92),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCompactDateRange(DateTime start, DateTime end) {
+    return '${start.day}–${end.day}/${end.month}';
+  }
+
+  String _formatFullDateRange(DateTime start, DateTime end) {
+    final left =
+        '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')}';
+    final right =
+        '${end.day.toString().padLeft(2, '0')}/${end.month.toString().padLeft(2, '0')}';
+    return '$left - $right, ${end.year}';
+  }
+
   bool _canReviewItinerary(
     ItineraryDetailEntity itin,
     DateTime now,
   ) {
-    final today = DateUtils.dateOnly(now);
-    final endDate = DateUtils.dateOnly(itin.endDate);
-    final status = itin.status.toUpperCase();
-    final hasStarted =
-        status == 'ONGOING' || status == 'COMPLETED' || itin.trackingActive;
-    return !today.isBefore(endDate) && hasStarted;
+    return itin.status.toUpperCase() == 'COMPLETED';
   }
 
   void _showEditTitleDialog(BuildContext context, ItineraryDetailEntity itin) {
@@ -691,19 +735,13 @@ class _ItinerarySummaryView extends StatelessWidget {
     );
   }
 
-  String _getStatusText(ItineraryDetailEntity itin) {
-    if (itin.status == 'COMPLETED') return 'Lịch trình kết thúc';
-    if (itin.status == 'ONGOING') return 'Đang diễn ra';
-    if (itin.status == 'UPCOMING') return 'Lịch trình sắp tới';
-    if (itin.status == 'DRAFT') return 'Đang lên kế hoạch';
-    return 'Lịch trình';
-  }
-
   Widget _buildDetailErrorScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBFDFF),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        leadingWidth: 72,
+        titleSpacing: 0,
         elevation: 0,
         leading: Container(
           margin: const EdgeInsets.only(left: 16),
@@ -911,7 +949,7 @@ class _ItinerarySummaryView extends StatelessWidget {
         : '0 ${itin.currency}';
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
@@ -1251,7 +1289,7 @@ class _ItinerarySummaryView extends StatelessWidget {
   Widget _buildNotesSection(List<String> notes) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(28),
@@ -1583,14 +1621,14 @@ class _ItinerarySummaryView extends StatelessWidget {
         : visitedActivities.length;
     final activityEstimatedCost = visits.fold<double>(
       0,
-      (sum, activity) => sum + activity.price,
+      (sum, activity) => sum + activity.price + activity.transportCost,
     );
     final estimatedCost = itin.estimatedBudget > 0
         ? itin.estimatedBudget
         : activityEstimatedCost;
     final spentCost = visitedActivities.fold<double>(
       0,
-      (sum, activity) => sum + activity.price,
+      (sum, activity) => sum + activity.price + activity.transportCost,
     );
     final apiVisitedCount = visits.isNotEmpty
         ? itin.visitedLocations.clamp(0, visits.length).toInt()
@@ -1621,7 +1659,10 @@ class _ItinerarySummaryView extends StatelessWidget {
   double _dayActivityCost(ItineraryDayEntity day) {
     return _visitActivities(
       day,
-    ).fold<double>(0, (sum, activity) => sum + activity.price);
+    ).fold<double>(
+      0,
+      (sum, activity) => sum + activity.price + activity.transportCost,
+    );
   }
 }
 

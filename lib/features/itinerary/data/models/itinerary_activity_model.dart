@@ -20,6 +20,8 @@ class ItineraryActivityModel {
   @JsonKey(name: 'image_url')
   final String imageUrl;
   final double price;
+  @JsonKey(name: 'transport_cost')
+  final double transportCost;
   final String currency;
   @JsonKey(name: 'transport_info')
   final String? transportInfo;
@@ -45,6 +47,7 @@ class ItineraryActivityModel {
     required this.address,
     required this.imageUrl,
     this.price = 0,
+    this.transportCost = 0,
     this.currency = 'VNĐ',
     this.transportInfo,
     this.isFree = false,
@@ -60,6 +63,7 @@ class ItineraryActivityModel {
   factory ItineraryActivityModel.fromJson(Map<String, dynamic> json) {
     return ItineraryActivityModel(
       id: json['id'] ?? '',
+      placeId: json['placeId']?.toString() ?? json['place_id']?.toString(),
       title: json['title'] ?? json['placeName'] ?? '',
       startTime: json['start_time'] ?? json['startTime'] ?? '',
       endTime: json['end_time'] ?? json['endTime'] ?? '',
@@ -71,6 +75,8 @@ class ItineraryActivityModel {
       address: json['address'] ?? '',
       imageUrl: json['image_url'] ?? json['imageUrl'] ?? '',
       price: (json['price'] ?? 0.0).toDouble(),
+      transportCost:
+          (json['transport_cost'] ?? json['transportCost'] ?? 0.0).toDouble(),
       currency: json['currency'] ?? 'VNĐ',
       transportInfo:
           json['transport_info'] ??
@@ -142,6 +148,7 @@ class ItineraryActivityModel {
       address: address,
       imageUrl: imageUrl,
       price: price,
+      transportCost: transportCost,
       currency: currency,
       transportInfo: transportInfo,
       isFree: isFree,

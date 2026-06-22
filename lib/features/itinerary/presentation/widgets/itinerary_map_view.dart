@@ -151,8 +151,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
   Future<Uint8List> _createStopIcon(
     int number,
     Color bgColor,
-    IconData iconData,
-  ) async {
+    IconData iconData, {
+    bool isCompleted = false,
+  }) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     const size = ui.Size(104, 104);
@@ -203,10 +204,14 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
     );
     final numberText = TextPainter(
       text: TextSpan(
-        text: number.toString(),
+        text: isCompleted
+            ? String.fromCharCode(Icons.check_rounded.codePoint)
+            : number.toString(),
         style: TextStyle(
+          fontFamily: isCompleted ? Icons.check_rounded.fontFamily : null,
+          package: isCompleted ? Icons.check_rounded.fontPackage : null,
           color: bgColor,
-          fontSize: 17,
+          fontSize: isCompleted ? 20 : 17,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -277,8 +282,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
     int day,
     int number,
     Color color,
-    IconData iconData,
-  ) async {
+    IconData iconData, {
+    bool isCompleted = false,
+  }) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
@@ -738,6 +744,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
                 item.stopNumber,
                 item.color,
                 _iconForActivity(item.activity),
+                isCompleted: item.activity.status == ActivityStatus.daDi,
               );
         final annotation = await _pointAnnotationManager?.create(
           mapbox.PointAnnotationOptions(
@@ -866,6 +873,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
                 stopNumber++,
                 color,
                 _iconForActivity(activity),
+                isCompleted: activity.status == ActivityStatus.daDi,
               );
         final annotation = await _pointAnnotationManager?.create(
           mapbox.PointAnnotationOptions(

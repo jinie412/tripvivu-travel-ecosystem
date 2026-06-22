@@ -19,6 +19,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final GetItineraryDetailUseCase _getItineraryDetail;
   final UpdateItineraryActivitiesUseCase _updateActivities;
   final UpdateItineraryTitleUseCase _updateTitle;
+  final ToggleVisibilityUseCase _toggleVisibility;
 
   ItineraryStatus? _currentFilter;
   CompletedFilter _currentCompletedFilter = CompletedFilter.all;
@@ -33,12 +34,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required GetItineraryDetailUseCase getItineraryDetail,
     required UpdateItineraryActivitiesUseCase updateActivities,
     required UpdateItineraryTitleUseCase updateTitle,
+    required ToggleVisibilityUseCase toggleVisibility,
   }) : _getItineraries = getItineraries,
        _getSummary = getSummary,
        _deleteItinerary = deleteItinerary,
        _getItineraryDetail = getItineraryDetail,
        _updateActivities = updateActivities,
        _updateTitle = updateTitle,
+       _toggleVisibility = toggleVisibility,
        super(const ItineraryInitial());
 
   static const bool kDemoMode = AppConfig.kUseMockData;
@@ -47,6 +50,24 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   Future<void> close() {
     _searchDebounce?.cancel();
     return super.close();
+  }
+
+  Future<void> toggleVisibility(String id, bool isPublic) async {
+    final currentState = state;
+    if (currentState is! ItineraryLoaded) return;
+
+    if (!kDemoMode) {
+      await _toggleVisibility(id, isPublic);
+    }
+
+    final selected = currentState.selectedItinerary;
+    emit(
+      currentState.copyWith(
+        selectedItinerary: selected?.id == id
+            ? selected!.copyWith(isPublic: isPublic)
+            : selected,
+      ),
+    );
   }
 
   Future<void> loadData({bool keepCurrentList = false}) async {
@@ -1090,7 +1111,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       final updatedList = currentState.itineraries.map((itinerary) {
         if (itinerary.id == id) {
           return itinerary.copyWith(
-            status: isOngoing ? ItineraryStatus.ongoing : ItineraryStatus.upcoming,
+            status: isOngoing
+                ? ItineraryStatus.ongoing
+                : ItineraryStatus.upcoming,
             trackingActive: isOngoing,
           );
         }
