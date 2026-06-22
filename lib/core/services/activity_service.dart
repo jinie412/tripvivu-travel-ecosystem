@@ -60,6 +60,10 @@ class ActivityService {
   Future<void> trackSearch() =>
       _track(actionType: 'search');
 
+  /// User nhấn vào một địa điểm cụ thể từ kết quả tìm kiếm
+  Future<void> trackSearchPlace(String placeId) =>
+      _track(actionType: 'search', placeId: placeId);
+
   /// User check-in tại địa điểm thực tế
   Future<void> trackVisited(String placeId) =>
       _track(actionType: 'visited', placeId: placeId);

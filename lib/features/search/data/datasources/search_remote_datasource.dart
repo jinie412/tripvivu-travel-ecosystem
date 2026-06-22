@@ -12,6 +12,7 @@ abstract class SearchRemoteDataSource {
   Future<List<SearchLocationModel>> getPlacesByFilter(String city, String category);
   Future<SearchMultiResults> searchAll(String query);
   Future<SearchPageResult> searchByType(String query, SearchType type, int page, int limit);
+  Future<List<SearchLocationModel>> getRecentSearches(String touristId);
 }
 
 class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
@@ -24,7 +25,10 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     final response = await dioClient.dio.get(
       '/search/autocomplete',
       queryParameters: {'q': query},
-      options: Options(receiveTimeout: const Duration(seconds: 30)),
+      options: Options(
+        receiveTimeout: const Duration(seconds: 30),
+        extra: dioClient.forceRefreshOptions.extra,
+      ),
     );
     final List<dynamic> data = response.data;
     return data.map((item) => SearchLocationModel.fromJson(item)).toList();
@@ -36,6 +40,7 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     final response = await dioClient.dio.get(
       '/search/filter',
       queryParameters: {'city': city, 'category': category},
+      options: dioClient.forceRefreshOptions,
     );
     final List<dynamic> data = response.data;
     return data.map((item) => SearchLocationModel.fromJson(item)).toList();
@@ -46,10 +51,23 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     final response = await dioClient.dio.get(
       '/search/all',
       queryParameters: {'q': query},
-      options: Options(receiveTimeout: const Duration(seconds: 45)),
+      options: Options(
+        receiveTimeout: const Duration(seconds: 45),
+        extra: dioClient.forceRefreshOptions.extra,
+      ),
     );
     final json = response.data as Map<String, dynamic>;
     return _parseMultiResults(json);
+  }
+
+  @override
+  Future<List<SearchLocationModel>> getRecentSearches(String touristId) async {
+    final response = await dioClient.dio.get(
+      '/activity/recent-searches',
+      options: dioClient.forceRefreshOptions,
+    );
+    final List<dynamic> data = response.data;
+    return data.map((item) => SearchLocationModel.fromJson(item)).toList();
   }
 
   @override
@@ -63,6 +81,7 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
         'page': page,
         'limit': limit,
       },
+      options: dioClient.forceRefreshOptions,
     );
     final json = response.data as Map<String, dynamic>;
     final rawData = (json['data'] as List<dynamic>?) ?? [];

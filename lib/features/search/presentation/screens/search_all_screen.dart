@@ -3,10 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
+import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/hotel_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
@@ -183,13 +183,26 @@ class _SearchAllViewState extends State<_SearchAllView> {
                   ),
                 ),
                 Expanded(
-                  child: displayedItems.isEmpty
-                      ? _EmptyView(query: q)
-                      : _FlatList(
-                          items: displayedItems,
-                          hasMore: hasMore,
-                          scrollController: _scrollController,
-                        ),
+                  child: RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<SearchAllCubit>().loadAll(widget.query),
+                    color: AppColors.primary,
+                    child: displayedItems.isEmpty
+                        ? LayoutBuilder(
+                            builder: (_, c) => SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: SizedBox(
+                                height: c.maxHeight,
+                                child: _EmptyView(query: q),
+                              ),
+                            ),
+                          )
+                        : _FlatList(
+                            items: displayedItems,
+                            hasMore: hasMore,
+                            scrollController: _scrollController,
+                          ),
+                  ),
                 ),
               ],
             );
@@ -459,6 +472,7 @@ class _FlatList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       itemCount: items.length + (hasMore ? 1 : 0),
       itemBuilder: (context, index) {
