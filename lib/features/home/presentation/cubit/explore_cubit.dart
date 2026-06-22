@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/explore_home
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/domain/usecases/home_usecases.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class ExploreCubit extends Cubit<ExploreState> {
   final GetExploreHomeUseCase _getExploreHome;
@@ -228,6 +229,118 @@ class ExploreCubit extends Cubit<ExploreState> {
       ),
       const <CityHotel>[],
     );
+  }
+
+  void applyFavoriteChange(FavoriteChangedEvent event) {
+    if (event.type == FavoriteTargetType.itinerary) {
+      _cachedSuggestions = _updateSuggestionsFavorite(
+        _cachedSuggestions,
+        event.id,
+        event.isFavorite,
+      );
+    } else {
+      _cachedRestaurants = _updateRestaurantsFavorite(
+        _cachedRestaurants,
+        event.id,
+        event.isFavorite,
+      );
+      _cachedHotels = _updateHotelsFavorite(
+        _cachedHotels,
+        event.id,
+        event.isFavorite,
+      );
+    }
+
+    final current = state;
+    if (current is! ExploreLoaded) {
+      return;
+    }
+
+    emit(
+      ExploreLoaded(
+        suggestions: event.type == FavoriteTargetType.itinerary
+            ? _updateSuggestionsFavorite(
+                current.suggestions,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.suggestions,
+        destinations: current.destinations,
+        hotels: event.type == FavoriteTargetType.place
+            ? _updateHotelsFavorite(
+                current.hotels,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.hotels,
+        restaurants: event.type == FavoriteTargetType.place
+            ? _updateRestaurantsFavorite(
+                current.restaurants,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.restaurants,
+        allSuggestions: event.type == FavoriteTargetType.itinerary
+            ? _updateSuggestionsFavorite(
+                current.allSuggestions,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.allSuggestions,
+        allDestinations: current.allDestinations,
+        allHotels: event.type == FavoriteTargetType.place
+            ? _updateHotelsFavorite(
+                current.allHotels,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.allHotels,
+        allRestaurants: event.type == FavoriteTargetType.place
+            ? _updateRestaurantsFavorite(
+                current.allRestaurants,
+                event.id,
+                event.isFavorite,
+              )!
+            : current.allRestaurants,
+        currentItinerary: current.currentItinerary,
+      ),
+    );
+  }
+
+  List<TripSuggestion>? _updateSuggestionsFavorite(
+    List<TripSuggestion>? items,
+    String id,
+    bool isFavorite,
+  ) {
+    if (items == null) return null;
+    return items
+        .map((item) =>
+            item.id == id ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
+  }
+
+  List<CityRestaurant>? _updateRestaurantsFavorite(
+    List<CityRestaurant>? items,
+    String id,
+    bool isFavorite,
+  ) {
+    if (items == null) return null;
+    return items
+        .map((item) =>
+            item.id == id ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
+  }
+
+  List<CityHotel>? _updateHotelsFavorite(
+    List<CityHotel>? items,
+    String id,
+    bool isFavorite,
+  ) {
+    if (items == null) return null;
+    return items
+        .map((item) =>
+            item.id == id ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
   }
 
   static const ExploreHomeData _emptyHome = ExploreHomeData(

@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import 'notifications_screen.dart';
 import 'support_screen.dart';
-import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
-import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
-
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/usecases/auth_usecases.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
 
@@ -46,11 +45,7 @@ class ProfileScreen extends StatelessWidget {
     final shouldLogout = await _confirmLogout(context);
     if (!shouldLogout || !context.mounted) return;
 
-    await Supabase.instance.client.auth.signOut();
-
-    const storage = FlutterSecureStorage();
-    await storage.delete(key: 'access_token');
-    await storage.delete(key: 'refresh_token');
+    await sl<LogoutUseCase>().call();
 
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -132,10 +127,15 @@ class ProfileScreen extends StatelessWidget {
                 icon: Icons.notifications,
                 title: 'Thông báo',
                 onTap: () {
+                  final notificationCubit = context.read<NotificationCubit>()
+                    ..loadNotifications();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const NotificationsScreen(),
+                      builder: (context) => BlocProvider.value(
+                        value: notificationCubit,
+                        child: const NotificationsScreen(),
+                      ),
                     ),
                   );
                 },

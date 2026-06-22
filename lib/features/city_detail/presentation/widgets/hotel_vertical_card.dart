@@ -7,7 +7,13 @@ import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_
 
 class HotelVerticalCard extends StatefulWidget {
   final CityHotel item;
-  const HotelVerticalCard({super.key, required this.item});
+  final ValueChanged<bool>? onFavoriteChanged;
+
+  const HotelVerticalCard({
+    super.key,
+    required this.item,
+    this.onFavoriteChanged,
+  });
 
   @override
   State<HotelVerticalCard> createState() => _HotelVerticalCardState();
@@ -22,8 +28,17 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
     _isFavorite = widget.item.isFavorite;
   }
 
+  @override
+  void didUpdateWidget(covariant HotelVerticalCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.isFavorite != widget.item.isFavorite) {
+      _isFavorite = widget.item.isFavorite;
+    }
+  }
+
   void _toggleFavorite() {
     setState(() => _isFavorite = !_isFavorite);
+    widget.onFavoriteChanged?.call(_isFavorite);
     if (_isFavorite) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -48,7 +63,7 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

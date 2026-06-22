@@ -24,6 +24,15 @@ class NotificationLoaded extends NotificationState {
   List<Object?> get props => [notifications];
 }
 
+class NotificationDetailLoaded extends NotificationState {
+  final NotificationEntity notification;
+
+  const NotificationDetailLoaded(this.notification);
+
+  @override
+  List<Object?> get props => [notification];
+}
+
 class NotificationError extends NotificationState {
   final String message;
 

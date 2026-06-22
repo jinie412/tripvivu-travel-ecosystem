@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/core/widgets/visible_place_tracker.dart';
 import 'package:travel_advisor_mobile/features/place/domain/entities/place_entity.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
@@ -46,73 +48,78 @@ class RelatedPlacesSection extends StatelessWidget {
   }
 
   Widget _placeCard(BuildContext context, PlaceEntity place) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider(
-              create: (_) => sl<PlaceDetailCubit>(),
-              child: PlaceDetailScreen(placeId: place.id),
+    return VisiblePlaceTracker(
+      placeId: place.id,
+      child: GestureDetector(
+        onTap: () {
+          sl<ActivityService>().trackClick(place.id);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider(
+                create: (_) => sl<PlaceDetailCubit>(),
+                child: PlaceDetailScreen(placeId: place.id),
+              ),
             ),
+          );
+        },
+        child: Container(
+          width: 170,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
-        );
-      },
-      child: Container(
-      width: 170,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: NetImage(
-              url: place.imageUrl, 
-              height: 100, 
-              width: double.infinity, 
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  place.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: NetImage(
+                  url: place.imageUrl,
+                  height: 100,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 6),
-                Row(
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.star, size: 10, color: Colors.amber),
-                    const SizedBox(width: 4),
                     Text(
-                      place.rating.toString(), 
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      place.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                    const Spacer(),
-                    Text(
-                      place.district, 
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 10, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(
+                          place.rating.toString(),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        Text(
+                          place.district,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ));
+    );
   }
 }

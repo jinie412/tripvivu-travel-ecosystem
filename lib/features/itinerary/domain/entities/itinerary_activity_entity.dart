@@ -16,6 +16,7 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     required String address,
     required String imageUrl,
     @Default(0) double price,
+    @Default(0) double transportCost,
     @Default('VNĐ') String currency,
     String? transportInfo,
     @Default(false) bool isFree,

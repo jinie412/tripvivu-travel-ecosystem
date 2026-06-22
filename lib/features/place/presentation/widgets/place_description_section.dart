@@ -8,7 +8,8 @@ class PlaceDescriptionSection extends StatefulWidget {
   const PlaceDescriptionSection({super.key, required this.description});
 
   @override
-  State<PlaceDescriptionSection> createState() => _PlaceDescriptionSectionState();
+  State<PlaceDescriptionSection> createState() =>
+      _PlaceDescriptionSectionState();
 }
 
 class _PlaceDescriptionSectionState extends State<PlaceDescriptionSection> {
@@ -39,46 +40,53 @@ class _PlaceDescriptionSectionState extends State<PlaceDescriptionSection> {
 
   @override
   Widget build(BuildContext context) {
-    final sentences = _splitSentences(widget.description);
+    final normalizedDescription = widget.description.trim();
+    final hasDescription = normalizedDescription.isNotEmpty;
+    final sentences = _splitSentences(normalizedDescription);
     final canExpand = sentences.length > 3;
-    final displayedDescription = _isExpanded
-        ? widget.description.trim()
-        : _buildCollapsedDescription(sentences);
+    final displayedDescription = hasDescription
+        ? (_isExpanded
+              ? normalizedDescription
+              : _buildCollapsedDescription(sentences))
+        : 'Không có mô tả cho địa điểm này.';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Mô tả',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            displayedDescription,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.5,
-              fontSize: 14,
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Mô tả',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          if (canExpand)
-            GestureDetector(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _isExpanded ? 'Thu gọn' : 'Xem thêm',
-                  style: const TextStyle(
-                    color: Color(0xFF1D7BD7),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+            const SizedBox(height: 12),
+            Text(
+              displayedDescription,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.5,
+                fontSize: 14,
+              ),
+            ),
+            if (canExpand)
+              GestureDetector(
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _isExpanded ? 'Thu gọn' : 'Xem thêm',
+                    style: const TextStyle(
+                      color: Color(0xFF1D7BD7),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

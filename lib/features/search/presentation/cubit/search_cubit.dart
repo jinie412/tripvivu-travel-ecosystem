@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'search_state.dart';
 
+import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/get_recent_searches.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/search_locations.dart';
 import 'package:travel_advisor_mobile/features/search/domain/entities/search_location.dart';
@@ -12,12 +13,14 @@ class SearchCubit extends Cubit<SearchState> {
   final GetRecentSearches _getRecentSearches;
   final SearchLocations _searchLocations;
   final SaveRecentSearch _saveRecentSearch;
+  final ActivityService _activityService;
   Timer? _debounce;
 
   SearchCubit(
     this._getRecentSearches,
     this._searchLocations,
     this._saveRecentSearch,
+    this._activityService,
   ) : super(const SearchState.initial());
 
   Future<void> loadRecentSearches() async {
@@ -47,6 +50,8 @@ class SearchCubit extends Cubit<SearchState> {
       try {
         final results = await _searchLocations(query);
         emit(SearchState.searchResults(results));
+        // Log search action khi có kết quả trả về
+        _activityService.trackSearch();
       } catch (e) {
         emit(const SearchState.error('Failed to search locations'));
       }
@@ -59,4 +64,3 @@ class SearchCubit extends Cubit<SearchState> {
     return super.close();
   }
 }
-

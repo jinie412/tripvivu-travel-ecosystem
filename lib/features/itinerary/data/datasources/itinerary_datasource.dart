@@ -165,9 +165,15 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   Future<ItineraryDetailModel> getItineraryDetail(String id) async {
     const storage = FlutterSecureStorage();
     final token = await storage.read(key: 'access_token');
+    final touristId = await AuthUtils.getCurrentUserId();
 
     final res = await http.get(
-      Uri.parse('$baseUrl/itinerary/$id'),
+      Uri.parse('$baseUrl/itinerary/$id').replace(
+        queryParameters: {
+          if (touristId != null && touristId.isNotEmpty)
+            'tourist_id': touristId,
+        },
+      ),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -269,10 +275,12 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       id: (data['id'] ?? '').toString(),
       title: (data['title'] ?? data['destination'] ?? 'Lịch trình').toString(),
       destination: (data['destination'] ?? '').toString(),
+      tripIntent: (data['tripIntent'] ?? data['trip_intent'])?.toString(),
       startDate: startDate,
       endDate: endDate,
       status: (data['status'] ?? 'DRAFT').toString(),
       isPublic: data['isPublic'] == true || data['is_public'] == true,
+      isFavorite: data['isFavorite'] == true || data['is_favorite'] == true,
       durationDays: _asInt(
         data['totalDays'] ?? data['durationDays'],
         days.length,
@@ -286,7 +294,13 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       estimatedBudget: _asDouble(
         data['totalBudget'] ?? data['estimatedBudget'],
       ),
-      spentBudget: _asDouble(data['spentBudget']),
+      spentBudget: _asDouble(data['spentBudget'] ?? data['spent_budget']),
+      placeCost: _asDouble(data['placeCost'] ?? data['place_cost']),
+      hotelCost: _asDouble(data['hotelCost'] ?? data['hotel_cost']),
+      transportCost: _asDouble(data['transportCost'] ?? data['transport_cost']),
+      rideHailingTransportCost: _asDouble(
+        data['rideHailingTransportCost'] ?? data['ride_hailing_transport_cost'],
+      ),
       days: days,
       notes: ((data['notes'] as List?) ?? const [])
           .map((e) => e.toString())

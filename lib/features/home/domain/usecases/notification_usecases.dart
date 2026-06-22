@@ -8,3 +8,28 @@ class GetNotificationsUseCase {
 
   Future<List<NotificationEntity>> call() => _repository.getNotifications();
 }
+
+class GetNotificationDetailUseCase {
+  final NotificationRepository _repository;
+
+  GetNotificationDetailUseCase(this._repository);
+
+  Future<NotificationEntity> call(String id) =>
+      _repository.getNotificationDetail(id);
+}
+
+class MarkAllNotificationsAsReadUseCase {
+  final NotificationRepository _repository;
+
+  MarkAllNotificationsAsReadUseCase(this._repository);
+
+  Future<void> call() => _repository.markAllAsRead();
+}
+
+class MarkNotificationAsReadUseCase {
+  final NotificationRepository _repository;
+
+  MarkNotificationAsReadUseCase(this._repository);
+
+  Future<NotificationEntity> call(String id) => _repository.markAsRead(id);
+}

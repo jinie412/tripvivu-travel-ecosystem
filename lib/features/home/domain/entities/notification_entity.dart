@@ -12,5 +12,13 @@ class NotificationEntity with _$NotificationEntity {
     required String timeLabel,
     required bool isUnread,
     required String iconKey,
+    String? actionType,
+    String? actionLabel,
+    String? targetType,
+    String? placeId,
+    String? itineraryId,
+    String? itineraryDetailId,
+    @Default(false) bool hasPlaceReview,
+    @Default(false) bool hasItineraryReview,
   }) = _NotificationEntity;
 }

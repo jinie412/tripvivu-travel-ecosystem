@@ -12,4 +12,19 @@ class NotificationRepositoryImpl implements NotificationRepository {
     final models = await _dataSource.getNotifications();
     return models.map((model) => model.toEntity()).toList();
   }
+
+  @override
+  Future<NotificationEntity> getNotificationDetail(String id) async {
+    final model = await _dataSource.getNotificationDetail(id);
+    return model.toEntity();
+  }
+
+  @override
+  Future<NotificationEntity> markAsRead(String id) async {
+    final model = await _dataSource.markAsRead(id);
+    return model.toEntity();
+  }
+
+  @override
+  Future<void> markAllAsRead() => _dataSource.markAllAsRead();
 }

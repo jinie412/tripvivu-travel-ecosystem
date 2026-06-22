@@ -10,7 +10,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'core/di/injection_container.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/auth/presentation/screens/auth_gate_screen.dart';
 import 'features/auth/presentation/screens/reset_password_screen.dart';
 import 'features/survey/presentation/screens/survey_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,7 +19,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/app_config.dart';
 
-/// 🔧 DEV FLAG — false = login screen, true = skip to home
+/// 🔧 DEV FLAG — true = bỏ qua AuthGate, vào thẳng MainShell (chỉ dùng khi dev)
 const bool kSkipLogin = AppConfig.kSkipLogin;
 
 void main() async {
@@ -122,7 +122,7 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
         Locale('vi'),
         Locale('en'),
       ],
-      home: kSkipLogin ? const MainShell() : const LoginScreen(),
+      home: kSkipLogin ? const MainShell() : const AuthGateScreen(),
       routes: {
         '/home': (context) => const MainShell(),
         '/survey': (context) => const SurveyScreen(),

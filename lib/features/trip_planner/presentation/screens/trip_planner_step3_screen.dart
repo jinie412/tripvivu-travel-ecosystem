@@ -29,8 +29,9 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
   void initState() {
     super.initState();
     // [TRIP_NAME_INPUT] Lấy tên hiện tại hoặc tự sinh từ điểm đến + ngày
-    final generatedName =
-        context.read<TripPlannerCubit>().resolveOrGenerateTripName();
+    final generatedName = context
+        .read<TripPlannerCubit>()
+        .resolveOrGenerateTripName();
     _nameController = TextEditingController(text: generatedName);
   }
 
@@ -56,7 +57,9 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                     BlocProvider(
                       create: (_) {
                         final cubit = sl<ItineraryCubit>();
-                        cubit.loadData().then((_) => cubit.selectItinerary(itineraryId));
+                        cubit.loadData().then(
+                          (_) => cubit.selectItinerary(itineraryId),
+                        );
                         return cubit;
                       },
                     ),
@@ -90,9 +93,15 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
             leading: Padding(
               padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
               child: Container(
-                decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: AppColors.background,
+                  shape: BoxShape.circle,
+                ),
                 child: IconButton(
-                  icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: AppColors.textPrimary,
+                  ),
                   onPressed: () {
                     context.read<TripPlannerCubit>().goPrevStep();
                     Navigator.of(context).pop();
@@ -102,15 +111,37 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
             ),
             title: Column(
               children: [
-                const Text('Tạo lịch trình mới', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text(
+                  'Tạo lịch trình mới',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text('BƯỚC 3/3', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'BƯỚC 3/3',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-                child: const Text('Hủy', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14)),
+                onPressed: () =>
+                    Navigator.of(context).popUntil((r) => r.isFirst),
+                child: const Text(
+                  'Hủy',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
             ],
@@ -120,8 +151,14 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
               children: [
                 Container(
                   color: AppColors.surface,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: StepProgressBar(currentStep: tripForm.currentStep, totalSteps: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: StepProgressBar(
+                    currentStep: tripForm.currentStep,
+                    totalSteps: 3,
+                  ),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -143,13 +180,18 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Đặt tên để dễ nhận ra chuyến đi của bạn.',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _nameController,
-                          onChanged: (v) =>
-                              context.read<TripPlannerCubit>().updateTripName(v),
+                          onChanged: (v) => context
+                              .read<TripPlannerCubit>()
+                              .updateTripName(v),
                           decoration: InputDecoration(
                             hintText: 'Nhập tên chuyến đi...',
                             filled: true,
@@ -160,10 +202,20 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              borderSide: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
-                            suffixIcon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 18),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            suffixIcon: const Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.textSecondary,
+                              size: 18,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                           ),
                           style: const TextStyle(
                             fontSize: 15,
@@ -171,29 +223,47 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                             color: AppColors.textPrimary,
                           ),
                           maxLength: 100,
-                          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                          buildCounter:
+                              (
+                                _, {
+                                required currentLength,
+                                required isFocused,
+                                maxLength,
+                              }) => null,
                         ),
                         const SizedBox(height: 6),
                         const Text(
                           'Bạn có thể đổi tên sau khi tạo',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         // ════════════════════════════════════════
                         const SizedBox(height: 36),
                         // Phần ngân sách (giữ nguyên như cũ)
                         const Text(
                           'Ngân sách',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         const Text(
                           'Thiết lập ngân sách cho chuyến đi của bạn.',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: 32),
                         BudgetSliderSection(
                           currentBudget: tripForm.budget,
-                          onChanged: (v) => context.read<TripPlannerCubit>().updateBudget(v),
+                          onChanged: (v) =>
+                              context.read<TripPlannerCubit>().updateBudget(v),
                         ),
                         const SizedBox(height: 60),
                       ],
@@ -204,17 +274,27 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                   padding: const EdgeInsets.all(16),
                   color: AppColors.background,
                   child: ElevatedButton(
-                    onPressed: () => context.read<TripPlannerCubit>().submitTripPlan(),
+                    onPressed: () =>
+                        context.read<TripPlannerCubit>().submitTripPlan(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Hoàn thành', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text(
+                          'Hoàn thành',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                         SizedBox(width: 8),
                         Icon(Icons.check_circle, color: Colors.white, size: 20),
                       ],
@@ -243,7 +323,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
               CircularProgressIndicator(),
               SizedBox(height: 16),
               Text(
-                'AI đang tạo lịch trình...',
+                'Tạo lịch trình...',
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               SizedBox(height: 4),

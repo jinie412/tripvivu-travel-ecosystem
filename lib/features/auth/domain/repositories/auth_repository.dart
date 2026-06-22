@@ -1,4 +1,5 @@
 import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
+import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
 
 /// Contract for auth operations.
 /// Presentation layer depends ONLY on this interface — never on implementation.
@@ -36,4 +37,12 @@ abstract class AuthRepository {
 
   /// Đăng nhập bằng Google.
   Future<LoginResult> loginWithGoogle();
+
+  /// Khôi phục session từ storage khi app khởi động.
+  /// Tự động refresh token nếu cần.
+  /// Trả về UserEntity nếu hợp lệ, null nếu chưa đăng nhập hoặc token hết hạn.
+  Future<UserEntity?> checkSession();
+
+  /// Đăng xuất: xóa token, signOut Supabase.
+  Future<void> logout();
 }

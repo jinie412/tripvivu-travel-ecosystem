@@ -5,6 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
 
 /// Card lịch trình "Đã đi" — có badge "ĐÃ ĐI" + rating ⭐ thay cho progress bar.
 class ItineraryCompletedCard extends StatelessWidget {
@@ -31,7 +32,6 @@ class ItineraryCompletedCard extends StatelessWidget {
           motion: const BehindMotion(),
           extentRatio: 0.4,
           children: [
-
             CustomSlidableAction(
               onPressed: (_) => onDelete?.call(),
               backgroundColor: const Color(0xFFEF5350),
@@ -42,9 +42,10 @@ class ItineraryCompletedCard extends StatelessWidget {
                 children: [
                   Icon(Icons.delete_outline, size: 22),
                   SizedBox(height: 4),
-                  Text('Xóa',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Xóa',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ],
               ),
             ),
@@ -81,7 +82,9 @@ class ItineraryCompletedCard extends StatelessWidget {
                         left: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF34A853),
                             borderRadius: BorderRadius.circular(8),
@@ -124,29 +127,44 @@ class ItineraryCompletedCard extends StatelessWidget {
                               ),
                             ),
                             GestureDetector(
-                              onTap: () {
+                              onTap: () async {
+                                if (item.rating != null) {
+                                  await openReviewedItineraryReview(
+                                    context,
+                                    item.id,
+                                  );
+                                  return;
+                                }
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => RateItineraryScreen(
                                       itineraryId: item.id,
-                                      isReadOnly: item.rating != null,
                                     ),
                                   ),
                                 );
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: item.rating == null ? const Color(0xFF0EA5E9) : const Color(0xFFF1F5F9),
+                                  color: item.rating == null
+                                      ? const Color(0xFF0EA5E9)
+                                      : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  item.rating == null ? 'Đánh giá' : 'Xem đánh giá',
+                                  item.rating == null
+                                      ? 'Đánh giá'
+                                      : 'Xem đánh giá',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: item.rating == null ? Colors.white : const Color(0xFF64748B),
+                                    color: item.rating == null
+                                        ? Colors.white
+                                        : const Color(0xFF64748B),
                                   ),
                                 ),
                               ),
@@ -167,8 +185,11 @@ class ItineraryCompletedCard extends StatelessWidget {
                         if (item.rating != null)
                           Row(
                             children: [
-                              const Icon(Icons.star_rounded,
-                                  size: 16, color: Color(0xFFFFA500)),
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: Color(0xFFFFA500),
+                              ),
                               const SizedBox(width: 3),
                               Text(
                                 '${item.rating}/5',
@@ -199,7 +220,8 @@ class ItineraryCompletedCard extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: item.imageUrl!,
       fit: BoxFit.cover,
-      placeholder: (context, url) => Container(color: Color(item.placeholderColor)),
+      placeholder: (context, url) =>
+          Container(color: Color(item.placeholderColor)),
       errorWidget: (context, url, error) =>
           Container(color: Color(item.placeholderColor)),
     );
@@ -207,8 +229,21 @@ class ItineraryCompletedCard extends StatelessWidget {
 
   String _formatDuration() {
     if (item.startDate == null || item.endDate == null) return '';
-    final months = ['', 'Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6',
-                     'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+    final months = [
+      '',
+      'Th1',
+      'Th2',
+      'Th3',
+      'Th4',
+      'Th5',
+      'Th6',
+      'Th7',
+      'Th8',
+      'Th9',
+      'Th10',
+      'Th11',
+      'Th12',
+    ];
     return '${months[item.startDate!.month]} ${item.startDate!.year}';
   }
 }

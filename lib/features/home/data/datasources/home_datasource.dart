@@ -393,6 +393,7 @@ class RemoteHomeDataSource implements HomeDataSource {
       imageUrl: primaryImage.isEmpty ? null : primaryImage,
       imageGallery: imageGallery,
       placeholderColor: 0xFF4A90D9,
+      isFavorite: json['is_favorite'] == true || json['isFavorite'] == true,
     );
   }
 
@@ -419,6 +420,7 @@ class RemoteHomeDataSource implements HomeDataSource {
         return priceValue;
       }(),
       address: (json['city'] ?? json['province'] ?? json['location'] ?? '').toString(),
+      isFavorite: json['is_favorite'] == true || json['isFavorite'] == true,
     );
   }
 
@@ -483,7 +485,11 @@ class RemoteHomeDataSource implements HomeDataSource {
   Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50}) async {
     final response = await _client.dio.get(
       '/explore/itineraries/public',
-      queryParameters: {'page': page, 'limit': limit},
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        'tourist_id': await AuthUtils.requireCurrentUserId(),
+      },
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -514,6 +520,7 @@ class RemoteHomeDataSource implements HomeDataSource {
         'category': category,
         'page': page,
         'limit': limit,
+        'tourist_id': await AuthUtils.requireCurrentUserId(),
         '_ts': DateTime.now().millisecondsSinceEpoch,
       },
     );
@@ -556,6 +563,7 @@ class RemoteHomeDataSource implements HomeDataSource {
       cuisine: 'vietnamese',
       priceLevel: 'mid_range',
       amenities: const <String>[],
+      isFavorite: item['is_favorite'] == true || item['isFavorite'] == true,
     );
   }
 

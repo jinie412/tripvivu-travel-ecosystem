@@ -10,6 +10,7 @@ import 'tab_cubit.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/explore_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/notification_drawer.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
@@ -31,15 +32,15 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   RealtimeChannel? _notificationChannel;
+  late final SavedCubit _savedCubit = sl<SavedCubit>();
+  late final NotificationCubit _notificationCubit = sl<NotificationCubit>()
+    ..loadNotifications();
 
-  final List<Widget> _pages = [
+  late final List<Widget> _pages = [
     const ExploreScreen(),
     const ItineraryScreen(),
     const SizedBox.shrink(),
-    BlocProvider(
-      create: (context) => sl<SavedCubit>(),
-      child: const SavedScreen(),
-    ),
+    BlocProvider.value(value: _savedCubit, child: const SavedScreen()),
     const ProfileScreen(),
   ];
 
@@ -60,39 +61,43 @@ class _MainShellState extends State<MainShell> {
     _notificationChannel = Supabase.instance.client
         .channel('public:users_notifications')
         .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'users_notifications',
-            callback: (payload) async {
-              final newRow = payload.newRecord;
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'users_notifications',
+          callback: (payload) async {
+            final newRow = payload.newRecord;
 
-              if (newRow['user_id'] != touristId) return;
+            if (newRow['user_id'] != touristId) return;
 
-              if (newRow['notification_id'] != null) {
-                try {
-                  final notificationResponse = await Supabase.instance.client
-                      .from('notifications')
-                      .select('title, content')
-                      .eq('id', newRow['notification_id'])
-                      .single();
+            if (newRow['notification_id'] != null) {
+              if (mounted) {
+                _notificationCubit.loadNotifications();
+              }
+              try {
+                final notificationResponse = await Supabase.instance.client
+                    .from('notifications')
+                    .select('title, content')
+                    .eq('id', newRow['notification_id'])
+                    .single();
 
-                  if (mounted) {
-                    NotificationService().showNotification(
-                      title: notificationResponse['title'] ?? 'Thông báo',
-                      body: notificationResponse['content'] ?? '',
-                    );
-                  }
-                } catch (e) {
-                  // Fallback nếu không lấy được nội dung chi tiết
-                  if (mounted) {
-                    NotificationService().showNotification(
-                      title: 'Thông báo mới',
-                      body: 'Bạn có một cập nhật mới về đánh giá!',
-                    );
-                  }
+                if (mounted) {
+                  NotificationService().showNotification(
+                    title: notificationResponse['title'] ?? 'Thông báo',
+                    body: notificationResponse['content'] ?? '',
+                  );
+                }
+              } catch (e) {
+                // Fallback nếu không lấy được nội dung chi tiết
+                if (mounted) {
+                  NotificationService().showNotification(
+                    title: 'Thông báo mới',
+                    body: 'Bạn có một cập nhật mới về đánh giá!',
+                  );
                 }
               }
-            })
+            }
+          },
+        )
         .subscribe();
   }
 
@@ -101,6 +106,8 @@ class _MainShellState extends State<MainShell> {
     if (_notificationChannel != null) {
       Supabase.instance.client.removeChannel(_notificationChannel!);
     }
+    _savedCubit.close();
+    _notificationCubit.close();
     super.dispose();
   }
 
@@ -112,6 +119,7 @@ class _MainShellState extends State<MainShell> {
         BlocProvider(create: (_) => sl<ProfileCubit>()),
         BlocProvider(create: (_) => sl<TrackingCubit>()),
         BlocProvider(create: (_) => TabCubit()),
+        BlocProvider.value(value: _notificationCubit),
       ],
       child: _TrackingRestorer(
         child: BlocBuilder<TabCubit, int>(
@@ -124,7 +132,8 @@ class _MainShellState extends State<MainShell> {
 
             return BlocListener<ProfileCubit, ProfileState>(
               listener: (context, profileState) {
-                if (profileState is ProfileLoaded && _notificationChannel == null) {
+                if (profileState is ProfileLoaded &&
+                    _notificationChannel == null) {
                   _listenToNotifications(profileState.profile.id);
                 }
               },
@@ -132,10 +141,7 @@ class _MainShellState extends State<MainShell> {
                 key: _scaffoldKey,
                 drawer: const ProfileDrawer(),
                 endDrawer: const NotificationDrawer(),
-                body: IndexedStack(
-                  index: currentIndex,
-                  children: _pages,
-                ),
+                body: IndexedStack(index: currentIndex, children: _pages),
                 bottomNavigationBar: SharedBottomNav(
                   currentIndex: currentIndex,
                   onTap: (i) {
@@ -154,6 +160,9 @@ class _MainShellState extends State<MainShell> {
                     if (i == 4) {
                       final cubit = context.read<ProfileCubit>();
                       if (cubit.state is ProfileInitial) cubit.loadProfile();
+                    }
+                    if (i == 3) {
+                      _savedCubit.loadSavedContent(silent: true);
                     }
                     context.read<TabCubit>().changeTab(i);
                   },
@@ -229,9 +238,12 @@ class _NotchPainter extends CustomPainter {
       ..lineTo(cx - nr - blend, 0)
       // Left blend: horizontal → vertical downward at arc entry
       ..cubicTo(
-        cx - nr - blend * 0.55, 0, // control 1 — stay flat
-        cx - nr, -blend * 0.3,     // control 2 — above bar → exits DOWN at P3
-        cx - nr, 0,                // P3 = arc entry (tangent = DOWN ✓)
+        cx - nr - blend * 0.55,
+        0, // control 1 — stay flat
+        cx - nr,
+        -blend * 0.3, // control 2 — above bar → exits DOWN at P3
+        cx - nr,
+        0, // P3 = arc entry (tangent = DOWN ✓)
       )
       // U-shaped notch arc (clockwise:false = counterclockwise in Flutter
       // screen coords = sweeps DOWNWARD from left tangent to right tangent)
@@ -242,9 +254,12 @@ class _NotchPainter extends CustomPainter {
       )
       // Right blend: vertical upward → horizontal (mirror of left)
       ..cubicTo(
-        cx + nr, -blend * 0.3,     // control 1 — above bar → enters from UP ✓
-        cx + nr + blend * 0.55, 0, // control 2 — flatten back out
-        cx + nr + blend, 0,        // P3 = back to flat top edge
+        cx + nr,
+        -blend * 0.3, // control 1 — above bar → enters from UP ✓
+        cx + nr + blend * 0.55,
+        0, // control 2 — flatten back out
+        cx + nr + blend,
+        0, // P3 = back to flat top edge
       )
       ..lineTo(size.width, 0)
       ..lineTo(size.width, size.height)
@@ -277,8 +292,11 @@ class SharedBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const SharedBottomNav(
-      {super.key, required this.currentIndex, required this.onTap});
+  const SharedBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   // ── Dimensions ────────────────────────────────────────────────────────────
   /// Height of the white bar
@@ -439,8 +457,9 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool active = current == index;
-    final Color itemColor =
-        active ? AppColors.primary : const Color(0xFFB0B8C1);
+    final Color itemColor = active
+        ? AppColors.primary
+        : const Color(0xFFB0B8C1);
 
     return GestureDetector(
       onTap: () => onTap(index),
@@ -494,8 +513,9 @@ class _CenterNavLabelState extends State<_CenterNavLabel> {
 
   @override
   Widget build(BuildContext context) {
-    final Color labelColor =
-        _pressed ? AppColors.primary : const Color(0xFFB0B8C1);
+    final Color labelColor = _pressed
+        ? AppColors.primary
+        : const Color(0xFFB0B8C1);
 
     return GestureDetector(
       onTap: widget.onTap,

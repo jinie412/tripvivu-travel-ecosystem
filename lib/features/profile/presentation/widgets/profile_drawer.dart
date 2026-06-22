@@ -6,16 +6,14 @@ import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
-import 'package:travel_advisor_mobile/core/navigation/tab_cubit.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
-import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
-import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/entities/activity_item_entity.dart';
 import 'package:travel_advisor_mobile/features/profile/domain/entities/profile_entity.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
+import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
+import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
 
 class ProfileDrawer extends StatelessWidget {
   const ProfileDrawer({super.key});
@@ -62,13 +60,22 @@ class _DrawerContent extends StatelessWidget {
   }
 
   Widget _buildBody(
-      BuildContext context, ProfileEntity profile, List<ActivityItemEntity> activities) {
-    final itineraryItems =
-        activities.where((a) => a.type == ActivityType.itinerary).toList();
-    final ratedItems = activities.where((a) => a.type == ActivityType.rated).toList();
-    final pendingItems =
-        activities.where((a) => a.type == ActivityType.reviewPending).toList();
-    final foodItems = activities.where((a) => a.type == ActivityType.food).toList();
+    BuildContext context,
+    ProfileEntity profile,
+    List<ActivityItemEntity> activities,
+  ) {
+    final itineraryItems = activities
+        .where((a) => a.type == ActivityType.itinerary)
+        .toList();
+    final ratedItems = activities
+        .where((a) => a.type == ActivityType.rated)
+        .toList();
+    final pendingItems = activities
+        .where((a) => a.type == ActivityType.reviewPending)
+        .toList();
+    final foodItems = activities
+        .where((a) => a.type == ActivityType.food)
+        .toList();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -87,24 +94,34 @@ class _DrawerContent extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.blobLight, width: 2),
                     ),
-                    child: const Icon(Icons.person_outline,
-                        color: AppColors.primary, size: 28),
+                    child: const Icon(
+                      Icons.person_outline,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(profile.name,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1C1C1E))),
+                      Text(
+                        profile.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C1C1E),
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(profile.membershipTier,
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF6B7280))),
+                      Text(
+                        profile.membershipTier,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -113,59 +130,99 @@ class _DrawerContent extends StatelessWidget {
 
             // Lịch trình
             const _PillHeader(
-                icon: Icons.calendar_today_outlined, label: 'LỊCH TRÌNH & ĐỊA ĐIỂM'),
+              icon: Icons.calendar_today_outlined,
+              label: 'LỊCH TRÌNH & ĐỊA\u00A0ĐIỂM',
+            ),
             const _SubHeader(label: 'Sắp đến'),
-            ...itineraryItems
-                .map((e) => _ActivityTile(item: e, icon: Icons.bed_outlined, isImage: false)),
+            ...itineraryItems.map(
+              (e) => _ActivityTile(
+                item: e,
+                icon: Icons.bed_outlined,
+                isImage: false,
+              ),
+            ),
             const SizedBox(height: 16),
 
             // Đánh giá
             const _PillHeader(
-                icon: Icons.star_border_rounded, label: 'ĐÁNH GIÁ ĐỊA ĐIỂM'),
+              icon: Icons.star_border_rounded,
+              label: 'ĐÁNH GIÁ LỊCH TRÌNH & ĐỊA\u00A0ĐIỂM',
+            ),
             const _SubHeader(label: 'Đã đánh giá'),
-            ...ratedItems.map((e) => _ActivityTile(
-                item: e, icon: Icons.location_on_outlined, isImage: false)),
-            
+            if (ratedItems.isEmpty)
+              const _EmptyHint(label: 'Bạn chưa có đánh giá nào')
+            else
+              ...ratedItems.map(
+                (e) => _ActivityTile(
+                  item: e,
+                  icon: Icons.location_on_outlined,
+                  isImage: false,
+                ),
+              ),
+
             InkWell(
               onTap: () {
-                final itCub = context.read<ItineraryCubit>();
-                itCub.filterBy(ItineraryStatus.completed);
-                itCub.filterByCompleted(CompletedFilter.unrated);
-                context.read<TabCubit>().changeTab(1);
-                Scaffold.of(context).closeDrawer();
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ReviewCatalogScreen(),
+                  ),
+                );
               },
               child: Align(
                 alignment: Alignment.centerRight,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 20, bottom: 8, top: 4),
-                  child: Text('Xem tất cả', 
-                      style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Xem tất cả',
+                    style: TextStyle(
+                      color: AppColors.primary.withValues(alpha: 0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ),
 
             _SubHeader(
-                label: 'Chờ đánh giá',
-                trailing: profile.reviewPendingCount > 0 ? Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF44336), // Red
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    profile.reviewPendingCount.toString(),
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ) : null,
+              label: 'Chờ đánh giá',
+              trailing: profile.reviewPendingCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF44336), // Red
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        profile.reviewPendingCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  : null,
             ),
-            ...pendingItems
-                .map((e) => _ActivityTile(item: e, icon: Icons.image_outlined, isImage: true)),
+            if (pendingItems.isEmpty)
+              const _EmptyHint(label: 'Không có đánh giá đang chờ')
+            else
+              ...pendingItems.map(
+                (e) => _ActivityTile(
+                  item: e,
+                  icon: Icons.image_outlined,
+                  isImage: true,
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Ẩm thực
             const _PillHeader(
-                icon: Icons.restaurant_outlined, label: 'ẨM THỰC ĐÃ ĐẶT'),
+              icon: Icons.restaurant_outlined,
+              label: 'ẨM THỰC ĐÃ ĐẶT',
+            ),
             const _SubHeader(label: 'Đơn hàng của tôi'),
             ...foodItems.map((e) => _FoodOrderCard(item: e)),
 
@@ -204,15 +261,34 @@ class _SubHeader extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
           ),
           trailing ?? const SizedBox(),
         ],
       ),
     );
   }
+}
+
+class _EmptyHint extends StatelessWidget {
+  final String label;
+  const _EmptyHint({required this.label});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 36, right: 20, bottom: 10),
+    child: Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        color: Color(0xFF9CA3AF),
+        fontStyle: FontStyle.italic,
+      ),
+    ),
+  );
 }
 
 class _PillHeader extends StatelessWidget {
@@ -233,11 +309,19 @@ class _PillHeader extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
-          Text(label,
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary)),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+                height: 1.2,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -261,11 +345,14 @@ class _MenuTile extends StatelessWidget {
             Icon(icon, color: Colors.grey.shade700, size: 22),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4B5563))),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4B5563),
+                ),
+              ),
             ),
           ],
         ),
@@ -278,88 +365,137 @@ class _ActivityTile extends StatelessWidget {
   final ActivityItemEntity item;
   final IconData icon;
   final bool isImage;
-  const _ActivityTile({required this.item, required this.icon, this.isImage = false});
+  const _ActivityTile({
+    required this.item,
+    required this.icon,
+    this.isImage = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        if (item.status == ActivityStatus.pendingReview) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RateItineraryScreen(itineraryId: item.id),
-            ),
-          );
+      onTap: () async {
+        final catalog = await sl<ReviewRepository>().getReviewCatalog();
+        if (!context.mounted) return;
+        final parts = item.id.split(':');
+        final kind = parts.first;
+        final itineraryId = parts.length > 1 ? parts[1] : '';
+        final detailId = parts.length > 2 ? parts[2] : '';
+        final reviewId = parts.length > 3 ? parts[3] : '';
+        final source = item.status == ActivityStatus.pendingReview
+            ? catalog.pending
+            : catalog.reviewed;
+        ReviewCatalogItem? target;
+        for (final review in source) {
+          final matches = reviewId.isNotEmpty
+              ? review.reviewId == reviewId
+              : review.kind == kind &&
+                    review.itineraryId == itineraryId &&
+                    (detailId.isEmpty || review.itineraryDetailId == detailId);
+          if (matches) {
+            target = review;
+            break;
+          }
+        }
+        if (target != null) {
+          await openReviewItem(context, target);
         }
       },
       child: Padding(
         padding: const EdgeInsets.only(left: 36, right: 20, top: 4, bottom: 8),
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              shape: isImage ? BoxShape.rectangle : BoxShape.circle,
-              borderRadius: isImage ? BorderRadius.circular(12) : null,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                shape: isImage ? BoxShape.rectangle : BoxShape.circle,
+                borderRadius: isImage ? BorderRadius.circular(12) : null,
+              ),
+              child: Icon(
+                isImage ? Icons.landscape_outlined : icon,
+                color: Colors.grey.shade600,
+                size: 18,
+              ),
             ),
-            child: Icon(isImage ? Icons.landscape_outlined : icon, color: Colors.grey.shade600, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1C1C1E))),
-                const SizedBox(height: 4),
-                if (item.status == ActivityStatus.pendingReview)
-                  Row(
-                    children: [
-                      Container(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1C1C1E),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (item.status == ActivityStatus.pendingReview)
+                    Row(
+                      children: [
+                        Container(
                           width: 6,
                           height: 6,
                           decoration: const BoxDecoration(
-                              color: Colors.green, shape: BoxShape.circle)),
-                      const SizedBox(width: 6),
-                      Text('Chờ bạn chia sẻ',
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Chờ bạn chia sẻ',
                           style: TextStyle(
-                              fontSize: 11, color: AppColors.primary)),
-                    ],
-                  )
-                else
-                  Row(
-                    children: [
-                      if (item.rating != null) ...[
-                        const Icon(Icons.star_rounded,
-                            size: 14, color: Color(0xFFFFA500)),
-                        const SizedBox(width: 4),
-                        Text(item.rating.toString(),
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Text('•',
-                            style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        const SizedBox(width: 8),
+                            fontSize: 11,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ],
-                      if (item.date != null)
-                        Text(DateFormat('dd/MM/yyyy').format(item.date!),
+                    )
+                  else
+                    Row(
+                      children: [
+                        if (item.rating != null) ...[
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: Color(0xFFFFA500),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.rating.toString(),
                             style: const TextStyle(
-                                fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-              ],
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '•',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        if (item.date != null)
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(item.date!),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                ],
+              ),
             ),
-          )
-        ],
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -428,7 +564,9 @@ class _FoodOrderCardState extends State<_FoodOrderCard> {
                     isPreparing
                         ? Icons.shopping_bag_outlined
                         : Icons.check_circle_outline,
-                    color: isPreparing ? AppColors.primary : Colors.grey.shade500,
+                    color: isPreparing
+                        ? AppColors.primary
+                        : Colors.grey.shade500,
                     size: 20,
                   ),
                 ),
@@ -437,22 +575,38 @@ class _FoodOrderCardState extends State<_FoodOrderCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.item.restaurantName ?? 'Nhà hàng',
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1C1C1E))),
+                      Text(
+                        widget.item.restaurantName ?? 'Nhà hàng',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1C1C1E),
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(widget.item.title,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text(widget.item.code ?? '',
-                          style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      Text(
+                        widget.item.title,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        widget.item.code ?? '',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 if (statusText.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: statusBgColor,
                       borderRadius: BorderRadius.circular(20),
@@ -465,23 +619,29 @@ class _FoodOrderCardState extends State<_FoodOrderCard> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  )
+                  ),
               ],
             ),
             if (_isExpanded && widget.item.orderItems != null) ...[
               const Divider(height: 24),
               Column(
                 children: widget.item.orderItems!
-                    .map((food) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.circle, size: 4, color: AppColors.primary),
-                              const SizedBox(width: 8),
-                              Text(food, style: const TextStyle(fontSize: 11)),
-                            ],
-                          ),
-                        ))
+                    .map(
+                      (food) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.circle,
+                              size: 4,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(food, style: const TextStyle(fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ],
