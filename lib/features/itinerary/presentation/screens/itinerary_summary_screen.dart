@@ -669,7 +669,12 @@ class _ItinerarySummaryView extends StatelessWidget {
     ItineraryDetailEntity itin,
     DateTime now,
   ) {
-    return itin.status.toUpperCase() == 'COMPLETED';
+    final today = DateUtils.dateOnly(now);
+    final endDate = DateUtils.dateOnly(itin.endDate);
+    final status = itin.status.toUpperCase();
+    final hasStarted =
+        status == 'ONGOING' || status == 'COMPLETED' || status == 'UNCOMPLETED' || itin.trackingActive;
+    return !today.isBefore(endDate) && hasStarted;
   }
 
   void _showEditTitleDialog(BuildContext context, ItineraryDetailEntity itin) {

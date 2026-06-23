@@ -20,17 +20,26 @@ class TripPlannerStep2Screen extends StatelessWidget {
     required DateTime? currentStart,
     required DateTime? currentEnd,
   }) async {
+    const kMaxTripDays = 7;
     final now = DateTime.now();
     final firstDate = isStart ? now : (currentStart ?? now);
-    final initialDate = isStart
+    final lastDate = !isStart && currentStart != null
+        ? currentStart.add(const Duration(days: kMaxTripDays))
+        : DateTime(now.year + 2);
+    final rawInitial = isStart
         ? (currentStart ?? now)
         : (currentEnd ?? (currentStart ?? now).add(const Duration(days: 1)));
+    final initialDate = rawInitial.isBefore(firstDate)
+        ? firstDate
+        : rawInitial.isAfter(lastDate)
+            ? lastDate
+            : rawInitial;
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: initialDate.isBefore(firstDate) ? firstDate : initialDate,
+      initialDate: initialDate,
       firstDate: firstDate,
-      lastDate: DateTime(now.year + 2),
+      lastDate: lastDate,
       locale: const Locale('vi'),
     );
     if (picked == null || !context.mounted) return;

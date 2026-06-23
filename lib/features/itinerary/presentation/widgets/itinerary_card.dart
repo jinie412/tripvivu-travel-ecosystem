@@ -6,10 +6,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
+import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 
 class ItineraryCard extends StatelessWidget {
   final ItineraryEntity item;
@@ -184,21 +186,20 @@ class ItineraryCard extends StatelessWidget {
                           if (item.status == ItineraryStatus.completed)
                             GestureDetector(
                               onTap: () async {
-                                if (item.rating != null) {
-                                  await openReviewedItineraryReview(
-                                    context,
-                                    item.id,
-                                  );
-                                  return;
-                                }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => RateItineraryScreen(
-                                      itineraryId: item.id,
-                                    ),
+                                await showDialog(
+                                  context: context,
+                                  builder: (_) => ItineraryRatingPopup(
+                                    itineraryId: item.id,
+                                    itineraryTitle: item.title,
+                                    totalLocations: item.totalLocations,
+                                    visitedLocations: item.visitedLocations,
                                   ),
                                 );
+                                if (item.rating == null && context.mounted) {
+                                  context.read<ItineraryCubit>().loadData(
+                                    keepCurrentList: true,
+                                  );
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(

@@ -14,6 +14,7 @@ class ItineraryModel {
   final int totalLocations;
   final int visitedLocations;
   final List<String> placeImages;
+  final double? rating;
 
   ItineraryModel({
   required this.id,
@@ -29,6 +30,7 @@ class ItineraryModel {
   this.totalLocations = 0,
   this.visitedLocations = 0,
   this.placeImages = const [],
+  this.rating,
 });
 
 factory ItineraryModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +52,7 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
             .where((url) => url.isNotEmpty)
             .toList() ??
         [],
+    rating: (json['rating'] as num?)?.toDouble(),
   );
 }
 
@@ -83,8 +86,7 @@ ItineraryEntity toEntity() {
 
     status: _mapStatus(status),
 
-    /// Rating is loaded from the review flow, not from the list API.
-    rating: null,
+    rating: rating,
 
     placeholderColor: 0xFF42A5F5,
     trackingActive: trackingActive,
