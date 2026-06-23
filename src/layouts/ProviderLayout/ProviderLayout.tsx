@@ -5,6 +5,7 @@ import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
 
 import apiClient from '../../utils/apiClient';
+import { getCurrentUser } from '../../utils/auth';
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -58,16 +59,13 @@ const ProviderLayout: React.FC = () => {
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
 
   const [headerInfo, setHeaderInfo] = useState(() => {
-    const storedUser = localStorage.getItem('userInfo');
-
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
+    const user = getCurrentUser<{ fullName?: string; avatar_url?: string }>();
+    if (user) {
       return {
-        fullName: parsedUser.fullName || 'Đối tác',
-        avatar: parsedUser.avatar_url || defaultAvatar,
+        fullName: user.fullName || 'Đối tác',
+        avatar: user.avatar_url || defaultAvatar,
       };
     }
-
     return {
       fullName: 'Đang tải...',
       avatar: defaultAvatar,
@@ -76,9 +74,8 @@ const ProviderLayout: React.FC = () => {
 
   // Fetch số đơn pending để hiển thị badge
   useEffect(() => {
-    const storedUser = localStorage.getItem('userInfo');
-    const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-    const vendorId = parsedUser?.businessId || parsedUser?.id || '';
+    const user = getCurrentUser<{ businessId?: string; id?: string }>();
+    const vendorId = user?.businessId || user?.id || '';
     if (!vendorId) return;
 
     apiClient.get('/business/orders', { params: { placeId: vendorId } })
@@ -102,13 +99,9 @@ const ProviderLayout: React.FC = () => {
       } catch (error) {
         console.error('Lỗi lấy dữ liệu Header:', error);
 
-        const storedUser = localStorage.getItem('userInfo');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setHeaderInfo((prev) => ({
-            ...prev,
-            fullName: parsedUser.fullName,
-          }));
+        const user = getCurrentUser<{ fullName?: string }>();
+        if (user) {
+          setHeaderInfo((prev) => ({ ...prev, fullName: user.fullName ?? prev.fullName }));
         }
       }
     };
@@ -117,13 +110,12 @@ const ProviderLayout: React.FC = () => {
 
     // 5. Lắng nghe sự kiện cập nhật profile để đổi Avatar/Tên ngay lập tức
     const handleUserUpdate = () => {
-      const storedUser = localStorage.getItem('userInfo');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
+      const user = getCurrentUser<{ fullName?: string; avatarUrl?: string; avatar_url?: string }>();
+      if (user) {
         setHeaderInfo((prev) => ({
           ...prev,
-          fullName: parsedUser.fullName || prev.fullName,
-          avatar: parsedUser.avatarUrl || parsedUser.avatar_url || defaultAvatar,
+          fullName: user.fullName || prev.fullName,
+          avatar: user.avatarUrl || user.avatar_url || defaultAvatar,
         }));
       }
     };

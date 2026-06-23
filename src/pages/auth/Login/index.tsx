@@ -71,24 +71,22 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      // 1. Lấy Base URL từ file .env theo chuẩn của Vite
       const apiUrl = import.meta.env.VITE_API_BASE_URL;
       const tokenKey = import.meta.env.VITE_TOKEN_KEY || 'access_token';
 
-      // 2. Gọi API Login xuống Backend
       const response = await axios.post(`${apiUrl}/auth/login`, {
         emailOrPhone: formData.email,
         password: formData.password,
       });
 
-      // 3. Lấy dữ liệu BE trả về
-      const { accessToken, user } = response.data;
+      const { accessToken, refreshToken, user } = response.data;
 
-      // 4. Lưu Token và thông tin vào localStorage
-      localStorage.setItem(tokenKey, accessToken);
-      localStorage.setItem('userInfo', JSON.stringify(user));
+      // Lưu vào localStorage nếu "ghi nhớ", sessionStorage nếu không
+      const storage = formData.remember ? localStorage : sessionStorage;
+      storage.setItem(tokenKey, accessToken);
+      if (refreshToken) storage.setItem('refresh_token', refreshToken);
+      storage.setItem('userInfo', JSON.stringify(user));
 
-      // 5. Kiểm tra Role để phân quyền
       if (user.role === 'BUSINESS') {
         alert('Đăng nhập thành công!');
         navigate('/dashboard');
@@ -97,8 +95,9 @@ const LoginPage: React.FC = () => {
         navigate('/admin');
       } else {
         setError('Tài khoản của bạn không có quyền truy cập trang dành cho Đối tác!');
-        localStorage.removeItem(tokenKey);
-        localStorage.removeItem('userInfo');
+        storage.removeItem(tokenKey);
+        storage.removeItem('refresh_token');
+        storage.removeItem('userInfo');
       }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {

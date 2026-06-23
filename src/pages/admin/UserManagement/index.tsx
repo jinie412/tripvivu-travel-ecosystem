@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { User, UserStatsInfo } from '../../../types/user';
 import { UserStats } from './components/UserStats';
 import { UserFilter } from './components/UserFilter';
@@ -10,30 +11,79 @@ import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './UserManagement.css';
 
+const ITEMS_PER_PAGE = 10;
+
+const fetchUserStats = (): Promise<UserStatsInfo> =>
+  apiClient.get('/admin/users/stats').then((r) => r.data?.data ?? r.data);
+
+const fetchUsers = (params: {
+  page: number;
+  search: string;
+  role: string;
+  activeStatus: string;
+}) =>
+  apiClient
+    .get('/admin/users', {
+      params: {
+        page: params.page,
+        limit: ITEMS_PER_PAGE,
+        ...(params.search && { search: params.search }),
+        ...(params.role && { role: params.role }),
+        ...(params.activeStatus && { activeStatus: params.activeStatus }),
+      },
+    })
+    .then((r) => r.data);
+
 export const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<UserStatsInfo | null>(null);
-  const [usersLoading, setUsersLoading] = useState<boolean>(true);
-  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   // --- PAGINATION STATE ---
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalItems, setTotalItems] = useState<number>(0);
-  const itemsPerPage = 10;
 
   // --- FILTER STATE ---
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('');
-  const [deleteStatusFilter, setDeleteStatusFilter] = useState<string>('');
-
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Set<string> cho O(1) lookup trong UserTable thay vì O(n) Array.includes
   const selectedSet = useMemo(() => new Set(selectedRows), [selectedRows]);
 
+  // --- QUERIES ---
+
+  // Stats: cache 5 phút, ít thay đổi
+  const { data: stats, isLoading: statsLoading } = useQuery<UserStatsInfo>({
+    queryKey: ['admin', 'user-stats'],
+    queryFn: fetchUserStats,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // User list: cache 2 phút, giữ data cũ khi đổi trang/filter (placeholderData)
+  const { data: usersData, isLoading: usersLoading, isFetching: usersFetching } = useQuery({
+    queryKey: ['admin', 'users', { page: currentPage, searchTerm, roleFilter, activeStatusFilter }],
+    queryFn: () =>
+      fetchUsers({ page: currentPage, search: searchTerm, role: roleFilter, activeStatus: activeStatusFilter }),
+    staleTime: 2 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
+
+  const users: User[] = usersData?.data ?? [];
+  const totalItems: number = usersData?.meta?.totalItems ?? 0;
+  const totalPages: number = usersData?.meta?.totalPages ?? 1;
+
+  // --- MUTATIONS ---
+
+  const toggleLockMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiClient.patch(`/admin/users/${id}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-stats'] });
+    },
+  });
+
   // --- HANDLERS ---
+
   const handleSelectAll = useCallback(
     (checked: boolean) => {
       setSelectedRows(checked ? users.map((u) => u.id) : []);
@@ -60,48 +110,44 @@ export const UserManagement: React.FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleDeleteStatusChange = useCallback((status: string) => {
-    setDeleteStatusFilter(status);
-    setCurrentPage(1);
-  }, []);
+  const handleToggleLock = useCallback(
+    async (id: string, name: string, currentStatus: string) => {
+      const isLocking = currentStatus === 'ACTIVE';
+      const actionText = isLocking ? 'khóa' : 'mở khóa';
+      const newStatus = isLocking ? 'LOCKED' : 'ACTIVE';
 
-  const handleToggleLock = useCallback(async (id: string, name: string, currentStatus: string) => {
-    const isLocking = currentStatus === 'ACTIVE';
-    const actionText = isLocking ? 'khóa' : 'mở khóa';
-    const newStatus = isLocking ? 'LOCKED' : 'ACTIVE';
-
-    const result = await Swal.fire({
-      title: `${isLocking ? 'Khóa' : 'Mở khóa'} tài khoản?`,
-      text: `Bạn có chắc chắn muốn ${actionText} tài khoản "${name}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: isLocking ? '#ef4444' : '#22c55e',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Đồng ý',
-      cancelButtonText: 'Hủy',
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await apiClient.patch(`/admin/users/${id}/status`, { status: newStatus });
-      await Swal.fire({
-        title: 'Thành công!',
-        text: `Đã ${actionText} tài khoản thành công.`,
-        icon: 'success',
-        confirmButtonColor: '#3b82f6',
+      const result = await Swal.fire({
+        title: `${isLocking ? 'Khóa' : 'Mở khóa'} tài khoản?`,
+        text: `Bạn có chắc chắn muốn ${actionText} tài khoản "${name}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: isLocking ? '#ef4444' : '#22c55e',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Đồng ý',
+        cancelButtonText: 'Hủy',
       });
-      setRefreshKey((old) => old + 1);
-    } catch (error) {
-      console.error(`Lỗi khi ${actionText} tài khoản:`, error);
-      await Swal.fire({
-        title: 'Lỗi!',
-        text: `Có lỗi xảy ra khi ${actionText} tài khoản.`,
-        icon: 'error',
-        confirmButtonColor: '#3b82f6',
-      });
-    }
-  }, []);
+
+      if (!result.isConfirmed) return;
+
+      try {
+        await toggleLockMutation.mutateAsync({ id, status: newStatus });
+        await Swal.fire({
+          title: 'Thành công!',
+          text: `Đã ${actionText} tài khoản thành công.`,
+          icon: 'success',
+          confirmButtonColor: '#3b82f6',
+        });
+      } catch {
+        await Swal.fire({
+          title: 'Lỗi!',
+          text: `Có lỗi xảy ra khi ${actionText} tài khoản.`,
+          icon: 'error',
+          confirmButtonColor: '#3b82f6',
+        });
+      }
+    },
+    [toggleLockMutation],
+  );
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRows.length === 0) return;
@@ -130,7 +176,8 @@ export const UserManagement: React.FC = () => {
         confirmButtonColor: '#3b82f6',
       });
       setSelectedRows([]);
-      setRefreshKey((old) => old + 1);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-stats'] });
     } catch (error) {
       console.error('Lỗi khi xóa hàng loạt:', error);
       await Swal.fire({
@@ -140,39 +187,7 @@ export const UserManagement: React.FC = () => {
         confirmButtonColor: '#3b82f6',
       });
     }
-  }, [selectedRows]);
-
-  // Stats chỉ fetch lại khi có mutation (refreshKey), không phụ thuộc filter/page
-  useEffect(() => {
-    setStatsLoading(true);
-    apiClient
-      .get('/admin/users/stats')
-      .then((res) => setStats(res.data?.data || res.data))
-      .catch((err) => console.error('Lỗi khi tải thống kê:', err))
-      .finally(() => setStatsLoading(false));
-  }, [refreshKey]);
-
-  // User list fetch lại mỗi khi filter/page thay đổi
-  useEffect(() => {
-    setUsersLoading(true);
-    apiClient
-      .get('/admin/users', {
-        params: {
-          page: currentPage,
-          limit: itemsPerPage,
-          ...(searchTerm && { search: searchTerm }),
-          ...(roleFilter && { role: roleFilter }),
-          ...(activeStatusFilter && { activeStatus: activeStatusFilter }),
-          ...(deleteStatusFilter && { deleteStatus: deleteStatusFilter }),
-        },
-      })
-      .then((res) => {
-        setUsers(res.data.data);
-        setTotalItems(res.data.meta.totalItems);
-      })
-      .catch((err) => console.error('Lỗi khi tải danh sách người dùng:', err))
-      .finally(() => setUsersLoading(false));
-  }, [currentPage, searchTerm, roleFilter, activeStatusFilter, deleteStatusFilter, refreshKey]);
+  }, [selectedRows, queryClient]);
 
   return (
     <div className="page-container">
@@ -201,7 +216,7 @@ export const UserManagement: React.FC = () => {
       </header>
 
       <div className="page-content">
-        <UserStats stats={stats} loading={statsLoading} />
+        <UserStats stats={stats ?? null} loading={statsLoading} />
 
         <div className="card tab-container">
           <UserFilter
@@ -210,22 +225,22 @@ export const UserManagement: React.FC = () => {
             onSearch={handleSearch}
             onRoleChange={handleRoleChange}
             onActiveStatusChange={handleActiveStatusChange}
-            onDeleteStatusChange={handleDeleteStatusChange}
             currentRole={roleFilter}
             currentActiveStatus={activeStatusFilter}
-            currentDeleteStatus={deleteStatusFilter}
           />
 
           <UserTable
             users={users}
             loading={usersLoading}
+            isFetching={usersFetching}
             selectedSet={selectedSet}
             onToggleLock={handleToggleLock}
             onSelectRow={handleSelectRow}
             onSelectAll={handleSelectAll}
             currentPage={currentPage}
             totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
+            totalPages={totalPages}
+            itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setCurrentPage}
           />
         </div>

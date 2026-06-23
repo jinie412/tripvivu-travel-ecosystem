@@ -5,10 +5,19 @@ interface AdminHeaderProfileProps {
   showName?: boolean;
 }
 
-export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName = false }) => {
-  const currentUser = authAPI.getCurrentUser();
+interface CurrentUser {
+  fullName?: string;
+  email?: string;
+  avatar?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  avartar_url?: string;
+}
 
-  const getInitials = (name?: string, email?: string) => {
+export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName = false }) => {
+  const currentUser = authAPI.getCurrentUser() as CurrentUser | null;
+
+  const getInitials = (name?: string, email?: string): string => {
     if (name) {
       const parts = name.trim().split(' ');
       if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
@@ -30,16 +39,25 @@ export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName
     return colors[index];
   };
 
-  const userInitials = getInitials(currentUser?.fullName, currentUser?.email);
+  const fullName = typeof currentUser?.fullName === 'string' ? currentUser.fullName : undefined;
+  const email = typeof currentUser?.email === 'string' ? currentUser.email : undefined;
+
+  const userInitials = getInitials(fullName, email);
   const headerAvatarStyle = getAvatarColor(userInitials);
-  const headerUserAvatar = currentUser?.avatar || currentUser?.avatarUrl || currentUser?.avatar_url || currentUser?.avartar_url;
+
+  const headerUserAvatar =
+    (typeof currentUser?.avatar === 'string' && currentUser.avatar) ||
+    (typeof currentUser?.avatarUrl === 'string' && currentUser.avatarUrl) ||
+    (typeof currentUser?.avatar_url === 'string' && currentUser.avatar_url) ||
+    (typeof currentUser?.avartar_url === 'string' && currentUser.avartar_url) ||
+    undefined;
 
   return (
     <>
       {headerUserAvatar ? (
         <img
           src={headerUserAvatar}
-          alt={currentUser?.fullName || 'Admin'}
+          alt={fullName || 'Admin'}
           style={{
             width: '36px',
             height: '36px',
@@ -73,7 +91,7 @@ export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName
       )}
       {showName && (
         <span className="header-username" style={{ fontWeight: '600' }}>
-          {currentUser?.fullName || 'Admin'}
+          {fullName || 'Admin'}
         </span>
       )}
     </>

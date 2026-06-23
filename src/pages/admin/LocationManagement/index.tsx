@@ -5,7 +5,7 @@ import { LocationStats } from './components/LocationStats';
 import { LocationFilter } from './components/LocationFilter';
 import { LocationTable } from './components/LocationTable';
 import { Bell, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './LocationManagement.css';
 
@@ -17,6 +17,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const LocationManagement: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [locations, setLocations] = useState<Location[]>([]);
   const [stats, setStats] = useState<LocationStatsInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -27,7 +28,7 @@ export const LocationManagement: React.FC = () => {
 
   const [searchInput, setSearchInput] = useState<string>('');
   const [search, setSearch] = useState<string>('');
-  const [status, setStatus] = useState<string>('all');
+  const [status, setStatus] = useState<string>(searchParams.get('status') ?? 'all');
   const [categoryName, setCategoryName] = useState<string>('');
 
   // Pagination state

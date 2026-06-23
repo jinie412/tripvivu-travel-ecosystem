@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from "axios";
+import { getToken, attemptTokenRefresh } from "../utils/auth";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT || 15000);
@@ -14,13 +15,26 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const tokenKey = import.meta.env.VITE_TOKEN_KEY || "access_token";
-  const token = localStorage.getItem(tokenKey) || localStorage.getItem("token");
+  const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status !== 401 || original._retry) {
+      return Promise.reject(error);
+    }
+    original._retry = true;
+    const newToken = await attemptTokenRefresh();
+    original.headers.Authorization = `Bearer ${newToken}`;
+    return apiClient(original);
+  },
+);
 
 export const extractResponseData = <T>(
   response: AxiosResponse<T | { data: T }>,

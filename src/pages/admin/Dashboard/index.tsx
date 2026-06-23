@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Bell, TrendingUp, TrendingDown, AlertTriangle, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Bell, TrendingUp, TrendingDown, AlertTriangle, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
@@ -41,7 +41,6 @@ interface DashInteraction {
   completedTrip: number;
 }
 
-
 // ─────────────────────────────────────────────────────────
 // Logic helpers
 // ─────────────────────────────────────────────────────────
@@ -52,78 +51,48 @@ function calcChangePct(total: number, newThisMonth: number): number {
   return Math.round((newThisMonth / prev) * 1000) / 10;
 }
 
+function getWeeksInMonth(month: number, year: number): number {
+  const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+}
+
+const EMPTY_STATS: DashStats = {
+  totalUsers: 0,
+  newUsersMonth: 0,
+  totalLocations: 0,
+  totalReviews: 0,
+  pendingApproval: 0,
+  pendingReviews: 0,
+  violationReviews: 0,
+};
+
 // ─────────────────────────────────────────────────────────
 // Dashboard Component
 // ─────────────────────────────────────────────────────────
 export const AdminDashboard: React.FC = () => {
-  const [loadingStats, setLoadingStats] = useState(true);
-
-  const [stats, setStats] = useState<DashStats>({
-    totalUsers: 0,
-    newUsersMonth: 0,
-    totalLocations: 0,
-    totalReviews: 0,
-    pendingApproval: 0,
-    pendingReviews: 0,
-    violationReviews: 0,
-  });
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState<number | ''>('');
-  const [locSortDesc, setLocSortDesc] = useState<boolean>(true);
+  const [popularMode, setPopularMode] = useState<'top' | 'flop'>('top');
   const [showAllLocs, setShowAllLocs] = useState<boolean>(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState<boolean>(false);
   const [weekDropdownOpen, setWeekDropdownOpen] = useState<boolean>(false);
 
   // ---------------------------------------------------------
-  // LUỒNG 1: Tải các con số thống kê tổng
+  // Fix 1+2: Stats dùng useQuery — cache 5 phút, giữ data 30 phút sau unmount
   // ---------------------------------------------------------
-  useEffect(() => {
-    const loadStats = async () => {
-      setLoadingStats(true);
-      try {
-        const [rUser, rLocAll, rLocPending, rReviews] = await Promise.allSettled([
-          apiClient.get('/admin/users/stats'),
-          apiClient.get('/admin/places', { params: { status: 'all', page: 1, limit: 1 } }),
-          apiClient.get('/admin/places', { params: { status: 'pending', page: 1, limit: 1 } }),
-          apiClient.get('/admin/reviews', { params: { page: 1, limit: 1, sort: 'newest' } }),
-        ]);
-
-        const newStats: DashStats = {
-          totalUsers: 0,
-          newUsersMonth: 0,
-          totalLocations: 0,
-          totalReviews: 0,
-          pendingApproval: 0,
-          pendingReviews: 0,
-          violationReviews: 0,
-        };
-
-        if (rUser.status === 'fulfilled') {
-          const d = rUser.value.data?.data ?? rUser.value.data;
-          newStats.totalUsers = Number(d?.totalUsers ?? 0);
-          newStats.newUsersMonth = Number(d?.newThisMonth ?? 0);
-        }
-
-        if (rLocAll.status === 'fulfilled') newStats.totalLocations = Number(rLocAll.value.data?.pagination?.total ?? 0);
-        if (rLocPending.status === 'fulfilled') newStats.pendingApproval = Number(rLocPending.value.data?.pagination?.total ?? 0);
-
-        if (rReviews.status === 'fulfilled') {
-          const s = rReviews.value.data?.summary;
-          newStats.totalReviews = Number(s?.total_reviews ?? 0);
-          newStats.pendingReviews = Number(s?.pending_count ?? 0);
-          newStats.violationReviews = Number(s?.violation_count ?? 0);
-        }
-
-        setStats(newStats);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-    loadStats();
-  }, []);
+  const { data: stats = EMPTY_STATS, isLoading: loadingStats } = useQuery<DashStats>({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/dashboard/stats');
+      return res.data?.data ?? EMPTY_STATS;
+    },
+    staleTime: 5 * 60 * 1000, // dữ liệu "tươi" 5 phút — không refetch khi quay lại trang
+    gcTime: 30 * 60 * 1000, // giữ cache 30 phút sau khi unmount
+  });
 
   // ---------------------------------------------------------
-  // LUỒNG 2: Tải chart user hoạt động (Fix 1+5: useQuery với signal tự động cancel)
+  // Fix 2+3: Chart — giữ data cũ khi đổi tháng/tuần (keepPreviousData), gcTime dài
   // ---------------------------------------------------------
   const { data: activityData = [], isLoading: loadingChart } = useQuery({
     queryKey: ['dashboard-chart', selectedMonth, selectedWeek],
@@ -134,31 +103,36 @@ export const AdminDashboard: React.FC = () => {
       return (res.data?.data ?? []) as ActivityPoint[];
     },
     staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000, // giữ cache 1 giờ sau unmount
+    placeholderData: keepPreviousData, // không flash loading khi đổi tháng/tuần
   });
 
   // ---------------------------------------------------------
-  // LUỒNG 3: Tải chart danh sách địa điểm và trạng thái (Fix 2+5: useQuery + limit param)
+  // Fix 2: Popular places — tăng gcTime lên 2 giờ
   // ---------------------------------------------------------
   const { data: topLocations = [], isLoading: loadingLocs } = useQuery({
-    queryKey: ['dashboard-popular-places'],
+    queryKey: ['dashboard-popular-places', popularMode],
     queryFn: async () => {
-      const response = await apiClient.get('/admin/dashboard/popular-places', { params: { limit: 10 } });
+      const response = await apiClient.get('/admin/dashboard/popular-places', {
+        params: { limit: 20, mode: popularMode },
+      });
       const rawData = response.data?.data || [];
       return rawData.map((loc: any) => ({
         id: String(loc.id),
         name: String(loc.name ?? 'Không rõ'),
         visitCount: Number(loc.visitCount ?? 0),
-        pending: Number(loc.pendingPct ?? loc.planningPct ?? 0),
-        ongoing: Number(loc.ongoingPct ?? loc.confirmedPct ?? 0),
+        pending: Number(loc.pendingPct ?? 0),
+        ongoing: Number(loc.ongoingPct ?? 0),
         completed: Number(loc.completedPct ?? 0),
         uncompleted: Number(loc.uncompletedPct ?? 0),
       })) as TopLocation[];
     },
     staleTime: 60 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000, // giữ cache 2 giờ sau unmount
   });
 
   // ---------------------------------------------------------
-  // LUỒNG 4: Tải dữ liệu tương tác người dùng
+  // Fix 2: Interactions — tăng gcTime lên 30 phút
   // ---------------------------------------------------------
   const { data: interaction = { noInteraction: 0, createdTrip: 0, completedTrip: 0 }, isLoading: loadingInteraction } =
     useQuery<DashInteraction>({
@@ -168,21 +142,20 @@ export const AdminDashboard: React.FC = () => {
         return res.data?.data ?? { noInteraction: 0, createdTrip: 0, completedTrip: 0 };
       },
       staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000, // giữ cache 30 phút sau unmount
     });
 
   const userChangePct = calcChangePct(stats.totalUsers, stats.newUsersMonth);
 
-  // Fix 3: Gộp sortedLocations, maxVisits, hasStatusData vào 1 useMemo
+  const weeksInSelectedMonth = useMemo(() => getWeeksInMonth(selectedMonth, new Date().getFullYear()), [selectedMonth]);
+
   const { sortedLocations, maxVisits, hasStatusData } = useMemo(() => {
-    const sorted = [...topLocations].sort((a, b) =>
-      locSortDesc ? b.visitCount - a.visitCount : a.visitCount - b.visitCount,
-    );
     return {
-      sortedLocations: sorted,
-      maxVisits: sorted[0]?.visitCount || 1,
-      hasStatusData: sorted.some((l) => l.pending > 0 || l.ongoing > 0 || l.completed > 0 || l.uncompleted > 0),
+      sortedLocations: topLocations,
+      maxVisits: topLocations[0]?.visitCount || 1,
+      hasStatusData: topLocations.some((l) => l.pending > 0 || l.ongoing > 0 || l.completed > 0 || l.uncompleted > 0),
     };
-  }, [topLocations, locSortDesc]);
+  }, [topLocations]);
 
   return (
     <div className="page-container">
@@ -231,7 +204,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="dash-status-card dash-status-orange">
             <div className="dash-status-top">
               <span className="dash-status-label">Địa điểm chờ duyệt</span>
-              <Link to="/admin/locations" className="dash-status-link">
+              <Link to="/admin/locations?status=pending" className="dash-status-link">
                 Xem danh sách
               </Link>
             </div>
@@ -241,7 +214,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="dash-status-card dash-status-blue">
             <div className="dash-status-top">
               <span className="dash-status-label">Đánh giá chờ duyệt</span>
-              <Link to="/admin/reviews" className="dash-status-link">
+              <Link to="/admin/reviews?status=pending" className="dash-status-link">
                 Xem danh sách
               </Link>
             </div>
@@ -316,7 +289,7 @@ export const AdminDashboard: React.FC = () => {
                         }}>
                         Cả tháng
                       </button>
-                      {[1, 2, 3, 4].map((w) => (
+                      {Array.from({ length: weeksInSelectedMonth }, (_, i) => i + 1).map((w) => (
                         <button
                           key={w}
                           className={`month-pill ${selectedWeek === w ? 'active' : ''}`}
@@ -410,53 +383,64 @@ export const AdminDashboard: React.FC = () => {
           {/* Top Locations horizontal bars */}
           <div className="card">
             <div className="dash-card-header">
-              <h3 className="dash-card-title">Địa điểm phổ biến</h3>
-              <button
-                className="top-loc-sort-btn"
-                onClick={() => setLocSortDesc((prev) => !prev)}
-                title={locSortDesc ? 'Đang sắp xếp: Nhiều → Ít. Nhấn để đảo ngược' : 'Đang sắp xếp: Ít → Nhiều. Nhấn để đảo ngược'}>
-                <ArrowUpDown size={13} />
-              </button>
+              <h3 className="dash-card-title">
+                {popularMode === 'top' ? 'Top 20 địa điểm được ghé thăm nhiều nhất' : '20 địa điểm ít khách ghé thăm nhất'}
+              </h3>
+              <div className="dash-mode-toggle">
+                <button
+                  className={`dash-toggle-btn ${popularMode === 'top' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPopularMode('top');
+                    setShowAllLocs(false);
+                  }}
+                  title="Top 20 địa điểm có nhiều du khách thực sự ghé thăm nhất (GPS check-in)">
+                  🔥 Nổi bật
+                </button>
+                <button
+                  className={`dash-toggle-btn ${popularMode === 'flop' ? 'active' : ''}`}
+                  onClick={() => {
+                    setPopularMode('flop');
+                    setShowAllLocs(false);
+                  }}
+                  title="20 địa điểm có ít du khách thực sự ghé thăm nhất (GPS check-in)">
+                  ❄️ Ít khách
+                </button>
+              </div>
             </div>
 
-              <div className="top-loc-list top-loc-list--scrollable">
-                {loadingLocs ? (
-                  <div className="dash-empty-msg">Đang tải danh sách địa điểm...</div>
-                ) : sortedLocations.length === 0 ? (
-                  <div className="dash-empty-msg">Chưa có dữ liệu lượt đánh giá</div>
-                ) : (
-                  <>
-                    {sortedLocations.slice(0, showAllLocs ? 10 : 5).map((loc, idx) => (
-                      <div key={loc.id} className="top-loc-row">
-                        <span className="top-loc-rank">{String(idx + 1).padStart(2, '0')}</span>
-                        {/* Sử dụng thẻ span thay vì Link do id bây giờ là chuỗi tên thành phố thay vì UUID */}
-                        <span className="top-loc-name">{loc.name}</span>
-                        <div className="top-loc-bar-track">
-                          {/* Biểu đồ số 1: Hiển thị độ dài dựa trên số visitCount so với mốc max */}
-                          <div
-                            className="top-loc-bar-fill"
-                            style={{ width: `${Math.round((loc.visitCount / maxVisits) * 100)}%` }}
-                          />
-                        </div>
-                        <span className="top-loc-count">{loc.visitCount.toLocaleString('vi-VN')} lượt</span>
+            <div className="top-loc-list top-loc-list--scrollable">
+              {loadingLocs ? (
+                <div className="dash-empty-msg">Đang tải danh sách địa điểm...</div>
+              ) : sortedLocations.length === 0 ? (
+                <div className="dash-empty-msg">Chưa có dữ liệu</div>
+              ) : (
+                <>
+                  {sortedLocations.slice(0, showAllLocs ? 20 : 10).map((loc, idx) => (
+                    <Link key={loc.id} to={`/admin/locations/${loc.id}`} className="top-loc-row top-loc-row--link" title={loc.name}>
+                      <span className="top-loc-rank">{String(idx + 1).padStart(2, '0')}</span>
+                      <span className="top-loc-name">{loc.name}</span>
+                      <div className="top-loc-bar-track">
+                        <div className="top-loc-bar-fill" style={{ width: `${Math.round((loc.visitCount / maxVisits) * 100)}%` }} />
                       </div>
-                    ))}
-                    {sortedLocations.length > 5 && (
-                      <button className="top-loc-view-all" onClick={() => setShowAllLocs(!showAllLocs)}>
-                        {showAllLocs ? 'Thu gọn' : `Xem thêm (${sortedLocations.length - 5} địa điểm)`}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+                      <span className="top-loc-count">{loc.visitCount.toLocaleString('vi-VN')} khách</span>
+                    </Link>
+                  ))}
+                  {sortedLocations.length > 10 && (
+                    <button className="top-loc-view-all" onClick={() => setShowAllLocs(!showAllLocs)}>
+                      {showAllLocs ? 'Thu gọn' : `Xem thêm (${sortedLocations.length - 10} địa điểm)`}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Stacked Status Bars */}
           <div className="card">
             <div className="dash-card-header">
-              <h3 className="dash-card-title">Trạng thái hành trình tại các điểm đến phổ biến</h3>
+              <h3 className="dash-card-title">Trạng thái hành trình tại các địa điểm phổ biến</h3>
             </div>
-            <p className="trip-status-subtitle">Thống kê trạng thái thực tế theo từng địa điểm</p>
+            <p className="trip-status-subtitle">Phân bố trạng thái lịch trình tại thời điểm du khách check-in thực tế</p>
 
             <div className="trip-legend">
               <span className="legend-item">

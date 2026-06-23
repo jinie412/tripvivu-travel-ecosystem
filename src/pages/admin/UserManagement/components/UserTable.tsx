@@ -74,11 +74,13 @@ const getPageNumbers = (current: number, total: number): (number | '...')[] => {
 interface UserTableProps {
   users: User[];
   loading: boolean;
+  isFetching?: boolean;
   selectedSet: Set<string>;
   onSelectRow: (id: string, checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
   currentPage: number;
   totalItems: number;
+  totalPages: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onToggleLock: (id: string, name: string, currentStatus: string) => void;
@@ -87,23 +89,25 @@ interface UserTableProps {
 export const UserTable = memo<UserTableProps>(function UserTable({
   users,
   loading,
+  isFetching = false,
   selectedSet,
   onSelectRow,
   onSelectAll,
   currentPage,
   totalItems,
+  totalPages,
   itemsPerPage,
   onPageChange,
   onToggleLock,
 }) {
   const navigate = useNavigate();
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  // Kiểm tra chính xác: tất cả user trên trang hiện tại có trong selectedSet không
   const allSelected = users.length > 0 && users.every((u) => selectedSet.has(u.id));
+  // true khi background-fetching data mới (data cũ vẫn hiển thị từ cache)
+  const isBackgroundFetching = isFetching && !loading;
 
   return (
-    <div className="table-container">
-      <table className="user-table">
+    <div className="table-container" style={{ cursor: isBackgroundFetching ? 'wait' : undefined }}>
+      <table className="user-table" style={{ opacity: isBackgroundFetching ? 0.5 : 1, transition: 'opacity 0.15s ease' }}>
         <thead>
           <tr>
             <th className="th-checkbox">

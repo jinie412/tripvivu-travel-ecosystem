@@ -7,10 +7,8 @@ interface UserFilterProps {
   onSearch: (term: string) => void;
   onRoleChange: (role: string) => void;
   onActiveStatusChange: (status: string) => void;
-  onDeleteStatusChange: (status: string) => void;
   currentRole: string;
   currentActiveStatus: string;
-  currentDeleteStatus: string;
 }
 
 export const UserFilter = memo<UserFilterProps>(function UserFilter({
@@ -19,10 +17,8 @@ export const UserFilter = memo<UserFilterProps>(function UserFilter({
   onSearch,
   onRoleChange,
   onActiveStatusChange,
-  onDeleteStatusChange,
   currentRole,
   currentActiveStatus,
-  currentDeleteStatus,
 }) {
   const [localSearch, setLocalSearch] = useState('');
 

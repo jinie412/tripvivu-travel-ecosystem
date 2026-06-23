@@ -186,6 +186,16 @@
   background: var(--bg-main);
 }
 
+.dash-mode-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.dash-mode-toggle .dash-toggle-btn {
+  min-width: 76px;
+  justify-content: center;
+}
+
 /* Custom Month Selector */
 .dash-month-selector {
   display: flex;
@@ -364,7 +374,25 @@
   text-overflow: ellipsis;
 }
 
-.top-loc-name:hover { color: var(--primary-blue); }
+.top-loc-row--link {
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  transition: background-color 0.15s ease;
+}
+
+.top-loc-row--link:hover {
+  background-color: #eff6ff;
+}
+
+.top-loc-row--link:hover .top-loc-name {
+  color: var(--primary-blue);
+}
+
+.top-loc-row--link:hover .top-loc-bar-fill {
+  background-color: #2563eb;
+}
 
 .top-loc-bar-track {
   flex: 1;

@@ -88,7 +88,7 @@ export const ReviewManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
 
-  // Đồng bộ tab khi URL query param thay đổi (click sidebar)
+  // Đồng bộ tab và filter khi URL query param thay đổi (click sidebar hoặc navigate từ Dashboard)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') === 'itinerary' ? 'itinerary' : 'location';
     setActiveTab(tabFromUrl);
@@ -96,7 +96,7 @@ export const ReviewManagement: React.FC = () => {
     setClassification('all');
     setDateSent('all');
     setDateExact('');
-    setStatus('all');
+    setStatus(searchParams.get('status') ?? 'all');
     setRating('all');
     setCurrentPage(1);
   }, [searchParams]);

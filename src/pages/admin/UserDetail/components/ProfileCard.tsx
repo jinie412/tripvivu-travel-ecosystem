@@ -72,9 +72,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ user, onUpdate, isUpda
               {initials}
             </div>
           )}
-          <button className="edit-avatar-btn">
-            <span className="edit-icon">✎</span>
-          </button>
         </div>
 
         <div className="profile-info">
