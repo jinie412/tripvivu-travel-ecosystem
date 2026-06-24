@@ -26,6 +26,7 @@ export interface LocationDetailInfo extends Location {
   lat?: number;
   lng?: number;
   photos: string[];
+  vendorId?: string;
   senderStats?: {
     totalLocations: number;
     joinedDate: string;

@@ -68,6 +68,7 @@ export interface LocationFilterParams {
   search?: string;
   status?: 'all' | 'pending' | 'approved' | 'rejected';
   categoryName?: string;
+  vendorId?: string;
 }
 
 export interface LocationCategoryOptions {
@@ -205,6 +206,7 @@ const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo
     lat: item.latitude,
     lng: item.longitude,
     photos,
+    vendorId: item.vendor?.id,
     senderStats: {
       totalLocations: item.vendor?.total_places || 0,
       joinedDate: formatDate(item.vendor?.created_at || undefined),
@@ -226,6 +228,7 @@ export const locationAPI = {
         status: toApiStatus(filters.status),
         search: filters.search || undefined,
         category_name: filters.categoryName || undefined,
+        vendor_id: filters.vendorId || undefined,
       },
     });
 
@@ -268,5 +271,9 @@ export const locationAPI = {
     await apiClient.patch(`/admin/places/${id}/reject`, {
       note: reason || undefined,
     });
+  },
+
+  deleteLocation: async (id: string): Promise<void> => {
+    await apiClient.delete(`/admin/places/${id}`);
   },
 };

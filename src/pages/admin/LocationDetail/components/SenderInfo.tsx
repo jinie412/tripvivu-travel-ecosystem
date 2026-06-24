@@ -1,15 +1,17 @@
 import React from 'react';
 import { Mail, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { LocationDetailInfo } from '../../../../types/location';
 
 interface SenderInfoProps {
   userName: string;
   userAvatar: string;
   email: string;
+  vendorId?: string;
   stats?: LocationDetailInfo['senderStats'];
 }
 
-export const SenderInfo: React.FC<SenderInfoProps> = ({ userName, userAvatar, email, stats }) => {
+export const SenderInfo: React.FC<SenderInfoProps> = ({ userName, userAvatar, email, vendorId, stats }) => {
   return (
     <div className="ld-card">
       <div className="ld-card-header">
@@ -44,7 +46,11 @@ export const SenderInfo: React.FC<SenderInfoProps> = ({ userName, userAvatar, em
       
       <div className="ld-sender-footer">
         <span className="ld-sender-stat-text">Đã đăng {stats?.totalLocations || 1} địa điểm</span>
-        <button className="ld-link-btn">Xem hồ sơ</button>
+        {vendorId ? (
+          <Link to={`/admin/locations?vendorId=${vendorId}`} className="ld-link-btn">Xem hồ sơ</Link>
+        ) : (
+          <span className="ld-link-btn">Xem hồ sơ</span>
+        )}
       </div>
     </div>
   );

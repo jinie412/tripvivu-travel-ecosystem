@@ -1,6 +1,6 @@
 import React from 'react';
 import { Location } from '../../../../types/location';
-import { Pencil, Check, X } from 'lucide-react';
+import { Eye, Trash2, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import defaultLocationImage from '../../../../assets/images/location-default.svg';
 
@@ -16,6 +16,7 @@ interface LocationTableProps {
   onPageChange: (page: number) => void;
   onApprove: (id: string) => Promise<void>;
   onReject: (id: string, reason?: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export const LocationTable: React.FC<LocationTableProps> = ({
@@ -30,6 +31,7 @@ export const LocationTable: React.FC<LocationTableProps> = ({
   onPageChange,
   onApprove,
   onReject,
+  onDelete,
 }) => {
   const navigate = useNavigate();
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
@@ -156,9 +158,7 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                         <button
                           className="action-btn btn-approve"
                           title="Duyệt"
-                          onClick={() => {
-                            void onApprove(loc.id);
-                          }}>
+                          onClick={() => { void onApprove(loc.id); }}>
                           <Check size={16} />
                         </button>
                         <button
@@ -172,8 +172,17 @@ export const LocationTable: React.FC<LocationTableProps> = ({
                         </button>
                       </>
                     )}
-                    <button className="action-btn btn-edit" title="Chỉnh sửa" onClick={() => navigate(`/admin/locations/${loc.id}`)}>
-                      <Pencil size={16} />
+                    <button
+                      className="action-btn btn-view"
+                      title="Xem chi tiết"
+                      onClick={() => navigate(`/admin/locations/${loc.id}`)}>
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      className="action-btn btn-delete"
+                      title="Xóa"
+                      onClick={() => { void onDelete(loc.id); }}>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </td>

@@ -139,6 +139,7 @@ export const LocationDetail: React.FC = () => {
               userName={location.userName}
               userAvatar={location.userAvatar}
               email={location.email || ''}
+              vendorId={location.vendorId}
               stats={location.senderStats}
             />
           </div>

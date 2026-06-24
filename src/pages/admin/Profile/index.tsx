@@ -20,16 +20,22 @@ const AdminProfilePage: React.FC = () => {
 
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [profileData, setProfileData] = useState({
     fullName: '',
     email: '',
     phone: '',
+    nationalId: '',
+    dateOfBirth: '',
+    address: '',
     avatarUrl: '',
   });
   
   const defaultAvatar =
     'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
+  const bodyFont = '"Plus Jakarta Sans", "Outfit", sans-serif';
+  const headingFont = '"Outfit", "Plus Jakarta Sans", sans-serif';
 
   useEffect(() => {
     // Tải thông tin từ localStorage
@@ -40,6 +46,9 @@ const AdminProfilePage: React.FC = () => {
         fullName: parsedUser.fullName || '',
         email: parsedUser.email || '',
         phone: parsedUser.phone || '',
+        nationalId: parsedUser.nationalId || '',
+        dateOfBirth: parsedUser.dateOfBirth ? parsedUser.dateOfBirth.slice(0, 10) : '',
+        address: parsedUser.address || '',
         avatarUrl: parsedUser.avatar_url || '',
       });
     }
@@ -143,6 +152,9 @@ const AdminProfilePage: React.FC = () => {
       const updatePayload = {
         fullName: profileData.fullName,
         phone: profileData.phone,
+        nationalId: profileData.nationalId,
+        dateOfBirth: profileData.dateOfBirth || null,
+        address: profileData.address,
         avatarUrl: profileData.avatarUrl,
       };
 
@@ -151,10 +163,13 @@ const AdminProfilePage: React.FC = () => {
       const storedUser = localStorage.getItem('userInfo');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        const updatedUser = { 
-          ...parsedUser, 
+        const updatedUser = {
+          ...parsedUser,
           fullName: updatePayload.fullName,
           phone: updatePayload.phone,
+          nationalId: updatePayload.nationalId,
+          dateOfBirth: updatePayload.dateOfBirth,
+          address: updatePayload.address,
           avatar_url: updatePayload.avatarUrl,
         };
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
@@ -203,8 +218,8 @@ const AdminProfilePage: React.FC = () => {
 
   return (
     <>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b', marginBottom: '32px' }}>Hồ sơ Admin</h2>
+      <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: bodyFont }}>
+        <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', marginBottom: '32px', fontFamily: headingFont }}>Hồ sơ Admin</h2>
 
         <div
           style={{
@@ -224,7 +239,7 @@ const AdminProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Ảnh đại diện</h4>
+                <h4 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', fontFamily: headingFont }}>Ảnh đại diện</h4>
                 <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
                   Tải lên ảnh mới để thay đổi diện mạo hồ sơ của bạn.
                 </p>
@@ -250,7 +265,7 @@ const AdminProfilePage: React.FC = () => {
                   borderRadius: '12px',
                   marginBottom: '24px',
                 }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>Vui lòng kiểm tra lại các thông tin sau:</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '700', fontFamily: headingFont }}>Vui lòng kiểm tra lại các thông tin sau:</h4>
                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
                   {formErrors.map((err, index) => (
                     <li key={index}>{err}</li>
@@ -260,19 +275,22 @@ const AdminProfilePage: React.FC = () => {
             )}
 
             <div style={{ marginBottom: '48px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '24px' }}>Thông tin cơ bản</h4>
+              <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', marginBottom: '24px', fontFamily: headingFont }}>Thông tin cơ bản</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                 <Input label="Họ và tên" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} />
                 <div style={{ opacity: 0.7 }}>
                   <Input label="Email" value={profileData.email} disabled style={{ background: '#F8FAFC' }} />
                 </div>
                 <Input label="Số điện thoại" value={profileData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
+                <Input label="Căn cước công dân" value={profileData.nationalId} onChange={(e) => handleInputChange('nationalId', e.target.value)} />
+                <Input label="Ngày sinh" type="date" value={profileData.dateOfBirth} onChange={(e) => handleInputChange('dateOfBirth', e.target.value)} />
+                <Input label="Địa chỉ" value={profileData.address} onChange={(e) => handleInputChange('address', e.target.value)} />
               </div>
             </div>
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>Đổi mật khẩu</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', fontFamily: headingFont }}>Đổi mật khẩu</h4>
                 <div
                   onClick={() => setIsPasswordChangeEnabled(!isPasswordChangeEnabled)}
                   style={{
@@ -327,12 +345,12 @@ const AdminProfilePage: React.FC = () => {
                   <Input
                     label="Xác nhận mật khẩu mới"
                     placeholder="Nhập mật khẩu mới"
-                    type={showNewPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={passwords.confirmNewPassword}
                     onChange={(e) => setPasswords({ ...passwords, confirmNewPassword: e.target.value })}
                     rightIcon={
-                      <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => setShowNewPassword(!showNewPassword)}>
-                        {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                       </div>
                     }
                   />
