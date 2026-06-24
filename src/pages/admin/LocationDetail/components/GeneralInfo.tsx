@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Info, ChevronDown } from 'lucide-react';
 import { LocationDetailInfo } from '../../../../types/location';
 
@@ -7,8 +7,6 @@ interface GeneralInfoProps {
 }
 
 export const GeneralInfo: React.FC<GeneralInfoProps> = ({ location }) => {
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-
   return (
     <div className="ld-card mb-24">
       <div className="ld-card-header">
@@ -35,18 +33,8 @@ export const GeneralInfo: React.FC<GeneralInfoProps> = ({ location }) => {
         </div>
 
         <div className="ld-form-group full-width">
-          <div className="ld-description-header">
-            <label className="ld-label">MÔ TẢ GIỚI THIỆU</label>
-            <button
-              type="button"
-              className="ld-description-toggle"
-              onClick={() => setIsDescriptionExpanded((value) => !value)}
-              aria-expanded={isDescriptionExpanded}>
-              <span>{isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm'}</span>
-              <ChevronDown size={16} className={isDescriptionExpanded ? 'ld-description-icon is-open' : 'ld-description-icon'} />
-            </button>
-          </div>
-          <div className={isDescriptionExpanded ? 'ld-textarea-read ld-textarea-expanded' : 'ld-textarea-read ld-textarea-collapsed'}>
+          <label className="ld-label">MÔ TẢ GIỚI THIỆU</label>
+          <div className="ld-textarea-read ld-textarea-expanded">
             {location.description}
           </div>
         </div>

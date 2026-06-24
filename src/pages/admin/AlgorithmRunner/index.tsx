@@ -26,7 +26,6 @@ const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = (
 
 interface AlgoDropdownProps {
   title: string;
-  description: string;
   available: boolean;
   autoEnabled: boolean;
   onAutoChange: (v: boolean) => void;
@@ -42,7 +41,7 @@ interface AlgoDropdownProps {
 }
 
 const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
-  title, description, available,
+  title, available,
   autoEnabled, onAutoChange,
   frequency, onFrequencyChange,
   runDay, onRunDayChange,
@@ -59,8 +58,6 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
     </div>
 
     <div className="ar-dropdown__body">
-          <p className="ar-dropdown__desc">{description}</p>
-
           <div className="ar-dropdown__schedule">
             <div className="ar-dropdown__field">
               <label className="ar-dropdown__field-label">ĐỊNH KỲ</label>
@@ -219,7 +216,6 @@ export const AlgorithmRunner: React.FC = () => {
         <div className="ar-accordion">
           <AlgoDropdown
             title="Thuật toán gợi ý"
-            description="Tạo gợi ý địa điểm cá nhân hoá dựa trên lịch sử tương tác và sở thích của người dùng (Two Tower model)."
             available={false}
             autoEnabled={recommendAutoEnabled}
             onAutoChange={setRecommendAutoEnabled}
@@ -234,7 +230,6 @@ export const AlgorithmRunner: React.FC = () => {
           />
           <AlgoDropdown
             title="Lọc – Phân loại đánh giá"
-            description="Phân loại đánh giá theo chủ đề, phát hiện xung đột và quản lý vòng đời đánh giá theo thời gian."
             available={true}
             autoEnabled={reviewAutoEnabled}
             onAutoChange={setReviewAutoEnabled}
@@ -250,7 +245,6 @@ export const AlgorithmRunner: React.FC = () => {
           />
           <AlgoDropdown
             title="Lập lịch"
-            description="Tối ưu hoá lịch trình tham quan dựa trên vị trí địa lý, thời gian mở cửa và sở thích của người dùng."
             available={false}
             autoEnabled={scheduleAutoEnabled}
             onAutoChange={setScheduleAutoEnabled}

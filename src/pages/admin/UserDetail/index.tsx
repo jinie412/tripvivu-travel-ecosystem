@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DetailHeader } from './components/DetailHeader';
 import { ProfileCard } from './components/ProfileCard';
@@ -13,6 +13,7 @@ import './UserDetail.css';
 
 export const UserDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -65,6 +66,8 @@ export const UserDetail: React.FC = () => {
         text: 'Cập nhật thông tin thành công!',
         icon: 'success',
         confirmButtonColor: '#3b82f6',
+      }).then(() => {
+        navigate('/admin/users');
       });
     } catch (error: any) {
       console.error('Lỗi khi cập nhật:', error);
@@ -166,7 +169,7 @@ export const UserDetail: React.FC = () => {
         </div>
       </div>
 
-      <DetailFooter />
+      <DetailFooter onSave={() => navigate('/admin/users')} isSaving={isMutating} />
     </div>
   );
 };

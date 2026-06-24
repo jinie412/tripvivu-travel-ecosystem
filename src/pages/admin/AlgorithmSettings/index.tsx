@@ -39,13 +39,12 @@ const hoursToLabel = (hours: number): string => {
 
 const outOfRange = (v: number, min: number, max: number) => v < min || v > max || Number.isNaN(v);
 
-type CardKey = 'general' | 'weights' | 'classification' | 'conflict' | 'time' | 'twoTower';
+type CardKey = 'weights' | 'classification' | 'conflict' | 'time' | 'twoTower';
 type ConflictMode = 'all' | 'limit_k';
 type UpgradeMode = 'representative' | 'all_clusters';
 
 export const AlgorithmSettings: React.FC = () => {
   const [open, setOpen] = useState<Record<CardKey, boolean>>({
-    general: true,
     weights: false,
     classification: false,
     conflict: false,
@@ -56,9 +55,6 @@ export const AlgorithmSettings: React.FC = () => {
 
   const [banner, setBanner] = useState<string | null>(null);
   const showBanner = (ctx: string) => setBanner(`Thay đổi này sẽ ảnh hưởng đến ${ctx} đang được xử lý.`);
-
-  const [maxDistance, setMaxDistance] = useState(50);
-  const [locationPriority, setLocationPriority] = useState('Cao');
   const [distanceWeight, setDistanceWeight] = useState(0.4);
   const [topicThreshold, setTopicThreshold] = useState(0.18);
   const [minConfidence, setMinConfidence] = useState(0.55);
@@ -100,38 +96,6 @@ export const AlgorithmSettings: React.FC = () => {
             </button>
           </div>
         )}
-
-        <AccordionCard
-          title="Tham số thuật toán chung"
-          open={open.general}
-          onToggle={() => toggle('general')}
-          onSave={() => {}}
-          onReset={() => {
-            setMaxDistance(50);
-            setLocationPriority('Cao');
-          }}>
-          <div className="as-row as-row--2col">
-            <div className="as-field">
-              <label className="as-label">Khoảng cách tối đa tìm địa điểm (km)</label>
-              <input
-                type="number"
-                className={`as-input${outOfRange(maxDistance, 1, 500) ? ' as-input--err' : ''}`}
-                value={maxDistance}
-                min={1}
-                max={500}
-                onChange={(e) => setMaxDistance(Number(e.target.value))}
-              />
-            </div>
-            <div className="as-field">
-              <label className="as-label">Ưu tiên địa điểm mới</label>
-              <select className="as-select" value={locationPriority} onChange={(e) => setLocationPriority(e.target.value)}>
-                <option>Thấp</option>
-                <option>Trung bình</option>
-                <option>Cao</option>
-              </select>
-            </div>
-          </div>
-        </AccordionCard>
 
         <AlgoGroup title="Thuật toán gợi ý">
           <AccordionCard

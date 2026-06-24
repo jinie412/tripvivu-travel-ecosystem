@@ -2,7 +2,12 @@ import React from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
-export const DetailFooter: React.FC = () => {
+interface DetailFooterProps {
+  onSave?: () => void;
+  isSaving?: boolean;
+}
+
+export const DetailFooter: React.FC<DetailFooterProps> = ({ onSave, isSaving = false }) => {
   const navigate = useNavigate();
 
   return (
@@ -11,7 +16,9 @@ export const DetailFooter: React.FC = () => {
         <button className="btn-ghost" onClick={() => navigate('/admin/users')}>
           Huỷ bỏ
         </button>
-        <button className="btn-primary">Lưu thay đổi</button>
+        <button className="btn-primary" onClick={onSave} disabled={isSaving}>
+          {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </button>
       </div>
     </div>
   );

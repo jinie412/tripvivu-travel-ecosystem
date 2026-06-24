@@ -348,8 +348,8 @@
 
 .th-actions,
 .td-actions {
-  width: 120px;
-  text-align: right;
+  width: 140px;
+  text-align: center;
 }
 
 .checkbox {
@@ -476,7 +476,7 @@
 .action-buttons {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -518,9 +518,13 @@
   background-color: #fee2e2;
 }
 
-.action-btn.btn-edit {
-  color: var(--primary-blue);
-  background-color: transparent;
+.action-btn.btn-delete {
+  color: var(--danger-red);
+  background-color: #fef2f2;
+}
+
+.action-btn.btn-delete:hover {
+  background-color: #fee2e2;
 }
 
 /* Pagination */

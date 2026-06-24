@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Location, LocationStatsInfo } from '../../../types/location';
 import { locationAPI, LocationCategoryOptions, LocationFilterParams } from '../../../services/locationAPI';
+import Swal from 'sweetalert2';
 import { LocationStats } from './components/LocationStats';
 import { LocationFilter } from './components/LocationFilter';
 import { LocationTable } from './components/LocationTable';
@@ -30,6 +31,7 @@ export const LocationManagement: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   const [status, setStatus] = useState<string>(searchParams.get('status') ?? 'all');
   const [categoryName, setCategoryName] = useState<string>('');
+  const vendorId = searchParams.get('vendorId') ?? undefined;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -78,6 +80,7 @@ export const LocationManagement: React.FC = () => {
           search,
           status: status as 'all' | 'pending' | 'approved' | 'rejected',
           categoryName,
+          vendorId,
         };
 
         const locationsData = await locationAPI.getLocations(
@@ -94,7 +97,7 @@ export const LocationManagement: React.FC = () => {
       }
     };
     fetchLocationPageData();
-  }, [currentPage, search, status, categoryName]);
+  }, [currentPage, search, status, categoryName, vendorId]);
 
   useEffect(() => {
     const fetchCategoryOptions = async () => {
@@ -114,6 +117,7 @@ export const LocationManagement: React.FC = () => {
       search,
       status: status as 'all' | 'pending' | 'approved' | 'rejected',
       categoryName,
+      vendorId,
     };
 
     const [locationsData, statsData] = await Promise.all([
@@ -146,6 +150,32 @@ export const LocationManagement: React.FC = () => {
     }
   };
 
+  const handleDelete = async (locationId: string) => {
+    const result = await Swal.fire({
+      title: 'Xóa địa điểm?',
+      text: 'Hành động này không thể hoàn tác.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await locationAPI.deleteLocation(locationId);
+      setSelectedRows((prev) => prev.filter((id) => id !== locationId));
+      await refreshCurrentPage();
+    } catch (error) {
+      console.error('Failed to delete location', error);
+      Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Không thể xóa địa điểm. Vui lòng thử lại.', confirmButtonColor: '#3b82f6' });
+    }
+  };
+
+  const pendingSelectedCount = selectedRows.filter(
+    (id) => locations.find((l) => l.id === id)?.status === 'Chờ duyệt',
+  ).length;
+
   return (
     <div className="page-container">
       {/* Top Header */}
@@ -173,7 +203,7 @@ export const LocationManagement: React.FC = () => {
 
         <div className="card tab-container">
           <LocationFilter
-            selectedCount={selectedRows.length}
+            selectedCount={pendingSelectedCount}
             search={searchInput}
             status={status}
             categoryName={categoryName}
@@ -202,6 +232,7 @@ export const LocationManagement: React.FC = () => {
             onPageChange={setCurrentPage}
             onApprove={handleApprove}
             onReject={handleReject}
+            onDelete={handleDelete}
           />
         </div>
       </div>

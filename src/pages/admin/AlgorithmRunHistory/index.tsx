@@ -54,10 +54,6 @@ export const AlgorithmRunHistory: React.FC = () => {
 
       <div className="page-content arh-content">
         <div className="arh-card">
-          <div className="arh-card__header">
-            <span className="arh-card__dot" />
-            <span className="arh-card__title">Lịch sử chạy thuật toán</span>
-          </div>
           <div className="arh-table-wrap">
             <table className="arh-table">
               <thead>
