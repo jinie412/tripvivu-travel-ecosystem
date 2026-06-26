@@ -36,7 +36,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
           <Search size={18} className="search-icon" />
           <input
             type="text"
-            placeholder="Tìm kiếm địa điểm"
+            placeholder="Tìm kiếm địa điểm, người đăng"
             className="search-input"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
