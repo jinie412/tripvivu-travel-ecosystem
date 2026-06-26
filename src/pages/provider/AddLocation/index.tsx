@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Input from '../../../components/UI/Input';
 import Button from '../../../components/UI/Button';
 import {
@@ -11,67 +11,369 @@ import {
   Edit2,
   Upload,
   Wifi,
-  Car,
-  Utensils,
   FileSpreadsheet,
   Eye,
   CheckCircle,
   Info,
-  ChevronDown,
   RefreshCw,
   Loader2,
+  Search,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addNewPlace, uploadPlaceImage } from '@/services/order.service';
+import { addNewPlace, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
+import { apiClient, extractResponseData } from '@/services/apiClient';
+import { getCurrentUser } from '@/utils/auth';
 import * as XLSX from 'xlsx';
 
-const userInfo = localStorage.getItem('userInfo');
-const parsedUser = userInfo ? JSON.parse(userInfo) : null;
-const VENDOR_ID = parsedUser?.businessId || parsedUser?.id || '';
+type CityOption = { id: string; name: string };
+type BusinessTypeOption = { id: string; name: string };
+
+const VIETNAM_BOUNDS = {
+  minLat: 8.18,
+  maxLat: 23.39,
+  minLng: 102.14,
+  maxLng: 109.47,
+};
+const MAP_TILE_SIZE = 256;
+const MAP_ZOOM = 6;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const latLngToWorldPixel = (lat: number, lng: number, zoom = MAP_ZOOM) => {
+  const scale = MAP_TILE_SIZE * 2 ** zoom;
+  const sinLat = Math.sin((clamp(lat, -85.05112878, 85.05112878) * Math.PI) / 180);
+
+  return {
+    x: ((lng + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
+  };
+};
+
+const worldPixelToLatLng = (x: number, y: number, zoom = MAP_ZOOM) => {
+  const scale = MAP_TILE_SIZE * 2 ** zoom;
+  const lng = (x / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+
+  return { lat, lng };
+};
+
+const getMapTiles = (centerLat: number, centerLng: number) => {
+  const center = latLngToWorldPixel(centerLat, centerLng);
+  const startX = center.x - 300;
+  const startY = center.y - 200;
+  const firstTileX = Math.floor(startX / MAP_TILE_SIZE);
+  const firstTileY = Math.floor(startY / MAP_TILE_SIZE);
+  const maxTile = 2 ** MAP_ZOOM;
+  const tiles: Array<{ key: string; src: string; left: number; top: number }> = [];
+
+  for (let x = firstTileX; x <= firstTileX + 3; x += 1) {
+    for (let y = firstTileY; y <= firstTileY + 2; y += 1) {
+      if (y < 0 || y >= maxTile) continue;
+      const wrappedX = ((x % maxTile) + maxTile) % maxTile;
+      tiles.push({
+        key: `${wrappedX}-${y}`,
+        src: `https://tile.openstreetmap.org/${MAP_ZOOM}/${wrappedX}/${y}.png`,
+        left: x * MAP_TILE_SIZE - startX,
+        top: y * MAP_TILE_SIZE - startY,
+      });
+    }
+  }
+
+  return tiles;
+};
 
 const AddLocationPage: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [showExcelImport, setShowExcelImport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [selectedImages, setSelectedImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
-
+  const [markerPosition, setMarkerPosition] = useState({ x: 62.2, y: 49.6 });
   // Service input state
   const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
 
   // Menu item input state
-  const [menuInput, setMenuInput] = useState({ name: '', description: '', price: '', img: '' });
+  const [menuInput, setMenuInput] = useState<{
+    name: string;
+    description: string;
+    price: string;
+    img: string;
+    imageFile: File | null;
+    previewUrl: string;
+  }>({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    city: 'Hà Nội',
+    city: '',
     phone: '',
+    email: '',
     latitude: 10.77,
     longitude: 106.7,
-    types: [] as string[],
-    // Tách openingHours thành 2 trường riêng biệt
+    type: '',
+    typeId: '',
     openTime: '08:00',
     closeTime: '22:00',
     description: '',
     amenities: [] as { id: string; name: string; description: string; icon: React.ReactNode }[],
-    menu: [] as { id: string; name: string; description: string; price: string; img: string }[],
+    menu: [] as { id: string; name: string; description: string; price: string; img: string; imageFile?: File | null; previewUrl?: string }[],
   });
 
-  const businessTypes = [
-    { id: 'stay', label: 'Khách sạn/Lưu trú' },
-    { id: 'food', label: 'Nhà hàng/Ẩm thực' },
-    { id: 'tour', label: 'Tour du lịch' },
-    { id: 'trans', label: 'Vận chuyển' },
-  ];
+  const [cities, setCities] = useState<CityOption[]>([]);
+  const [loadingCities, setLoadingCities] = useState(true);
+  const [citiesError, setCitiesError] = useState<string | null>(null);
+  const [businessTypes, setBusinessTypes] = useState<BusinessTypeOption[]>([]);
+  const [loadingBusinessTypes, setLoadingBusinessTypes] = useState(true);
+  const [businessTypesError, setBusinessTypesError] = useState<string | null>(null);
 
-  const handleTypeToggle = (typeId: string) => {
+  const loadCities = useCallback(async () => {
+    setLoadingCities(true);
+    setCitiesError(null);
+
+    try {
+      const response = await apiClient.get<CityOption[] | { data: CityOption[] }>('/cities');
+      const data = extractResponseData<CityOption[]>(response as any);
+
+      const list: CityOption[] = Array.isArray(data)
+        ? data
+          .map((item: any) => ({
+            id: String(item.id ?? item.city_id ?? item.code ?? item.name ?? item.city_name ?? item.city ?? item.province ?? ''),
+            name: String(item.name ?? item.city_name ?? item.city ?? item.province ?? ''),
+          }))
+          .filter((item) => item.id && item.name)
+          .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+        : [];
+
+      if (list.length === 0) {
+        throw new Error('Danh sách tỉnh/thành từ hệ thống đang trống.');
+      }
+
+      setCities(list);
+      setFormData((prev) => ({
+        ...prev,
+        city: list.some((city) => city.name === prev.city) ? prev.city : '',
+      }));
+    } catch (error) {
+      console.error('[cities] Load failed:', error);
+      setCities([]);
+      setFormData((prev) => ({ ...prev, city: '' }));
+      setCitiesError(error instanceof Error ? error.message : 'Không thể tải danh sách tỉnh/thành.');
+    } finally {
+      setLoadingCities(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCities();
+  }, [loadCities]);
+
+  const loadBusinessTypes = useCallback(async () => {
+    setLoadingBusinessTypes(true);
+    setBusinessTypesError(null);
+
+    try {
+      const response = await apiClient.get<BusinessTypeOption[] | { data: BusinessTypeOption[] }>('/types');
+      const data = extractResponseData<BusinessTypeOption[]>(response as any);
+
+      const list: BusinessTypeOption[] = Array.isArray(data)
+        ? data
+          .map((item: any) => ({
+            id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? item.type_name ?? ''),
+            name: String(item.name ?? item.type_name ?? ''),
+          }))
+          .filter((item) => item.id && item.name)
+          .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+        : [];
+
+      if (list.length === 0) {
+        throw new Error('Danh sách loại hình kinh doanh từ hệ thống đang trống.');
+      }
+
+      setBusinessTypes(list);
+      setFormData((prev) => ({
+        ...prev,
+        type: list.some((type) => type.id === prev.typeId && type.name === prev.type) ? prev.type : '',
+        typeId: list.some((type) => type.id === prev.typeId && type.name === prev.type) ? prev.typeId : '',
+      }));
+    } catch (error) {
+      console.error('[business-types] Load failed:', error);
+      setBusinessTypes([]);
+      setFormData((prev) => ({ ...prev, type: '', typeId: '' }));
+      setBusinessTypesError(error instanceof Error ? error.message : 'Không thể tải danh sách loại hình kinh doanh.');
+    } finally {
+      setLoadingBusinessTypes(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBusinessTypes();
+  }, [loadBusinessTypes]);
+
+  const phoneError = formData.phone && !/^0\d{9}$/.test(formData.phone)
+    ? 'SĐT phải gồm đúng 10 chữ số và bắt đầu bằng số 0.'
+    : '';
+  const emailError = formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+    ? 'Email không đúng định dạng.'
+    : '';
+  const hasValidCity = !loadingCities && !citiesError && cities.some((city) => city.name === formData.city);
+  const hasValidBusinessType = !loadingBusinessTypes
+    && !businessTypesError
+    && businessTypes.some((type) => type.id === formData.typeId && type.name === formData.type);
+  const canProceedFromStep1 = Boolean(
+    formData.name
+    && formData.address
+    && formData.type
+    && hasValidCity
+    && hasValidBusinessType
+    && formData.phone
+    && !phoneError
+    && formData.email
+    && !emailError,
+  );
+
+  const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const digitsOnly = event.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData({ ...formData, phone: digitsOnly });
+  };
+
+  const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = clamp(event.clientX - rect.left, 0, rect.width);
+    const clickY = clamp(event.clientY - rect.top, 0, rect.height);
+    const center = latLngToWorldPixel(formData.latitude, formData.longitude);
+    const worldX = center.x - rect.width / 2 + clickX;
+    const worldY = center.y - rect.height / 2 + clickY;
+    const { lat, lng } = worldPixelToLatLng(worldX, worldY);
+    const latitude = clamp(lat, VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
+    const longitude = clamp(lng, VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
+
+    setMarkerPosition({ x: (clickX / rect.width) * 100, y: (clickY / rect.height) * 100 });
     setFormData((prev) => ({
       ...prev,
-      types: prev.types.includes(typeId) ? prev.types.filter((t) => t !== typeId) : [...prev.types, typeId],
+      latitude: Number(latitude.toFixed(6)),
+      longitude: Number(longitude.toFixed(6)),
     }));
   };
+
+  const handleFindOnMap = async () => {
+    const addressParts = [formData.address.trim(), formData.city.trim(), 'Việt Nam'].filter(Boolean);
+
+    if (!formData.address.trim() || !formData.city.trim()) {
+      setGeocodeError('Vui lòng nhập địa chỉ và chọn tỉnh/thành trước khi tìm trên bản đồ.');
+      return;
+    }
+
+    try {
+      setIsGeocoding(true);
+      setGeocodeError('');
+
+      const params = new URLSearchParams({
+        format: 'json',
+        q: addressParts.join(', '),
+        countrycodes: 'vn',
+        limit: '1',
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Không thể kết nối dịch vụ bản đồ.');
+      }
+
+      const results: Array<{ lat: string; lon: string }> = await response.json();
+      const firstResult = results[0];
+
+      if (!firstResult) {
+        throw new Error('Không tìm thấy vị trí phù hợp. Vui lòng thử nhập địa chỉ rõ hơn hoặc chọn thủ công trên bản đồ.');
+      }
+
+      const latitude = clamp(Number(firstResult.lat), VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
+      const longitude = clamp(Number(firstResult.lon), VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
+
+      if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+        throw new Error('Dịch vụ bản đồ trả về tọa độ không hợp lệ.');
+      }
+
+      setMarkerPosition({ x: 50, y: 50 });
+      setFormData((prev) => ({
+        ...prev,
+        latitude: Number(latitude.toFixed(6)),
+        longitude: Number(longitude.toFixed(6)),
+      }));
+    } catch (error) {
+      console.error('[map] Geocoding failed:', error);
+      setGeocodeError(error instanceof Error ? error.message : 'Không thể tìm vị trí trên bản đồ.');
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const validateBasicInfo = () => {
+    if (!formData.name || !formData.address || !formData.phone || !formData.email || !formData.type || !formData.typeId) {
+      alert('Vui lòng điền đầy đủ thông tin tại Bước 1');
+      setStep(1);
+      return false;
+    }
+
+    if (phoneError) {
+      alert('SĐT liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0.');
+      setStep(1);
+      return false;
+    }
+
+    if (emailError) {
+      alert('Email liên hệ không đúng định dạng.');
+      setStep(1);
+      return false;
+    }
+
+    if (loadingCities) {
+      alert('Danh sách tỉnh/thành đang tải. Vui lòng chờ trong giây lát.');
+      setStep(1);
+      return false;
+    }
+
+    if (citiesError || cities.length === 0) {
+      alert('Không thể tải danh sách tỉnh/thành từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.');
+      setStep(1);
+      return false;
+    }
+
+    if (!cities.some((city) => city.name === formData.city)) {
+      alert('Vui lòng chọn tỉnh/thành hợp lệ từ danh sách hệ thống.');
+      setStep(1);
+      return false;
+    }
+
+    if (loadingBusinessTypes) {
+      alert('Danh sách loại hình kinh doanh đang tải. Vui lòng chờ trong giây lát.');
+      setStep(1);
+      return false;
+    }
+
+    if (businessTypesError || businessTypes.length === 0) {
+      alert('Không thể tải danh sách loại hình kinh doanh từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.');
+      setStep(1);
+      return false;
+    }
+
+    if (!businessTypes.some((type) => type.id === formData.typeId && type.name === formData.type)) {
+      alert('Vui lòng chọn loại hình kinh doanh hợp lệ từ danh sách hệ thống.');
+      setStep(1);
+      return false;
+    }
+
+    return true;
+  };
+
 
   const handleAddService = () => {
     if (!serviceInput.name.trim()) {
@@ -112,7 +414,9 @@ const AddLocationPage: React.FC = () => {
       name: menuInput.name,
       description: menuInput.description,
       price: menuInput.price,
-      img: menuInput.img || 'https://via.placeholder.com/56x56'
+      img: menuInput.img || '',
+      imageFile: menuInput.imageFile,
+      previewUrl: menuInput.previewUrl,
     };
 
     setFormData(prev => ({
@@ -120,13 +424,31 @@ const AddLocationPage: React.FC = () => {
       menu: [...prev.menu, newMenuItem]
     }));
 
-    setMenuInput({ name: '', description: '', price: '', img: '' });
+    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
   };
 
   const handleRemoveMenuItem = (id: string) => {
     setFormData(prev => ({
       ...prev,
       menu: prev.menu.filter(m => m.id !== id)
+    }));
+  };
+
+  const handleMenuImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    if (menuInput.previewUrl) {
+      URL.revokeObjectURL(menuInput.previewUrl);
+    }
+
+    setMenuInput((prev) => ({
+      ...prev,
+      imageFile: file,
+      img: '',
+      previewUrl: URL.createObjectURL(file),
     }));
   };
 
@@ -210,7 +532,7 @@ const AddLocationPage: React.FC = () => {
               name: String(name).trim(),
               description: String(description).trim(),
               price: String(priceStr).trim(),
-              img: 'https://via.placeholder.com/56x56'
+              img: ''
             };
           }).filter((item: any) => {
             // Validate: name must exist and price must be a valid number
@@ -256,9 +578,7 @@ const AddLocationPage: React.FC = () => {
       setIsLoading(true);
 
       // 1. Kiểm tra thông tin cơ bản
-      if (!formData.name || !formData.address || formData.types.length === 0) {
-        alert('Vui lòng điền đầy đủ thông tin tại Bước 1');
-        setStep(1);
+      if (!validateBasicInfo()) {
         return;
       }
 
@@ -277,13 +597,42 @@ const AddLocationPage: React.FC = () => {
         }
       }
 
-      // 3. Chuẩn bị Payload cho DB
-      const categoryMap: { [key: string]: string } = {
-        stay: 'Hotel',
-        food: 'Restaurant',
-        tour: 'Tour',
-        trans: 'Transport'
-      };
+      const currentUser = getCurrentUser<{
+        businessId?: string;
+        business_id?: string;
+        vendorId?: string;
+        vendor_id?: string;
+        id?: string;
+      }>();
+      const vendorId = [
+        currentUser?.businessId,
+        currentUser?.business_id,
+        currentUser?.vendorId,
+        currentUser?.vendor_id,
+        currentUser?.id,
+      ].find((value): value is string => typeof value === 'string' && value.trim().length > 0) || '';
+
+      if (!vendorId) {
+        alert('Không tìm thấy thông tin đối tác. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      const menuWithUploadedImages = await Promise.all(
+        formData.menu.map(async (item) => {
+          let imageUrl = item.img || '';
+
+          if (item.imageFile) {
+            imageUrl = await uploadFoodDraftImage(item.imageFile);
+          }
+
+          return {
+            name: item.name,
+            description: item.description || '',
+            price: parseFloat(item.price) || 0,
+            image_url: imageUrl || undefined,
+          };
+        }),
+      );
 
       const payload = {
         p_name: formData.name,
@@ -291,8 +640,11 @@ const AddLocationPage: React.FC = () => {
         p_city: formData.city,
         p_lat: formData.latitude,
         p_lng: formData.longitude,
-        p_vendor_id: VENDOR_ID,
-        p_categories: formData.types.map(t => categoryMap[t] || t),
+        p_vendor_id: vendorId,
+        p_email: formData.email.trim(),
+        p_type_id: formData.typeId,
+        p_type_name: formData.type,
+        p_categories: formData.type ? [formData.type] : [],
         p_open_time: formData.openTime, // Thêm trường này
         p_close_time: formData.closeTime, // Thêm trường này
         p_description: formData.description,
@@ -300,11 +652,7 @@ const AddLocationPage: React.FC = () => {
           name: a.name,
           description: a.description || ''
         })),
-        p_menu: formData.menu.map(item => ({
-          name: item.name,
-          description: item.description || '',
-          price: parseFloat(item.price) || 0
-        })),
+        p_menu: menuWithUploadedImages,
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
 
@@ -316,13 +664,32 @@ const AddLocationPage: React.FC = () => {
 
     } catch (error) {
       console.error('Lỗi khi thêm địa điểm:', error);
-      alert('Không thể tạo địa điểm. Vui lòng thử lại.');
+      const responseMessage = (error as any)?.response?.data?.message;
+      const responseError = (error as any)?.response?.data?.error;
+      const message = Array.isArray(responseMessage)
+        ? responseMessage.join('\n')
+        : responseMessage || responseError || (error instanceof Error ? error.message : '');
+      alert(message ? `Không thể tạo địa điểm: ${message}` : 'Không thể tạo địa điểm. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleNext = () => {
+    if (step === 1 && !validateBasicInfo()) {
+      return;
+    }
+
+    if (step === 2 && serviceInput.name.trim()) {
+      alert('Bạn có dịch vụ chưa thêm vào danh sách. Vui lòng bấm Thêm vào danh sách hoặc xóa nội dung.');
+      return;
+    }
+
+    if (step === 2 && !showExcelImport) {
+      handleSubmitForm();
+      return;
+    }
+
     if (step < 3) {
       setStep((prev) => prev + 1);
     } else if (step === 3) {
@@ -331,12 +698,17 @@ const AddLocationPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (fileUploaded) {
+    if (step === 3 && showExcelImport) {
+      setShowExcelImport(false);
+      setStep(2);
+    } else if (fileUploaded) {
       setFileUploaded(false);
     } else if (step > 1) {
       setStep((prev) => prev - 1);
     }
   };
+
+  const mapTiles = getMapTiles(formData.latitude, formData.longitude);
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', gap: '48px' }}>
@@ -363,28 +735,79 @@ const AddLocationPage: React.FC = () => {
                 width: '100%',
                 padding: '14px 16px',
                 borderRadius: '12px',
-                border: '1px solid var(--border-color)',
+                border: `1px solid ${citiesError ? '#ef4444' : 'var(--border-color)'}`,
                 background: '#fcfcfc',
                 outline: 'none',
                 fontSize: '15px',
               }}
               value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}>
-              <option value="Hà Nội">Hà Nội</option>
-              <option value="Hồ Chí Minh">TP. Hồ Chí Minh</option>
-              <option value="Đà Nẵng">Đà Nẵng</option>
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              disabled={loadingCities || !!citiesError || cities.length === 0}>
+              {loadingCities ? (
+                <option value="">Đang tải danh sách tỉnh/thành...</option>
+              ) : citiesError ? (
+                <option value="">Không tải được danh sách tỉnh/thành</option>
+              ) : cities.length === 0 ? (
+                <option value="">Danh sách tỉnh/thành đang trống</option>
+              ) : (
+                <>
+                  <option value="" disabled>-- Chọn tỉnh/thành --</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </>
+              )}
             </select>
+            {citiesError && (
+              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <span style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4 }}>
+                  Không thể tải tỉnh/thành từ hệ thống. Dữ liệu sẽ không được lưu cho đến khi tải lại thành công.
+                </span>
+                <button
+                  type="button"
+                  onClick={loadCities}
+                  disabled={loadingCities}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    border: '1px solid #fecaca',
+                    background: '#fff',
+                    color: '#dc2626',
+                    borderRadius: '10px',
+                    padding: '8px 10px',
+                    cursor: loadingCities ? 'not-allowed' : 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}>
+                  <RefreshCw size={14} />
+                  Tải lại
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ flex: 1 }}>
             <Input
               label="SĐT Liên hệ"
-              placeholder="09xx xxx xxx"
+              placeholder="0xxxxxxxxx"
+              inputMode="numeric"
+              maxLength={10}
+              error={phoneError}
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={handlePhoneChange}
               style={{ marginBottom: 0 }}
             />
           </div>
         </div>
+        <Input
+          label="Email liên hệ"
+          type="email"
+          placeholder="example@email.com"
+          error={emailError}
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
         {/* --- THÀNH PHẦN MỚI: TEXTBOX MÔ TẢ --- */}
         <div style={{ marginBottom: '24px' }}>
           <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
@@ -409,97 +832,80 @@ const AddLocationPage: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
         </div>
-        <div>
-          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
             Loại hình kinh doanh
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-            {businessTypes.map((type) => (
-              <div
-                key={type.id}
-                onClick={() => handleTypeToggle(type.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
-                <div
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '6px',
-                    background: formData.types.includes(type.id) ? '#3b82f6' : 'white',
-                    borderColor: formData.types.includes(type.id) ? '#3b82f6' : '#e2e8f0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    transition: 'all 0.15s ease',
-                  }}>
-                  {formData.types.includes(type.id) && (
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontSize: '14px', color: '#64748b' }}>{type.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div style={{ flex: 1 }}>
-        <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
-          Xác vị trí trên bản đồ
-        </label>
-        <div
-          style={{
-            width: '100%',
-            height: '240px',
-            background: '#f8fafc',
-            borderRadius: '16px',
-            position: 'relative',
-            overflow: 'hidden',
-            border: '1px solid #F1F5F9',
-            marginBottom: '24px',
-          }}>
-          <img
-            src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&h=400&fit=crop"
-            alt="Map"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
-          />
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', color: '#ef4444' }}>
-            <MapPin size={32} fill="#ef444433" />
-          </div>
-          <div
+          <select
             style={{
-              position: 'absolute',
-              bottom: '12px',
-              left: '12px',
-              background: 'white',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              color: '#64748b',
-            }}>
-            Kéo thả ghim để chọn vị trí chính xác nhất.
-          </div>
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: '12px',
+              border: `1px solid ${businessTypesError ? '#ef4444' : 'var(--border-color)'}`,
+              background: '#fcfcfc',
+              outline: 'none',
+              fontSize: '15px',
+              color: '#1e293b',
+            }}
+            value={formData.typeId}
+            onChange={(e) => {
+              const selectedType = businessTypes.find((type) => type.id === e.target.value);
+              setFormData({
+                ...formData,
+                typeId: selectedType?.id || '',
+                type: selectedType?.name || '',
+              });
+            }}
+            disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}>
+            {loadingBusinessTypes ? (
+              <option value="">Đang tải danh sách loại hình...</option>
+            ) : businessTypesError ? (
+              <option value="">Không tải được danh sách loại hình</option>
+            ) : businessTypes.length === 0 ? (
+              <option value="">Danh sách loại hình đang trống</option>
+            ) : (
+              <>
+                <option value="" disabled>-- Chọn loại hình --</option>
+                {businessTypes.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </>
+            )}
+          </select>
+          {businessTypesError && (
+            <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <span style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4 }}>
+                Không thể tải loại hình kinh doanh từ hệ thống.
+              </span>
+              <button
+                type="button"
+                onClick={loadBusinessTypes}
+                disabled={loadingBusinessTypes}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  border: '1px solid #fecaca',
+                  background: '#fff',
+                  color: '#dc2626',
+                  borderRadius: '10px',
+                  padding: '8px 10px',
+                  cursor: loadingBusinessTypes ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}>
+                <RefreshCw size={14} />
+                Tải lại
+              </button>
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ flex: 1 }}><Input label="Kinh độ (Latitude)" type="number" value={formData.latitude} onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })} style={{ marginBottom: 0 }} /></div>
-          <div style={{ flex: 1 }}><Input label="Vĩ độ (Longitude)" type="number" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })} style={{ marginBottom: 0 }} /></div>
-        </div>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <Input
               label="Giờ mở cửa"
-              type="time" // Sử dụng type="time" để user chọn cho nhanh
+              type="time"
               value={formData.openTime}
               onChange={(e) => setFormData({ ...formData, openTime: e.target.value })}
               icon={<Clock size={18} />}
@@ -514,6 +920,118 @@ const AddLocationPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, closeTime: e.target.value })}
               icon={<Clock size={18} />}
               style={{ marginBottom: 0 }}
+            />
+          </div>
+        </div>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block' }}>
+            Xác định vị trí trên bản đồ
+          </label>
+          <button
+            type="button"
+            onClick={handleFindOnMap}
+            disabled={isGeocoding || !formData.address.trim() || !formData.city.trim()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+              color: '#2563eb',
+              borderRadius: '10px',
+              padding: '8px 12px',
+              cursor: isGeocoding || !formData.address.trim() || !formData.city.trim() ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              opacity: isGeocoding || !formData.address.trim() || !formData.city.trim() ? 0.6 : 1,
+            }}>
+            {isGeocoding ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+            {isGeocoding ? 'Đang tìm...' : 'Tìm trên bản đồ'}
+          </button>
+        </div>
+        {geocodeError && (
+          <div style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4, marginBottom: '10px' }}>
+            {geocodeError}
+          </div>
+        )}
+        <div
+          onClick={handleMapClick}
+          style={{
+            width: '100%',
+            flex: 1,
+            minHeight: '240px',
+            background: '#f8fafc',
+            borderRadius: '16px',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid #F1F5F9',
+            marginBottom: '24px',
+            cursor: 'crosshair',
+          }}>
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            {mapTiles.map((tile) => (
+              <img
+                key={tile.key}
+                src={tile.src}
+                alt=""
+                style={{
+                  position: 'absolute',
+                  left: `${tile.left}px`,
+                  top: `${tile.top}px`,
+                  width: `${MAP_TILE_SIZE}px`,
+                  height: `${MAP_TILE_SIZE}px`,
+                  userSelect: 'none',
+                }}
+              />
+            ))}
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: `${markerPosition.y}%`,
+              left: `${markerPosition.x}%`,
+              transform: 'translate(-50%, -100%)',
+              color: '#ef4444',
+              pointerEvents: 'none',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
+            }}>
+            <MapPin size={32} fill="#ef444433" />
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              background: 'white',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              color: '#64748b',
+            }}>
+            Nhấn "Tìm trên bản đồ" hoặc click vào bản đồ để chỉnh vị trí.
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Vĩ độ (Latitude)"
+              type="number"
+              value={formData.latitude}
+              readOnly
+              style={{ marginBottom: 0, cursor: 'not-allowed', background: '#f8fafc' }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Input
+              label="Kinh độ (Longitude)"
+              type="number"
+              value={formData.longitude}
+              readOnly
+              style={{ marginBottom: 0, cursor: 'not-allowed', background: '#f8fafc' }}
             />
           </div>
         </div>
@@ -558,15 +1076,33 @@ const AddLocationPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', color: '#1e293b' }}>
-          <Wifi size={20} color="#3b82f6" />
-          <h4 style={{ fontSize: '16px', fontWeight: '800' }}>Dịch vụ tiện ích</h4>
+          <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tiện ích</h4>
         </div>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div style={{ flex: 1 }}><Input label="Tên dịch vụ" placeholder="VD: Giữ xe miễn phí" value={serviceInput.name} onChange={(e) => setServiceInput({ ...serviceInput, name: e.target.value })} style={{ marginBottom: 0 }} /></div>
           <div style={{ flex: 1.5 }}><Input label="Mô tả (không bắt buộc)" placeholder="Nhập mô tả ngắn về dịch vụ" value={serviceInput.description} onChange={(e) => setServiceInput({ ...serviceInput, description: e.target.value })} style={{ marginBottom: 0 }} /></div>
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-            <Button variant="outline" style={{ height: '50px', gap: '8px', padding: '0 24px', borderRadius: '12px', color: '#3b82f6', borderColor: '#3b82f6' }} onClick={handleAddService}>
-              <Plus size={18} /> Thêm
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '600', lineHeight: 1.5, visibility: 'hidden', marginBottom: '8px' }}>
+              Thao tác
+            </span>
+            <Button
+              disabled={!serviceInput.name.trim()}
+              style={{
+                height: '53px',
+                minHeight: '53px',
+                boxSizing: 'border-box',
+                gap: '8px',
+                padding: '0 24px',
+                borderRadius: '12px',
+                color: '#ffffff',
+                background: '#3b82f6',
+                border: '1px solid #3b82f6',
+                opacity: serviceInput.name.trim() ? 1 : 0.55,
+                cursor: serviceInput.name.trim() ? 'pointer' : 'not-allowed',
+                whiteSpace: 'nowrap',
+              }}
+              onClick={handleAddService}>
+              Thêm vào danh sách
             </Button>
           </div>
         </div>
@@ -584,25 +1120,28 @@ const AddLocationPage: React.FC = () => {
             Dịch vụ đã thêm
           </label>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {formData.amenities.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 16px',
-                  background: 'white',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  color: '#475569',
-                }}>
-                <span style={{ color: '#3b82f6' }}>{item.icon}</span>
-                <span>{item.name}</span>
-                <span style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '16px', marginLeft: '4px' }} onClick={() => handleRemoveService(item.id)}>×</span>
-              </div>
-            ))}
+            {formData.amenities.length === 0 ? (
+              <span style={{ color: '#94a3b8', fontSize: '14px' }}>Chưa có dịch vụ nào được thêm.</span>
+            ) : (
+              formData.amenities.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: 'white',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    color: '#475569',
+                  }}>
+                  <span>{item.name}</span>
+                  <span style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '16px', marginLeft: '4px' }} onClick={() => handleRemoveService(item.id)}>×</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -610,8 +1149,7 @@ const AddLocationPage: React.FC = () => {
       <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
-            <Utensils size={20} color="#3b82f6" />
-            <h4 style={{ fontSize: '16px', fontWeight: '800' }}>Thực đơn món ăn (Nhà hàng)</h4>
+            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Thực đơn món ăn (Nhà hàng)</h4>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#3b82f6' }}>Đăng ký thực đơn</span>
@@ -638,8 +1176,16 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '32px' }}>
+          <input
+            id="menuImageInput"
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleMenuImageSelect}
+          />
           <div
+            onClick={() => document.getElementById('menuImageInput')?.click()}
             style={{
               width: '100px',
               height: '100px',
@@ -654,31 +1200,89 @@ const AddLocationPage: React.FC = () => {
               fontSize: '10px',
               gap: '4px',
               cursor: 'pointer',
+              overflow: 'hidden',
             }}>
-            <Upload size={24} /> Tải lên
+            {menuInput.previewUrl ? (
+              <img
+                src={menuInput.previewUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <>
+                <Upload size={24} /> Tải lên
+              </>
+            )}
           </div>
-          <div style={{ flex: 1 }}><Input label="Tên món ăn" placeholder="VD: Cơm Gà Hải Nam" value={menuInput.name} onChange={(e) => setMenuInput({ ...menuInput, name: e.target.value })} /></div>
-          <div style={{ flex: 1 }}><Input label="Giá bán (VNĐ)" placeholder="0" value={menuInput.price} onChange={(e) => setMenuInput({ ...menuInput, price: e.target.value })} rightIcon={<span>đ</span>} /></div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginBottom: '32px' }}>
-          <Button style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '14px', gap: '8px' }} onClick={handleAddMenuItem}><Plus size={18} /> Thêm vào danh sách</Button>
-          <Button variant="outline" style={{ padding: '12px 24px', borderRadius: '12px', fontSize: '14px', gap: '8px', color: '#3b82f6', borderColor: '#DBEAFE', background: '#F0F9FF' }} onClick={() => setStep(3)}><Plus size={18} /> Thêm từ file</Button>
+          <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Tên món ăn</label>
+              <input
+                placeholder="VD: Cơm Gà Hải Nam"
+                value={menuInput.name}
+                onChange={(e) => setMenuInput({ ...menuInput, name: e.target.value })}
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  padding: '0 16px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color)',
+                  background: '#fcfcfc',
+                  fontSize: '15px',
+                  outline: 'none',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Giá bán (VNĐ)</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  placeholder="0"
+                  value={menuInput.price}
+                  onChange={(e) => setMenuInput({ ...menuInput, price: e.target.value })}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    padding: '0 40px 0 16px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border-color)',
+                    background: '#fcfcfc',
+                    fontSize: '15px',
+                    outline: 'none',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+                <span style={{ position: 'absolute', right: '14px', color: 'var(--text-secondary)', fontSize: '15px' }}>đ</span>
+              </div>
+            </div>
+            <Button style={{ height: '48px', minWidth: '88px', padding: '0 18px', borderRadius: '12px', fontSize: '14px', whiteSpace: 'nowrap' }} onClick={handleAddMenuItem}>Thêm</Button>
+          </div>
         </div>
 
         <div>
-          <label
-            style={{
-              fontSize: '12px',
-              fontWeight: '800',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
-              marginBottom: '16px',
-              display: 'block',
-              letterSpacing: '0.5px',
-            }}>
-            Danh sách món ăn
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '16px' }}>
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: '800',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                display: 'block',
+                letterSpacing: '0.5px',
+              }}>
+              Danh sách món ăn
+            </label>
+            <Button
+              variant="outline"
+              style={{ padding: '10px 18px', borderRadius: '12px', fontSize: '14px', gap: '8px', color: '#3b82f6', borderColor: '#DBEAFE', background: '#F0F9FF' }}
+              onClick={() => {
+                setShowExcelImport(true);
+                setStep(3);
+              }}>
+              <Plus size={18} /> Thêm từ file
+            </Button>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             {formData.menu.map((item) => (
               <div
@@ -693,7 +1297,7 @@ const AddLocationPage: React.FC = () => {
                   borderRadius: '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                 }}>
-                <img src={item.img} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
+                <img src={item.previewUrl || item.img || 'https://via.placeholder.com/56x56'} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>{item.name}</span>
                   <span style={{ fontSize: '13px', color: '#3b82f6', fontWeight: '600' }}>{item.price}đ</span>
@@ -713,7 +1317,7 @@ const AddLocationPage: React.FC = () => {
   const renderStep3Initial = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b' }}>
-        <h4 style={{ fontSize: '18px', fontWeight: '800' }}>Xác nhận thông tin</h4>
+        <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Xác nhận thông tin</h4>
       </div>
 
       {/* Current menu items summary */}
@@ -721,7 +1325,7 @@ const AddLocationPage: React.FC = () => {
         <div style={{ background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '24px', padding: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <CheckCircle size={20} color="#22c55e" />
-            <h5 style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>Món ăn đã thêm ({formData.menu.length})</h5>
+            <h5 style={{ fontSize: '0.9375rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif', color: '#1e293b' }}>Món ăn đã thêm ({formData.menu.length})</h5>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
             {formData.menu.map(item => (
@@ -808,163 +1412,12 @@ const AddLocationPage: React.FC = () => {
     </div>
   );
 
-  const renderStep3Mapping = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b' }}>
-        <button onClick={handleBack} style={{ background: 'transparent', color: '#64748b', cursor: 'pointer', border: 'none' }}>
-          <ArrowLeft size={20} />
-        </button>
-        <h4 style={{ fontSize: '18px', fontWeight: '800' }}>Mapping Dữ liệu Thủ công</h4>
-      </div>
-
-      {/* Guide Section */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div
-          style={{
-            padding: '20px',
-            background: '#F0F9FF',
-            borderRadius: '16px',
-            border: '1px solid #DBEAFE',
-            display: 'flex',
-            gap: '16px',
-          }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#3b82f6',
-            }}>
-            <Info size={18} />
-          </div>
-          <div>
-            <h5 style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Hướng dẫn nhập liệu</h5>
-            <p style={{ fontSize: '13px', color: '#64748b' }}>
-              Dữ liệu đã được tải lên thành công. Vui lòng kiểm tra lại ánh xạ các trường dữ liệu bên dưới.
-            </p>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: '20px',
-            background: '#F0FDF4',
-            borderRadius: '16px',
-            border: '1px solid #DCFCE7',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#22c55e',
-              }}>
-              <FileSpreadsheet size={20} />
-            </div>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{uploadedFile?.name || 'Chưa tải file'}</p>
-              <p style={{ fontSize: '12px', color: uploadedFile ? '#22c55e' : '#94a3b8' }}>{uploadedFile ? 'Tải lên thành công' : 'Vui lòng tải file lên'}</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {uploadedFile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#22c55e', fontWeight: '600' }}>
-                <CheckCircle size={16} /> Hoàn thành
-              </div>
-            )}
-            <button onClick={() => setUploadedFile(null)} style={{ color: '#3b82f6', fontSize: '13px', fontWeight: '700', background: 'transparent', border: 'none', cursor: 'pointer' }}>Thay đổi tệp</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mapping Section */}
-      <div style={{ border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', background: 'white' }}>
-        <div
-          style={{
-            padding: '20px 24px',
-            background: '#F8FAFC',
-            borderBottom: '1px solid #F1F5F9',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-          <RefreshCw size={18} color="#3b82f6" />
-          <h5 style={{ fontSize: '15px', fontWeight: '800' }}>Thiết lập ánh xạ trường dữ liệu</h5>
-        </div>
-        {uploadedFile ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #F1F5F9' }}>
-                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trường trong dữ liệu hệ thống</th>
-                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Cột trong file của bạn</th>
-                <th style={{ padding: '16px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Trạng thái</th>
-              </tr>
-            </thead>
-          </table>
-        ) : (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            <p style={{ fontSize: '14px' }}>Vui lòng tải file lên để xem phần ánh xạ trường dữ liệu</p>
-          </div>
-        )}
-      </div>
-
-      {/* Preview Section */}
-      <div style={{ border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', background: 'white' }}>
-        <div
-          style={{
-            padding: '20px 24px',
-            background: '#F8FAFC',
-            borderBottom: '1px solid #F1F5F9',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-          <Eye size={18} color="#3b82f6" />
-          <h5 style={{ fontSize: '15px', fontWeight: '800' }}>Xem trước dữ liệu (3 dòng đầu)</h5>
-        </div>
-        {uploadedFile ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
-                <th style={{ padding: '12px 24px', fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>DỮ LIỆU DỰA TRÊN FILE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{ borderBottom: 'none', fontSize: '13px' }}>
-                <td style={{ padding: '16px 24px', color: '#64748b' }}>Sẽ hiển thị dữ liệu từ file Excel khi được xử lý</td>
-              </tr>
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            <p style={{ fontSize: '14px' }}>Vui lòng tải file lên để xem phần xem trước dữ liệu</p>
-          </div>
-        )}
-        <div style={{ padding: '12px 24px', color: '#94a3b8', fontSize: '11px', borderTop: '1px solid #F1F5F9' }}>
-          ⓘ Dữ liệu xem trước giúp bạn xác nhận ánh xạ trường đã chính xác.
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <div style={{ maxWidth: step === 3 ? '1200px' : '1000px', margin: '0 auto', paddingBottom: step === 3 ? '120px' : '40px' }}>
         {step !== 3 && (
           <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Thêm địa điểm mới</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>Thêm địa điểm mới</h2>
             <p style={{ fontSize: '15px', color: '#64748b' }}>
               Vui lòng điền thông tin chi tiết về địa điểm kinh doanh của bạn để bắt đầu.
             </p>
@@ -1018,31 +1471,13 @@ const AddLocationPage: React.FC = () => {
                   </span>
                   <span style={{ fontWeight: '700', fontSize: '14px' }}>Dịch vụ</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: step >= 3 ? '#3b82f6' : '#94a3b8' }}>
-                  <span
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      background: step >= 3 ? '#3b82f6' : '#f1f5f9',
-                      color: step >= 3 ? 'white' : '#94a3b8',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                    }}>
-                    3
-                  </span>
-                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Xác nhận</span>
-                </div>
               </div>
 
               <div style={{ marginBottom: '40px' }}>
                 <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
                   <div
                     style={{
-                      width: step === 1 ? '33%' : step === 2 ? '66%' : '100%',
+                      width: step === 1 ? '50%' : '100%',
                       height: '100%',
                       background: '#3b82f6',
                       borderRadius: '3px',
@@ -1080,11 +1515,9 @@ const AddLocationPage: React.FC = () => {
                     setFileUploaded(false);
                   }} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Xóa file</button>
                 )}
-                {!uploadedFile && formData.menu.length === 0 && (
-                  <button onClick={() => setStep(2)} style={{ background: 'white', border: '1px solid #E2E8F0', padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ArrowLeft size={18} /> Quay lại
-                  </button>
-                )}
+                <button onClick={handleBack} style={{ background: 'white', border: '1px solid #E2E8F0', padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ArrowLeft size={18} /> Quay lại
+                </button>
                 {/* Ở phần Footer Actions, tìm nút Hoàn tất và sửa lại như sau: */}
                 <Button
                   onClick={handleNext}
@@ -1137,15 +1570,20 @@ const AddLocationPage: React.FC = () => {
                   </button>
                 )}
 
-                {step === 2 && (
-                  <button style={{ background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-                    Lưu tạm
-                  </button>
-                )}
-
-                <Button onClick={handleNext} style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
-                  {step === 1 ? 'Tiếp theo' : 'Tiếp tục'}
-                  <ArrowRight size={18} />
+                <Button
+                  onClick={handleNext}
+                  disabled={(step === 1 && !canProceedFromStep1) || isLoading}
+                  style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
+                  {isLoading && step === 2 ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      {step === 1 ? 'Tiếp theo' : 'Hoàn tất'}
+                      {step === 1 ? <ArrowRight size={18} /> : <CheckCircle size={18} />}
+                    </>
+                  )}
                 </Button>
               </div>
             )}

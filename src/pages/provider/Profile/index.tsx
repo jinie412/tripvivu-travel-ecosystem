@@ -231,7 +231,7 @@ const ProfilePage: React.FC = () => {
   return (
     <>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b', marginBottom: '32px' }}>Thông tin cá nhân</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '32px', fontFamily: '"Outfit", sans-serif' }}>Thông tin cá nhân</h2>
 
         <div
           style={{
@@ -253,7 +253,7 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>Ảnh đại diện</h4>
+                <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>Ảnh đại diện</h4>
                 <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
                   Tải lên ảnh mới để thay đổi diện mạo hồ sơ của bạn.
                 </p>
@@ -290,7 +290,7 @@ const ProfilePage: React.FC = () => {
 
             {/* 3. Đổ dữ liệu State vào các Input */}
             <div style={{ marginBottom: '48px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '24px' }}>Thông tin cơ bản</h4>
+              <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '24px', fontFamily: '"Outfit", sans-serif' }}>Thông tin cơ bản</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                 <Input label="Họ và tên" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} />
                 <div style={{ opacity: 0.7 }}>
@@ -310,7 +310,7 @@ const ProfilePage: React.FC = () => {
             {/* Change Password Section */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>Đổi mật khẩu</h4>
+                <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Đổi mật khẩu</h4>
                 <div
                   onClick={() => setIsPasswordChangeEnabled(!isPasswordChangeEnabled)}
                   style={{

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Button from '../../../components/UI/Button';
 import { Search, ChevronLeft, ChevronRight, Edit3, Trash2, Plus, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import defaultLocationImage from '../../../assets/images/location-default.svg';
 
 import { businessLocationAPI } from '../../../services/businessLocationAPI';
+import { deletePlaceDetail } from '../../../services/order.service';
 import type { Location } from '../../../types/location';
+import { getCurrentUser } from '../../../utils/auth';
 
 const normalizeVietnameseText = (value: string): string => {
   return value
@@ -29,9 +31,28 @@ interface LocationsPageState {
 const LocationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const userInfo = localStorage.getItem('userInfo');
-  const parsedUser = userInfo ? JSON.parse(userInfo) : null;
-  const vendorId = parsedUser?.businessId || parsedUser?.id || '';
+  const currentUser = useMemo(
+    () =>
+      getCurrentUser<{
+        businessId?: string;
+        business_id?: string;
+        vendorId?: string;
+        vendor_id?: string;
+        id?: string;
+      }>(),
+    [],
+  );
+  const vendorId = useMemo(
+    () =>
+      [
+        currentUser?.businessId,
+        currentUser?.business_id,
+        currentUser?.vendorId,
+        currentUser?.vendor_id,
+        currentUser?.id,
+      ].find((value): value is string => typeof value === 'string' && value.trim().length > 0) || '',
+    [currentUser],
+  );
   const [state, setState] = useState<LocationsPageState>({
     locations: [],
     loading: true,
@@ -126,11 +147,45 @@ const LocationsPage: React.FC = () => {
     return statusLabels[status] || status;
   };
 
+  const handleDeleteLocation = async (location: Location) => {
+    if (!vendorId) {
+      setState(prev => ({
+        ...prev,
+        error: 'Không tìm thấy thông tin business. Vui lòng đăng nhập lại.',
+      }));
+      return;
+    }
+
+    const confirmed = window.confirm(`Bạn có chắc muốn xóa địa điểm "${location.name}" không?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deletePlaceDetail({
+        placeId: location.id,
+        vendorId,
+      });
+
+      setState(prev => ({
+        ...prev,
+        locations: prev.locations.filter((item) => item.id !== location.id),
+        totalItems: Math.max(0, prev.totalItems - 1),
+        error: null,
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Không thể xóa địa điểm. Vui lòng thử lại.',
+      }));
+    }
+  };
+
   return (
     <>
       <div style={{ padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Danh sách địa điểm quản lý</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Danh sách địa điểm quản lý</h2>
           <Button onClick={() => navigate('/add-location')} style={{ gap: '8px', padding: '10px 24px', borderRadius: '12px' }}>
             <Plus size={18} /> Thêm địa điểm
           </Button>
@@ -180,11 +235,11 @@ const LocationsPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>TÊN ĐỊA ĐIỂM</th>
-                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>LOẠI HÌNH</th>
-                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>ĐÁNH GIÁ</th>
-                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>TRẠNG THÁI</th>
-                <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>THAO TÁC</th>
+                <th style={{ padding: '20px 24px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>TÊN ĐỊA ĐIỂM</th>
+                <th style={{ padding: '20px 24px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>LOẠI HÌNH</th>
+                <th style={{ padding: '20px 24px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>ĐÁNH GIÁ</th>
+                <th style={{ padding: '20px 24px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>TRẠNG THÁI</th>
+                <th style={{ padding: '20px 24px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
@@ -225,7 +280,7 @@ const LocationsPage: React.FC = () => {
                         }}
                       />
                       <div>
-                        <p style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>{loc.name}</p>
+                        <p style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>{loc.name}</p>
                         <p style={{ fontSize: '12px', color: '#94a3b8' }}>{loc.address}</p>
                       </div>
                     </div>
@@ -254,8 +309,22 @@ const LocationsPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '20px 24px' }}>
                     <div style={{ display: 'flex', gap: '16px', color: '#94a3b8' }}>
-                      <Edit3 size={18} style={{ cursor: 'pointer' }} onClick={() => navigate(`/locations/${loc.id}`)} />
-                      <Trash2 size={18} style={{ cursor: 'pointer' }} />
+                      <Edit3
+                        size={18}
+                        style={{ cursor: 'pointer' }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/locations/${loc.id}`);
+                        }}
+                      />
+                      <Trash2
+                        size={18}
+                        style={{ cursor: 'pointer' }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDeleteLocation(loc);
+                        }}
+                      />
                     </div>
                   </td>
                 </tr>

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import Input from '../../../../components/UI/Input';
 import Button from '../../../../components/UI/Button';
@@ -18,8 +19,9 @@ import {
 } from 'lucide-react';
 import { businessLocationAPI } from '../../../../services/businessLocationAPI';
 import { businessReviewAPI } from '../../../../services/businessReviewAPI';
-import { getPlaceDetail, getPlaceServicesByType } from '../../../../services/order.service';
+import { getPlaceDetail, getPlaceServicesByType, updatePlaceDetail, uploadPlaceImage } from '../../../../services/order.service';
 import type { Location } from '../../../../types/location';
+import { getCurrentUser } from '../../../../utils/auth';
 
 type TabKey = 'Thông tin chung' | 'Đánh giá' | 'Dịch vụ';
 
@@ -190,13 +192,34 @@ const normalizeGallery = (raw: unknown): string[] => {
   return [];
 };
 
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message || error.response?.data?.error;
+    if (Array.isArray(message)) {
+      return message.join(', ');
+    }
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+    if (error.message) {
+      return error.message;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const normalizePlaceDetail = (raw: unknown): {
   summary: PlaceSummary;
   draft: PlaceDraft;
 } => {
   const place = Array.isArray(raw) ? raw[0] : raw;
   const data = place && typeof place === 'object' ? (place as Record<string, unknown>) : {};
-  // is_approved: true → approved, false/null → pending (chờ duyệt)
+  // is_approved: true -> approved, false/null -> pending (chờ duyệt)
   const rawStatus = data.status ?? data.place_status ?? data.approval_status;
   const isApproved = data.is_approved ?? data.approved ?? data.is_active ?? data.active;
   const statusValue = rawStatus ?? (isApproved === true ? 'approved' : isApproved === false ? 'pending' : null);
@@ -286,28 +309,27 @@ const mergeWithLocationListItem = (
 const LocationEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const userInfo = localStorage.getItem('userInfo');
-  const parsedUser = useMemo(() => {
-    if (!userInfo) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(userInfo);
-    } catch {
-      return null;
-    }
-  }, [userInfo]);
+  const currentUser = useMemo(
+    () =>
+      getCurrentUser<{
+        businessId?: string;
+        business_id?: string;
+        vendorId?: string;
+        vendor_id?: string;
+        id?: string;
+      }>(),
+    [],
+  );
   const vendorCandidates = useMemo(
     () =>
       [
-        parsedUser?.businessId,
-        parsedUser?.business_id,
-        parsedUser?.vendorId,
-        parsedUser?.vendor_id,
-        parsedUser?.id,
+        currentUser?.businessId,
+        currentUser?.business_id,
+        currentUser?.vendorId,
+        currentUser?.vendor_id,
+        currentUser?.id,
       ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
-    [parsedUser],
+    [currentUser],
   );
   const vendorId = vendorCandidates[0] || '';
 
@@ -318,6 +340,9 @@ const LocationEditPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [generalMessage, setGeneralMessage] = useState<string | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
+  const [savingGeneralInfo, setSavingGeneralInfo] = useState(false);
 
   const [reviewRating, setReviewRating] = useState<number | undefined>(undefined);
   const [reviewSort, setReviewSort] = useState<ReviewSort>('newest');
@@ -359,7 +384,7 @@ const LocationEditPage: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const [rawDetail, listResult] = await Promise.all([
+        const [detailResult, listResult] = await Promise.allSettled([
           getPlaceDetail(id),
           businessLocationAPI.getLocations(
             {
@@ -372,16 +397,62 @@ const LocationEditPage: React.FC = () => {
           ),
         ]);
 
-        const fromList = listResult.locations.find((item) => item.id === id)
+        const locations = listResult.status === 'fulfilled'
+          ? listResult.value.locations
+          : [];
+        const fromList = locations.find((item) => item.id === id)
           || null;
+
+        if (detailResult.status === 'rejected' && !fromList) {
+          throw new Error(
+            getApiErrorMessage(
+              detailResult.reason,
+              'Không thể tải thông tin địa điểm',
+            ),
+          );
+        }
+
+        if (listResult.status === 'rejected' && detailResult.status === 'rejected') {
+          throw new Error(
+            [
+              getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm'),
+              getApiErrorMessage(listResult.reason, 'Không thể tải danh sách địa điểm'),
+            ].join(' | '),
+          );
+        }
+
+        const rawDetail = detailResult.status === 'fulfilled' && detailResult.value
+          ? detailResult.value
+          : {
+              id: fromList?.id,
+              name: fromList?.name,
+              address: fromList?.address,
+              category: fromList?.category,
+              status: fromList?.status,
+              average_rating: fromList?.rating,
+              review_count: fromList?.review_count,
+              image_url: fromList?.image,
+            };
 
         const normalized = normalizePlaceDetail(rawDetail);
         const merged = mergeWithLocationListItem(normalized, fromList);
         setPlace(merged.summary);
         setDraft(merged.draft);
         setIsActive(merged.summary.isActive);
+        setGalleryImages(
+          merged.summary.gallery.filter((url) => !url.includes('picsum.photos/seed/location')),
+        );
+        setPendingImageFiles([]);
+        if (detailResult.status === 'rejected') {
+          setGeneralMessage(
+            `Đang hiển thị dữ liệu tạm từ danh sách. Chi tiết lỗi: ${getApiErrorMessage(
+              detailResult.reason,
+              'Không thể tải chi tiết địa điểm',
+            )}`,
+          );
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể tải thông tin địa điểm');
+        setError(getApiErrorMessage(err, 'Không thể tải thông tin địa điểm'));
       } finally {
         setLoading(false);
       }
@@ -447,7 +518,7 @@ const LocationEditPage: React.FC = () => {
         }
       } catch (err) {
         setReviewData(null);
-        setReviewError(err instanceof Error ? err.message : 'Không thể tải đánh giá');
+        setReviewError(getApiErrorMessage(err, 'Không thể tải đánh giá'));
       } finally {
         setReviewLoading(false);
       }
@@ -477,7 +548,7 @@ const LocationEditPage: React.FC = () => {
         setPaidServices(paid.map((item) => normalizeServiceItem(item, 'paid')));
         setMenuItems(menu.map((item) => normalizeServiceItem(item, 'paid')));
       } catch (err) {
-        setServicesError(err instanceof Error ? err.message : 'Không thể tải dịch vụ');
+        setServicesError(getApiErrorMessage(err, 'Không thể tải dịch vụ'));
         setFreeServices([]);
         setPaidServices([]);
       } finally {
@@ -517,18 +588,49 @@ const LocationEditPage: React.FC = () => {
     ? { label: place.statusLabel, color: place.statusColor }
     : { label: 'Chờ duyệt', color: '#f59e0b' };
 
-  const savedGeneralInfo = () => {
-    setPlace((current) => {
-      if (!current) {
-        return current;
-      }
-      return {
-        ...current,
-        name: draft.name || current.name,
-      };
-    });
-    setGeneralMessage('Đã lưu thay đổi trên giao diện.');
-    window.setTimeout(() => setGeneralMessage(null), 1800);
+  const savedGeneralInfo = async () => {
+    if (!id || !vendorId) {
+      setGeneralMessage('Không tìm thấy thông tin địa điểm hoặc đối tác.');
+      return;
+    }
+
+    if (!draft.name.trim() || !draft.address.trim()) {
+      setGeneralMessage('Vui lòng nhập đầy đủ tên và địa chỉ địa điểm.');
+      return;
+    }
+
+    try {
+      setSavingGeneralInfo(true);
+      setGeneralMessage(null);
+
+      const existingImages = galleryImages.filter((url) => !url.startsWith('blob:'));
+      const uploadedImages = await Promise.all(
+        pendingImageFiles.map((file) => uploadPlaceImage(file, id)),
+      );
+      const imageUrls = [...existingImages, ...uploadedImages]
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+
+      await updatePlaceDetail({
+        placeId: id,
+        vendorId,
+        name: draft.name.trim(),
+        address: draft.address.trim(),
+        city: draft.city.trim(),
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        openTime: draft.openTime,
+        closeTime: draft.closeTime,
+        description: draft.description,
+        imageUrls,
+        isActive,
+      });
+
+      navigate('/locations');
+    } catch (err) {
+      setGeneralMessage(getApiErrorMessage(err, 'Không thể lưu thay đổi địa điểm'));
+    } finally {
+      setSavingGeneralInfo(false);
+    }
   };
 
   const openServiceEditor = (kind: ServiceKind, service?: PlaceServiceItem) => {
@@ -695,27 +797,45 @@ const LocationEditPage: React.FC = () => {
 
           <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
             <div style={{ flex: 1 }}>
-              <Input label="Kinh độ (Latitude)" value={draft.latitude} onChange={(event) => setDraft((current) => ({ ...current, latitude: event.target.value }))} style={{ marginBottom: 0 }} />
+              <Input label="Vĩ độ (Latitude)" value={draft.latitude} onChange={(event) => setDraft((current) => ({ ...current, latitude: event.target.value }))} style={{ marginBottom: 0 }} />
             </div>
             <div style={{ flex: 1 }}>
-              <Input label="Vĩ độ (Longitude)" value={draft.longitude} onChange={(event) => setDraft((current) => ({ ...current, longitude: event.target.value }))} style={{ marginBottom: 0 }} />
+              <Input label="Kinh độ (Longitude)" value={draft.longitude} onChange={(event) => setDraft((current) => ({ ...current, longitude: event.target.value }))} style={{ marginBottom: 0 }} />
             </div>
           </div>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Hình ảnh địa điểm ({place?.gallery.length ?? 0})</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Hình ảnh địa điểm ({galleryImages.length})</label>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-              {(place?.gallery.length ? place.gallery : ['https://picsum.photos/seed/location/200/200']).map((image, index) => (
+              {(galleryImages.length ? galleryImages : ['https://picsum.photos/seed/location/200/200']).map((image, index) => (
                 <div key={`${image}-${index}`} style={{ aspectRatio: '1', borderRadius: '12px', overflow: 'hidden', border: '1px solid #F1F5F9' }}>
                   <img src={image} alt={`Gallery ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               ))}
-              <div style={{ aspectRatio: '1', borderRadius: '12px', border: '2px dashed #E2E8F0', background: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', color: '#94a3b8' }}>
+              <label style={{ aspectRatio: '1', borderRadius: '12px', border: '2px dashed #E2E8F0', background: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', color: '#94a3b8' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    if (files.length === 0) {
+                      return;
+                    }
+                    setPendingImageFiles((current) => [...current, ...files]);
+                    setGalleryImages((current) => [
+                      ...current.filter((url) => !url.includes('picsum.photos/seed/location')),
+                      ...files.map((file) => URL.createObjectURL(file)),
+                    ]);
+                    event.target.value = '';
+                  }}
+                />
                 <Upload size={20} />
                 <span style={{ fontSize: '10px', fontWeight: '800' }}>TẢI LÊN</span>
-              </div>
+              </label>
             </div>
           </div>
         </div>
@@ -723,7 +843,9 @@ const LocationEditPage: React.FC = () => {
 
       <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: '16px', alignItems: 'center' }}>
         <span onClick={() => navigate('/locations')} style={{ color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy bỏ</span>
-        <Button onClick={savedGeneralInfo} style={{ padding: '12px 32px', borderRadius: '12px' }}>Lưu thay đổi</Button>
+        <Button onClick={savedGeneralInfo} disabled={savingGeneralInfo} style={{ padding: '12px 32px', borderRadius: '12px' }}>
+          {savingGeneralInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+        </Button>
       </div>
     </div>
   );
@@ -775,7 +897,7 @@ const LocationEditPage: React.FC = () => {
         </div>
 
         <div>
-          <h5 style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b', marginBottom: '20px', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Bộ lọc đánh giá</h5>
+          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '20px', fontFamily: '"Outfit", sans-serif' }}>Bộ lọc đánh giá</h5>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <select
               value={reviewRating ?? ''}
@@ -833,7 +955,7 @@ const LocationEditPage: React.FC = () => {
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                     <img src={`https://picsum.photos/seed/${review.id}/100/100`} alt="Avatar" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
                     <div>
-                      <p style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b', marginBottom: '4px' }}>{review.user}</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{review.user}</p>
                       <p style={{ fontSize: '12px', color: '#94a3b8' }}>Đã ghé thăm ngày {review.date}</p>
                     </div>
                   </div>
@@ -945,7 +1067,7 @@ const LocationEditPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h5 style={{ fontSize: '18px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Tiện ích miễn phí</h5>
+          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Tiện ích miễn phí</h5>
           <Button variant="outline" onClick={() => openServiceEditor('free')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
             <Plus size={16} /> Thêm tiện ích
           </Button>
@@ -984,7 +1106,7 @@ const LocationEditPage: React.FC = () => {
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h5 style={{ fontSize: '18px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Dịch vụ tính phí ({paidServices.length})</h5>
+          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tính phí ({paidServices.length})</h5>
           <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
             <Plus size={16} /> Thêm dịch vụ
           </Button>
@@ -999,10 +1121,10 @@ const LocationEditPage: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                  <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Tên dịch vụ</th>
-                  <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Giá dịch vụ</th>
-                  <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Trạng thái</th>
-                  <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Thao tác</th>
+                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Tên dịch vụ</th>
+                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Giá dịch vụ</th>
+                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Trạng thái</th>
+                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -1037,7 +1159,7 @@ const LocationEditPage: React.FC = () => {
       {isRestaurant && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h5 style={{ fontSize: '18px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Quản lý thực đơn món ăn ({menuItems.length})</h5>
+            <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Quản lý thực đơn món ăn ({menuItems.length})</h5>
             <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
               <Plus size={16} /> Thêm món
             </Button>
@@ -1050,17 +1172,17 @@ const LocationEditPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Tên món</th>
-                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif' }}>Mô tả</th>
-                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Giá</th>
-                    <th style={{ padding: '20px 32px', fontSize: '15px', fontWeight: '800', color: '#000000', fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif', textAlign: 'center' }}>Thao tác</th>
+                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Tên món</th>
+                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Mô tả</th>
+                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Giá</th>
+                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {menuItems.map((item, index) => (
                     <tr key={item.id} style={{ borderBottom: index < menuItems.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
                       <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
-                      <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '—'}</td>
+                      <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '-'}</td>
                       <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6', textAlign: 'center' }}>{formatPrice(item.price)}</td>
                       <td style={{ padding: '24px 32px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '16px', color: '#94a3b8', justifyContent: 'center' }}>
@@ -1097,7 +1219,7 @@ const LocationEditPage: React.FC = () => {
                 <span style={{ color: '#1e293b', fontWeight: '700' }}>{pageTitle}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#1e293b' }}>{pageTitle}</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>{pageTitle}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: `${statusMeta.color}10`, borderRadius: '8px', color: statusMeta.color, fontSize: '12px', fontWeight: '700' }}>
                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusMeta.color }} />
                   {statusMeta.label}
@@ -1147,3 +1269,4 @@ const LocationEditPage: React.FC = () => {
 };
 
 export default LocationEditPage;
+
