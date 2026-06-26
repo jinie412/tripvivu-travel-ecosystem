@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +9,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'core/di/injection_container.dart';
+import 'core/services/fcm_service.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/auth_gate_screen.dart';
@@ -25,6 +27,8 @@ const bool kSkipLogin = AppConfig.kSkipLogin;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp();
+  await FcmService.init();
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',

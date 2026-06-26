@@ -57,6 +57,7 @@ class NearbyPlacesApi {
     List<String>? excludeIds,
     String? preferCategory,
     int radius = 10,
+    String? q,
   }) async {
     try {
       final client = sl<DioClient>();
@@ -71,6 +72,9 @@ class NearbyPlacesApi {
       }
       if (preferCategory != null && preferCategory.isNotEmpty) {
         queryParams['preferCategory'] = preferCategory;
+      }
+      if (q != null && q.isNotEmpty) {
+        queryParams['q'] = q;
       }
       final response = await client.dio.get('/search/nearby', queryParameters: queryParams);
 

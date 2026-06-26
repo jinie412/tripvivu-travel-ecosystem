@@ -308,6 +308,14 @@ abstract class ReviewDataSource {
     List<SubmitPlaceReviewInput> placeReviews = const [],
     List<SubmitReviewMediaInput> media = const [],
   });
+  Future<void> submitPlaceReview({
+    required String placeId,
+    String? itineraryId,
+    required double rating,
+    String? content,
+    List<String> tags = const [],
+    List<String> images = const [],
+  });
   Future<List<ReviewMediaPresignedUrl>> createReviewPresignedUrls({
     required String scope,
     required String itineraryId,
@@ -571,6 +579,36 @@ class RemoteReviewDataSource implements ReviewDataSource {
                 },
               )
               .toList(),
+      },
+    );
+  }
+
+  @override
+  Future<void> submitPlaceReview({
+    required String placeId,
+    String? itineraryId,
+    required double rating,
+    String? content,
+    List<String> tags = const [],
+    List<String> images = const [],
+  }) async {
+    final touristId = await AuthUtils.requireCurrentUserId();
+
+    final isDemo = AppConfig.kUseMockData;
+    final validTouristId = isDemo ? '22222222-2222-4222-a222-222222222222' : touristId;
+    final validPlaceId = isDemo ? '33333333-3333-4333-a333-333333333333' : placeId;
+
+    await _client.dio.post(
+      '/reviews',
+      data: {
+        'tourist_id': validTouristId,
+        'place_id': validPlaceId,
+        if (itineraryId != null)
+          'itinerary_id': isDemo ? '11111111-1111-4111-a111-111111111111' : itineraryId,
+        'rating': rating.round(),
+        if (content != null && content.trim().isNotEmpty) 'content': content,
+        if (tags.isNotEmpty) 'tags': tags,
+        if (images.isNotEmpty) 'images': images,
       },
     );
   }

@@ -7,6 +7,8 @@ import 'register_screen.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/fcm_service.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
 import 'package:travel_advisor_mobile/core/utils/reload.dart';
@@ -58,8 +60,7 @@ class _LoginViewState extends State<_LoginView> {
       listener: (context, state) async {
         if (state is AuthSuccess) {
           FocusScope.of(context).unfocus();
-          // Lưu tokens sau khi login thành công
-          // Token được parse bởi datasource và lưu vào SecureStorage
+          FcmService.registerToken(state.result.user.id, sl<DioClient>());
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             Navigator.pushReplacementNamed(context, '/home');

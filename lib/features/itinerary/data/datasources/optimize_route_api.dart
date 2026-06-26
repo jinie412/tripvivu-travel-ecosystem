@@ -3,8 +3,12 @@ import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 class OptimizeRouteApi {
-  static Future<List<ItineraryActivityEntity>> optimizeDay(List<ItineraryActivityEntity> activities) async {
-    if (activities.length <= 2) return activities;
+  static Future<List<ItineraryActivityEntity>> optimizeDay(
+    List<ItineraryActivityEntity> activities, {
+    String? dailyStartTime,
+    String? dailyEndTime,
+  }) async {
+    if (activities.length <= 1) return activities;
     
     try {
       final client = sl<DioClient>();
@@ -42,12 +46,14 @@ class OptimizeRouteApi {
             'openHourCompressed': a.openHourCompressed,
           };
         }).toList(),
+        if (dailyStartTime != null) 'dailyStartTime': dailyStartTime,
+        if (dailyEndTime != null) 'dailyEndTime': dailyEndTime,
       };
 
       final response = await client.dio.post('/itinerary/optimize-day', data: payload);
       
       final data = response.data['optimized'] as List;
-      if (data.isEmpty) return activities;
+      if (data.isEmpty) return [];
 
       // Build lookup map để tra nhanh bằng id
       final originalMap = {for (final a in activities) a.id: a};

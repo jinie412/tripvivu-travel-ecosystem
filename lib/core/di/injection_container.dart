@@ -191,6 +191,7 @@ Future<void> initDependencies() async {
       updateActivities: sl(),
       updateTitle: sl(),
       toggleVisibility: sl(),
+      deleteActivity: sl(),
     ),
   );
 

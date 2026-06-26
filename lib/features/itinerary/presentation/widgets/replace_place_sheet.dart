@@ -8,36 +8,41 @@ import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 import '../../data/datasources/nearby_places_api.dart';
-
+import '../../../../core/di/injection_container.dart';
+import '../../../saved/domain/usecases/get_favorite_places_usecase.dart';
 
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
 class ReplacePlaceSheet extends StatefulWidget {
   final ItineraryActivityEntity currentActivity;
-  final Function(NearbyPlaceModel place) onReplace;
+  final Future<void> Function(NearbyPlaceModel place) onReplace;
   final List<String>? existingIds;
+  final String? destinationCity;
 
   const ReplacePlaceSheet({
     super.key,
     required this.currentActivity,
     required this.onReplace,
     this.existingIds,
+    this.destinationCity,
   });
 
   static void show(
     BuildContext context, {
     required ItineraryActivityEntity activity,
-    required Function(NearbyPlaceModel place) onReplace,
+    required Future<void> Function(NearbyPlaceModel place) onReplace,
     List<String>? existingIds,
+    String? destinationCity,
   }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReplacePlaceSheet(
+      builder: (ctx) => ReplacePlaceSheet(
         currentActivity: activity,
         onReplace: onReplace,
         existingIds: existingIds,
+        destinationCity: destinationCity,
       ),
     );
   }
@@ -55,18 +60,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   List<NearbyPlaceModel> _sameCategoryPlaces = [];
   List<NearbyPlaceModel> _otherPlaces = [];
 
-  List<NearbyPlaceModel> _applySearch(List<NearbyPlaceModel> list) {
-    if (_searchQuery.isEmpty) return list;
-    final q = _searchQuery.toLowerCase();
-    return list
-        .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            p.address.toLowerCase().contains(q))
-        .toList();
-  }
-
-  List<NearbyPlaceModel> get _filteredSame => _applySearch(_sameCategoryPlaces);
-  List<NearbyPlaceModel> get _filteredOthers => _applySearch(_otherPlaces);
+  List<NearbyPlaceModel> get _filteredSame => _sameCategoryPlaces;
+  List<NearbyPlaceModel> get _filteredOthers => _otherPlaces;
 
   @override
   void initState() {
@@ -75,7 +70,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     _loadNearbyPlaces();
   }
 
-  Future<void> _loadNearbyPlaces() async {
+  Future<void> _loadNearbyPlaces({String? q}) async {
+    setState(() => _isLoading = true);
     try {
       final lat = widget.currentActivity.latitude ?? 16.047079;
       final lng = widget.currentActivity.longitude ?? 108.206230;
@@ -83,8 +79,10 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         lat,
         lng,
         excludeIds: widget.existingIds,
-        preferCategory: widget.currentActivity.category,
-        radius: 10,
+        preferCategory: (q != null && q.isNotEmpty) ? null : widget.currentActivity.category,
+        radius: q != null && q.isNotEmpty ? 50 : 15,
+        limit: q != null && q.isNotEmpty ? 30 : 10,
+        q: q,
       );
 
       if (mounted) {
@@ -105,8 +103,14 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 
   void _onSearchChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 280), () {
-      if (mounted) setState(() => _searchQuery = _searchController.text.trim());
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final newQuery = _searchController.text.trim();
+        if (_searchQuery != newQuery) {
+          setState(() => _searchQuery = newQuery);
+          _loadNearbyPlaces(q: newQuery);
+        }
+      }
     });
   }
 
@@ -136,7 +140,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     return const Color(0xFF8B5CF6);
   }
 
-  void _onSelect(NearbyPlaceModel place) async {
+  Future<void> _onSelect(NearbyPlaceModel place) async {
     // Validate opening hours dựa theo giờ hiện tại của activity đang thay thế
     if (place.openHourCompressed != null) {
       final slot = _openSlotForDay(
@@ -185,20 +189,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         if (proceed != true || !mounted) return;
       }
     }
-
-    widget.onReplace(place);
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Đã thay thế bằng "${place.name}"'),
-        backgroundColor: AppColorsExt.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.r12)),
-      ),
-    );
+    await widget.onReplace(place);
   }
 
   (String, String)? _openSlotForDay(String jsonStr, DateTime date) {
@@ -314,7 +306,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                           const _EmptyState(isSearching: false),
                       ],
                       const SizedBox(height: AppSizes.s20),
-                      _ManualAddButton(onTap: () => _showManualAddDialog(context)),
+                      _ManualAddButton(onTap: () => _showFavoritePlacesDialog(context)),
                       const SizedBox(height: AppSizes.s32),
                     ],
                   );
@@ -327,76 +319,116 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     );
   }
 
-  void _showManualAddDialog(BuildContext context) {
-    final ctrl = TextEditingController();
+  void _showFavoritePlacesDialog(BuildContext context) async {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
-        title: const Text('Thêm địa điểm',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Nhập tên địa điểm muốn thay thế vào lịch trình',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: AppSizes.s16),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'VD: Quán cà phê Mỹ Hạnh...',
-                hintStyle: const TextStyle(color: AppColorsExt.textHint, fontSize: 14),
-                filled: true,
-                fillColor: AppColorsExt.searchBarBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.r12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s16, vertical: AppSizes.s12),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = ctrl.text.trim();
-              if (name.isNotEmpty) {
-                widget.onReplace(NearbyPlaceModel(
-                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  address: '',
-                  category: 'Tham quan',
-                  rating: 0,
-                  reviewCount: 0,
-                  imageUrl: 'https://placehold.co/1080x720?text=New+Place',
-                ));
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.r12)),
-              elevation: 0,
-            ),
-            child:
-                const Text('Thêm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final usecase = sl<GetFavoritePlacesUseCase>();
+      final allFavorites = await usecase.call(limit: 50);
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+
+      final favorites = widget.destinationCity != null
+          ? allFavorites.where((f) => 
+              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) || 
+              widget.destinationCity!.toLowerCase().contains(f.city.toLowerCase())
+            ).toList()
+          : allFavorites;
+
+      if (favorites.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
+            title: const Text('Danh mục yêu thích',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            content: Text(
+              widget.destinationCity != null 
+                  ? 'Bạn chưa lưu địa điểm yêu thích nào tại ${widget.destinationCity}.'
+                  : 'Danh mục yêu thích của bạn đang trống.',
+              style: const TextStyle(height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
+              title: const Text('Danh mục yêu thích',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              contentPadding: const EdgeInsets.only(top: 16),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  itemCount: favorites.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final fav = favorites[index];
+                    return GestureDetector(
+                      onTap: () async {
+                        final place = NearbyPlaceModel(
+                          id: fav.id,
+                          name: fav.name,
+                          address: fav.city,
+                          category: 'Yêu thích',
+                          rating: fav.rating,
+                          reviewCount: fav.reviewCount,
+                          imageUrl: fav.image,
+                          latitude: widget.currentActivity.latitude,
+                          longitude: widget.currentActivity.longitude,
+                        );
+                        Navigator.pop(ctx);
+                        await _onSelect(place);
+                      },
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: NetImage(url: fav.image, width: 50, height: 50, fit: BoxFit.cover),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(fav.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const SizedBox(height: 4),
+                                Text(fav.city, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
+          );
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    }
   }
 }
 
@@ -550,6 +582,7 @@ class _Header extends StatelessWidget {
                         color: AppColorsExt.textHint,
                         fontSize: 13,
                       ),
+                      filled: false,
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,

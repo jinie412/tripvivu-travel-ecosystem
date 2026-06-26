@@ -3,6 +3,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 
 /// UseCase: Lấy danh sách lịch trình (có thể lọc theo status).
 class GetItinerariesUseCase {
@@ -107,5 +108,45 @@ class DeleteActivityUseCase {
 
   Future<void> call(String itineraryId, String activityId) {
     return _repository.deleteActivity(itineraryId, activityId);
+  }
+}
+
+/// UseCase: Thêm một địa điểm mới vào lịch trình
+class AddActivityUseCase {
+  final ItineraryRepository _repository;
+  AddActivityUseCase(this._repository);
+
+  Future<CustomizeActivityResponseModel> call(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+  }) {
+    return _repository.addActivityToItinerary(
+      itineraryId,
+      dayNumber,
+      placeId,
+      preferredTime: preferredTime,
+      isLocked: isLocked,
+    );
+  }
+}
+
+/// UseCase: Thay thế một địa điểm bằng địa điểm khác
+class ReplaceActivityUseCase {
+  final ItineraryRepository _repository;
+  ReplaceActivityUseCase(this._repository);
+
+  Future<CustomizeActivityResponseModel> call(
+    String itineraryId,
+    String activityId,
+    String newPlaceId,
+  ) {
+    return _repository.replaceActivityInItinerary(
+      itineraryId,
+      activityId,
+      newPlaceId,
+    );
   }
 }

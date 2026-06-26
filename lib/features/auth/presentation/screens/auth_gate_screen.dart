@@ -5,6 +5,8 @@ import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/navigation/main_shell.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/fcm_service.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
@@ -34,6 +36,7 @@ class _AuthGateView extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
+          FcmService.registerToken(state.user.id, sl<DioClient>());
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const MainShell()),
           );

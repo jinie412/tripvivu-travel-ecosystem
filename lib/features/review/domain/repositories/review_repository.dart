@@ -17,6 +17,14 @@ abstract class ReviewRepository {
     List<SubmitPlaceReviewInput> placeReviews = const [],
     List<SubmitReviewMediaInput> media = const [],
   });
+  Future<void> submitPlaceReview({
+    required String placeId,
+    String? itineraryId,
+    required double rating,
+    String? content,
+    List<String> tags = const [],
+    List<String> images = const [],
+  });
   Future<List<ReviewMediaPresignedUrl>> createReviewPresignedUrls({
     required String scope,
     required String itineraryId,

@@ -6,6 +6,7 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/notification
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/screens/notification_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/review_rejected_icon.dart';
 
 class NotificationDrawer extends StatelessWidget {
   const NotificationDrawer({super.key});
@@ -147,17 +148,20 @@ class NotificationDrawer extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: _iconColorFor(
-                  notification.notificationType,
-                ).withValues(alpha: 0.15),
+                color: _iconColorFor(notification).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Icon(
-                  _iconFor(notification.iconKey),
-                  color: _iconColorFor(notification.notificationType),
-                  size: 20,
-                ),
+                child: _isViolation(notification)
+                    ? ReviewRejectedIcon(
+                        size: 20,
+                        color: _iconColorFor(notification),
+                      )
+                    : Icon(
+                        _iconFor(notification),
+                        color: _iconColorFor(notification),
+                        size: 20,
+                      ),
               ),
             ),
             const SizedBox(width: 12),
@@ -211,29 +215,29 @@ class NotificationDrawer extends StatelessWidget {
     );
   }
 
-  IconData _iconFor(String key) {
-    final lowerKey = key.toLowerCase();
-    if (lowerKey.contains('map')) {
-      return Icons.map;
-    } else if (lowerKey.contains('star')) {
-      return Icons.star;
-    } else if (lowerKey.contains('restaurant')) {
-      return Icons.restaurant;
-    } else if (lowerKey.contains('info')) {
-      return Icons.info;
-    }
+  bool _isViolation(NotificationEntity n) {
+    final t = n.notificationType.toLowerCase();
+    final title = n.title.toLowerCase();
+    return t == 'system' &&
+        (title.contains('vi phạm') || title.contains('từ chối'));
+  }
+
+  IconData _iconFor(NotificationEntity n) {
+    if (_isViolation(n)) return Icons.thumb_down_alt_outlined;
+    final lowerKey = n.iconKey.toLowerCase();
+    if (lowerKey.contains('map')) return Icons.map;
+    if (lowerKey.contains('star')) return Icons.star;
+    if (lowerKey.contains('restaurant')) return Icons.restaurant;
+    if (lowerKey.contains('info')) return Icons.info;
     return Icons.notifications;
   }
 
-  Color _iconColorFor(String type) {
-    final lowerType = type.toLowerCase();
-    if (lowerType.contains('review')) {
-      return Colors.orange;
-    } else if (lowerType.contains('food')) {
-      return Colors.red;
-    } else if (lowerType.contains('itinerary')) {
-      return Colors.blue;
-    }
+  Color _iconColorFor(NotificationEntity n) {
+    if (_isViolation(n)) return const Color(0xFFC0392B);
+    final lowerType = n.notificationType.toLowerCase();
+    if (lowerType.contains('review')) return Colors.orange;
+    if (lowerType.contains('food')) return Colors.red;
+    if (lowerType.contains('itinerary')) return Colors.blue;
     return Colors.grey;
   }
 }

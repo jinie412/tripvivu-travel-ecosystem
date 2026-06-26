@@ -6,6 +6,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 
 /// Implementation cụ thể của [ItineraryRepository].
 ///
@@ -126,5 +127,35 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       description: params.tripName,
     );
     return _dataSource.createItinerary(request);
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> addActivityToItinerary(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+  }) {
+    return _dataSource.addActivityToItinerary(
+      itineraryId,
+      dayNumber,
+      placeId,
+      preferredTime: preferredTime,
+      isLocked: isLocked,
+    );
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
+    String itineraryId,
+    String activityId,
+    String newPlaceId,
+  ) {
+    return _dataSource.replaceActivityInItinerary(
+      itineraryId,
+      activityId,
+      newPlaceId,
+    );
   }
 }

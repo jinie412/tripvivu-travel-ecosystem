@@ -26,6 +26,13 @@ class NotificationDetailScreen extends StatelessWidget {
     this.initialNotification,
   });
 
+  bool _isViolation(NotificationEntity n) {
+    final t = n.notificationType.toLowerCase();
+    final title = n.title.toLowerCase();
+    return t == 'system' &&
+        (title.contains('vi phạm') || title.contains('từ chối'));
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -66,6 +73,8 @@ class NotificationDetailScreen extends StatelessWidget {
               );
             }
 
+            final isViolation = _isViolation(notification);
+
             return RefreshIndicator(
               onRefresh: () => context
                   .read<NotificationCubit>()
@@ -78,41 +87,37 @@ class NotificationDetailScreen extends StatelessWidget {
                   AppSizes.s32,
                 ),
                 children: [
+                  // Header: title (left) + time (top-right)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: _iconColorFor(
-                            notification.notificationType,
-                          ).withValues(alpha: 0.14),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _iconFor(notification.iconKey),
-                          color: _iconColorFor(notification.notificationType),
-                          size: 28,
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: AppTextStyles.heading2.copyWith(
+                            fontSize: 19,
+                            height: 1.3,
+                            color: isViolation
+                                ? const Color(0xFFC0392B)
+                                : AppColorsExt.textDark,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: AppSizes.s16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(width: AppSizes.s8),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
                           children: [
-                            Text(
-                              notification.title,
-                              style: AppTextStyles.heading2.copyWith(
-                                fontSize: 22,
-                                color: AppColorsExt.textDark,
-                              ),
+                            Icon(
+                              Icons.access_time_rounded,
+                              size: 13,
+                              color: AppColors.textSecondary,
                             ),
-                            const SizedBox(height: AppSizes.s8),
+                            const SizedBox(width: 3),
                             Text(
                               notification.timeLabel,
                               style: AppTextStyles.caption.copyWith(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                             ),
@@ -121,17 +126,24 @@ class NotificationDetailScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSizes.s24),
+                  const SizedBox(height: AppSizes.s12),
+
                   const Divider(height: 1),
-                  const SizedBox(height: AppSizes.s24),
-                  Text(
-                    notification.content,
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 16,
-                      height: 1.55,
-                      color: AppColors.textPrimary,
+                  const SizedBox(height: AppSizes.s12),
+
+                  _buildContentText(notification.content, isViolation),
+                  if (isViolation) ...[
+                    const SizedBox(height: AppSizes.s16),
+                    Text(
+                      'Nội dung này đã bị ẩn và không hiển thị với người dùng khác.',
+                      style: AppTextStyles.caption.copyWith(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.45,
+                      ),
                     ),
-                  ),
+                  ],
+
                   if (_canOpenReview(notification)) ...[
                     const SizedBox(height: AppSizes.s24),
                     ElevatedButton.icon(
@@ -183,30 +195,42 @@ class NotificationDetailScreen extends StatelessWidget {
     );
   }
 
-  IconData _iconFor(String key) {
-    final lowerKey = key.toLowerCase();
-    if (lowerKey.contains('map')) {
-      return Icons.map;
-    } else if (lowerKey.contains('star')) {
-      return Icons.star;
-    } else if (lowerKey.contains('restaurant') || lowerKey.contains('food')) {
-      return Icons.restaurant;
-    } else if (lowerKey.contains('info')) {
-      return Icons.info;
-    }
-    return Icons.notifications;
-  }
+  Widget _buildContentText(String content, bool isViolation) {
+    final baseStyle = AppTextStyles.body.copyWith(
+      fontSize: 16,
+      height: 1.55,
+      color: AppColors.textPrimary,
+    );
 
-  Color _iconColorFor(String type) {
-    final lowerType = type.toLowerCase();
-    if (lowerType.contains('review')) {
-      return Colors.orange;
-    } else if (lowerType.contains('food')) {
-      return Colors.red;
-    } else if (lowerType.contains('itinerary') || lowerType.contains('trip')) {
-      return AppColors.primary;
+    if (!isViolation) {
+      return Text(content, style: baseStyle);
     }
-    return Colors.grey;
+
+    final spans = <TextSpan>[];
+    final regex = RegExp(r'"([^"]*)"');
+    int lastEnd = 0;
+
+    for (final match in regex.allMatches(content)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: content.substring(lastEnd, match.start)));
+      }
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: const TextStyle(
+          decoration: TextDecoration.lineThrough,
+          decorationColor: Color(0xFFC0392B),
+          decorationThickness: 2,
+        ),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < content.length) {
+      spans.add(TextSpan(text: content.substring(lastEnd)));
+    }
+
+    return RichText(
+      text: TextSpan(style: baseStyle, children: spans),
+    );
   }
 
   bool _canOpenPlaceReview(NotificationEntity notification) {
@@ -364,6 +388,8 @@ class NotificationDetailScreen extends StatelessWidget {
     }
   }
 }
+
+
 
 class _DetailMessage extends StatelessWidget {
   final IconData icon;

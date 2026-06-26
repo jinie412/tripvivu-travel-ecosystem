@@ -27,9 +27,13 @@ class ItineraryInitial extends ItineraryState {
   const ItineraryInitial();
 }
 
-/// Đang tải dữ liệu — UI hiển thị Shimmer loading.
+/// Đang tải dữ liệu — UI hiển thị Shimmer loading hoặc text nếu có.
 class ItineraryLoading extends ItineraryState {
-  const ItineraryLoading();
+  final String? message;
+  const ItineraryLoading({this.message});
+
+  @override
+  List<Object?> get props => [message];
 }
 
 /// Tải thành công — chứa danh sách lịch trình và thống kê.

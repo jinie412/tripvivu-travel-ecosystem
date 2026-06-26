@@ -62,6 +62,25 @@ class ReviewRepositoryImpl implements ReviewRepository {
   }
 
   @override
+  Future<void> submitPlaceReview({
+    required String placeId,
+    String? itineraryId,
+    required double rating,
+    String? content,
+    List<String> tags = const [],
+    List<String> images = const [],
+  }) {
+    return dataSource.submitPlaceReview(
+      placeId: placeId,
+      itineraryId: itineraryId,
+      rating: rating,
+      content: content,
+      tags: tags,
+      images: images,
+    );
+  }
+
+  @override
   Future<List<ReviewMediaPresignedUrl>> createReviewPresignedUrls({
     required String scope,
     required String itineraryId,

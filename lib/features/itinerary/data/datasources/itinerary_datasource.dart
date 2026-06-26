@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_a
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_day_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 
 abstract class ItineraryDataSource {
@@ -33,6 +34,18 @@ abstract class ItineraryDataSource {
   Future<void> updateItineraryActivities(
     String id,
     List<ItineraryDayEntity> days,
+  );
+  Future<CustomizeActivityResponseModel> addActivityToItinerary(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+  });
+  Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
+    String itineraryId,
+    String activityId,
+    String newPlaceId,
   );
 }
 
@@ -211,6 +224,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
             .map(
               (act) => {
                 'id': act.id,
+                'placeId': act.placeId ?? act.id,
                 'startTime': act.startTime,
                 'endTime': act.endTime,
               },
@@ -261,6 +275,59 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       throw Exception('Response tạo lịch trình không có id hợp lệ');
     }
     throw Exception('Tạo lịch trình thất bại: ${res.statusCode}\n${res.body}');
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> addActivityToItinerary(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+  }) async {
+    final headers = await _authHeaders();
+    final body = {
+      'placeId': placeId,
+      'dayNumber': dayNumber,
+      if (preferredTime != null) 'preferredTime': preferredTime,
+      'isLocked': isLocked,
+    };
+
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/activities'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode == 201 || res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return CustomizeActivityResponseModel.fromJson(data);
+    }
+    throw Exception('Failed to add activity: ${res.statusCode}\n${res.body}');
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
+    String itineraryId,
+    String activityId,
+    String newPlaceId,
+  ) async {
+    final headers = await _authHeaders();
+    final body = {
+      'newPlaceId': newPlaceId,
+    };
+
+    final res = await http.patch(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/activities/$activityId/replace'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return CustomizeActivityResponseModel.fromJson(data);
+    }
+    throw Exception('Failed to replace activity: ${res.statusCode}\n${res.body}');
   }
 
   ItineraryDetailModel _parseItineraryDetail(Map<String, dynamic> data) {

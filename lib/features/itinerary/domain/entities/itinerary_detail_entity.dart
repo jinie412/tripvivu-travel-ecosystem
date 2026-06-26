@@ -57,6 +57,9 @@ class ItineraryDetailEntity {
   final List<double> centerCoordinate;
   final bool trackingActive;
 
+  final String? dailyStartTime;
+  final String? dailyEndTime;
+
   const ItineraryDetailEntity({
     required this.id,
     required this.title,
@@ -85,6 +88,8 @@ class ItineraryDetailEntity {
     this.visitedRestaurants = const [],
     this.centerCoordinate = const [],
     this.trackingActive = false,
+    this.dailyStartTime,
+    this.dailyEndTime,
   });
 
   ItineraryDetailEntity copyWith({
@@ -115,6 +120,8 @@ class ItineraryDetailEntity {
     List<VisitedRestaurant>? visitedRestaurants,
     List<double>? centerCoordinate,
     bool? trackingActive,
+    String? dailyStartTime,
+    String? dailyEndTime,
   }) {
     return ItineraryDetailEntity(
       id: id ?? this.id,
@@ -145,6 +152,8 @@ class ItineraryDetailEntity {
       visitedRestaurants: visitedRestaurants ?? this.visitedRestaurants,
       centerCoordinate: centerCoordinate ?? this.centerCoordinate,
       trackingActive: trackingActive ?? this.trackingActive,
+      dailyStartTime: dailyStartTime ?? this.dailyStartTime,
+      dailyEndTime: dailyEndTime ?? this.dailyEndTime,
     );
   }
 }
