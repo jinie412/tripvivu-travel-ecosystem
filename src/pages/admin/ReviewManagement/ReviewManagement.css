@@ -105,15 +105,29 @@
 
 /* Location link */
 .rv-location-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--primary-blue);
   text-decoration: none;
   display: block;
+  text-align: left;
+  cursor: pointer;
 }
 
 .rv-location-link:hover {
   text-decoration: underline;
+}
+
+.rv-location-link-disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.rv-location-link-disabled:hover {
+  text-decoration: none;
 }
 
 .rv-view-more {

@@ -8,6 +8,7 @@ type BackendReviewDateSent = 'all' | 'today' | 'yesterday' | 'last_7_days' | 'la
 interface BackendReviewItem {
   id: string;
   reviewer_name: string;
+  place_id: string;
   place_name: string;
   rating: number;
   review_content: string | null;
@@ -179,6 +180,7 @@ const mapReview = (item: BackendReviewItem): Review => ({
   id: item.id,
   userAvatar: getInitials(item.reviewer_name || 'N A'),
   userName: item.reviewer_name || 'Người dùng ẩn danh',
+  locationId: item.place_id,
   locationName: item.place_name,
   content: item.review_content || '(Không có nội dung)',
   rating: item.rating,

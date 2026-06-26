@@ -66,6 +66,12 @@ interface BackendPlaceStatsResponse {
   newThisMonth: number;
 }
 
+interface BackendPlaceCoordinatesResponse {
+  id: string;
+  latitude: number;
+  longitude: number;
+}
+
 interface BackendPlaceDetailResponse {
   id: string;
   name: string;
@@ -302,6 +308,21 @@ export const locationAPI = {
 
   deleteLocation: async (id: string): Promise<void> => {
     await apiClient.delete(`/admin/places/${id}`);
+  },
+
+  updateLocationCoordinates: async (
+    id: string,
+    coordinates: { latitude: number; longitude: number },
+  ): Promise<{ latitude: number; longitude: number }> => {
+    const response = await apiClient.patch<BackendPlaceCoordinatesResponse>(
+      `/admin/places/${id}/coordinates`,
+      coordinates,
+    );
+    const data = extractResponseData(response);
+    return {
+      latitude: data.latitude,
+      longitude: data.longitude,
+    };
   },
 
   getBusinessVendors: async (): Promise<AdminVendorOption[]> => {

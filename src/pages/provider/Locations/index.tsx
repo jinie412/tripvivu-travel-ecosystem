@@ -3,6 +3,7 @@ import Button from '../../../components/UI/Button';
 import { Search, ChevronLeft, ChevronRight, Edit3, Trash2, Plus, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import defaultLocationImage from '../../../assets/images/location-default.svg';
+import Swal from 'sweetalert2';
 
 import { businessLocationAPI } from '../../../services/businessLocationAPI';
 import { deletePlaceDetail } from '../../../services/order.service';
@@ -17,6 +18,16 @@ const normalizeVietnameseText = (value: string): string => {
     .replace(/Đ/g, 'D')
     .toLowerCase()
     .trim();
+};
+
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  [normalizeVietnameseText('Ẩm thực')]: { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+  [normalizeVietnameseText('Giải trí & Vui chơi')]: { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe' },
+  [normalizeVietnameseText('Lưu trú')]: { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
+  [normalizeVietnameseText('Mua sắm & Dịch vụ')]: { bg: '#fdf2f8', text: '#db2777', border: '#fbcfe8' },
+  [normalizeVietnameseText('Tham quan & Khám phá')]: { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+  [normalizeVietnameseText('Thư giãn & Thể thao')]: { bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
+  [normalizeVietnameseText('Văn hóa & Di sản')]: { bg: '#fefce8', text: '#a16207', border: '#fde68a' },
 };
 
 interface LocationsPageState {
@@ -147,6 +158,14 @@ const LocationsPage: React.FC = () => {
     return statusLabels[status] || status;
   };
 
+  const getCategoryColor = (category: string) => {
+    return CATEGORY_COLORS[normalizeVietnameseText(category)] || {
+      bg: '#f1f5f9',
+      text: '#475569',
+      border: '#e2e8f0',
+    };
+  };
+
   const handleDeleteLocation = async (location: Location) => {
     if (!vendorId) {
       setState(prev => ({
@@ -156,8 +175,18 @@ const LocationsPage: React.FC = () => {
       return;
     }
 
-    const confirmed = window.confirm(`Bạn có chắc muốn xóa địa điểm "${location.name}" không?`);
-    if (!confirmed) {
+    const result = await Swal.fire({
+      title: 'Xóa địa điểm?',
+      text: `Bạn có chắc muốn xóa địa điểm "${location.name}" không?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Xóa',
+      cancelButtonText: 'Hủy',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
@@ -197,7 +226,7 @@ const LocationsPage: React.FC = () => {
             <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text" 
-              placeholder="Tìm kiếm tên địa điểm..." 
+              placeholder="Tìm kiếm địa điểm..." 
               value={state.search}
               onChange={(e) => {
                 setState(prev => ({ ...prev, search: e.target.value }));
@@ -286,7 +315,17 @@ const LocationsPage: React.FC = () => {
                     </div>
                   </td>
                     <td style={{ padding: '20px 24px' }}>
-                      <span style={{ padding: '4px 12px', borderRadius: '20px', background: '#3b82f6' + '15', color: '#3b82f6', fontSize: '11px', fontWeight: '800' }}>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        background: getCategoryColor(loc.category || 'Khác').bg,
+                        color: getCategoryColor(loc.category || 'Khác').text,
+                        border: `1px solid ${getCategoryColor(loc.category || 'Khác').border}`,
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        display: 'inline-flex',
+                        lineHeight: 1.4,
+                      }}>
                         {loc.category || 'Khác'}
                       </span>
                     </td>
@@ -311,20 +350,43 @@ const LocationsPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '16px', color: '#94a3b8' }}>
                       <Edit3
                         size={18}
-                        style={{ cursor: 'pointer' }}
+                        style={{
+                          height: '34px',
+                          // borderRadius: '10px',
+                          // border: '1px solid #caf2fe',
+                          background: '#fff',
+                          color: '#4486ef',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
                         onClick={(event) => {
                           event.stopPropagation();
                           navigate(`/locations/${loc.id}`);
                         }}
                       />
-                      <Trash2
-                        size={18}
-                        style={{ cursor: 'pointer' }}
+                      <button
+                        type="button"
+                        aria-label={`Xóa địa điểm ${loc.name}`}
+                        style={{
+                          width: '34px',
+                          height: '34px',
+                          // borderRadius: '10px',
+                          // border: '1px solid #fecaca',
+                          background: '#fff',
+                          color: '#ef4444',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
                         onClick={(event) => {
                           event.stopPropagation();
                           void handleDeleteLocation(loc);
-                        }}
-                      />
+                        }}>
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                   </td>
                 </tr>
