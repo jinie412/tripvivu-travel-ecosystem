@@ -47,7 +47,7 @@ export const SenderInfo: React.FC<SenderInfoProps> = ({ userName, userAvatar, em
       <div className="ld-sender-footer">
         <span className="ld-sender-stat-text">Đã đăng {stats?.totalLocations || 1} địa điểm</span>
         {vendorId ? (
-          <Link to={`/admin/locations?vendorId=${vendorId}`} className="ld-link-btn">Xem hồ sơ</Link>
+          <Link to={`/admin/users/${vendorId}`} className="ld-link-btn">Xem hồ sơ</Link>
         ) : (
           <span className="ld-link-btn">Xem hồ sơ</span>
         )}
