@@ -90,6 +90,11 @@ export const ReviewDetail: React.FC = () => {
           <div className="rd-grid">
             <div className="rd-col-main">
               <ReviewHeader review={review} />
+              {review.status === 'Vi phạm' && review.violation_reason && (
+                <div style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 6, padding: '10px 14px', marginBottom: 16, color: '#a8071a' }}>
+                  <strong>Lý do vi phạm (AI):</strong> {review.violation_reason}
+                </div>
+              )}
               <ReviewContent content={review.content} images={review.images} />
             </div>
             

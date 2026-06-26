@@ -44,6 +44,7 @@ export interface ReviewDetailInfo {
   images: string[];
   // Báo cáo vi phạm từ người dùng
   status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  violation_reason?: string | null;
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
   reportCount: number;
   reportReasons: string[];
@@ -74,6 +75,7 @@ export interface ItineraryReviewDetailInfo {
   images: string[];
   // Status / violations
   status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  violation_reason?: string | null;
   reportCount: number;
   reportReasons: string[];
   adminNote: string;

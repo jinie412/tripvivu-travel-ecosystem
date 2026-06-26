@@ -52,6 +52,7 @@ interface BackendReviewDetailResponse {
   review_content: string | null;
   images: Array<{ url: string }>;
   status: BackendReviewStatus;
+  violation_reason: string | null;
   created_at: string;
 }
 
@@ -90,6 +91,7 @@ interface BackendItineraryReviewDetailResponse {
   review_content: string | null;
   images: Array<{ url: string }>;
   status: BackendReviewStatus;
+  violation_reason: string | null;
   created_at: string;
 }
 
@@ -198,6 +200,7 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   content: item.review_content || '(Không có nội dung)',
   images: item.images.map((image) => image.url),
   status: mapStatus(item.status),
+  violation_reason: item.violation_reason ?? null,
   classification: mapClassification(item.time_label),
   reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
@@ -224,6 +227,7 @@ const mapItineraryReviewDetail = (item: BackendItineraryReviewDetailResponse): I
   content: item.review_content || '(Không có nội dung)',
   images: item.images.map((img) => img.url),
   status: mapStatus(item.status),
+  violation_reason: item.violation_reason ?? null,
   reportCount: item.status === 'violation' ? Math.max(item.reviewer.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
   adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
