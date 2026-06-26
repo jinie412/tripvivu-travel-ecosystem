@@ -120,9 +120,17 @@ export const addNewPlace = async (payload: {
   p_city: string;
   p_lat: number;
   p_lng: number;
+  p_vendor_id?: string;
+  p_email?: string;
+  p_type_id?: string;
+  p_type_name?: string;
   p_categories: string[];
+  p_open_time?: string;
+  p_close_time?: string;
+  p_description?: string;
   p_services: Array<{ name: string; description: string }>;
-  p_menu: Array<{ name: string; description: string; price: number }>;
+  p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
+  p_images?: string[];
 }): Promise<any> => {
   try {
     const res = await apiClient.post('/business/add-new-place', payload);
@@ -144,9 +152,38 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
   return extractResponseData<any>(res as any);
 };
 
-export const uploadPlaceImage = async (file: File) => {
+export const updatePlaceDetail = async (payload: {
+  placeId: string;
+  vendorId: string;
+  name: string;
+  address: string;
+  city?: string;
+  latitude?: number | string;
+  longitude?: number | string;
+  openTime?: string;
+  closeTime?: string;
+  description?: string;
+  imageUrls?: string[];
+  isActive?: boolean;
+}): Promise<any> => {
+  const res = await apiClient.put('/business/place-detail', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const deletePlaceDetail = async (payload: {
+  placeId: string;
+  vendorId: string;
+}): Promise<any> => {
+  const res = await apiClient.delete('/business/place-detail', { data: payload });
+  return extractResponseData<any>(res as any);
+};
+
+export const uploadPlaceImage = async (file: File, placeId?: string) => {
   const formData = new FormData();
   formData.append('file', file);
+  if (placeId) {
+    formData.append('placeId', placeId);
+  }
   
   // Gọi đến endpoint upload của bạn (giả định là /upload/place-image)
   const response = await apiClient.post('/upload/place-image', formData, {
@@ -155,6 +192,17 @@ export const uploadPlaceImage = async (file: File) => {
   
   // Trả về URL từ server (Cloudflare/S3)
   return response.data.url || response.data; 
+};
+
+export const uploadFoodDraftImage = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post('/upload/food-draft', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+  return response.data.url || response.data;
 };
 
 export const getPlaceServicesByType = async (placeId: string) => {

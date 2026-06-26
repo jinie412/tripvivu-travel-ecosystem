@@ -119,7 +119,7 @@ const OrderDetailPage: React.FC = () => {
                      <span>/</span>
                      <span style={{ color: '#1e293b', fontWeight: '700' }}>#{orderData.id}</span>
                   </div>
-                  <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>#{orderData.id}</h2>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>#{orderData.id}</h2>
                   <p style={{ fontSize: '15px', color: '#64748b' }}>Chi tiết đơn hàng {orderData.statusText.toLowerCase()}</p>
                </div>
                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#F0F9FF', borderRadius: '12px', color: orderData.status === 'confirm' ? '#3b82f6' : '#f59e0b', fontSize: '13px', fontWeight: '700' }}>
@@ -135,7 +135,7 @@ const OrderDetailPage: React.FC = () => {
                      <Clock size={20} />
                   </div>
                   <div>
-                     <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Thời gian khách đặt</p>
+                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' as const, marginBottom: '4px', letterSpacing: '0.05em' }}>Thời gian khách đặt</p>
                      <p style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>{orderData.timeInfo.ordered}</p>
                   </div>
                </div>
@@ -144,7 +144,7 @@ const OrderDetailPage: React.FC = () => {
                      <Clock size={20} />
                   </div>
                   <div>
-                     <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px' }}>Dự kiến khách sẽ đến</p>
+                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' as const, marginBottom: '4px', letterSpacing: '0.05em' }}>Dự kiến khách sẽ đến</p>
                      <p style={{ fontSize: '16px', fontWeight: '800', color: '#1e293b' }}>{orderData.timeInfo.expected}</p>
                   </div>
                </div>
@@ -164,7 +164,7 @@ const OrderDetailPage: React.FC = () => {
                         <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
                            <User size={20} />
                         </div>
-                        <h5 style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thông tin khách hàng</h5>
+                        <h5 style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Thông tin khách hàng</h5>
                      </div>
 
                      <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '20px', marginBottom: '24px' }}>
@@ -177,7 +177,7 @@ const OrderDetailPage: React.FC = () => {
                               <Phone size={16} />
                            </div>
                            <div>
-                              <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '2px' }}>Số điện thoại</p>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' as const, marginBottom: '2px', letterSpacing: '0.05em' }}>Số điện thoại</p>
                               <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{orderData.customer.phone}</p>
                            </div>
                         </div>
@@ -186,7 +186,7 @@ const OrderDetailPage: React.FC = () => {
                               <Mail size={16} />
                            </div>
                            <div>
-                              <p style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', marginBottom: '2px' }}>Địa chỉ Email</p>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' as const, marginBottom: '2px', letterSpacing: '0.05em' }}>Địa chỉ Email</p>
                               <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{orderData.customer.email}</p>
                            </div>
                         </div>
@@ -204,10 +204,10 @@ const OrderDetailPage: React.FC = () => {
                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                            <tr style={{ background: '#FCFCFD', textAlign: 'left' }}>
-                              <th style={{ padding: '16px 32px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Tên món</th>
-                              <th style={{ padding: '16px 32px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'center' }}>Số lượng</th>
-                              <th style={{ padding: '16px 32px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'right' }}>Giá</th>
-                              <th style={{ padding: '16px 32px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', textAlign: 'right' }}>Thành tiền</th>
+                              <th style={{ padding: '16px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Tên món</th>
+                              <th style={{ padding: '16px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Số lượng</th>
+                              <th style={{ padding: '16px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'right' }}>Giá</th>
+                              <th style={{ padding: '16px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'right' }}>Thành tiền</th>
                            </tr>
                         </thead>
                         <tbody>

@@ -29,6 +29,33 @@ interface SelectOption {
   label: string;
 }
 
+export interface AdminVendorOption {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface AdminCreatePlacePayload {
+  sourceMode: 'system' | 'vendor';
+  p_name: string;
+  p_address: string;
+  p_city: string;
+  p_lat: number;
+  p_lng: number;
+  p_vendor_id?: string;
+  p_email: string;
+  p_type_id: string;
+  p_type_name: string;
+  p_categories: string[];
+  p_open_time?: string;
+  p_close_time?: string;
+  p_description?: string;
+  p_services: Array<{ name: string; description: string }>;
+  p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
+  p_images?: string[];
+}
+
 interface BackendPlaceCategoriesResponse {
   categories: SelectOption[];
 }
@@ -275,5 +302,44 @@ export const locationAPI = {
 
   deleteLocation: async (id: string): Promise<void> => {
     await apiClient.delete(`/admin/places/${id}`);
+  },
+
+  getBusinessVendors: async (): Promise<AdminVendorOption[]> => {
+    try {
+      const response = await apiClient.get<{ data: AdminVendorOption[] }>('/admin/places/vendors');
+      const payload = response.data;
+      return Array.isArray(payload.data) ? payload.data : [];
+    } catch (error) {
+      const response = await apiClient.get<{
+        data: Array<{
+          id: string;
+          fullName?: string;
+          full_name?: string;
+          email?: string;
+          phone?: string;
+          phoneNumber?: string;
+          phone_number?: string;
+        }>;
+      }>('/admin/users', {
+        params: {
+          role: 'BUSINESS',
+          limit: 200,
+        },
+      });
+      const payload = response.data;
+      return Array.isArray(payload.data)
+        ? payload.data.map((user) => ({
+          id: user.id,
+          name: user.fullName || user.full_name || user.email || user.id,
+          email: user.email || '',
+          phone: user.phone || user.phoneNumber || user.phone_number || '',
+        }))
+        : [];
+    }
+  },
+
+  createFullLocation: async (payload: AdminCreatePlacePayload): Promise<{ placeId: string }> => {
+    const response = await apiClient.post('/admin/places/full', payload);
+    return extractResponseData(response);
   },
 };

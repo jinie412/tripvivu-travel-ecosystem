@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ProviderLayout from '../../../layouts/ProviderLayout/ProviderLayout';
-import { Building2, Utensils, BookOpen, Star, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Utensils, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { getDashboardStats, getFoodPerformance } from '@/services/order.service';
 
 const userInfo = localStorage.getItem('userInfo');
@@ -8,51 +8,42 @@ const parsedUser = userInfo ? JSON.parse(userInfo) : null;
 const VENDOR_ID = parsedUser?.businessId || parsedUser?.id || '';
 
 interface StatCardProps {
-  icon: React.ReactNode;
   label: string;
   value: string | number;
-  change?: string;
   badge?: string;
-  color?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, change, badge, color = '#3b82f6' }) => (
+const StatCard: React.FC<StatCardProps> = ({ label, value, badge }) => (
   <div
     style={{
       flex: 1,
-      background: 'white',
-      padding: '24px',
-      borderRadius: '24px',
+      background: 'var(--bg-surface)',
+      padding: '20px 24px 22px',
+      borderRadius: 'var(--border-radius-lg)',
       display: 'flex',
       flexDirection: 'column',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-      border: '1px solid #F1F5F9',
-      position: 'relative',
-      minWidth: '240px',
+      gap: '10px',
+      border: '1px solid var(--border-color)',
+      minWidth: '200px',
     }}>
-    {badge && (
-      <span
-        style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          background: '#f59e0b',
-          color: 'white',
-          fontSize: '10px',
-          fontWeight: '800',
-          padding: '3px 8px',
-          borderRadius: '6px',
-          textTransform: 'uppercase',
-        }}>
-        {badge}
-      </span>
-    )}
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-      <div style={{ background: `${color}10`, color: color, padding: '10px', borderRadius: '12px', display: 'flex' }}>{icon}</div>
-      <span style={{ fontSize: '12px', fontWeight: '700', color: '#10B981' }}>{change}</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: '500' }}>{label}</span>
+      {badge && (
+        <span
+          style={{
+            background: '#f59e0b',
+            color: 'white',
+            fontSize: '10px',
+            fontWeight: '800',
+            padding: '3px 8px',
+            borderRadius: '100px',
+            textTransform: 'uppercase',
+          }}>
+          {badge}
+        </span>
+      )}
     </div>
-    <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginBottom: '4px' }}>{label}</span>
-    <span style={{ fontSize: '32px', fontWeight: '800', color: '#000000', fontFamily: "'Times New Roman', Times, serif" }}>{value}</span>
+    <span style={{ fontSize: '1.875rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif', lineHeight: 1 }}>{value}</span>
   </div>
 );
 
@@ -127,11 +118,11 @@ const DashboardPage: React.FC = () => {
   return (
     <>
       {/* Stats Grid */}
-      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginBottom: '40px' }}>
-        <StatCard icon={<Building2 size={24} />} label="Địa điểm đã đăng ký" value={dashboardData?.total_places || 0}/>
-        <StatCard icon={<Utensils size={24} />} label="Đơn đặt món mới" value={dashboardData?.pending_orders ?? dashboardData?.total_orders ?? 0} badge="CẦN XỬ LÝ" color="#f59e0b" />
-        <StatCard icon={<BookOpen size={24} />} label="Món ăn đang bán" value={dashboardData?.total_food_items || 0} color="#6366f1" />
-        <StatCard icon={<Star size={24} />} label="Đánh giá trung bình" value={(dashboardData?.average_rating ?? 0).toFixed(1)} color="#eab308" />
+      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '40px' }}>
+        <StatCard label="Địa điểm đã đăng ký" value={dashboardData?.total_places || 0} />
+        <StatCard label="Đơn đặt món mới" value={dashboardData?.pending_orders ?? dashboardData?.total_orders ?? 0} badge="CẦN XỬ LÝ" />
+        <StatCard label="Món ăn đang bán" value={dashboardData?.total_food_items || 0} />
+        <StatCard label="Đánh giá trung bình" value={(dashboardData?.average_rating ?? 0).toFixed(1)} />
       </div>
 
       {/* Main Section Header */}
@@ -139,10 +130,10 @@ const DashboardPage: React.FC = () => {
         <div>
           <h3
             style={{
-              fontSize: '28px',
-              fontWeight: '800',
-              color: '#000000',
-              fontFamily: "'Times New Roman', Times, serif",
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              color: 'var(--text-primary)',
+              fontFamily: '"Outfit", sans-serif',
               marginBottom: '4px',
             }}>
             Hiệu suất Sản phẩm / Dịch vụ
@@ -207,10 +198,11 @@ const DashboardPage: React.FC = () => {
                 style={{
                   textAlign: 'left',
                   padding: '20px 24px',
-                  fontSize: '15px',
-                  color: '#000000',
-                  fontWeight: '800',
-                  fontFamily: "'Times New Roman', Times, serif",
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   cursor: 'pointer',
                   userSelect: 'none',
                 }}>
@@ -220,10 +212,11 @@ const DashboardPage: React.FC = () => {
                 style={{
                   textAlign: 'left',
                   padding: '20px 24px',
-                  fontSize: '15px',
-                  color: '#000000',
-                  fontWeight: '800',
-                  fontFamily: "'Times New Roman', Times, serif",
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   userSelect: 'none',
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>Địa điểm</div>
@@ -232,10 +225,11 @@ const DashboardPage: React.FC = () => {
                 style={{
                   textAlign: 'left',
                   padding: '20px 24px',
-                  fontSize: '15px',
-                  color: '#000000',
-                  fontWeight: '800',
-                  fontFamily: "'Times New Roman', Times, serif",
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   userSelect: 'none',
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>Phân loại</div>
@@ -244,10 +238,11 @@ const DashboardPage: React.FC = () => {
                 onClick={() => requestSort('price')}
                 style={{
                   padding: '20px 24px',
-                  fontSize: '15px',
-                  color: '#000000',
-                  fontWeight: '800',
-                  fontFamily: "'Times New Roman', Times, serif",
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   cursor: 'pointer',
                   userSelect: 'none',
                 }}>
@@ -259,10 +254,11 @@ const DashboardPage: React.FC = () => {
                 onClick={() => requestSort('orders')}
                 style={{
                   padding: '20px 24px',
-                  fontSize: '15px',
-                  color: '#000000',
-                  fontWeight: '800',
-                  fontFamily: "'Times New Roman', Times, serif",
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                   cursor: 'pointer',
                   userSelect: 'none',
                 }}>
@@ -296,11 +292,11 @@ const DashboardPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '15px' }}>{item.food_name}</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.875rem' }}>{item.food_name}</span>
                   </div>
                 </td>
                 <td style={{ padding: '16px 24px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#64748b' }}>{item.place_name}</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-secondary)' }}>{item.place_name}</span>
                 </td>
                 <td style={{ padding: '16px 24px' }}>
                   <span style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', background: '#DBEAFE', color: '#2563EB', textTransform: 'uppercase' }}>
@@ -308,12 +304,12 @@ const DashboardPage: React.FC = () => {
                   </span>
                 </td>
                 <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                     {Number(item.price).toLocaleString('vi-VN')}đ
                   </span>
                 </td>
                 <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '16px', fontWeight: '800', color: '#10b981' }}>{item.order_count ?? 0}</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: '700', color: '#10b981' }}>{item.order_count ?? 0}</span>
                 </td>
               </tr>
             ))}
