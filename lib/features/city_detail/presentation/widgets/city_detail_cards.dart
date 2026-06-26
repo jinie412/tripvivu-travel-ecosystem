@@ -195,10 +195,11 @@ class ActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AspectRatio(
-          aspectRatio: 1 / 1,
+          aspectRatio: 4 / 3,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -225,20 +226,47 @@ class ActivityCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: Text(
-            item.name,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+        const SizedBox(height: 6),
+        Text(
+          item.name,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            const Icon(Icons.star, color: Colors.amber, size: 14),
+            const SizedBox(width: 2),
+            Text(
+              item.rating.toStringAsFixed(1),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-          ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '(${item.reviewCount} đánh giá)',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                item.address.trim().isEmpty ? 'Đang cập nhật địa chỉ' : item.address,
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -247,11 +275,13 @@ class ActivityCard extends StatelessWidget {
 
 class RestaurantCard extends StatelessWidget {
   final CityRestaurant item;
+  final bool showFavorite;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const RestaurantCard({
     super.key,
     required this.item,
+    this.showFavorite = true,
     this.onFavoriteChanged,
   });
 
@@ -284,15 +314,16 @@ class RestaurantCard extends StatelessWidget {
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: LikeButton(
-                  size: 16,
-                  isLiked: item.isFavorite,
-                  onChanged: onFavoriteChanged,
+              if (showFavorite)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: LikeButton(
+                    size: 16,
+                    isLiked: item.isFavorite,
+                    onChanged: onFavoriteChanged,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -345,11 +376,13 @@ class RestaurantCard extends StatelessWidget {
 
 class HotelCard extends StatelessWidget {
   final CityHotel item;
+  final bool showFavorite;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const HotelCard({
     super.key,
     required this.item,
+    this.showFavorite = true,
     this.onFavoriteChanged,
   });
 
@@ -381,15 +414,16 @@ class HotelCard extends StatelessWidget {
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: LikeButton(
-                  size: 16,
-                  isLiked: item.isFavorite,
-                  onChanged: onFavoriteChanged,
+              if (showFavorite)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: LikeButton(
+                    size: 16,
+                    isLiked: item.isFavorite,
+                    onChanged: onFavoriteChanged,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

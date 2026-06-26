@@ -343,6 +343,59 @@ class ExploreCubit extends Cubit<ExploreState> {
         .toList();
   }
 
+  void _loadRatedDestinations() {
+    _getFeaturedDestinations(limit: 5).then((ratedDests) {
+      if (isClosed || ratedDests.isEmpty) return;
+      final sorted = List<Destination>.from(ratedDests)
+        ..sort((a, b) {
+          final r = b.averageRating.compareTo(a.averageRating);
+          return r != 0 ? r : b.reviewCount.compareTo(a.reviewCount);
+        });
+      final cur = state;
+      if (cur is ExploreLoaded) {
+        emit(ExploreLoaded(
+          suggestions: cur.suggestions,
+          destinations: sorted.take(5).toList(),
+          restaurants: cur.restaurants,
+          hotels: cur.hotels,
+          allSuggestions: cur.allSuggestions,
+          allDestinations: cur.allDestinations,
+          allHotels: cur.allHotels,
+          allRestaurants: cur.allRestaurants,
+          currentItinerary: cur.currentItinerary,
+        ));
+      }
+    }).catchError((_) {});
+  }
+
+  Future<void> _silentRefresh() async {
+    try {
+      final data = await _getExploreHome(forceRefresh: true);
+      if (!isClosed && (data.suggestions.isNotEmpty || data.destinations.isNotEmpty)) {
+        _cachedSuggestions = null;
+        _cachedDestinations = null;
+        _cachedRestaurants = null;
+        _cachedHotels = null;
+        emit(
+          ExploreLoaded(
+            suggestions: data.suggestions.take(5).toList(),
+            destinations: data.destinations.take(5).toList(),
+            restaurants: data.restaurants.take(5).toList(),
+            hotels: data.hotels.take(5).toList(),
+            allSuggestions: const <TripSuggestion>[],
+            allDestinations: const <Destination>[],
+            allHotels: const <CityHotel>[],
+            allRestaurants: const <CityRestaurant>[],
+            currentItinerary: data.currentItinerary,
+          ),
+        );
+        _loadRatedDestinations();
+      }
+    } catch (_) {
+      // Keep showing existing state on refresh failure
+    }
+  }
+
   static const ExploreHomeData _emptyHome = ExploreHomeData(
     suggestions: <TripSuggestion>[],
     destinations: <Destination>[],
@@ -351,17 +404,26 @@ class ExploreCubit extends Cubit<ExploreState> {
     currentItinerary: null,
   );
 
-  Future<void> loadData() async {
-    emit(const ExploreLoading());
+  Future<void> loadData({bool refresh = false}) async {
+    // If data is already loaded (singleton cubit persists across navigations),
+    // show the current state immediately and refresh silently in the background.
+    if (!refresh && state is ExploreLoaded) {
+      _silentRefresh();
+      return;
+    }
+
+    if (!refresh) emit(const ExploreLoading());
     try {
-      final ExploreHomeData data = await _safeLoad<ExploreHomeData>(_getExploreHome.call, _emptyHome);
+      final ExploreHomeData data = await _safeLoad<ExploreHomeData>(
+        () => _getExploreHome(forceRefresh: refresh),
+        _emptyHome,
+      );
 
       _cachedSuggestions = null;
       _cachedDestinations = null;
       _cachedRestaurants = null;
       _cachedHotels = null;
 
-      // Emit data quickly with all sections from the initial backend response
       emit(
         ExploreLoaded(
           suggestions: data.suggestions.take(5).toList(),
@@ -375,7 +437,9 @@ class ExploreCubit extends Cubit<ExploreState> {
           currentItinerary: data.currentItinerary,
         ),
       );
+      _loadRatedDestinations();
     } catch (e) {
+      if (refresh) return;
       if (kDemoMode) {
         // ⚠️ BACKEND NOTE: Mock dữ liệu trang chủ cho Demo
         final mockExplore = ExploreHomeData(

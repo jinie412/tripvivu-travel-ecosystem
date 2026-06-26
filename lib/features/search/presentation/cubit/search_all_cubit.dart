@@ -89,6 +89,7 @@ class SearchAllCubit extends Cubit<SearchAllState> {
     if (s == null) return [];
     return s.allItems.where((item) {
       if (s.typeFilter != null && item.type != s.typeFilter) return false;
+      // items without city always pass city filter
       if (s.cityFilter != null && item.city.isNotEmpty && item.city != s.cityFilter) return false;
       return true;
     }).toList();

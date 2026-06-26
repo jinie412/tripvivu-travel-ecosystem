@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
-import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/city_detail_cards.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 
 class HomeItineraryCard extends StatelessWidget {
@@ -16,6 +15,8 @@ class HomeItineraryCard extends StatelessWidget {
     this.onFavoriteChanged,
   });
 
+  static const double _radius = 12;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -26,10 +27,7 @@ class HomeItineraryCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: _buildItineraryImageGallery(),
-              ),
+              _buildItineraryImageGallery(),
               Positioned(
                 top: 12,
                 left: 12,
@@ -50,14 +48,6 @@ class HomeItineraryCard extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: LikeButton(
-                  isLiked: item.isFavorite,
-                  onChanged: onFavoriteChanged,
                 ),
               ),
             ],
@@ -99,18 +89,15 @@ class HomeItineraryCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 10,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        Row(
           children: [
             const Icon(
               Icons.location_on_outlined,
               size: 12,
               color: Colors.grey,
             ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 140),
+            const SizedBox(width: 4),
+            Expanded(
               child: Text(
                 item.location,
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -118,12 +105,22 @@ class HomeItineraryCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
-            Text(
-              item.views,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
+            if (item.rating > 0) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFFB400)),
+              const SizedBox(width: 3),
+              Text(
+                item.rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
             const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
+            const SizedBox(width: 4),
             Text(
               item.likes,
               style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -137,48 +134,70 @@ class HomeItineraryCard extends StatelessWidget {
   Widget _buildItineraryImageGallery() {
     final gallery = item.imageUrls
         .where((url) => url.trim().isNotEmpty)
-        .where((url) => !_isUnsafeItineraryCoverUrl(url))
+        .where((url) => !_isUnsafeUrl(url))
         .take(3)
         .toList();
 
     if (gallery.isEmpty &&
         item.imageUrl != null &&
         item.imageUrl!.trim().isNotEmpty &&
-        !_isUnsafeItineraryCoverUrl(item.imageUrl!)) {
+        !_isUnsafeUrl(item.imageUrl!)) {
       gallery.add(item.imageUrl!.trim());
     }
 
     if (gallery.isEmpty) {
-      return Container(
-        color: Color(item.placeholderColor),
-        alignment: Alignment.center,
-        child: const Icon(Icons.image, color: Colors.white, size: 40),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(_radius),
+        child: Container(
+          color: Color(item.placeholderColor),
+          alignment: Alignment.center,
+          child: const Icon(Icons.image, color: Colors.white, size: 40),
+        ),
       );
     }
 
     if (gallery.length == 1) {
-      return _buildNetworkImage(gallery.first);
+      return _galleryImage(gallery.first, BorderRadius.circular(_radius));
     }
 
+    const r = Radius.circular(_radius);
     return Row(
       children: [
-        Expanded(flex: 2, child: _buildNetworkImage(gallery[0])),
-        const SizedBox(width: 4),
+        Expanded(
+          flex: 2,
+          child: _galleryImage(
+            gallery[0],
+            const BorderRadius.only(topLeft: r, bottomLeft: r),
+          ),
+        ),
+        const SizedBox(width: 3),
         Expanded(
           child: Column(
             children: [
-              Expanded(child: _buildNetworkImage(gallery[1])),
-              const SizedBox(height: 4),
+              Expanded(
+                child: _galleryImage(
+                  gallery[1],
+                  const BorderRadius.only(topRight: r),
+                ),
+              ),
+              const SizedBox(height: 3),
               Expanded(
                 child: gallery.length >= 3
-                    ? _buildNetworkImage(gallery[2])
-                    : Container(
-                        color: Color(
-                          item.placeholderColor,
-                        ).withValues(alpha: 0.35),
-                        child: const Icon(
-                          Icons.landscape,
-                          color: Colors.white54,
+                    ? _galleryImage(
+                        gallery[2],
+                        const BorderRadius.only(bottomRight: r),
+                      )
+                    : ClipRRect(
+                        borderRadius:
+                            const BorderRadius.only(bottomRight: r),
+                        child: Container(
+                          color: Color(item.placeholderColor)
+                              .withValues(alpha: 0.35),
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.landscape,
+                            color: Colors.white54,
+                          ),
                         ),
                       ),
               ),
@@ -189,25 +208,26 @@ class HomeItineraryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNetworkImage(String imageUrl) {
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      errorWidget: (context, url, error) => Container(
-        color: Color(item.placeholderColor).withValues(alpha: 0.75),
-        alignment: Alignment.center,
-        child: const Icon(Icons.broken_image, color: Colors.white),
+  Widget _galleryImage(String imageUrl, BorderRadius borderRadius) {
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorWidget: (context, url, error) => Container(
+          color: Color(item.placeholderColor).withValues(alpha: 0.75),
+          alignment: Alignment.center,
+          child: const Icon(Icons.broken_image, color: Colors.white),
+        ),
       ),
     );
   }
 
-  bool _isUnsafeItineraryCoverUrl(String value) {
+  bool _isUnsafeUrl(String value) {
     final uri = Uri.tryParse(value.trim());
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      return true;
-    }
-
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return true;
     final host = uri.host.toLowerCase();
     return host == 'tinyurl.vn' || host == 'down-vn.img.susercontent.com';
   }

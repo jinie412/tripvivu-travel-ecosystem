@@ -7,7 +7,8 @@ import 'package:travel_advisor_mobile/features/home/domain/repositories/home_rep
 class GetExploreHomeUseCase {
   final HomeRepository _repo;
   GetExploreHomeUseCase(this._repo);
-  Future<ExploreHomeData> call() => _repo.getExploreHome();
+  Future<ExploreHomeData> call({bool forceRefresh = false}) =>
+      _repo.getExploreHome(forceRefresh: forceRefresh);
 }
 
 class GetRestaurantsUseCase {

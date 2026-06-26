@@ -15,6 +15,7 @@ import 'package:travel_advisor_mobile/features/review/presentation/widgets/revie
 
 class RateItineraryScreen extends StatelessWidget {
   final String itineraryId;
+  final bool isReadOnly;
   final double initialRating;
   final String initialComment;
   final bool popExtraOnSubmit;
@@ -22,6 +23,7 @@ class RateItineraryScreen extends StatelessWidget {
   const RateItineraryScreen({
     super.key,
     required this.itineraryId,
+    this.isReadOnly = false,
     this.initialRating = 0.0,
     this.initialComment = '',
     this.popExtraOnSubmit = true,
@@ -41,6 +43,7 @@ class RateItineraryScreen extends StatelessWidget {
       },
       child: _RateItineraryView(
         itineraryId: itineraryId,
+        isReadOnly: isReadOnly,
         popExtraOnSubmit: popExtraOnSubmit,
       ),
     );
@@ -49,10 +52,12 @@ class RateItineraryScreen extends StatelessWidget {
 
 class _RateItineraryView extends StatelessWidget {
   final String itineraryId;
+  final bool isReadOnly;
   final bool popExtraOnSubmit;
 
   const _RateItineraryView({
     required this.itineraryId,
+    required this.isReadOnly,
     required this.popExtraOnSubmit,
   });
 
@@ -260,22 +265,17 @@ class _RateItineraryView extends StatelessWidget {
                                 await context.read<ReviewCubit>().submitReview(
                                   itineraryId,
                                 );
-                                if (!context.mounted) {
-                                  return;
-                                }
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Cảm ơn bạn đã đánh giá!'),
                                     backgroundColor: Color(0xFF22C55E),
                                   ),
                                 );
-                                // Sau khi gửi thành công, quay về màn hình ban đầu (đóng cả trang đánh giá và dialog)
                                 if (context.mounted) {
-                                  Navigator.of(
-                                    context,
-                                  ).pop(); // Đóng RateItineraryScreen
-                                  // Thêm một lần pop nữa để đóng ItineraryReviewDialog
-                                  if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                  if (popExtraOnSubmit &&
+                                      Navigator.of(context).canPop()) {
                                     Navigator.of(context).pop();
                                   }
                                 }

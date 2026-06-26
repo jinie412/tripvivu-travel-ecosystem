@@ -34,7 +34,6 @@ class ItineraryDetailEntity {
   final String status;
   final bool isPublic;
   final bool isFavorite;
-  
   final int durationDays;
   final int activitiesCount;
   final int totalLocations;

@@ -40,28 +40,6 @@ class PlaceInfoSection extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: onLocationTap,
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(
-                              location,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary, 
-                                fontSize: 13,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

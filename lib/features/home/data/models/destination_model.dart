@@ -12,12 +12,18 @@ class DestinationModel {
   final String? imageUrl;
   @JsonKey(name: 'placeholder_color')
   final int placeholderColor;
+  @JsonKey(name: 'rating')
+  final double averageRating;
+  @JsonKey(name: 'review_count')
+  final int reviewCount;
 
   const DestinationModel({
     required this.id,
     required this.name,
     this.imageUrl,
     this.placeholderColor = 0xFF4A8C5C,
+    this.averageRating = 0.0,
+    this.reviewCount = 0,
   });
 
   factory DestinationModel.fromJson(Map<String, dynamic> json) =>
@@ -30,5 +36,7 @@ class DestinationModel {
         name: name,
         imageUrl: imageUrl,
         placeholderColor: placeholderColor,
+        averageRating: averageRating,
+        reviewCount: reviewCount,
       );
 }

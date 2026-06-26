@@ -25,6 +25,9 @@ TripSuggestionModel _$TripSuggestionModelFromJson(Map<String, dynamic> json) =>
       placeholderColor:
           (json['placeholderColor'] as num?)?.toInt() ?? 0xFF4A90D9,
       isFavorite: json['isFavorite'] as bool? ?? false,
+      favoriteCount: (json['favorite_count'] as num?)?.toInt() ?? 0,
+      rating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
+      travelType: json['trip_intent'] as String? ?? '',
     );
 
 Map<String, dynamic> _$TripSuggestionModelToJson(
@@ -42,4 +45,7 @@ Map<String, dynamic> _$TripSuggestionModelToJson(
   'image_gallery': instance.imageGallery,
   'placeholderColor': instance.placeholderColor,
   'isFavorite': instance.isFavorite,
+  'favorite_count': instance.favoriteCount,
+  'average_rating': instance.rating,
+  'trip_intent': instance.travelType,
 };

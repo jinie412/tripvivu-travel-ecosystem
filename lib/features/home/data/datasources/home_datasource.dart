@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show Options;
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
@@ -23,7 +24,7 @@ class ExploreHomePayload {
 
 /// Contract for home screen data.
 abstract class HomeDataSource {
-  Future<ExploreHomePayload> getExploreHome();
+  Future<ExploreHomePayload> getExploreHome({bool forceRefresh = false});
   Future<List<CityRestaurant>> getRestaurants({int limit = 5});
   Future<List<TripSuggestionModel>> getPublicSuggestions({int page = 1, int limit = 50});
   Future<List<DestinationModel>> getFeaturedDestinations({int page = 1, int limit = 50});
@@ -44,7 +45,7 @@ abstract class HomeDataSource {
 // ─────────────────────────────────────────────────────────────────────────────
 class MockHomeDataSource implements HomeDataSource {
   @override
-  Future<ExploreHomePayload> getExploreHome() async {
+  Future<ExploreHomePayload> getExploreHome({bool forceRefresh = false}) async {
     await Future.delayed(const Duration(milliseconds: 600));
     return ExploreHomePayload(
       suggestions: [
@@ -303,39 +304,55 @@ class RemoteHomeDataSource implements HomeDataSource {
   RemoteHomeDataSource(this._client);
 
   @override
-  Future<ExploreHomePayload> getExploreHome() async {
+  Future<ExploreHomePayload> getExploreHome({bool forceRefresh = false}) async {
     final touristId = await AuthUtils.requireCurrentUserId();
+    final opts = forceRefresh ? _client.forceRefreshOptions : null;
 
-    final response = await _client.dio.get(
+    // Fire both requests in parallel — eliminates the sequential penalty when
+    // /explore/home returns no current_itinerary and the fallback is needed.
+    final homeFuture = _client.dio.get(
       '/explore/home',
       queryParameters: {'tourist_id': touristId},
+      options: opts,
     );
+    final curFuture = _fetchCurrentItinerary(touristId, opts);
 
-    final mapped = _mapExploreHome(response.data as Map<String, dynamic>);
+    final homeResp = await homeFuture;
+    final mapped = _mapExploreHome(homeResp.data as Map<String, dynamic>);
 
-    // If backend returns no current_itinerary (server may provide a separate
-    // endpoint to fetch it), try to request it explicitly so the UI can show
-    // "Lịch trình của tôi" when available.
     if (mapped.currentItinerary == null) {
-      try {
-        final curResp = await _client.dio.get('/explore/current', queryParameters: {'tourist_id': touristId});
-        if (curResp.data != null) {
-          final curJson = curResp.data as Map<String, dynamic>;
-          final ci = _mapCurrentItinerary(curJson['data'] ?? curJson);
-          return ExploreHomePayload(
-            suggestions: mapped.suggestions,
-            destinations: mapped.destinations,
-            restaurants: mapped.restaurants,
-            hotels: mapped.hotels,
-            currentItinerary: ci,
-          );
-        }
-      } catch (_) {
-        // ignore and return original mapped payload
+      final curData = await curFuture;
+      if (curData != null) {
+        final ci = _mapCurrentItinerary(curData['data'] ?? curData);
+        return ExploreHomePayload(
+          suggestions: mapped.suggestions,
+          destinations: mapped.destinations,
+          restaurants: mapped.restaurants,
+          hotels: mapped.hotels,
+          currentItinerary: ci,
+        );
       }
     }
 
     return mapped;
+  }
+
+  Future<Map<String, dynamic>?> _fetchCurrentItinerary(
+    String touristId,
+    Options? opts,
+  ) async {
+    try {
+      // Always bypass client cache so the itinerary card reflects the latest
+      // DB state even when the home response was served from cache.
+      final r = await _client.dio.get(
+        '/explore/current',
+        queryParameters: {'tourist_id': touristId},
+        options: _client.forceRefreshOptions,
+      );
+      return r.data is Map<String, dynamic> ? r.data as Map<String, dynamic> : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   ExploreHomePayload _mapExploreHome(Map<String, dynamic> json) {
@@ -380,6 +397,9 @@ class RemoteHomeDataSource implements HomeDataSource {
     final creatorId = (json['creator_id'] ?? '').toString();
     final creatorName = (json['creator_name'] ?? 'Traveler').toString().trim();
 
+    final favoriteCount = (json['favorite_count'] as num?)?.toInt() ?? 0;
+    final avgRating = ((json['average_rating'] as num?) ?? 0).toDouble();
+    final travelType = (json['trip_intent'] ?? '').toString();
     return TripSuggestionModel(
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? 'Lịch trình gợi ý').toString(),
@@ -389,7 +409,10 @@ class RemoteHomeDataSource implements HomeDataSource {
       days: '$days ngày',
       location: (json['location'] ?? 'Không xác định').toString(),
       views: ((json['participant_count'] as num?)?.toInt() ?? 0).toString(),
-      likes: ((json['participant_count'] as num?)?.toInt() ?? 0).toString(),
+      likes: favoriteCount.toString(),
+      favoriteCount: favoriteCount,
+      rating: avgRating,
+      travelType: travelType,
       imageUrl: primaryImage.isEmpty ? null : primaryImage,
       imageGallery: imageGallery,
       placeholderColor: 0xFF4A90D9,
@@ -403,6 +426,8 @@ class RemoteHomeDataSource implements HomeDataSource {
       name: (json['name'] ?? 'Không xác định').toString(),
       imageUrl: (json['image'] ?? '').toString(),
       placeholderColor: isHotel ? 0xFFD4C5B0 : 0xFF4A8C5C,
+      averageRating: ((json['rating'] as num?) ?? 0).toDouble(),
+      reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
     );
   }
 

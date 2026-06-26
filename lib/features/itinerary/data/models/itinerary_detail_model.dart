@@ -251,6 +251,9 @@ class VisitedDishModel {
     );
   }
 
-  VisitedDish toEntity() =>
-      VisitedDish(name: name, price: price, quantity: quantity);
+  VisitedDish toEntity() => VisitedDish(
+        name: name,
+        price: price,
+        quantity: quantity,
+      );
 }

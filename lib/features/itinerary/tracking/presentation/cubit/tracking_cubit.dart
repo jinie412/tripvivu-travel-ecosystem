@@ -460,6 +460,14 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     final ctx = await TrackingContextStore.load();
     if (ctx == null || ctx.itineraryId.isEmpty || ctx.date.isEmpty) return;
 
+    // Kiểm tra context thuộc đúng user hiện tại — tránh khôi phục tracking
+    // của user khác khi đăng nhập tài khoản mới trên cùng thiết bị.
+    final currentUserId = await AuthUtils.getCurrentUserId();
+    if (currentUserId == null || currentUserId.isEmpty || currentUserId != ctx.touristId) {
+      await TrackingContextStore.clear();
+      return;
+    }
+
     DateTime? date;
     try {
       final p = ctx.date.split('-');

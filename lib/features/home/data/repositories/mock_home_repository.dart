@@ -10,8 +10,8 @@ class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl(this._dataSource);
 
   @override
-  Future<ExploreHomeData> getExploreHome() async {
-    final payload = await _dataSource.getExploreHome();
+  Future<ExploreHomeData> getExploreHome({bool forceRefresh = false}) async {
+    final payload = await _dataSource.getExploreHome(forceRefresh: forceRefresh);
 
     return ExploreHomeData(
       suggestions: payload.suggestions.map((m) => m.toEntity()).toList(),

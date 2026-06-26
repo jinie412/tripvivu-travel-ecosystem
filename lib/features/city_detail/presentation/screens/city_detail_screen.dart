@@ -142,7 +142,7 @@ class _CityDetailContentState extends State<_CityDetailContent> {
   final PageController _itineraryController = PageController(viewportFraction: 0.88);
   final PageController _activityController = PageController(viewportFraction: 0.45);
   final PageController _restaurantController = PageController(viewportFraction: 0.45);
-  final PageController _hotelController = PageController(viewportFraction: 0.55);
+  final PageController _hotelController = PageController(viewportFraction: 0.45);
 
   int _itineraryIndex = 0;
   int _activityIndex = 0;
@@ -254,9 +254,9 @@ class _OverviewTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
-    final activityCardH   = screenW * 0.45 * (1 / 1) + 48;
+    final activityCardH   = screenW * 0.45 * (3 / 4) + 64;
     final restaurantCardH = screenW * 0.45 * (3 / 4) + 64;
-    final hotelCardH      = screenW * 0.55 * (3 / 4) + 80;
+    final hotelCardH      = screenW * 0.45 * (3 / 4) + 86;
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -275,40 +275,43 @@ class _OverviewTabContent extends StatelessWidget {
             message: 'Chưa có lịch trình cộng đồng cho tỉnh/thành phố này.',
           )
         else
-          SizedBox(
-            height: 280,
-            child: PageView.builder(
-              controller: itineraryController,
-              padEnds: false,
-              clipBehavior: Clip.none,
-              onPageChanged: onItineraryPageChanged,
-              itemCount: overviewItineraries.length,
-              itemBuilder: (context, index) {
-                final item = overviewItineraries[index];
-                return Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 16 : 0, right: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider<ItineraryCubit>(
-                            create: (_) {
-                              final cubit = sl<ItineraryCubit>();
-                              cubit.loadData().then((_) {
-                                cubit.selectItinerary(item.id);
-                              });
-                              return cubit;
-                            },
-                            child: ItinerarySummaryScreen(itineraryId: item.id),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: SizedBox(
+              height: screenW * 0.88 * (9 / 16) + 126,
+              child: PageView.builder(
+                controller: itineraryController,
+                padEnds: false,
+                clipBehavior: Clip.none,
+                onPageChanged: onItineraryPageChanged,
+                itemCount: overviewItineraries.length,
+                itemBuilder: (context, index) {
+                  final item = overviewItineraries[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider<ItineraryCubit>(
+                              create: (_) {
+                                final cubit = sl<ItineraryCubit>();
+                                cubit.loadData().then((_) {
+                                  cubit.selectItinerary(item.id);
+                                });
+                                return cubit;
+                              },
+                              child: ItinerarySummaryScreen(itineraryId: item.id),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: ItineraryCard(item: item),
-                  ),
-                );
-              },
+                        );
+                      },
+                      child: ItineraryCard(item: item),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         const SizedBox(height: 4),
@@ -327,34 +330,37 @@ class _OverviewTabContent extends StatelessWidget {
             message: 'Chưa có hoạt động tham quan & giải trí cho tỉnh/thành phố này.',
           )
         else
-          SizedBox(
-            height: activityCardH,
-            child: PageView.builder(
-              controller: activityController,
-              padEnds: false,
-              clipBehavior: Clip.none,
-              onPageChanged: onActivityPageChanged,
-              itemCount: overviewActivities.length,
-              itemBuilder: (context, index) {
-                final item = overviewActivities[index];
-                return Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 16 : 0, right: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (_) => sl<PlaceDetailCubit>(),
-                            child: PlaceDetailScreen(placeId: item.id),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: SizedBox(
+              height: activityCardH,
+              child: PageView.builder(
+                controller: activityController,
+                padEnds: false,
+                clipBehavior: Clip.none,
+                onPageChanged: onActivityPageChanged,
+                itemCount: overviewActivities.length,
+                itemBuilder: (context, index) {
+                  final item = overviewActivities[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => sl<PlaceDetailCubit>(),
+                              child: PlaceDetailScreen(placeId: item.id),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: ActivityCard(item: item),
-                  ),
-                );
-              },
+                        );
+                      },
+                      child: ActivityCard(item: item),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         const SizedBox(height: 4),
@@ -373,34 +379,37 @@ class _OverviewTabContent extends StatelessWidget {
             message: 'Chưa có nhà hàng tiêu biểu cho tỉnh/thành phố này.',
           )
         else
-          SizedBox(
-            height: restaurantCardH,
-            child: PageView.builder(
-              controller: restaurantController,
-              padEnds: false,
-              clipBehavior: Clip.none,
-              onPageChanged: onRestaurantPageChanged,
-              itemCount: overviewRestaurants.length,
-              itemBuilder: (context, index) {
-                final item = overviewRestaurants[index];
-                return Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 16 : 0, right: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (_) => sl<PlaceDetailCubit>(),
-                            child: PlaceDetailScreen(placeId: item.id),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: SizedBox(
+              height: restaurantCardH,
+              child: PageView.builder(
+                controller: restaurantController,
+                padEnds: false,
+                clipBehavior: Clip.none,
+                onPageChanged: onRestaurantPageChanged,
+                itemCount: overviewRestaurants.length,
+                itemBuilder: (context, index) {
+                  final item = overviewRestaurants[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => sl<PlaceDetailCubit>(),
+                              child: PlaceDetailScreen(placeId: item.id),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: RestaurantCard(item: item),
-                  ),
-                );
-              },
+                        );
+                      },
+                      child: RestaurantCard(item: item),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         const SizedBox(height: 4),
@@ -419,34 +428,37 @@ class _OverviewTabContent extends StatelessWidget {
             message: 'Chưa có khách sạn hoặc chỗ ở cho tỉnh/thành phố này.',
           )
         else
-          SizedBox(
-            height: hotelCardH,
-            child: PageView.builder(
-              controller: hotelController,
-              padEnds: false,
-              clipBehavior: Clip.none,
-              onPageChanged: onHotelPageChanged,
-              itemCount: overviewHotels.length,
-              itemBuilder: (context, index) {
-                final item = overviewHotels[index];
-                return Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 16 : 0, right: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider(
-                            create: (_) => sl<PlaceDetailCubit>(),
-                            child: PlaceDetailScreen(placeId: item.id),
+          Padding(
+            padding: const EdgeInsets.only(left: 16),
+            child: SizedBox(
+              height: hotelCardH,
+              child: PageView.builder(
+                controller: hotelController,
+                padEnds: false,
+                clipBehavior: Clip.none,
+                onPageChanged: onHotelPageChanged,
+                itemCount: overviewHotels.length,
+                itemBuilder: (context, index) {
+                  final item = overviewHotels[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider(
+                              create: (_) => sl<PlaceDetailCubit>(),
+                              child: PlaceDetailScreen(placeId: item.id),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: HotelCard(item: item),
-                  ),
-                );
-              },
+                        );
+                      },
+                      child: HotelCard(item: item),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         const SizedBox(height: 4),

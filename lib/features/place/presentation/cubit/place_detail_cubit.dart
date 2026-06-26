@@ -13,13 +13,14 @@ class PlaceDetailCubit extends Cubit<PlaceDetailState> {
     required this.favoriteRemoteDataSource,
   }) : super(const PlaceDetailInitial());
 
-  Future<void> loadPlaceDetail(String id) async {
-    emit(const PlaceDetailLoading());
+  Future<void> loadPlaceDetail(String id, {bool refresh = false}) async {
+    if (!refresh) emit(const PlaceDetailLoading());
     try {
       final detail = await getPlaceDetailUseCase(id);
       emit(PlaceDetailLoaded(detail));
     } catch (e) {
-      emit(PlaceDetailError(e.toString()));
+      if (!refresh) emit(PlaceDetailError(e.toString()));
+      // on refresh error: silently keep existing state visible
     }
   }
 

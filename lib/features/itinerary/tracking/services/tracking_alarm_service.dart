@@ -81,8 +81,9 @@ Future<void> onTrackingDayEnd() async {
       await TrackingContextStore.clear();
       await TrackingContextStore.clearNextDate();
     }
-  } catch (_) {
-    // Lỗi mạng: giữ nguyên, người dùng có thể mở app để đồng bộ lại.
+  } catch (e) {
+    // Lỗi mạng: lưu lại để debug, giữ nguyên context để app đồng bộ khi mở lại.
+    await TrackingContextStore.saveLastError('onTrackingDayEnd: $e');
   }
 }
 
@@ -98,8 +99,10 @@ Future<void> onTrackingNextDay() async {
 
   try {
     final dio = await buildTrackingDio(ctx.baseUrl);
-    final res = await dio.get('/itinerary/tracking/geofences', queryParameters: {
+    // Dùng POST /start thay vì GET /geofences để BE tạo geofence_visits cho ngày mới.
+    final res = await dio.post('/itinerary/tracking/start', data: {
       'itineraryId': ctx.itineraryId,
+      'touristId': ctx.touristId,
       'date': nextDate,
       'radiusM': ctx.radiusM,
     });
@@ -127,5 +130,7 @@ Future<void> onTrackingNextDay() async {
           int.parse(p[0]), int.parse(p[1]), int.parse(p[2]), 23, 0);
       await TrackingAlarmService().scheduleEndOfDay(endAt);
     }
-  } catch (_) {}
+  } catch (e) {
+    await TrackingContextStore.saveLastError('onTrackingNextDay: $e');
+  }
 }

@@ -19,12 +19,16 @@ class PlaceReviewScreen extends StatefulWidget {
   final ReviewCubit reviewCubit;
 
   final bool isReadOnly;
+  final bool submitOnSave;
+  final String? itineraryId;
 
   const PlaceReviewScreen({
     super.key,
     required this.locationId,
     required this.reviewCubit,
     this.isReadOnly = false,
+    this.submitOnSave = false,
+    this.itineraryId,
   });
 
   @override
@@ -135,7 +139,7 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     // Lấy placeId thực sự của POI trước khi cập nhật state
     String? placeId;
     final cubitState = widget.reviewCubit.state;
@@ -144,7 +148,6 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
           .indexWhere((l) => l.id == widget.locationId);
       if (idx != -1) placeId = cubitState.itinerary.locations[idx].placeId;
     }
-
     widget.reviewCubit.updateLocationReviewDetails(
       locationId: widget.locationId,
       rating: _rating,
@@ -152,7 +155,6 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       reviewTags: _selectedTags,
       mediaItems: _mediaItems,
     );
-
     if (placeId != null && placeId.isNotEmpty) {
       final activityService = sl<ActivityService>();
       if (_rating > 0) {
@@ -163,6 +165,10 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       }
     }
 
+    if (widget.submitOnSave && widget.itineraryId != null) {
+      await widget.reviewCubit.submitReview(widget.itineraryId!);
+    }
+    if (!mounted) return;
     Navigator.pop(context);
   }
 

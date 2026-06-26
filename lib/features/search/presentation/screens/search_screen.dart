@@ -39,7 +39,15 @@ class _SearchViewState extends State<_SearchView> {
 
   void _goToSearchAll(BuildContext context) {
     final q = _searchController.text.trim();
-    if (q.isEmpty) return;
+    if (q.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập từ khóa tìm kiếm'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(

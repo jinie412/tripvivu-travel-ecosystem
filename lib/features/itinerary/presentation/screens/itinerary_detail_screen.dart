@@ -134,7 +134,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           openHourCompressed: place.openHourCompressed,
         );
         if (!mounted) return;
-        
+
         if (success != null && success.isFull) {
           showDialog(
             context: context,
@@ -188,13 +188,13 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                               if (mounted && res != null && !res.isFull) {
                                 final addedDayNumber = res.dayNumber;
                                 final newActivityId = res.activityId;
-                                
+
                                 if (addedDayNumber != null && addedDayNumber != _selectedDay) {
                                   setState(() {
                                     _selectedDay = addedDayNumber;
                                   });
                                 }
-                                
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Đã kéo dài chuyến đi và thêm "${place.name}" vào Ngày $addedDayNumber'),
@@ -203,7 +203,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                 );
-                                
+
                                 Future.delayed(const Duration(milliseconds: 300), () {
                                   if (mounted && newActivityId != null) {
                                     _scrollToActivity(newActivityId);
@@ -233,7 +233,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         if (success != null && !success.isFull) {
           final addedDayNumber = success.dayNumber;
           final newActivityId = success.activityId;
-          
+
           if (addedDayNumber != _selectedDay) {
             final oldDay = _selectedDay;
             setState(() {
@@ -415,7 +415,10 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       MaterialPageRoute(
         builder: (_) => BlocProvider(
           create: (_) => sl<PlaceDetailCubit>(),
-          child: PlaceDetailScreen(placeId: placeId, showRelatedPlaces: false),
+          child: PlaceDetailScreen(
+            placeId: placeId,
+            showRelatedPlaces: false,
+          ),
         ),
       ),
     );
@@ -755,7 +758,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           );
           return; // Không áp dụng thay đổi
         }
-        
+
         if (endMin - newMin > 4 * 60) {
           await showTimeError(
             'Khoảng thời gian tham quan quá dài (hơn 4 tiếng).\n\n'
@@ -949,7 +952,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           autoOptimize: false, // Bỏ logic sắp xếp lại, chỉ thay thế tại chỗ
         );
         if (!mounted) return;
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Đã thay thế bằng "${place.name}"'),
@@ -2253,9 +2256,9 @@ class _ItineraryDetailView extends StatelessWidget {
                 onTap: onAddPlaceTap,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
-                  ),
+                      horizontal: 14,
+                      vertical: 9,
+                    ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [AppColors.primary, AppColors.accent],

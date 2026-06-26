@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -35,13 +35,15 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itin
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/core/services/activity_service.dart';
 import 'package:travel_advisor_mobile/core/widgets/visible_place_tracker.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/widgets/destination_card.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -101,7 +103,6 @@ class _ExploreViewState extends State<_ExploreView> {
   Future<void> _onToggleItinerary(bool value, String itineraryId) async {
     final trackingCubit = context.read<TrackingCubit>();
     final itineraryCubit = context.read<ItineraryCubit>();
-
     if (!value) {
       final ok = await showDialog<bool>(
         context: context,
@@ -399,6 +400,15 @@ class _ExploreViewState extends State<_ExploreView> {
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadSuggestionsPage(page: page, limit: limit),
+          cityExtractor: (item) => item.location,
+          travelTypeExtractor: (item) =>
+              item.travelType.isEmpty ? null : item.travelType,
+          sortOptions: [
+            SortOption<TripSuggestion>(
+              label: 'Phổ biến nhất (lượt tim)',
+              compare: (a, b) => b.favoriteCount.compareTo(a.favoriteCount),
+            ),
+          ],
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -431,9 +441,36 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Điểm đến nổi bật',
           pageSize: _pageSize,
           initialItems: initial,
+          separatorHeight: 12,
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadDestinationsPage(page: page, limit: limit),
+          sortOptions: [
+            SortOption<Destination>(
+              label: 'Rating giảm dần',
+              compare: (a, b) => b.averageRating.compareTo(a.averageRating),
+            ),
+            SortOption<Destination>(
+              label: 'Rating tăng dần',
+              compare: (a, b) => a.averageRating.compareTo(b.averageRating),
+            ),
+            SortOption<Destination>(
+              label: 'Lượt đánh giá giảm dần',
+              compare: (a, b) => b.reviewCount.compareTo(a.reviewCount),
+            ),
+            SortOption<Destination>(
+              label: 'Lượt đánh giá tăng dần',
+              compare: (a, b) => a.reviewCount.compareTo(b.reviewCount),
+            ),
+            SortOption<Destination>(
+              label: 'Tên A–Z',
+              compare: (a, b) => a.name.compareTo(b.name),
+            ),
+            SortOption<Destination>(
+              label: 'Tên Z–A',
+              compare: (a, b) => b.name.compareTo(a.name),
+            ),
+          ],
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -450,8 +487,8 @@ class _ExploreViewState extends State<_ExploreView> {
                 id: item.id,
                 name: item.name,
                 imageUrl: item.imageUrl ?? '',
-                rating: 4.5,
-                reviewCount: 120,
+                rating: item.averageRating,
+                reviewCount: item.reviewCount,
               ),
             ),
           ),
@@ -469,6 +506,7 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Nhà hàng tiêu biểu',
           pageSize: _pageSize,
           initialItems: initial,
+          separatorHeight: 0,
           favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
           favoriteMapper: (item, event) =>
               event.type == FavoriteTargetType.place && event.id == item.id
@@ -477,6 +515,22 @@ class _ExploreViewState extends State<_ExploreView> {
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadRestaurantsPage(page: page, limit: limit),
+          cityExtractor: (item) =>
+              item.address.trim().isEmpty ? null : item.address.trim(),
+          sortOptions: [
+            SortOption<CityRestaurant>(
+              label: 'Tên A–Z',
+              compare: (a, b) => a.name.compareTo(b.name),
+            ),
+            SortOption<CityRestaurant>(
+              label: 'Đánh giá cao nhất',
+              compare: (a, b) => b.rating.compareTo(a.rating),
+            ),
+            SortOption<CityRestaurant>(
+              label: 'Số đánh giá nhiều nhất',
+              compare: (a, b) => b.reviewCount.compareTo(a.reviewCount),
+            ),
+          ],
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -508,6 +562,7 @@ class _ExploreViewState extends State<_ExploreView> {
           title: 'Khách sạn nổi bật',
           pageSize: _pageSize,
           initialItems: initial,
+          separatorHeight: 0,
           favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
           favoriteMapper: (item, event) =>
               event.type == FavoriteTargetType.place && event.id == item.id
@@ -516,6 +571,22 @@ class _ExploreViewState extends State<_ExploreView> {
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadHotelsPage(page: page, limit: limit),
+          cityExtractor: (item) =>
+              item.address.trim().isEmpty ? null : item.address.trim(),
+          sortOptions: [
+            SortOption<CityHotel>(
+              label: 'Tên A–Z',
+              compare: (a, b) => a.name.compareTo(b.name),
+            ),
+            SortOption<CityHotel>(
+              label: 'Đánh giá cao nhất',
+              compare: (a, b) => b.rating.compareTo(a.rating),
+            ),
+            SortOption<CityHotel>(
+              label: 'Số đánh giá nhiều nhất',
+              compare: (a, b) => b.reviewCount.compareTo(a.reviewCount),
+            ),
+          ],
           itemBuilder: (context, item) => GestureDetector(
             onTap: () {
               Navigator.push(
@@ -538,9 +609,53 @@ class _ExploreViewState extends State<_ExploreView> {
     );
   }
 
+  void _showFoodProximityPopupFromTracking(
+    BuildContext ctx,
+    TrackingState state,
+  ) {
+    final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
+    final detailId = state.nearbyRestaurantDetailId ?? '';
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PreOrderPopup(
+        title: 'Quán ăn gần bạn!',
+        message:
+            'Bạn đang trong bán kính ${TrackingConfig.foodProximityKm.toInt()} km. Đặt trước để không phải chờ?',
+        restaurantName: name,
+        estimatedWaitMinutes: 15,
+        rating: 0,
+        reviewCount: 0,
+        onOrderTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          Navigator.push(
+            ctx,
+            MaterialPageRoute(
+              builder: (_) =>
+                  FoodMenuScreen(placeId: detailId, restaurantName: name),
+            ),
+          );
+        },
+        onSkipTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+        },
+      ),
+    ).then((_) {
+      if (ctx.mounted) ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ExploreCubit, ExploreState>(
+    return BlocListener<TrackingCubit, TrackingState>(
+      listenWhen: (p, c) =>
+          c.nearbyRestaurantName != null &&
+          c.nearbyRestaurantName != p.nearbyRestaurantName,
+      listener: (ctx, state) => _showFoodProximityPopupFromTracking(ctx, state),
+      child: BlocBuilder<ExploreCubit, ExploreState>(
       builder: (context, state) {
         if (state is ExploreLoading || state is ExploreInitial) {
           return const Center(child: CircularProgressIndicator());
@@ -555,12 +670,19 @@ class _ExploreViewState extends State<_ExploreView> {
           return Column(
             children: [
               const ExploreHeader(),
-              Expanded(child: _buildContent(context, state)),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () =>
+                      context.read<ExploreCubit>().loadData(refresh: true),
+                  child: _buildContent(context, state),
+                ),
+              ),
             ],
           );
         }
         return const SizedBox.shrink();
       },
+      ),
     );
   }
 
@@ -572,6 +694,7 @@ class _ExploreViewState extends State<_ExploreView> {
     final hotelCardH = screenW * 0.45 * (3 / 4) + 100;
 
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (state.currentItinerary != null)
           SliverToBoxAdapter(
@@ -616,7 +739,9 @@ class _ExploreViewState extends State<_ExploreView> {
                   onSeeAll: () => _openSuggestionSeeAll(),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: SizedBox(
                   height: suggestionCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.88),
@@ -627,10 +752,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.suggestions[i];
                       return Padding(
-                        padding: EdgeInsets.only(
-                          left: i == 0 ? 16 : 0,
-                          right: 12,
-                        ),
+                        padding: const EdgeInsets.only(right: 12),
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -655,6 +777,7 @@ class _ExploreViewState extends State<_ExploreView> {
                       );
                     },
                   ),
+                  ),
                 ),
                 PageDots(
                   count: state.suggestions.take(5).length,
@@ -676,7 +799,9 @@ class _ExploreViewState extends State<_ExploreView> {
                   onSeeAll: () => _openDestinationSeeAll(),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: SizedBox(
                   height: destinationCardH,
                   child: PageView.builder(
                     controller: PageController(viewportFraction: 0.35),
@@ -687,10 +812,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     itemBuilder: (_, i) {
                       final item = state.destinations[i];
                       return Padding(
-                        padding: EdgeInsets.only(
-                          left: i == 0 ? 16 : 0,
-                          right: 12,
-                        ),
+                        padding: const EdgeInsets.only(right: 12),
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -703,19 +825,13 @@ class _ExploreViewState extends State<_ExploreView> {
                               ),
                             );
                           },
-                          child: city_cards.ActivityCard(
-                            showFavorite: false,
-                            item: CityActivity(
-                              id: item.id,
-                              name: item.name,
-                              imageUrl: item.imageUrl ?? '',
-                              rating: 4.5,
-                              reviewCount: 120,
-                            ),
+                          child: AbsorbPointer(
+                            child: DestinationCard(item: item),
                           ),
                         ),
                       );
                     },
+                  ),
                   ),
                 ),
                 PageDots(
@@ -738,45 +854,46 @@ class _ExploreViewState extends State<_ExploreView> {
                   onSeeAll: () => _openRestaurantSeeAll(),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: restaurantCardH,
-                  child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.45),
-                    padEnds: false,
-                    clipBehavior: Clip.none,
-                    itemCount: state.restaurants.take(5).length,
-                    onPageChanged: (i) => setState(() => _restaurantPage = i),
-                    itemBuilder: (_, i) {
-                      final item = state.restaurants[i];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          left: i == 0 ? 16 : 0,
-                          right: 12,
-                        ),
-                        child: VisiblePlaceTracker(
-                          placeId: item.id,
-                          child: GestureDetector(
-                            onTap: () {
-                              sl<ActivityService>().trackClick(item.id);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (_) => sl<PlaceDetailCubit>(),
-                                    child: PlaceDetailScreen(placeId: item.id),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: SizedBox(
+                    height: restaurantCardH,
+                    child: PageView.builder(
+                      controller: PageController(viewportFraction: 0.45),
+                      padEnds: false,
+                      clipBehavior: Clip.none,
+                      itemCount: state.restaurants.take(5).length,
+                      onPageChanged: (i) => setState(() => _restaurantPage = i),
+                      itemBuilder: (_, i) {
+                        final item = state.restaurants[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: VisiblePlaceTracker(
+                            placeId: item.id,
+                            child: GestureDetector(
+                              onTap: () {
+                                sl<ActivityService>().trackClick(item.id);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider(
+                                      create: (_) => sl<PlaceDetailCubit>(),
+                                      child: PlaceDetailScreen(placeId: item.id),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: city_cards.RestaurantCard(
-                              item: item,
-                              onFavoriteChanged: (value) =>
-                                  _setPlaceFavorite(item.id, value),
+                                );
+                              },
+                              child: city_cards.RestaurantCard(
+                                item: item,
+                                showFavorite: false,
+                                onFavoriteChanged: (value) =>
+                                    _setPlaceFavorite(item.id, value),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -800,41 +917,42 @@ class _ExploreViewState extends State<_ExploreView> {
                   onSeeAll: () => _openHotelSeeAll(),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: hotelCardH,
-                  child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.45),
-                    padEnds: false,
-                    clipBehavior: Clip.none,
-                    itemCount: state.hotels.take(5).length,
-                    onPageChanged: (i) => setState(() => _hotelPage = i),
-                    itemBuilder: (_, i) {
-                      final item = state.hotels[i];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          left: i == 0 ? 16 : 0,
-                          right: 12,
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider(
-                                  create: (_) => sl<PlaceDetailCubit>(),
-                                  child: PlaceDetailScreen(placeId: item.id),
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: SizedBox(
+                    height: hotelCardH,
+                    child: PageView.builder(
+                      controller: PageController(viewportFraction: 0.45),
+                      padEnds: false,
+                      clipBehavior: Clip.none,
+                      itemCount: state.hotels.take(5).length,
+                      onPageChanged: (i) => setState(() => _hotelPage = i),
+                      itemBuilder: (_, i) {
+                        final item = state.hotels[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider(
+                                    create: (_) => sl<PlaceDetailCubit>(),
+                                    child: PlaceDetailScreen(placeId: item.id),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                          child: city_cards.HotelCard(
-                            item: item,
-                            onFavoriteChanged: (value) =>
-                                _setPlaceFavorite(item.id, value),
+                              );
+                            },
+                            child: city_cards.HotelCard(
+                              item: item,
+                              showFavorite: false,
+                              onFavoriteChanged: (value) =>
+                                  _setPlaceFavorite(item.id, value),
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),

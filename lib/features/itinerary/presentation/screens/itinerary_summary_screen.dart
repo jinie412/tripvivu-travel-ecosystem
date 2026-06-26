@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +20,9 @@ import 'package:travel_advisor_mobile/features/review/presentation/widgets/itine
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/short_itinerary_item.dart';
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/public_visibility_switch.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
+import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
 
 /// Chế độ thiết kế: true dùng dữ liệu mẫu, false dùng API.
 const bool _useMockData = AppConfig.kUseMockData;
@@ -53,9 +56,18 @@ class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Reuse the global TrackingCubit if already provided (e.g. from home screen),
+    // so food proximity events propagate here without spawning a duplicate tracker.
+    TrackingCubit? existingCubit;
+    try {
+      existingCubit = context.read<TrackingCubit>();
+    } catch (_) {}
+
+    final view = _ItinerarySummaryView(itineraryId: widget.itineraryId);
+    if (existingCubit != null) return view;
     return BlocProvider<TrackingCubit>(
       create: (_) => sl<TrackingCubit>(),
-      child: _ItinerarySummaryView(itineraryId: widget.itineraryId),
+      child: view,
     );
   }
 }
@@ -101,6 +113,42 @@ class _ItinerarySummaryView extends StatelessWidget {
     );
   }
 
+  void _showFoodProximityPopup(BuildContext ctx, TrackingState state) {
+    final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
+    final detailId = state.nearbyRestaurantDetailId ?? '';
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PreOrderPopup(
+        title: 'Quán ăn gần bạn!',
+        message:
+            'Bạn đang trong bán kính ${TrackingConfig.foodProximityKm.toInt()} km. Đặt trước để không phải chờ?',
+        restaurantName: name,
+        estimatedWaitMinutes: 15,
+        rating: 0,
+        reviewCount: 0,
+        onOrderTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          Navigator.push(
+            ctx,
+            MaterialPageRoute(
+              builder: (_) =>
+                  FoodMenuScreen(placeId: detailId, restaurantName: name),
+            ),
+          );
+        },
+        onSkipTap: () {
+          Navigator.pop(ctx);
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+        },
+      ),
+    ).then((_) {
+      if (ctx.mounted) ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+    });
+  }
+
   Widget _buildContent(BuildContext context, ItineraryDetailEntity itin) {
     final now = DateTime.now();
     final dateFormatter = DateFormat('dd/MM');
@@ -112,7 +160,12 @@ class _ItinerarySummaryView extends StatelessWidget {
     final visitedVisitCount = costSnapshot.visitedCount;
     final canReview = _canReviewItinerary(itin, now);
 
-    return Scaffold(
+    return BlocListener<TrackingCubit, TrackingState>(
+      listenWhen: (p, c) =>
+          c.nearbyRestaurantName != null &&
+          c.nearbyRestaurantName != p.nearbyRestaurantName,
+      listener: _showFoodProximityPopup,
+      child: Scaffold(
       backgroundColor: const Color(0xFFFBFDFF),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -346,7 +399,8 @@ class _ItinerarySummaryView extends StatelessWidget {
           ),
         ],
       ),
-      );
+      ),
+    );
   }
 
   Future<void> _toggleFavorite(

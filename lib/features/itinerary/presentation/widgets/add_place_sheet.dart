@@ -67,10 +67,10 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
-  
+
   bool _isLoading = true;
   List<NearbyPlaceModel> _allPlaces = [];
-  
+
   List<NearbyPlaceModel> get _listItems => _allPlaces;
 
   @override
@@ -331,8 +331,8 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
       Navigator.pop(context); // close loading
 
       final favorites = widget.destinationCity != null
-          ? allFavorites.where((f) => 
-              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) || 
+          ? allFavorites.where((f) =>
+              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) ||
               widget.destinationCity!.toLowerCase().contains(f.city.toLowerCase())
             ).toList()
           : allFavorites;
@@ -345,7 +345,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
             title: const Text('Danh mục yêu thích',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             content: Text(
-              widget.destinationCity != null 
+              widget.destinationCity != null
                   ? 'Bạn chưa lưu địa điểm yêu thích nào tại ${widget.destinationCity}.'
                   : 'Danh mục yêu thích của bạn đang trống.',
               style: const TextStyle(height: 1.5),

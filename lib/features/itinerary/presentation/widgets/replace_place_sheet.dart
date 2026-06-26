@@ -333,8 +333,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       Navigator.pop(context); // close loading
 
       final favorites = widget.destinationCity != null
-          ? allFavorites.where((f) => 
-              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) || 
+          ? allFavorites.where((f) =>
+              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) ||
               widget.destinationCity!.toLowerCase().contains(f.city.toLowerCase())
             ).toList()
           : allFavorites;
@@ -347,7 +347,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             title: const Text('Danh mục yêu thích',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             content: Text(
-              widget.destinationCity != null 
+              widget.destinationCity != null
                   ? 'Bạn chưa lưu địa điểm yêu thích nào tại ${widget.destinationCity}.'
                   : 'Danh mục yêu thích của bạn đang trống.',
               style: const TextStyle(height: 1.5),

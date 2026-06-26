@@ -48,7 +48,7 @@ class MapBottomSheet extends StatelessWidget {
     const size = ui.Size(128, 128);
 
     // 1. Bóng đổ
-    final shadowPaint = Paint()..color = Colors.black.withOpacity(0.2);
+    final shadowPaint = Paint()..color = Colors.black.withValues(alpha:0.2);
     canvas.drawCircle(Offset(size.width / 2, size.height / 2 + 5), 45, shadowPaint);
 
     // 2. Vòng tròn trắng ngoài cùng
@@ -140,7 +140,7 @@ class MapBottomSheet extends StatelessWidget {
                 color: Colors.grey[100],
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha:0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -227,15 +227,24 @@ class _MapBottomSheetContentState extends State<MapBottomSheetContent> {
   Future<Uint8List> _createPlaceMarker() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    const size = ui.Size(128, 128);
-    final shadowPaint = Paint()..color = Colors.black.withOpacity(0.25);
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2 + 5), 45, shadowPaint);
+    const size = ui.Size(160, 160);
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    // Bóng đổ
+    final shadowPaint = Paint()..color = Colors.black.withValues(alpha:0.35);
+    canvas.drawCircle(Offset(cx, cy + 7), 56, shadowPaint);
+    // Vòng trắng ngoài
     final outerPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), 42, outerPaint);
-    final innerPaint = Paint()..color = const Color(0xFF1A6EBD); // Màu Xanh dương hệ thống
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), 34, innerPaint);
+    canvas.drawCircle(Offset(cx, cy), 54, outerPaint);
+    // Vòng đỏ nhạt (halo)
+    final haloPaint = Paint()..color = const Color(0xFFFF5252).withValues(alpha:0.25);
+    canvas.drawCircle(Offset(cx, cy), 46, haloPaint);
+    // Fill đỏ chính
+    final innerPaint = Paint()..color = const Color(0xFFE53935);
+    canvas.drawCircle(Offset(cx, cy), 40, innerPaint);
+    // Chấm trắng giữa
     final dotPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), 16, dotPaint); // Tăng từ 12 lên 16
+    canvas.drawCircle(Offset(cx, cy), 14, dotPaint);
     final picture = recorder.endRecording();
     final img = await picture.toImage(size.width.toInt(), size.height.toInt());
     final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
