@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
-import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/constants/review_tags.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
@@ -38,10 +38,8 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
   final TextEditingController _commentController = TextEditingController();
   bool _isSubmitting = false;
 
-
   // Read mode state
   ItineraryReviewSummary? _existingReview;
-
 
   bool get _isHighlyCompleted =>
       widget.totalLocations > 0 &&
@@ -96,6 +94,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
         overallContent: _commentController.text.trim().isEmpty
             ? null
             : _commentController.text.trim(),
+        overallTags: _missedReason.isNotEmpty ? [_missedReason] : const [],
         applyAllPlaces: false,
       );
       if (!mounted) return;
@@ -134,6 +133,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
           itineraryId: widget.itineraryId,
           initialRating: _rating,
           initialComment: _commentController.text,
+          forceRefreshOnLoad: true,
         ),
       ),
     );
@@ -285,12 +285,15 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: (_isHighlyCompleted ? kTravelReviewTags : kMissedLocationReasons)
-              .map((reason) {
-                final isSelected = _missedReason == reason;
-                return _choiceChip(reason, isSelected);
-              })
-              .toList(),
+          children:
+              (_isHighlyCompleted
+                      ? kItineraryReviewTags
+                      : kMissedLocationReasons)
+                  .map((reason) {
+                    final isSelected = _missedReason == reason;
+                    return _choiceChip(reason, isSelected);
+                  })
+                  .toList(),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -506,7 +509,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
                     color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
-                  )
+                  ),
                 ]
               : null,
         ),

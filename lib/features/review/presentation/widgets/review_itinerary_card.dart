@@ -234,7 +234,7 @@ class ReviewItineraryCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: (isReadOnly ? selectedTags : kTravelReviewTags).map((
+              children: (isReadOnly ? selectedTags : kItineraryReviewTags).map((
                 tag,
               ) {
                 final isSelected = selectedTags.contains(tag);

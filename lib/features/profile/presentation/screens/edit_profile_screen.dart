@@ -19,6 +19,8 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isEditing = false;
+  bool _isSaving = false;
+  bool _hasSyncedInitialProfile = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   final TextEditingController _nameController = TextEditingController();
@@ -87,6 +89,127 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  bool _samePreferences(List<String>? current, List<String> next) {
+    final currentSet = (current ?? const <String>[]).toSet();
+    final nextSet = next.toSet();
+    return currentSet.length == nextSet.length &&
+        currentSet.containsAll(nextSet);
+  }
+
+  void _syncProfileFields(
+    ProfileLoaded state, {
+    required bool overwriteEditable,
+  }) {
+    final profile = state.profile;
+    if (overwriteEditable) {
+      _nameController.text = profile.name;
+      _gender = _mapGenderFromBackend(profile.gender);
+      _selectedInterests = List<String>.from(profile.travelPreferences ?? []);
+    }
+    _phoneNumber = profile.phoneNumber ?? '';
+    _email = profile.email;
+    _avatarUrl = profile.avatarUrl;
+  }
+
+  String _profileSaveErrorMessage(Object error) {
+    final message = error.toString();
+    if (message.contains('connection timeout') ||
+        message.contains('receive timeout')) {
+      return 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.';
+    }
+    return 'Cập nhật hồ sơ thất bại. Vui lòng thử lại.';
+  }
+
+  Future<void> _saveProfile() async {
+    if (_isSaving) return;
+
+    final state = context.read<ProfileCubit>().state;
+    if (state is! ProfileLoaded) return;
+
+    final displayName = _nameController.text.trim();
+    if (displayName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tên hiển thị không được để trống')),
+      );
+      return;
+    }
+
+    final gender = _mapGenderToBackend(_gender);
+    final currentGender = _mapGenderToBackend(
+      _mapGenderFromBackend(state.profile.gender),
+    );
+    final preferencesChanged = !_samePreferences(
+      state.profile.travelPreferences,
+      _selectedInterests,
+    );
+    final displayNameChanged = displayName != state.profile.name;
+    final genderChanged = gender != currentGender;
+    final hasChanges =
+        displayNameChanged || genderChanged || preferencesChanged;
+
+    if (!hasChanges) {
+      setState(() {
+        _isEditing = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await context.read<ProfileCubit>().updateProfile(
+        displayName: displayNameChanged ? displayName : null,
+        gender: genderChanged ? gender : null,
+        travelPreferences: preferencesChanged
+            ? List<String>.from(_selectedInterests)
+            : null,
+      );
+      if (!mounted) return;
+
+      final updatedState = context.read<ProfileCubit>().state;
+      setState(() {
+        if (updatedState is ProfileLoaded) {
+          _syncProfileFields(updatedState, overwriteEditable: true);
+        }
+        _isEditing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cập nhật hồ sơ thành công'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_profileSaveErrorMessage(e)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted && _isSaving) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasSyncedInitialProfile) return;
+
+    final state = context.read<ProfileCubit>().state;
+    if (state is ProfileLoaded) {
+      _syncProfileFields(state, overwriteEditable: true);
+      _hasSyncedInitialProfile = true;
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -99,26 +222,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       listener: (context, state) {
         if (state is ProfileLoaded) {
           setState(() {
-            _nameController.text = state.profile.name;
-            _gender = _mapGenderFromBackend(state.profile.gender);
-            _phoneNumber = state.profile.phoneNumber ?? '';
-            _email = state.profile.email;
-            _avatarUrl = state.profile.avatarUrl;
-            _selectedInterests = List<String>.from(
-              state.profile.travelPreferences ?? [],
+            _syncProfileFields(
+              state,
+              overwriteEditable: !_isEditing || _isSaving,
             );
+            _hasSyncedInitialProfile = true;
           });
-        } else if (state is ProfileUpdateSuccess) {
+        } else if (state is ProfileError && _isSaving) {
           setState(() {
-            _isEditing = false;
+            _isSaving = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cập nhật hồ sơ thành công'),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
-          context.read<ProfileCubit>().loadProfile();
         }
       },
       builder: (context, state) {
@@ -197,23 +313,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(
-                        _isEditing ? Icons.check : Icons.edit,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        if (_isEditing) {
-                          context.read<ProfileCubit>().updateProfile(
-                            displayName: _nameController.text,
-                            gender: _mapGenderToBackend(_gender),
-                            travelPreferences: _selectedInterests,
-                          );
-                        } else {
-                          setState(() {
-                            _isEditing = true;
-                          });
-                        }
-                      },
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              _isEditing ? Icons.check : Icons.edit,
+                              color: Colors.white,
+                            ),
+                      onPressed: _isSaving
+                          ? null
+                          : () {
+                              if (_isEditing) {
+                                _saveProfile();
+                              } else {
+                                setState(() {
+                                  _isEditing = true;
+                                });
+                              }
+                            },
                     ),
                   ],
                 ),
@@ -406,7 +529,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
 
     if (image == null || !mounted) return;
-    context.read<ProfileCubit>().uploadNewAvatar(image);
+    try {
+      await context.read<ProfileCubit>().uploadNewAvatar(image);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể cập nhật ảnh đại diện. Vui lòng thử lại.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildProfileField({

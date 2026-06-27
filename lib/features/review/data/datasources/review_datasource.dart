@@ -1,301 +1,24 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/review/data/models/itinerary_review_model.dart';
 import 'package:travel_advisor_mobile/features/review/data/models/location_review_model.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 
-class ItineraryReviewPopupData {
-  final bool showPopup;
-  final String reason;
-  final String itineraryId;
-  final String itineraryTitle;
-
-  const ItineraryReviewPopupData({
-    required this.showPopup,
-    required this.reason,
-    required this.itineraryId,
-    required this.itineraryTitle,
-  });
-}
-
-class SubmittedPlaceReview {
-  final String itineraryDetailId;
-  final String dayLabel;
-  final String placeName;
-  final String? placeImageUrl;
-  final double? rating;
-  final String? content;
-  final List<String> tags;
-  final List<String> mediaUrls;
-  final DateTime? reviewedAt;
-
-  const SubmittedPlaceReview({
-    required this.itineraryDetailId,
-    required this.dayLabel,
-    required this.placeName,
-    this.placeImageUrl,
-    this.rating,
-    this.content,
-    this.tags = const [],
-    this.mediaUrls = const [],
-    this.reviewedAt,
-  });
-}
-
-class SubmittedReviewData {
-  final String itineraryId;
-  final String itineraryTitle;
-  final String? destination;
-  final String? itineraryStatus;
-  final String? coverImage;
-  final String startDate;
-  final String endDate;
-  final double? overallRating;
-  final String? overallContent;
-  final List<String> overallTags;
-  final List<String> overallMediaUrls;
-  final DateTime? overallReviewedAt;
-  final List<SubmittedPlaceReview> places;
-
-  const SubmittedReviewData({
-    required this.itineraryId,
-    required this.itineraryTitle,
-    this.destination,
-    this.itineraryStatus,
-    this.coverImage,
-    required this.startDate,
-    required this.endDate,
-    this.overallRating,
-    this.overallContent,
-    this.overallTags = const [],
-    this.overallMediaUrls = const [],
-    this.overallReviewedAt,
-    required this.places,
-  });
-}
-
-class ItineraryReviewSummary {
-  final bool hasReview;
-  final double? rating;
-  final String? content;
-
-  const ItineraryReviewSummary({
-    required this.hasReview,
-    this.rating,
-    this.content,
-  });
-}
-
-class SubmitPlaceReviewInput {
-  final String itineraryDetailId;
-  final int rating;
-  final String? content;
-  final List<String> tags;
-  final List<SubmitReviewMediaInput> media;
-
-  const SubmitPlaceReviewInput({
-    required this.itineraryDetailId,
-    required this.rating,
-    this.content,
-    this.tags = const [],
-    this.media = const [],
-  });
-}
-
-class SubmitReviewMediaInput {
-  final String objectKey;
-  final String mediaType;
-  final int sortOrder;
-
-  const SubmitReviewMediaInput({
-    required this.objectKey,
-    required this.mediaType,
-    required this.sortOrder,
-  });
-}
-
-class ReviewMediaUploadCandidate {
-  final String fileName;
-  final String contentType;
-  final int size;
-  final int sortOrder;
-
-  const ReviewMediaUploadCandidate({
-    required this.fileName,
-    required this.contentType,
-    required this.size,
-    required this.sortOrder,
-  });
-}
-
-class ReviewMediaPresignedUrl {
-  final String uploadUrl;
-  final String objectKey;
-  final String publicUrl;
-  final String mediaType;
-  final int sortOrder;
-  final int expiresInSeconds;
-
-  const ReviewMediaPresignedUrl({
-    required this.uploadUrl,
-    required this.objectKey,
-    required this.publicUrl,
-    required this.mediaType,
-    required this.sortOrder,
-    required this.expiresInSeconds,
-  });
-
-  factory ReviewMediaPresignedUrl.fromJson(Map<String, dynamic> json) {
-    return ReviewMediaPresignedUrl(
-      uploadUrl: (json['upload_url'] ?? '').toString(),
-      objectKey: (json['object_key'] ?? '').toString(),
-      publicUrl: (json['public_url'] ?? '').toString(),
-      mediaType: (json['media_type'] ?? '').toString(),
-      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 0,
-      expiresInSeconds: (json['expires_in_seconds'] as num?)?.toInt() ?? 0,
-    );
-  }
-}
-
-class ReviewCatalogItem {
-  final String kind;
-  final String status;
-  final String? reviewId;
-  final String itineraryId;
-  final String? itineraryDetailId;
-  final String? placeId;
-  final String title;
-  final String? imageUrl;
-  final double? rating;
-  final String? content;
-  final DateTime? reviewedAt;
-  final String? itineraryTitle;
-  final String? destination;
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final DateTime? visitDate;
-  final List<String> tags;
-  final List<String> mediaUrls;
-  final String? reviewStatus;
-  final String? itineraryStatus;
-  final List<ReviewedPlaceItem> placeReviews;
-
-  const ReviewCatalogItem({
-    required this.kind,
-    required this.status,
-    required this.reviewId,
-    required this.itineraryId,
-    required this.itineraryDetailId,
-    required this.placeId,
-    required this.title,
-    required this.imageUrl,
-    required this.rating,
-    required this.content,
-    required this.reviewedAt,
-    required this.itineraryTitle,
-    required this.destination,
-    required this.startDate,
-    required this.endDate,
-    required this.visitDate,
-    required this.tags,
-    required this.mediaUrls,
-    required this.reviewStatus,
-    required this.itineraryStatus,
-    required this.placeReviews,
-  });
-
-  bool get isItinerary => kind == 'itinerary';
-  bool get isReviewed => status == 'reviewed';
-
-  factory ReviewCatalogItem.fromJson(Map<String, dynamic> json) =>
-      ReviewCatalogItem(
-        kind: (json['kind'] ?? 'place').toString(),
-        status: (json['status'] ?? 'pending').toString(),
-        reviewId: json['review_id']?.toString(),
-        itineraryId: (json['itinerary_id'] ?? '').toString(),
-        itineraryDetailId: json['itinerary_detail_id']?.toString(),
-        placeId: json['place_id']?.toString(),
-        title: (json['title'] ?? 'Đánh giá').toString(),
-        imageUrl: json['image_url']?.toString(),
-        rating: (json['rating'] as num?)?.toDouble(),
-        content: json['content']?.toString(),
-        reviewedAt: DateTime.tryParse((json['reviewed_at'] ?? '').toString()),
-        itineraryTitle: json['itinerary_title']?.toString(),
-        destination: json['destination']?.toString(),
-        startDate: DateTime.tryParse((json['start_date'] ?? '').toString()),
-        endDate: DateTime.tryParse((json['end_date'] ?? '').toString()),
-        visitDate: DateTime.tryParse((json['visit_date'] ?? '').toString()),
-        tags: ((json['tags'] as List?) ?? const [])
-            .map((item) => item.toString())
-            .toList(),
-        mediaUrls: ((json['media_urls'] as List?) ?? const [])
-            .map((item) => item.toString())
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        reviewStatus: json['review_status']?.toString(),
-        itineraryStatus: json['itinerary_status']?.toString(),
-        placeReviews: ((json['place_reviews'] as List?) ?? const [])
-            .whereType<Map>()
-            .map(
-              (item) =>
-                  ReviewedPlaceItem.fromJson(Map<String, dynamic>.from(item)),
-            )
-            .toList(),
-      );
-}
-
-class ReviewedPlaceItem {
-  final String title;
-  final String? imageUrl;
-  final double rating;
-  final String? content;
-  final DateTime? visitDate;
-  final List<String> tags;
-  final List<String> mediaUrls;
-  final DateTime? reviewedAt;
-
-  const ReviewedPlaceItem({
-    required this.title,
-    required this.imageUrl,
-    required this.rating,
-    required this.content,
-    required this.visitDate,
-    required this.tags,
-    required this.mediaUrls,
-    required this.reviewedAt,
-  });
-
-  factory ReviewedPlaceItem.fromJson(Map<String, dynamic> json) =>
-      ReviewedPlaceItem(
-        title: (json['place_name'] ?? 'Địa điểm').toString(),
-        imageUrl: json['place_image_url']?.toString(),
-        rating: (json['rating'] as num?)?.toDouble() ?? 0,
-        content: json['content']?.toString(),
-        visitDate: DateTime.tryParse((json['visit_date'] ?? '').toString()),
-        tags: ((json['tags'] as List?) ?? const [])
-            .map((item) => item.toString())
-            .toList(),
-        mediaUrls: ((json['media_urls'] as List?) ?? const [])
-            .map((item) => item.toString())
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        reviewedAt: DateTime.tryParse((json['reviewed_at'] ?? '').toString()),
-      );
-}
-
-class ReviewCatalog {
-  final List<ReviewCatalogItem> pending;
-  final List<ReviewCatalogItem> reviewed;
-  const ReviewCatalog({required this.pending, required this.reviewed});
-}
+export 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 
 abstract class ReviewDataSource {
   Future<ReviewCatalog> getReviewCatalog();
-  Future<ItineraryReviewModel> getItineraryForReview(String itineraryId);
-  Future<SubmittedReviewData> getSubmittedReview(String itineraryId);
+  Future<ItineraryReviewModel> getItineraryForReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  });
+  Future<SubmittedReviewData> getSubmittedReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  });
   Future<ItineraryReviewSummary> getReviewSummary(String itineraryId);
   Future<ItineraryReviewPopupData> getPopupData(String itineraryId);
   Future<void> dismissPopup(String itineraryId);
@@ -379,11 +102,15 @@ class RemoteReviewDataSource implements ReviewDataSource {
   }
 
   @override
-  Future<ItineraryReviewModel> getItineraryForReview(String itineraryId) async {
+  Future<ItineraryReviewModel> getItineraryForReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  }) async {
     final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itinerary-reviews/$itineraryId/detail',
       queryParameters: {'tourist_id': touristId},
+      options: forceRefresh ? _client.forceRefreshOptions : null,
     );
 
     final data = response.data as Map<String, dynamic>;
@@ -409,6 +136,9 @@ class RemoteReviewDataSource implements ReviewDataSource {
               imageUrl: (item['place_image_url'] ?? '').toString(),
               day: _parseDayLabel((item['day_label'] ?? '').toString()),
               placeId: item['place_id']?.toString(),
+              categoryId: item['category_id']?.toString(),
+              isVisited: item['is_visited'] == true,
+              hasReview: item['has_review'] == true,
               rating: (item['rating'] as num?)?.toDouble(),
               reviewText: item['content']?.toString(),
             ),
@@ -419,11 +149,15 @@ class RemoteReviewDataSource implements ReviewDataSource {
   }
 
   @override
-  Future<SubmittedReviewData> getSubmittedReview(String itineraryId) async {
+  Future<SubmittedReviewData> getSubmittedReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  }) async {
     final touristId = await AuthUtils.requireCurrentUserId();
     final response = await _client.dio.get(
       '/itinerary-reviews/$itineraryId/review-detail',
       queryParameters: {'tourist_id': touristId},
+      options: forceRefresh ? _client.forceRefreshOptions : null,
     );
     final data = response.data as Map<String, dynamic>;
     final itinerary = (data['itinerary'] as Map<String, dynamic>?) ?? const {};
@@ -527,19 +261,10 @@ class RemoteReviewDataSource implements ReviewDataSource {
   }) async {
     final touristId = await AuthUtils.requireCurrentUserId();
 
-    // Để pass qua @IsUUID('4') của NestJS trong chế độ Demo
-    final isDemo = AppConfig.kUseMockData;
-    final validItineraryId = isDemo
-        ? '11111111-1111-4111-a111-111111111111'
-        : itineraryId;
-    final validTouristId = isDemo
-        ? '22222222-2222-4222-a222-222222222222'
-        : touristId;
-
     await _client.dio.post(
-      '/itinerary-reviews/$validItineraryId/submit',
+      '/itinerary-reviews/$itineraryId/submit',
       data: {
-        'tourist_id': validTouristId,
+        'tourist_id': touristId,
         if (overallRating != null) 'overall_rating': overallRating.round(),
         if (overallContent != null && overallContent.trim().isNotEmpty)
           'overall_content': overallContent,
@@ -549,9 +274,7 @@ class RemoteReviewDataSource implements ReviewDataSource {
           'place_reviews': placeReviews
               .map(
                 (item) => {
-                  'itinerary_detail_id': isDemo
-                      ? '33333333-3333-4333-a333-333333333333'
-                      : item.itineraryDetailId,
+                  'itinerary_detail_id': item.itineraryDetailId,
                   'rating': item.rating,
                   if (item.content != null && item.content!.trim().isNotEmpty)
                     'content': item.content,
@@ -592,19 +315,14 @@ class RemoteReviewDataSource implements ReviewDataSource {
     List<String> tags = const [],
     List<String> images = const [],
   }) async {
-    final touristId = await AuthUtils.requireCurrentUserId();
-
-    final isDemo = AppConfig.kUseMockData;
-    final validTouristId = isDemo ? '22222222-2222-4222-a222-222222222222' : touristId;
-    final validPlaceId = isDemo ? '33333333-3333-4333-a333-333333333333' : placeId;
+    final normalizedItineraryId = itineraryId?.trim() ?? '';
 
     await _client.dio.post(
       '/reviews',
       data: {
-        'tourist_id': validTouristId,
-        'place_id': validPlaceId,
-        if (itineraryId != null)
-          'itinerary_id': isDemo ? '11111111-1111-4111-a111-111111111111' : itineraryId,
+        'place_id': placeId,
+        if (normalizedItineraryId.isNotEmpty)
+          'itinerary_id': normalizedItineraryId,
         'rating': rating.round(),
         if (content != null && content.trim().isNotEmpty) 'content': content,
         if (tags.isNotEmpty) 'tags': tags,
@@ -624,20 +342,15 @@ class RemoteReviewDataSource implements ReviewDataSource {
       return const [];
     }
 
-    final isDemo = AppConfig.kUseMockData;
-    final validItineraryId = isDemo
-        ? '11111111-1111-4111-a111-111111111111'
-        : itineraryId;
+    final normalizedItineraryDetailId = itineraryDetailId?.trim() ?? '';
 
     final response = await _client.dio.post(
       '/upload/reviews/presigned-urls',
       data: {
         'scope': scope,
-        'itinerary_id': validItineraryId,
-        if (itineraryDetailId != null)
-          'itinerary_detail_id': isDemo
-              ? '33333333-3333-4333-a333-333333333333'
-              : itineraryDetailId,
+        'itinerary_id': itineraryId,
+        if (normalizedItineraryDetailId.isNotEmpty)
+          'itinerary_detail_id': normalizedItineraryDetailId,
         'files': files
             .map(
               (file) => {
@@ -689,4 +402,3 @@ class RemoteReviewDataSource implements ReviewDataSource {
     );
   }
 }
-

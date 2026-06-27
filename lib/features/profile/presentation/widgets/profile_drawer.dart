@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
@@ -34,7 +35,7 @@ class ProfileDrawer extends StatelessWidget {
         ),
       ),
       child: BlocProvider(
-        create: (_) => sl<ProfileCubit>()..loadProfile(),
+        create: (_) => sl<ProfileCubit>()..loadProfile(includeActivities: true),
         child: const _DrawerContent(),
       ),
     );
@@ -89,19 +90,7 @@ class _DrawerContent extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.blobLight, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      color: AppColors.primary,
-                      size: 28,
-                    ),
-                  ),
+                  _ProfileDrawerAvatar(avatarUrl: profile.avatarUrl),
                   const SizedBox(width: 16),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,6 +226,54 @@ class _DrawerContent extends StatelessWidget {
   }
 }
 
+class _ProfileDrawerAvatar extends StatelessWidget {
+  final String avatarUrl;
+
+  const _ProfileDrawerAvatar({required this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedUrl = avatarUrl.trim();
+
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.blobLight, width: 2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: normalizedUrl.isEmpty
+          ? const _ProfileAvatarFallback()
+          : CachedNetworkImage(
+              imageUrl: normalizedUrl,
+              fit: BoxFit.cover,
+              fadeInDuration: const Duration(milliseconds: 120),
+              placeholder: (context, imageUrl) =>
+                  const _ProfileAvatarFallback(),
+              errorWidget: (context, imageUrl, error) =>
+                  const _ProfileAvatarFallback(),
+            ),
+    );
+  }
+}
+
+class _ProfileAvatarFallback extends StatelessWidget {
+  const _ProfileAvatarFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.blobLight.withValues(alpha: 0.22),
+      child: const Icon(
+        Icons.person_outline,
+        color: AppColors.primary,
+        size: 28,
+      ),
+    );
+  }
+}
+          
 class _PillHeader extends StatelessWidget {
   final IconData icon;
   final String label;

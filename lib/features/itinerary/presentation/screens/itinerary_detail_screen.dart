@@ -26,7 +26,6 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/day_selector_chip.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/timeline_activity_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/public_visibility_switch.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
@@ -35,7 +34,10 @@ import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_r
 import 'package:travel_advisor_mobile/features/review/domain/entities/location_review_entity.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/constants/review_tags.dart'
+    show getTagsForCategory;
 import 'package:travel_advisor_mobile/features/review/presentation/screens/place_review_screen.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
 import '../widgets/itinerary_map_view.dart';
 import '../widgets/replace_place_sheet.dart';
 import '../widgets/add_place_sheet.dart';
@@ -69,6 +71,20 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   final Map<String, GlobalKey> _activityKeys = {};
   final Set<String> _openingReviewActivityIds = <String>{};
   String? _highlightedActivityId;
+
+  late final ReviewCubit _sharedReviewCubit;
+  Map<String, bool> _hasReviewById = {};
+  Map<String, bool> _isVisitedFromBackendById = {};
+  bool _reviewStatusLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sharedReviewCubit = sl<ReviewCubit>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadReviewStatuses();
+    });
+  }
 
   void _showAddPlaceScreen() {
     final state = context.read<ItineraryCubit>().state;
@@ -973,17 +989,27 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   Future<void> _onRateActivity(ItineraryActivityEntity activity) async {
-    if (_openingReviewActivityIds.contains(activity.id)) {
-      return;
-    }
+    if (_openingReviewActivityIds.contains(activity.id)) return;
     setState(() => _openingReviewActivityIds.add(activity.id));
-    final reviewCubit = sl<ReviewCubit>();
 
     try {
-      await reviewCubit.loadReviewData(widget.itineraryId);
+      // Nếu địa điểm đã có review → mở màn hình xem (read-only)
+      if (_hasReviewById[activity.id] == true) {
+        await openReviewedPlaceReview(
+          context,
+          itineraryId: widget.itineraryId,
+          itineraryDetailId: activity.id,
+        );
+        return;
+      }
+
+      // Viết review mới — dùng shared cubit đã preload
+      if (_sharedReviewCubit.state is! ReviewLoaded) {
+        await _sharedReviewCubit.loadReviewData(widget.itineraryId);
+      }
       if (!mounted) return;
 
-      final state = reviewCubit.state;
+      final state = _sharedReviewCubit.state;
       if (state is! ReviewLoaded) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -994,8 +1020,14 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         return;
       }
 
+      // Lấy categoryId từ detail đã load để hiển thị tag đúng danh mục
+      final categoryId = state.itinerary.locations
+          .where((l) => l.id == activity.id)
+          .firstOrNull
+          ?.categoryId;
+
       if (!state.itinerary.locations.any((loc) => loc.id == activity.id)) {
-        reviewCubit.ensureLocationAvailable(
+        _sharedReviewCubit.ensureLocationAvailable(
           LocationReviewEntity(
             id: activity.id,
             placeId: activity.placeId,
@@ -1003,24 +1035,26 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             imageUrl: activity.imageUrl,
             day: _selectedDay,
             isVisited: true,
-            rating: activity.rating,
           ),
         );
       }
+
       final submitted = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
           builder: (_) => PlaceReviewScreen(
             locationId: activity.id,
-            reviewCubit: reviewCubit,
+            reviewCubit: _sharedReviewCubit,
+            submitOnSave: true,
+            itineraryId: widget.itineraryId,
+            reviewTags: getTagsForCategory(categoryId),
           ),
         ),
       );
 
       if (submitted == true) {
-        await reviewCubit.submitReview(widget.itineraryId);
         if (!mounted) return;
-        setState(() {});
+        setState(() => _hasReviewById[activity.id] = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đã lưu đánh giá địa điểm'),
@@ -1038,10 +1072,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         ),
       );
     } finally {
-      await reviewCubit.close();
-      if (mounted) {
-        setState(() => _openingReviewActivityIds.remove(activity.id));
-      }
+      if (mounted) setState(() => _openingReviewActivityIds.remove(activity.id));
     }
   }
 
@@ -1366,7 +1397,34 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _sharedReviewCubit.close();
     super.dispose();
+  }
+
+  Future<void> _loadReviewStatuses() async {
+    if (_reviewStatusLoading) return;
+    _reviewStatusLoading = true;
+    try {
+      await _sharedReviewCubit.loadReviewData(widget.itineraryId);
+      if (!mounted) return;
+      final state = _sharedReviewCubit.state;
+      if (state is ReviewLoaded) {
+        final hasReviewMap = <String, bool>{};
+        final isVisitedMap = <String, bool>{};
+        for (final loc in state.itinerary.locations) {
+          hasReviewMap[loc.id] = loc.hasReview;
+          isVisitedMap[loc.id] = loc.isVisited;
+        }
+        setState(() {
+          _hasReviewById = hasReviewMap;
+          _isVisitedFromBackendById = isVisitedMap;
+        });
+      }
+    } catch (_) {
+      // Non-fatal: buttons fall back to default state
+    } finally {
+      _reviewStatusLoading = false;
+    }
   }
 
   void _showReorderSuggestionBanner() {
@@ -1455,6 +1513,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             onDeleteActivity: _onDeleteActivity,
             onRateActivity: _onRateActivity,
             openingReviewActivityIds: _openingReviewActivityIds,
+            reviewHasReviewById: _hasReviewById,
+            reviewIsVisitedById: _isVisitedFromBackendById,
             onEditTime: _onEditTime,
             onDirectionTap: _launchDirections,
             onShareTap: _showShareSheet,
@@ -1762,7 +1822,7 @@ class _LazyMapPreview extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Ngày ${day.dayNumber} • $pointCount điểm / Bản đồ sẽ chỉ tải khi bạn cần xem tuyến đường.',
+                      'Ngày ${day.dayNumber} • $pointCount điểm / Xem chi tiết hành trình trên bản đồ.',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -1868,6 +1928,8 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity) onDeleteActivity;
   final Function(ItineraryActivityEntity) onRateActivity;
   final Set<String> openingReviewActivityIds;
+  final Map<String, bool> reviewHasReviewById;
+  final Map<String, bool> reviewIsVisitedById;
   final Function(ItineraryActivityEntity, bool, bool) onEditTime;
   final Function(ItineraryActivityEntity, ItineraryActivityEntity)
   onDirectionTap;
@@ -1898,6 +1960,8 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onDeleteActivity,
     required this.onRateActivity,
     required this.openingReviewActivityIds,
+    required this.reviewHasReviewById,
+    required this.reviewIsVisitedById,
     required this.onEditTime,
     required this.onDirectionTap,
     required this.onShareTap,
@@ -1971,7 +2035,6 @@ class _ItineraryDetailView extends StatelessWidget {
               (d) => d.dayNumber == selectedDay,
               orElse: () => itin.days.first,
             );
-            final canReview = _canReviewItinerary(itin);
 
             return Stack(
               children: [
@@ -2084,20 +2147,6 @@ class _ItineraryDetailView extends StatelessWidget {
                                 ),
                                 const SizedBox(width: AppSizes.s12),
                               ],
-                              if (canReview) ...[
-                                _floatingCircleButton(Icons.star_outline_rounded, () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => ItineraryRatingPopup(
-                                      itineraryId: itin.id,
-                                      itineraryTitle: itin.title,
-                                      totalLocations: itin.totalLocations,
-                                      visitedLocations: itin.visitedLocations,
-                                    ),
-                                  );
-                                }),
-                                const SizedBox(width: AppSizes.s12),
-                              ],
                               _floatingCircleButton(
                                 isEditMode ? Icons.check_rounded : Icons.edit_outlined,
                                 onEditModeTap,
@@ -2189,10 +2238,6 @@ class _ItineraryDetailView extends StatelessWidget {
         ),
       );
     }
-  }
-
-  bool _canReviewItinerary(ItineraryDetailEntity itin) {
-    return itin.status.toUpperCase() == 'COMPLETED';
   }
 
   Widget _buildContentCard(
@@ -2384,6 +2429,9 @@ class _ItineraryDetailView extends StatelessWidget {
                           )
                         : null,
                     isCheckingIn: tracking.checkingInDetailId == activity.id,
+                    hasReview: reviewHasReviewById[activity.id],
+                    backendIsVisited:
+                        reviewIsVisitedById[activity.id] ?? false,
                   );
                 }).toList(),
               );

@@ -27,32 +27,8 @@ class RemoteProfileDataSource implements ProfileDataSource {
 
   @override
   Future<ProfileModel> getProfile() async {
-    final touristId = await AuthUtils.requireCurrentUserId();
-    final responses = await Future.wait([
-      dioClient.dio.get('/profile/tourist/me'),
-      dioClient.dio.get(
-        '/reviews',
-        queryParameters: {'tourist_id': touristId, 'status': 'pending'},
-      ),
-    ]);
-    final profile = _parseProfileData(
-      responses[0].data as Map<String, dynamic>,
-    );
-    final reviewData = Map<String, dynamic>.from(responses[1].data as Map);
-    final counts = reviewData['counts'] is Map
-        ? Map<String, dynamic>.from(reviewData['counts'] as Map)
-        : const <String, dynamic>{};
-    return ProfileModel(
-      id: profile.id,
-      name: profile.name,
-      email: profile.email,
-      avatarUrl: profile.avatarUrl,
-      membershipTier: profile.membershipTier,
-      reviewPendingCount: (counts['pending'] as num?)?.toInt() ?? 0,
-      gender: profile.gender,
-      phoneNumber: profile.phoneNumber,
-      travelPreferences: profile.travelPreferences,
-    );
+    final profileResponse = await dioClient.dio.get('/profile/tourist/me');
+    return _parseProfileData(profileResponse.data as Map<String, dynamic>);
   }
 
   @override

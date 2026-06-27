@@ -9,20 +9,55 @@ class ReviewRepositoryImpl implements ReviewRepository {
 
   ReviewRepositoryImpl(this.dataSource);
 
-  @override
-  Future<ReviewCatalog> getReviewCatalog() => dataSource.getReviewCatalog();
+  ReviewCatalog? _catalogCache;
+  DateTime? _catalogCachedAt;
+  static const Duration _catalogTtl = Duration(seconds: 60);
+  final Set<String> _dirtyItineraryIds = <String>{};
 
   @override
-  Future<ItineraryReviewEntity> getItineraryForReview(
-    String itineraryId,
-  ) async {
-    final model = await dataSource.getItineraryForReview(itineraryId);
-    return model.toEntity();
+  Future<ReviewCatalog> getReviewCatalog() async {
+    final now = DateTime.now();
+    if (_catalogCache != null &&
+        _catalogCachedAt != null &&
+        now.difference(_catalogCachedAt!) < _catalogTtl) {
+      return _catalogCache!;
+    }
+    final result = await dataSource.getReviewCatalog();
+    _catalogCache = result;
+    _catalogCachedAt = now;
+    return result;
   }
 
   @override
-  Future<SubmittedReviewData> getSubmittedReview(String itineraryId) {
-    return dataSource.getSubmittedReview(itineraryId);
+  Future<ItineraryReviewEntity> getItineraryForReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  }) async {
+    final shouldRefresh =
+        forceRefresh || _dirtyItineraryIds.contains(itineraryId);
+    final model = await dataSource.getItineraryForReview(
+      itineraryId,
+      forceRefresh: shouldRefresh,
+    );
+    final entity = model.toEntity();
+    if (shouldRefresh &&
+        !entity.locations.any((location) => location.hasReview)) {
+      _dirtyItineraryIds.remove(itineraryId);
+    }
+    return entity;
+  }
+
+  @override
+  Future<SubmittedReviewData> getSubmittedReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  }) {
+    final shouldRefresh =
+        forceRefresh || _dirtyItineraryIds.remove(itineraryId);
+    return dataSource.getSubmittedReview(
+      itineraryId,
+      forceRefresh: shouldRefresh,
+    );
   }
 
   @override
@@ -49,8 +84,9 @@ class ReviewRepositoryImpl implements ReviewRepository {
     bool applyAllPlaces = false,
     List<SubmitPlaceReviewInput> placeReviews = const [],
     List<SubmitReviewMediaInput> media = const [],
-  }) {
-    return dataSource.submitItineraryReview(
+  }) async {
+    _catalogCache = null;
+    await dataSource.submitItineraryReview(
       itineraryId: itineraryId,
       overallRating: overallRating,
       overallContent: overallContent,
@@ -59,6 +95,7 @@ class ReviewRepositoryImpl implements ReviewRepository {
       placeReviews: placeReviews,
       media: media,
     );
+    _dirtyItineraryIds.add(itineraryId);
   }
 
   @override
@@ -69,8 +106,9 @@ class ReviewRepositoryImpl implements ReviewRepository {
     String? content,
     List<String> tags = const [],
     List<String> images = const [],
-  }) {
-    return dataSource.submitPlaceReview(
+  }) async {
+    _catalogCache = null;
+    await dataSource.submitPlaceReview(
       placeId: placeId,
       itineraryId: itineraryId,
       rating: rating,
@@ -78,6 +116,10 @@ class ReviewRepositoryImpl implements ReviewRepository {
       tags: tags,
       images: images,
     );
+    final normalizedItineraryId = itineraryId?.trim() ?? '';
+    if (normalizedItineraryId.isNotEmpty) {
+      _dirtyItineraryIds.add(normalizedItineraryId);
+    }
   }
 
   @override

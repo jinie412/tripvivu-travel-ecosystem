@@ -5,8 +5,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
-import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/constants/review_tags.dart'
+    show getTagsForCategory;
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
+import 'package:travel_advisor_mobile/features/review/presentation/screens/place_review_screen.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
 
 bool _isVideoUrl(String url) {
@@ -40,25 +45,113 @@ Future<void> openReviewItem(
     );
     return;
   }
+  // Pending place: mở PlaceReviewScreen trực tiếp, không qua RateItineraryScreen
+  await openPendingPlaceReview(context, item);
+}
 
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => RateItineraryScreen(
-        itineraryId: item.itineraryId,
-        popExtraOnSubmit: false,
+/// Mở PlaceReviewScreen cho một địa điểm đang chờ đánh giá (pending place).
+///
+/// Load detail itinerary theo yêu cầu (chỉ khi user tap), tìm đúng location
+/// để lấy categoryId cho tag, rồi push PlaceReviewScreen với submitOnSave: true
+/// để submit DB ngay khi user bấm Gửi đánh giá.
+///
+/// Cubit được tạo cục bộ và đóng sau khi route pop — không chia sẻ với route khác.
+Future<void> openPendingPlaceReview(
+  BuildContext context,
+  ReviewCatalogItem item,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final itineraryId = item.itineraryId;
+  final detailId = item.itineraryDetailId;
+
+  if (itineraryId.isEmpty || detailId == null || detailId.isEmpty) {
+    messenger?.showSnackBar(
+      const SnackBar(
+        content: Text('Không tìm thấy thông tin địa điểm cần đánh giá'),
+        behavior: SnackBarBehavior.floating,
       ),
-    ),
-  );
+    );
+    return;
+  }
+
+  final cubit = sl<ReviewCubit>();
+  try {
+    await cubit.loadReviewData(itineraryId);
+    if (!context.mounted) return;
+
+    final state = cubit.state;
+    if (state is! ReviewLoaded) {
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('Không thể tải dữ liệu đánh giá'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final location = state.itinerary.locations
+        .where((l) => l.id == detailId)
+        .firstOrNull;
+
+    if (location == null) {
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('Không tìm thấy địa điểm trong lịch trình'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Địa điểm đã review → chỉ xem read-only, không dùng cubit nữa
+    if (location.hasReview) {
+      await openReviewedPlaceReview(
+        context,
+        itineraryId: itineraryId,
+        itineraryDetailId: detailId,
+      );
+      return;
+    }
+
+    // Chưa review → mở PlaceReviewScreen với cubit này, submit DB ngay khi Gửi
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlaceReviewScreen(
+          locationId: detailId,
+          reviewCubit: cubit,
+          submitOnSave: true,
+          itineraryId: itineraryId,
+          reviewTags: getTagsForCategory(location.categoryId),
+        ),
+      ),
+    );
+  } catch (e) {
+    if (context.mounted) {
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text('Không thể mở đánh giá: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  } finally {
+    // Đóng cubit sau khi route pop (hoặc khi có lỗi), tránh rò rỉ state
+    cubit.close();
+  }
 }
 
 Future<void> openReviewedItineraryReview(
   BuildContext context,
-  String itineraryId,
-) async {
+  String itineraryId, {
+  SubmittedReviewData? cachedData,
+}) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
-    final data = await sl<ReviewRepository>().getSubmittedReview(itineraryId);
+    final data =
+        cachedData ??
+        await sl<ReviewRepository>().getSubmittedReview(itineraryId);
     if (!context.mounted) return;
     await openReviewItem(context, reviewCatalogItemFromSubmittedReview(data));
   } catch (e) {
@@ -73,10 +166,14 @@ Future<void> openReviewedPlaceReview(
   BuildContext context, {
   required String itineraryId,
   required String itineraryDetailId,
+  SubmittedReviewData? cachedData,
 }) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
-    final data = await sl<ReviewRepository>().getSubmittedReview(itineraryId);
+    // Dùng cache nếu có, tránh gọi API thêm lần nữa
+    final data =
+        cachedData ??
+        await sl<ReviewRepository>().getSubmittedReview(itineraryId);
     SubmittedPlaceReview? place;
     for (final item in data.places) {
       if (item.itineraryDetailId == itineraryDetailId) {
@@ -127,7 +224,12 @@ ReviewCatalogItem reviewCatalogItemFromSubmittedReview(
     itineraryStatus: data.itineraryStatus,
     placeReviews: data.places
         .where((place) => place.rating != null)
-        .map((place) => reviewedPlaceItemFromSubmittedPlace(place))
+        .map(
+          (place) => reviewedPlaceItemFromSubmittedPlace(
+            place,
+            startDate: data.startDate,
+          ),
+        )
         .toList(),
   );
 }
@@ -152,7 +254,7 @@ ReviewCatalogItem reviewCatalogItemFromSubmittedPlace(
     destination: data.destination,
     startDate: _parseDate(data.startDate),
     endDate: _parseDate(data.endDate),
-    visitDate: null,
+    visitDate: _computeVisitDate(data.startDate, place.dayLabel),
     tags: place.tags,
     mediaUrls: place.mediaUrls,
     reviewStatus: null,
@@ -162,14 +264,15 @@ ReviewCatalogItem reviewCatalogItemFromSubmittedPlace(
 }
 
 ReviewedPlaceItem reviewedPlaceItemFromSubmittedPlace(
-  SubmittedPlaceReview place,
-) {
+  SubmittedPlaceReview place, {
+  String startDate = '',
+}) {
   return ReviewedPlaceItem(
     title: place.placeName,
     imageUrl: place.placeImageUrl,
     rating: place.rating ?? 0,
     content: place.content,
-    visitDate: null,
+    visitDate: _computeVisitDate(startDate, place.dayLabel),
     tags: place.tags,
     mediaUrls: place.mediaUrls,
     reviewedAt: place.reviewedAt,
@@ -177,6 +280,14 @@ ReviewedPlaceItem reviewedPlaceItemFromSubmittedPlace(
 }
 
 DateTime? _parseDate(String value) => DateTime.tryParse(value);
+
+DateTime? _computeVisitDate(String startDate, String dayLabel) {
+  final start = DateTime.tryParse(startDate);
+  if (start == null) return null;
+  final match = RegExp(r'(\d+)').firstMatch(dayLabel.toUpperCase());
+  final day = int.tryParse(match?.group(1) ?? '') ?? 1;
+  return start.add(Duration(days: day - 1));
+}
 
 class ReviewCatalogScreen extends StatefulWidget {
   final int initialTab;
@@ -310,13 +421,28 @@ class _ReviewList extends StatelessWidget {
         ? items
         : items.where((e) => e.kind == kind).toList();
     if (visible.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            'Chưa có đánh giá trong mục này.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Color(0xFF6B7280)),
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.rate_review_outlined,
+                size: 44,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Chưa có đánh giá trong mục này.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -539,7 +665,7 @@ class _ItineraryReviewDetail extends StatelessWidget {
           const SizedBox(height: 12),
           ...item.placeReviews.map(
             (place) =>
-                _ReviewedPlaceCard(place: place, itineraryTitle: item.title),
+                ReviewedPlaceCard(place: place, itineraryTitle: item.title),
           ),
         ],
         _ReviewTimestamp(reviewedAt: item.reviewedAt),
@@ -548,10 +674,14 @@ class _ItineraryReviewDetail extends StatelessWidget {
   }
 }
 
-class _ReviewedPlaceCard extends StatelessWidget {
+class ReviewedPlaceCard extends StatelessWidget {
   final ReviewedPlaceItem place;
   final String itineraryTitle;
-  const _ReviewedPlaceCard({required this.place, required this.itineraryTitle});
+  const ReviewedPlaceCard({
+    super.key,
+    required this.place,
+    required this.itineraryTitle,
+  });
 
   @override
   Widget build(BuildContext context) => InkWell(
@@ -653,10 +783,7 @@ class _PlaceReviewDetail extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFFE5E7EB),
-              width: 1.0,
-            ),
+            border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
           ),
           child: Row(
             children: [
@@ -745,10 +872,7 @@ class _ReviewContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFFE5E7EB),
-            width: 1.0,
-          ),
+          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
         ),
         child: Text(
           content?.trim().isNotEmpty == true
@@ -1046,10 +1170,7 @@ class ReviewedPlaceScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFE5E7EB),
-                  width: 1.0,
-                ),
+                border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
               ),
               child: Row(
                 children: [

@@ -1,10 +1,16 @@
 import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
-import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 
 abstract class ReviewRepository {
   Future<ReviewCatalog> getReviewCatalog();
-  Future<ItineraryReviewEntity> getItineraryForReview(String itineraryId);
-  Future<SubmittedReviewData> getSubmittedReview(String itineraryId);
+  Future<ItineraryReviewEntity> getItineraryForReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  });
+  Future<SubmittedReviewData> getSubmittedReview(
+    String itineraryId, {
+    bool forceRefresh = false,
+  });
   Future<ItineraryReviewSummary> getReviewSummary(String itineraryId);
   Future<ItineraryReviewPopupData> getPopupData(String itineraryId);
   Future<void> dismissPopup(String itineraryId);
