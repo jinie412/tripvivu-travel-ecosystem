@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 import 'package:travel_advisor_mobile/features/auth/data/models/user_model.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/entities/login_result.dart';
 import 'package:travel_advisor_mobile/features/auth/domain/entities/user_entity.dart';
@@ -53,10 +53,8 @@ abstract class AuthDataSource {
 // ─────────────────────────────────────────────────────────────────────────────
 class RemoteAuthDataSource implements AuthDataSource {
   final DioClient _client;
-  final FlutterSecureStorage _storage;
 
-  RemoteAuthDataSource(this._client, {FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+  RemoteAuthDataSource(this._client);
 
   // ── Storage keys ────────────────────────────────────────────────────────────
   static const _kAccessToken = 'access_token';
@@ -256,9 +254,9 @@ class RemoteAuthDataSource implements AuthDataSource {
 
   @override
   Future<UserEntity?> restoreSession() async {
-    final accessToken = await _storage.read(key: _kAccessToken);
-    final refreshToken = await _storage.read(key: _kRefreshToken);
-    final cachedUserJson = await _storage.read(key: _kCachedUser);
+    final accessToken = await AuthStorage.read(_kAccessToken);
+    final refreshToken = await AuthStorage.read(_kRefreshToken);
+    final cachedUserJson = await AuthStorage.read(_kCachedUser);
 
     // Không có token hoặc user cache → chưa đăng nhập
     if (accessToken == null || refreshToken == null || cachedUserJson == null) {
@@ -281,9 +279,9 @@ class RemoteAuthDataSource implements AuthDataSource {
         if (newAccess == null || newAccess.isEmpty) return null;
 
         await Future.wait([
-          _storage.write(key: _kAccessToken, value: newAccess),
+          AuthStorage.write(_kAccessToken, newAccess),
           if (newRefresh != null && newRefresh.isNotEmpty)
-            _storage.write(key: _kRefreshToken, value: newRefresh),
+            AuthStorage.write(_kRefreshToken, newRefresh),
         ]);
       } catch (_) {
         await _clearStorage();
@@ -314,17 +312,17 @@ class RemoteAuthDataSource implements AuthDataSource {
     required UserModel userModel,
   }) async {
     await Future.wait([
-      _storage.write(key: _kAccessToken, value: accessToken),
-      _storage.write(key: _kRefreshToken, value: refreshToken),
-      _storage.write(key: _kCachedUser, value: jsonEncode(userModel.toJson())),
+      AuthStorage.write(_kAccessToken, accessToken),
+      AuthStorage.write(_kRefreshToken, refreshToken),
+      AuthStorage.write(_kCachedUser, jsonEncode(userModel.toJson())),
     ]);
   }
 
   Future<void> _clearStorage() async {
     await Future.wait([
-      _storage.delete(key: _kAccessToken),
-      _storage.delete(key: _kRefreshToken),
-      _storage.delete(key: _kCachedUser),
+      AuthStorage.delete(_kAccessToken),
+      AuthStorage.delete(_kRefreshToken),
+      AuthStorage.delete(_kCachedUser),
     ]);
   }
 

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_advisor_mobile/features/profile/data/models/activity_item_model.dart';
 import 'package:travel_advisor_mobile/features/profile/data/models/profile_model.dart';
@@ -22,7 +22,6 @@ abstract class ProfileDataSource {
 
 class RemoteProfileDataSource implements ProfileDataSource {
   final DioClient dioClient;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   RemoteProfileDataSource(this.dioClient);
 
@@ -114,7 +113,7 @@ class RemoteProfileDataSource implements ProfileDataSource {
   }
 
   Future<String?> _getCurrentUserId() async {
-    final accessToken = await _storage.read(key: 'access_token');
+    final accessToken = await AuthStorage.read('access_token');
     if (accessToken == null || accessToken.isEmpty) return null;
 
     final parts = accessToken.split('.');

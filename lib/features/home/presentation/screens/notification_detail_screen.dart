@@ -8,13 +8,10 @@ import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/notification_entity.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
-import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_state.dart';
-import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/place_review_screen.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_itinerary_screen.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/screens/review_catalog_screen.dart';
 
 class NotificationDetailScreen extends StatelessWidget {
   final String notificationId;
@@ -147,34 +144,36 @@ class NotificationDetailScreen extends StatelessWidget {
                   if (_canOpenReview(notification)) ...[
                     const SizedBox(height: AppSizes.s24),
                     ElevatedButton.icon(
-                      onPressed: () => _hasWrittenReview(notification)
-                          ? _viewReview(context, notification)
-                          : _openReview(context, notification),
+                      onPressed: _hasWrittenReview(notification)
+                          ? null
+                          : () => _openReview(context, notification),
                       icon: Icon(
                         _hasWrittenReview(notification)
-                            ? Icons.visibility_outlined
+                            ? Icons.check_circle_outline_rounded
                             : Icons.rate_review_outlined,
                       ),
                       label: Text(
                         _hasWrittenReview(notification)
-                            ? 'Xem đánh giá'
+                            ? 'Đã viết đánh giá'
                             : 'Viết đánh giá',
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _hasWrittenReview(notification)
-                            ? AppColors.primary.withValues(alpha: 0.1)
+                            ? const Color(0xFFE9F7EF)
                             : AppColors.primary,
                         foregroundColor: _hasWrittenReview(notification)
-                            ? AppColors.primary
+                            ? const Color(0xFF14804A)
                             : Colors.white,
+                        disabledBackgroundColor: const Color(0xFFE9F7EF),
+                        disabledForegroundColor: const Color(0xFF14804A),
                         elevation: 0,
                         minimumSize: const Size(double.infinity, 48),
                         shape: RoundedRectangleBorder(
                           side: _hasWrittenReview(notification)
                               ? BorderSide(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.35,
-                                  ),
+                                  color: const Color(
+                                    0xFF14804A,
+                                  ).withValues(alpha: 0.35),
                                 )
                               : BorderSide.none,
                           borderRadius: BorderRadius.circular(12),
@@ -214,14 +213,16 @@ class NotificationDetailScreen extends StatelessWidget {
       if (match.start > lastEnd) {
         spans.add(TextSpan(text: content.substring(lastEnd, match.start)));
       }
-      spans.add(TextSpan(
-        text: match.group(0),
-        style: const TextStyle(
-          decoration: TextDecoration.lineThrough,
-          decorationColor: Color(0xFFC0392B),
-          decorationThickness: 2,
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: const TextStyle(
+            decoration: TextDecoration.lineThrough,
+            decorationColor: Color(0xFFC0392B),
+            decorationThickness: 2,
+          ),
         ),
-      ));
+      );
       lastEnd = match.end;
     }
     if (lastEnd < content.length) {
@@ -254,48 +255,6 @@ class NotificationDetailScreen extends StatelessWidget {
       return notification.hasItineraryReview;
     }
     return notification.hasPlaceReview;
-  }
-
-  Future<void> _viewReview(
-    BuildContext context,
-    NotificationEntity notification,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-
-    try {
-      final catalog = await sl<ReviewRepository>().getReviewCatalog();
-      final isItinerary = _canOpenItineraryReview(notification);
-      ReviewCatalogItem? reviewedItem;
-
-      for (final item in catalog.reviewed) {
-        if (item.itineraryId != notification.itineraryId) continue;
-        if (isItinerary && item.isItinerary) {
-          reviewedItem = item;
-          break;
-        }
-        if (isItinerary || item.isItinerary) continue;
-
-        final detailMatches = notification.itineraryDetailId != null &&
-            item.itineraryDetailId == notification.itineraryDetailId;
-        final placeMatches = notification.placeId != null &&
-            item.placeId == notification.placeId;
-        if (detailMatches || placeMatches) {
-          reviewedItem = item;
-          break;
-        }
-      }
-
-      if (reviewedItem == null) {
-        throw StateError('Không tìm thấy nội dung đánh giá đã gửi.');
-      }
-      if (!context.mounted) return;
-
-      await openReviewItem(context, reviewedItem);
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Không thể tải đánh giá: $e')),
-      );
-    }
   }
 
   Future<void> _openReview(
@@ -388,8 +347,6 @@ class NotificationDetailScreen extends StatelessWidget {
     }
   }
 }
-
-
 
 class _DetailMessage extends StatelessWidget {
   final IconData icon;

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 
 /// Dựng một Dio "đứng một mình" cho các isolate nền (geofence callback /
 /// AlarmManager) — nơi không có DI của app và `flutter_dotenv` chưa load.
@@ -12,8 +12,7 @@ Future<Dio> buildTrackingDio(String baseUrl) async {
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
   ));
   try {
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
     if (token != null && token.isNotEmpty) {
       dio.options.headers['Authorization'] = 'Bearer $token';
     }

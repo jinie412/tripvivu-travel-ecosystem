@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 
 /// Shared utility for authentication-related operations
 class AuthUtils {
-  static const _storage = FlutterSecureStorage();
-
   /// Get the current authenticated user's ID from the JWT token stored in secure storage.
   /// 
   /// Returns the user ID if available, null otherwise.
@@ -14,7 +12,7 @@ class AuthUtils {
     if (AppConfig.kUseMockData) return 'dummy_tourist_id';
 
     try {
-      final accessToken = await _storage.read(key: 'access_token');
+      final accessToken = await AuthStorage.read('access_token');
       if (accessToken == null || accessToken.isEmpty) return null;
 
       final parts = accessToken.split('.');

@@ -24,6 +24,11 @@ class FcmService {
 
   /// Call once after Firebase.initializeApp() in main.dart.
   static Future<void> init() async {
+    if (kIsWeb) {
+      debugPrint('[FCM] Init skipped on web.');
+      return;
+    }
+
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
     // v21: initialize uses named parameter `settings`
@@ -66,6 +71,11 @@ class FcmService {
   /// Request permission and register FCM token for the given user.
   /// Call this after successful login / session restore.
   static Future<void> registerToken(String userId, DioClient dioClient) async {
+    if (kIsWeb) {
+      debugPrint('[FCM] Token registration skipped on web.');
+      return;
+    }
+
     try {
       final messaging = FirebaseMessaging.instance;
 
