@@ -1,4 +1,5 @@
 import { apiClient, extractResponseData } from './apiClient';
+import type { Order } from '@/types/order.types';
 
 export interface PlaceDetailResponse {
   id?: string;
@@ -60,15 +61,25 @@ export interface PlaceServiceItemResponse {
   is_active?: boolean | number | string;
   active?: boolean | number | string;
   status?: boolean | number | string;
+  image_url?: string | null;
+  imageUrl?: string | null;
+  photo?: string | null;
+  food_image?: string | null;
+  thumbnail?: string | null;
+  menu_image?: string | null;
+  item_image?: string | null;
+  photo_url?: string | null;
 }
 
 export interface PlaceServicesResponse {
   freeServices?: PlaceServiceItemResponse[];
   paidServices?: PlaceServiceItemResponse[];
+  menuItems?: PlaceServiceItemResponse[];
   total?: number;
   data?: {
     freeServices?: PlaceServiceItemResponse[];
     paidServices?: PlaceServiceItemResponse[];
+    menuItems?: PlaceServiceItemResponse[];
     total?: number;
   };
 }
@@ -77,10 +88,165 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null;
 };
 
-export const getOrdersByPlace = async (placeId: string): Promise<any[]> => {
+const textFrom = (...values: unknown[]): string => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+};
+
+export const normalizeOrderStatus = (orderOrStatus: unknown): string => {
+  const rawStatus = isRecord(orderOrStatus)
+    ? textFrom(
+      orderOrStatus.status,
+      orderOrStatus.order_status,
+      orderOrStatus.orderStatus,
+      orderOrStatus.status_name,
+      orderOrStatus.state,
+    )
+    : textFrom(orderOrStatus);
+  const status = rawStatus.toLowerCase().trim().replace(/[\s-]+/g, '_');
+
+  if (['new', 'created'].includes(status)) {
+    return 'new';
+  }
+  if (['pending', 'waiting', 'wait_confirm', 'waiting_confirm', 'awaiting_confirmation'].includes(status)) {
+    return 'pending';
+  }
+  if (['processing', 'confirmed', 'confirm', 'in_progress'].includes(status)) {
+    return 'processing';
+  }
+  if (['completed', 'complete', 'done', 'finished'].includes(status)) {
+    return 'completed';
+  }
+  if (['cancelled', 'canceled', 'cancel'].includes(status)) {
+    return 'cancelled';
+  }
+
+  return status;
+};
+
+export const isPendingOrder = (orderOrStatus: unknown): boolean => {
+  return normalizeOrderStatus(orderOrStatus) === 'pending';
+};
+
+const numberFrom = (...values: unknown[]): number => {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value.replace(/[^\d.-]/g, ''));
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  return 0;
+};
+
+const getNestedArray = (payload: unknown): unknown[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  const candidates = [
+    payload.orders,
+    payload.items,
+    payload.rows,
+    payload.results,
+    payload.data,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+    if (isRecord(candidate)) {
+      const nested = getNestedArray(candidate);
+      if (nested.length > 0) {
+        return nested;
+      }
+    }
+  }
+
+  return [];
+};
+
+const getOrderFoodsText = (order: Record<string, unknown>): string => {
+  const foodsText = textFrom(order.foods, order.food_names, order.service_names, order.items_text);
+  if (foodsText) {
+    return foodsText;
+  }
+
+  const rawItems = Array.isArray(order.foods)
+    ? order.foods
+    : Array.isArray(order.items)
+      ? order.items
+      : Array.isArray(order.order_items)
+        ? order.order_items
+        : [];
+
+  return rawItems
+    .map((item) => {
+      if (!isRecord(item)) {
+        return '';
+      }
+
+      const food = isRecord(item.food) ? item.food : isRecord(item.food_item) ? item.food_item : {};
+      const name = textFrom(
+        item.food_name,
+        item.name,
+        item.service_name,
+        food.name,
+        food.food_name,
+        food.service_name,
+      );
+      const quantity = numberFrom(item.quantity, item.qty);
+      return name ? `${name}${quantity > 1 ? ` x${quantity}` : ''}` : '';
+    })
+    .filter(Boolean)
+    .join(', ');
+};
+
+const normalizeOrder = (order: unknown): Order => {
+  const data = isRecord(order) ? order : {};
+  const orderId = textFrom(data.order_id, data.orderId, data.id);
+
+  return {
+    ...(data as Partial<Order>),
+    order_id: orderId,
+    id: textFrom(data.id) || orderId,
+    ordered_time: textFrom(data.ordered_time, data.orderedAt, data.ordered_at, data.created_at, data.createdAt),
+    place_name: textFrom(data.place_name, data.placeName, data.restaurant_name, data.location_name) || 'Chưa rõ địa điểm',
+    placeId: textFrom(data.placeId, data.place_id, data.location_id),
+    customer_name: textFrom(data.customer_name, data.customerName, data.tourist_name, data.user_name) || 'Khách hàng',
+    foods: getOrderFoodsText(data),
+    total_amount: numberFrom(data.total_amount, data.totalAmount, data.total, data.amount),
+    status: normalizeOrderStatus(data),
+    notes: textFrom(data.notes) || null,
+    tourist_id: textFrom(data.tourist_id, data.touristId),
+  };
+};
+
+export const getOrdersByPlace = async (placeId: string): Promise<Order[]> => {
   const res = await apiClient.get('/business/orders', { params: { placeId } });
-  const payload = extractResponseData<any[]>(res as any);
-  return Array.isArray(payload) ? payload : [];
+  const payload = extractResponseData<unknown>(res as any);
+  const all = getNestedArray(payload).map(normalizeOrder).filter((order) => order.order_id);
+
+  // Deduplicate by order_id — backend JOIN can return multiple rows per order
+  const seen = new Set<string>();
+  return all.filter((order) => {
+    if (seen.has(order.order_id)) return false;
+    seen.add(order.order_id);
+    return true;
+  });
 };
 
 export const getOrderDetail = async (orderId: string): Promise<any> => {
@@ -90,9 +256,21 @@ export const getOrderDetail = async (orderId: string): Promise<any> => {
   return extractResponseData<any>(res as any);
 };
 
-export const getDashboardStats = async (vendorId: string): Promise<any> => {
+export interface DashboardPeriodParams {
+  month?: number;
+  year?: number;
+}
+
+export const getDashboardStats = async (
+  vendorId: string,
+  period: DashboardPeriodParams = {},
+): Promise<any> => {
   const res = await apiClient.get('/business/dashboard', {
-    params: { vendorId }
+    params: {
+      vendorId,
+      month: period.month,
+      year: period.year,
+    },
   });
   return extractResponseData<any>(res as any);
 };
@@ -114,6 +292,21 @@ export const getPlaceDetail = async (placeId: string) => {
   return payload as PlaceDetailResponse | undefined;
 };
 
+export const fetchAllServices = async (): Promise<Array<{ id: string; name: string; description?: string }>> => {
+  try {
+    const res = await apiClient.get('/services');
+    const data = extractResponseData<any>(res as any);
+    const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+    return list.map((s: any) => ({
+      id: String(s.id ?? s.service_id ?? ''),
+      name: String(s.name ?? s.service_name ?? ''),
+      description: String(s.description ?? s.service_description ?? ''),
+    })).filter((s: any) => s.id && s.name);
+  } catch {
+    return [];
+  }
+};
+
 export const addNewPlace = async (payload: {
   p_name: string;
   p_address: string;
@@ -122,13 +315,14 @@ export const addNewPlace = async (payload: {
   p_lng: number;
   p_vendor_id?: string;
   p_email?: string;
+  p_phone?: string;
   p_type_id?: string;
   p_type_name?: string;
   p_categories: string[];
   p_open_time?: string;
   p_close_time?: string;
   p_description?: string;
-  p_services: Array<{ name: string; description: string }>;
+  p_services: Array<{ name: string; description: string; service_id?: string }>;
   p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
   p_images?: string[];
 }): Promise<any> => {
@@ -141,10 +335,33 @@ export const addNewPlace = async (payload: {
   }
 };
 
-export const getFoodPerformance = async (vendorId: string): Promise<any[]> => {
-  const res = await apiClient.get('/business/food-performance', { params: { vendorId } });
-  const payload = extractResponseData<any[]>(res as any);
-  return Array.isArray(payload) ? payload : [];
+export const getFoodPerformance = async (
+  vendorId: string,
+  period: DashboardPeriodParams = {},
+): Promise<any[]> => {
+  const res = await apiClient.get('/business/food-performance', {
+    params: {
+      vendorId,
+      month: period.month,
+      year: period.year,
+    },
+  });
+  const payload = extractResponseData<any[] | { items?: any[]; data?: any[] }>(res as any);
+
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload.items)) {
+      return payload.items;
+    }
+    if (Array.isArray(payload.data)) {
+      return payload.data;
+    }
+  }
+
+  return [];
 };
 
 export const updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
@@ -203,6 +420,60 @@ export const uploadFoodDraftImage = async (file: File) => {
   });
 
   return response.data.url || response.data;
+};
+
+export const addPlaceMenuItem = async (payload: {
+  placeId: string;
+  name: string;
+  description?: string;
+  price: number;
+}): Promise<{ message?: string; item?: { id: string; name: string; description: string | null; price: number } }> => {
+  const res = await apiClient.post('/business/menu-item', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const updatePlaceMenuItem = async (payload: {
+  itemId: string;
+  placeId: string;
+  name: string;
+  description?: string;
+  price: number;
+}): Promise<any> => {
+  const res = await apiClient.put('/business/menu-item', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const deletePlaceMenuItem = async (payload: {
+  itemId: string;
+  placeId: string;
+}): Promise<any> => {
+  const res = await apiClient.delete('/business/menu-item', { data: payload });
+  return extractResponseData<any>(res as any);
+};
+
+export const addPlaceFreeService = async (payload: {
+  placeId: string;
+  name: string;
+}): Promise<{ message?: string; id?: string }> => {
+  const res = await apiClient.post('/business/free-service', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const updatePlaceFreeService = async (payload: {
+  serviceId: string;
+  placeId: string;
+  name: string;
+}): Promise<any> => {
+  const res = await apiClient.put('/business/free-service', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const deletePlaceFreeService = async (payload: {
+  serviceId: string;
+  placeId: string;
+}): Promise<any> => {
+  const res = await apiClient.delete('/business/free-service', { data: payload });
+  return extractResponseData<any>(res as any);
 };
 
 export const getPlaceServicesByType = async (placeId: string) => {

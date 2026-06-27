@@ -1,50 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import Button from '../../../components/UI/Button';
-import ConfirmDialog from '../../../components/UI/ConfirmDialog';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { getOrdersByPlace, updateOrderStatus } from '@/services/order.service';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getOrdersByPlace, normalizeOrderStatus } from '@/services/order.service';
 import { Order } from '@/types/order.types';
+import { getCurrentUser } from '@/utils/auth';
+import { businessLocationAPI } from '@/services/businessLocationAPI';
+import type { Location } from '@/types/location';
 
-const userInfo = localStorage.getItem('userInfo');
-const parsedUser = userInfo ? JSON.parse(userInfo) : null;
-const PLACE_ID = parsedUser?.businessId || parsedUser?.id || '';
+interface ProviderUser {
+  businessId?: string;
+  business_id?: string;
+  vendorId?: string;
+  vendor_id?: string;
+  id?: string;
+}
+
+const getProviderIds = (user: ProviderUser | null): string[] => {
+  return Array.from(new Set([
+    user?.businessId,
+    user?.id,
+    user?.business_id,
+    user?.vendorId,
+    user?.vendor_id,
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)));
+};
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchParams] = useSearchParams();
+  const initialStatusFilter = searchParams.get('status') || 'all';
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [cityFilter, setCityFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
+  const providerIds = useMemo(() => getProviderIds(getCurrentUser<ProviderUser>()), []);
 
 
   // --- State mới cho API ---
   const [orders, setOrders] = useState<Order[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
 
   const handleViewDetail = (orderId: string) => {
     navigate(`/orders/${orderId}`);
   };
 
-  const handleConfirm = async () => {
-    if (!pendingConfirmId) return;
-    const orderId = pendingConfirmId;
-    setPendingConfirmId(null);
-    try {
-      await updateOrderStatus(orderId, 'processing');
-      setOrders(prev => prev.map(o => o.order_id === orderId ? { ...o, status: 'processing' } : o));
-    } catch (err) {
-      console.error('Không thể cập nhật trạng thái đơn:', err);
-    }
-  };
   // --- Fetch data khi component mount ---
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getOrdersByPlace(PLACE_ID);
-        setOrders(data); // điều chỉnh nếu API trả về { orders: [...] }
+        if (providerIds.length === 0) {
+          setOrders([]);
+          setError('Không tìm thấy thông tin đối tác. Vui lòng đăng nhập lại.');
+          return;
+        }
+
+        const [ordersData, locationsData] = await Promise.all([
+          getOrdersByPlace(providerIds[0]),
+          businessLocationAPI.getLocations(
+            { vendorId: providerIds[0], status: 'all', sort: 'newest' },
+            { page: 1, limit: 500 },
+          ),
+        ]);
+
+        setOrders(ordersData);
+        setLocations(locationsData.locations);
       } catch (err) {
         setError('Không thể tải danh sách đơn hàng.');
         console.error(err);
@@ -54,25 +76,42 @@ const OrdersPage: React.FC = () => {
     };
 
     fetchOrders();
-  }, []);
+  }, [providerIds]);
+
+  const locationCityById = useMemo(() => {
+    return new Map(locations.map((location) => [location.id, location.city || '']));
+  }, [locations]);
+
+  const locationCityByName = useMemo(() => {
+    return new Map(locations.map((location) => [location.name.trim().toLowerCase(), location.city || '']));
+  }, [locations]);
+
+  const cities = useMemo(() => {
+    return Array.from(new Set(locations.map((location) => location.city).filter((city): city is string => Boolean(city?.trim()))));
+  }, [locations]);
+
+  const getOrderCity = (order: Order): string => {
+    const placeId = order.placeId || '';
+    const placeName = String(order.place_name || '').trim().toLowerCase();
+    return locationCityById.get(placeId) || locationCityByName.get(placeName) || '';
+  };
 
   const filteredOrders = orders.filter(order => {
-    if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+    if (statusFilter !== 'all' && normalizeOrderStatus(order) !== statusFilter) return false;
+    if (cityFilter !== 'all' && getOrderCity(order) !== cityFilter) return false;
     if (restaurantFilter !== 'all' && String(order.place_name || '').trim() !== restaurantFilter) return false;
     return true;
   });
 
-  const restaurants = Array.from(new Set(orders.map(o => o.place_name).filter(Boolean)));
+  const restaurants = Array.from(new Set(
+    orders
+      .filter((order) => cityFilter === 'all' || getOrderCity(order) === cityFilter)
+      .map(o => o.place_name)
+      .filter(Boolean),
+  ));
 
   return (
     <>
-      {pendingConfirmId && (
-        <ConfirmDialog
-          message="Bạn có chắc muốn xác nhận đơn hàng này?"
-          onConfirm={handleConfirm}
-          onCancel={() => setPendingConfirmId(null)}
-        />
-      )}
       <div style={{ padding: '0 20px' }}>
         <div style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Đơn đặt món</h2>
@@ -90,6 +129,23 @@ const OrdersPage: React.FC = () => {
                 <option value="pending">Chờ xác nhận</option>
                 <option value="processing">Đang xử lý</option>
                 <option value="completed">Hoàn thành</option>
+                <option value="cancelled">Đã hủy</option>
+              </select>
+              <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <ChevronRight size={14} style={{ transform: 'rotate(90deg)', color: '#94a3b8' }} />
+              </div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={cityFilter}
+                onChange={(e) => {
+                  setCityFilter(e.target.value);
+                  setRestaurantFilter('all');
+                }}
+                style={{ padding: '8px 32px 8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', background: 'white', outline: 'none', fontSize: '13px', color: '#475569', appearance: 'none', minWidth: '170px' }}
+              >
+                <option value="all">Tất cả tỉnh/thành</option>
+                {cities.map(city => <option key={city} value={city}>{city}</option>)}
               </select>
               <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <ChevronRight size={14} style={{ transform: 'rotate(90deg)', color: '#94a3b8' }} />
@@ -125,7 +181,25 @@ const OrdersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: '32px 24px', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                    Đang tải danh sách đơn hàng...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: '32px 24px', textAlign: 'center', color: '#ef4444', fontWeight: 600 }}>
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: '32px 24px', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                    Chưa có đơn đặt món phù hợp.
+                  </td>
+                </tr>
+              ) : filteredOrders.map((order, idx) => (
                 <tr
                   key={order.order_id || idx}
                   onClick={() => handleViewDetail(order.order_id)}
@@ -172,22 +246,25 @@ const OrdersPage: React.FC = () => {
                   </td>
 
                   <td style={{ padding: '24px' }}>
-                    {order.status === 'pending' ? (
-                      <Button
-                        style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '8px' }}
-                        onClick={(e) => { e.stopPropagation(); setPendingConfirmId(order.order_id); }}
-                      >
-                        Xác nhận
-                      </Button>
-                    ) : order.status === 'processing' ? (
+                    {normalizeOrderStatus(order) === 'pending' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b', fontSize: '12px', fontWeight: '700' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }}></div>
+                        Chờ xác nhận
+                      </div>
+                    ) : normalizeOrderStatus(order) === 'processing' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', fontSize: '12px', fontWeight: '700' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }}></div>
                         Đang xử lý
                       </div>
-                    ) : order.status === 'completed' ? (
+                    ) : normalizeOrderStatus(order) === 'completed' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '12px', fontWeight: '700' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
                         Hoàn thành
+                      </div>
+                    ) : normalizeOrderStatus(order) === 'cancelled' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', fontSize: '12px', fontWeight: '700' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }}></div>
+                        Đã hủy
                       </div>
                     ) : null}
                   </td>

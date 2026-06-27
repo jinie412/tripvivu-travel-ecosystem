@@ -12,21 +12,26 @@ import {
   Upload,
   Wifi,
   FileSpreadsheet,
-  Eye,
   CheckCircle,
-  Info,
   RefreshCw,
   Loader2,
   Search,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addNewPlace, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
+import { addNewPlace, fetchAllServices, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
 import { apiClient, extractResponseData } from '@/services/apiClient';
 import { getCurrentUser } from '@/utils/auth';
 import * as XLSX from 'xlsx';
 
 type CityOption = { id: string; name: string };
 type BusinessTypeOption = { id: string; name: string };
+
+const PRESET_FREE_SERVICES = [
+  { name: 'Trà đá miễn phí', description: '' },
+  { name: 'Nước lọc miễn phí', description: '' },
+  { name: 'Giữ xe miễn phí', description: '' },
+  { name: 'Wifi miễn phí', description: '' },
+];
 
 const VIETNAM_BOUNDS = {
   minLat: 8.18,
@@ -96,6 +101,7 @@ const AddLocationPage: React.FC = () => {
   const [markerPosition, setMarkerPosition] = useState({ x: 62.2, y: 49.6 });
   // Service input state
   const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
+  const [serviceMode, setServiceMode] = useState<'free' | 'paid'>('free');
 
   // Menu item input state
   const [menuInput, setMenuInput] = useState<{
@@ -106,6 +112,18 @@ const AddLocationPage: React.FC = () => {
     imageFile: File | null;
     previewUrl: string;
   }>({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+
+  // Excel preview state
+  const [excelPreviewItems, setExcelPreviewItems] = useState<{ name: string; price: string; description: string }[]>([]);
+  const [showExcelPreview, setShowExcelPreview] = useState(false);
+
+  // DB services cache for dedup check
+  const [dbServices, setDbServices] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    fetchAllServices().then(setDbServices);
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -409,6 +427,12 @@ const AddLocationPage: React.FC = () => {
       return;
     }
 
+    const price = parseFloat(menuInput.price);
+    if (Number.isNaN(price) || price <= 0) {
+      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      return;
+    }
+
     const newMenuItem = {
       id: Date.now().toString(),
       name: menuInput.name,
@@ -424,6 +448,50 @@ const AddLocationPage: React.FC = () => {
       menu: [...prev.menu, newMenuItem]
     }));
 
+    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+  };
+
+  const handleEditMenuItem = (id: string) => {
+    const item = formData.menu.find(m => m.id === id);
+    if (!item) return;
+    setEditingMenuId(id);
+    setMenuInput({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      img: item.img || '',
+      imageFile: item.imageFile ?? null,
+      previewUrl: item.previewUrl || '',
+    });
+  };
+
+  const handleUpdateMenuItem = () => {
+    if (!menuInput.name.trim() || !menuInput.price.trim()) {
+      alert('Vui lòng nhập tên và giá của món ăn');
+      return;
+    }
+
+    const price = parseFloat(menuInput.price);
+    if (Number.isNaN(price) || price <= 0) {
+      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      menu: prev.menu.map(m =>
+        m.id === editingMenuId
+          ? { ...m, name: menuInput.name, description: menuInput.description, price: menuInput.price, img: menuInput.img, imageFile: menuInput.imageFile, previewUrl: menuInput.previewUrl }
+          : m
+      ),
+    }));
+
+    setEditingMenuId(null);
+    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMenuId(null);
     setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
   };
 
@@ -472,105 +540,78 @@ const AddLocationPage: React.FC = () => {
   };
 
   const handleExcelFileUpload = (file: File) => {
-    try {
-      const reader = new FileReader();
+    const reader = new FileReader();
 
-      reader.onerror = () => {
-        console.error('FileReader error:', reader.error);
-        alert('Lỗi khi đọc file. Vui lòng thử lại.');
-      };
+    reader.onerror = () => alert('Lỗi khi đọc file. Vui lòng thử lại.');
 
-      reader.onload = (e: any) => {
-        try {
-          const data = e.target.result;
-          console.log('📄 File data loaded, size:', data.byteLength, 'bytes');
+    reader.onload = (e: any) => {
+      try {
+        const workbook = XLSX.read(e.target.result, { type: 'array' });
 
-          // Read Excel workbook
-          const workbook = XLSX.read(data, { type: 'array' });
-          console.log('📊 Workbook sheets found:', workbook.SheetNames);
-
-          if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-            alert('File Excel không chứa bảng tính');
-            return;
-          }
-
-          // Get first sheet
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(worksheet);
-          console.log('📋 Raw rows from Excel:', rows);
-
-          if (rows.length === 0) {
-            alert('Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.');
-            return;
-          }
-
-          // Show actual headers for debugging
-          const firstRow = rows[0] as any;
-          const actualHeaders = Object.keys(firstRow);
-          console.log('🔑 Actual column headers in file:', actualHeaders);
-
-          // Find columns by flexible matching
-          const findColumn = (row: any, ...possibleNames: string[]) => {
-            for (const name of possibleNames) {
-              const key = Object.keys(row).find(
-                k => k.toLowerCase().trim() === name.toLowerCase().trim() ||
-                  k.toLowerCase().includes(name.toLowerCase())
-              );
-              if (key) return row[key];
-            }
-            return '';
-          };
-
-          // Parse Excel rows with flexible column matching
-          const newItems = rows.map((row: any) => {
-            const name = findColumn(row, 'Tên món', 'name', 'Tên', 'item', 'product');
-            const priceStr = findColumn(row, 'Giá bán', 'price', 'Giá', 'Cost', 'Value');
-            const description = findColumn(row, 'Mô tả', 'description', 'Description', 'Mô tả');
-
-            return {
-              id: Date.now().toString() + Math.random(),
-              name: String(name).trim(),
-              description: String(description).trim(),
-              price: String(priceStr).trim(),
-              img: ''
-            };
-          }).filter((item: any) => {
-            // Validate: name must exist and price must be a valid number
-            return item.name && !isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0;
-          });
-
-          console.log('✓ Parsed items:', newItems);
-          console.log('📊 Items count:', newItems.length);
-
-          if (newItems.length === 0) {
-            console.warn('⚠️ No valid items found');
-            console.log('Expected columns:', 'Tên món (or name), Giá bán (or price)');
-            console.log('Found columns in file:', actualHeaders);
-            alert(`⚠️ Không tìm thấy dữ liệu hợp lệ.\n\nCác cột trong file của bạn:\n${actualHeaders.join(', ')}\n\nFile cần có cột:\n• "Tên món" hoặc "name"\n• "Giá bán" hoặc "price"`);
-            return;
-          }
-
-          // Merge with existing items
-          setFormData(prev => ({
-            ...prev,
-            menu: [...prev.menu, ...newItems]
-          }));
-
-          console.log('✅ File processed successfully, added', newItems.length, 'items');
-          alert(`✓ Đã thêm ${newItems.length} món ăn từ file!`);
-          setUploadedFile(file);
-          setFileUploaded(true);
-        } catch (parseError) {
-          console.error('❌ Parse error:', parseError);
-          alert(`Lỗi khi xử lý file: ${parseError instanceof Error ? parseError.message : 'Không xác định'}`);
+        if (!workbook.SheetNames?.length) {
+          alert('File Excel không chứa bảng tính');
+          return;
         }
-      };
 
-      reader.readAsArrayBuffer(file);
-    } catch (error) {
-      console.error('❌ Error:', error);
-      alert(`Lỗi: ${error instanceof Error ? error.message : 'Không xác định'}`);
-    }
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(worksheet);
+
+        if (rows.length === 0) {
+          alert('Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.');
+          return;
+        }
+
+        const findCol = (row: any, ...keys: string[]) => {
+          for (const k of keys) {
+            const match = Object.keys(row).find(col => col.toLowerCase().includes(k.toLowerCase()));
+            if (match) return String(row[match] ?? '').trim();
+          }
+          return '';
+        };
+
+        const parsed = rows.map((row: any) => ({
+          name: findCol(row, 'tên món', 'tên', 'name', 'item', 'product'),
+          price: findCol(row, 'giá bán', 'giá', 'price', 'cost', 'value'),
+          description: findCol(row, 'mô tả', 'description', 'ghi chú', 'note'),
+        })).filter(item => item.name && !Number.isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0);
+
+        if (parsed.length === 0) {
+          alert('Không tìm thấy dữ liệu hợp lệ trong file. File cần có cột "Tên món" và "Giá bán".');
+          return;
+        }
+
+        setExcelPreviewItems(parsed);
+        setUploadedFile(file);
+        setShowExcelPreview(true);
+      } catch (err) {
+        alert(`Lỗi khi xử lý file: ${err instanceof Error ? err.message : 'Không xác định'}`);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleConfirmExcelImport = () => {
+    const newItems = excelPreviewItems.map(item => ({
+      id: Date.now().toString() + Math.random(),
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      img: '',
+    }));
+    setFormData(prev => ({ ...prev, menu: [...prev.menu, ...newItems] }));
+    setShowExcelPreview(false);
+    setFileUploaded(true);
+    setShowExcelImport(false);
+    setStep(2);
+  };
+
+  const handleCancelExcelImport = () => {
+    setShowExcelPreview(false);
+    setUploadedFile(null);
+    setExcelPreviewItems([]);
+    setShowExcelImport(false);
+    setStep(2);
   };
 
   const handleSubmitForm = async () => {
@@ -642,16 +683,21 @@ const AddLocationPage: React.FC = () => {
         p_lng: formData.longitude,
         p_vendor_id: vendorId,
         p_email: formData.email.trim(),
+        p_phone: formData.phone.trim(),
         p_type_id: formData.typeId,
         p_type_name: formData.type,
         p_categories: formData.type ? [formData.type] : [],
         p_open_time: formData.openTime, // Thêm trường này
         p_close_time: formData.closeTime, // Thêm trường này
         p_description: formData.description,
-        p_services: formData.amenities.map(a => ({
-          name: a.name,
-          description: a.description || ''
-        })),
+        p_services: formData.amenities.map(a => {
+          const existing = dbServices.find(s => s.name.toLowerCase().trim() === a.name.toLowerCase().trim());
+          return {
+            name: a.name,
+            description: a.description || '',
+            ...(existing ? { service_id: existing.id } : {}),
+          };
+        }),
         p_menu: menuWithUploadedImages,
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
@@ -680,8 +726,13 @@ const AddLocationPage: React.FC = () => {
       return;
     }
 
-    if (step === 2 && serviceInput.name.trim()) {
+    if (step === 2 && serviceMode === 'free' && serviceInput.name.trim()) {
       alert('Bạn có dịch vụ chưa thêm vào danh sách. Vui lòng bấm Thêm vào danh sách hoặc xóa nội dung.');
+      return;
+    }
+
+    if (step === 2 && serviceMode === 'paid' && (menuInput.name.trim() || menuInput.price.trim())) {
+      alert('Bạn có dịch vụ có phí chưa thêm vào danh sách. Vui lòng bấm Thêm hoặc xóa nội dung.');
       return;
     }
 
@@ -1074,7 +1125,25 @@ const AddLocationPage: React.FC = () => {
 
   const renderStep2 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ background: 'white', padding: '20px 24px', borderRadius: '20px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+        <div>
+          <h4 style={{ fontSize: '1rem', fontWeight: '800', fontFamily: '"Outfit", sans-serif', color: '#0f172a', marginBottom: '4px' }}>Dịch vụ kinh doanh</h4>
+          <p style={{ fontSize: '13px', color: '#64748b' }}>Chọn loại dịch vụ trước khi thêm: tiện ích miễn phí hoặc dịch vụ có giá bán.</p>
+          <p style={{ fontSize: '13px', color: '#2563eb', fontWeight: 700, marginTop: '8px' }}>
+            Đã thêm {formData.amenities.length} dịch vụ miễn phí và {formData.menu.length} dịch vụ có phí. Nút hoàn tất địa điểm sẽ lưu cả hai loại.
+          </p>
+        </div>
+        <div style={{ display: 'flex', padding: '4px', background: '#F1F5F9', borderRadius: '14px', gap: '4px' }}>
+          <button type="button" onClick={() => setServiceMode('free')} style={{ minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: 'none', background: serviceMode === 'free' ? 'white' : 'transparent', color: serviceMode === 'free' ? '#2563eb' : '#64748b', fontWeight: 800, cursor: 'pointer', boxShadow: serviceMode === 'free' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none' }}>
+            Miễn phí ({formData.amenities.length})
+          </button>
+          <button type="button" onClick={() => setServiceMode('paid')} style={{ minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: 'none', background: serviceMode === 'paid' ? 'white' : 'transparent', color: serviceMode === 'paid' ? '#2563eb' : '#64748b', fontWeight: 800, cursor: 'pointer', boxShadow: serviceMode === 'paid' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none' }}>
+            Có phí ({formData.menu.length})
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: serviceMode === 'free' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', color: '#1e293b' }}>
           <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tiện ích</h4>
         </div>
@@ -1107,6 +1176,59 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
         <div>
+          {/* Preset chips */}
+          <label style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '10px', display: 'block', letterSpacing: '0.5px' }}>
+            Chọn nhanh
+          </label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            {PRESET_FREE_SERVICES.map(preset => {
+              const isSelected = formData.amenities.some(a => a.name === preset.name);
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      const target = formData.amenities.find(a => a.name === preset.name);
+                      if (target) handleRemoveService(target.id);
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        amenities: [...prev.amenities, {
+                          id: Date.now().toString(),
+                          name: preset.name,
+                          description: preset.description,
+                          icon: <Wifi size={18} />,
+                        }],
+                      }));
+                    }
+                  }}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: '20px',
+                    border: `1.5px solid ${isSelected ? '#3b82f6' : '#E2E8F0'}`,
+                    background: isSelected ? '#EFF6FF' : 'white',
+                    color: isSelected ? '#2563eb' : '#64748b',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isSelected ? (
+                    <CheckCircle size={14} color="#2563eb" />
+                  ) : (
+                    <Plus size={14} />
+                  )}
+                  {preset.name}
+                </button>
+              );
+            })}
+          </div>
+
           <label
             style={{
               fontSize: '12px',
@@ -1146,7 +1268,7 @@ const AddLocationPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ display: serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
             <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Thực đơn món ăn (Nhà hàng)</h4>
@@ -1176,6 +1298,11 @@ const AddLocationPage: React.FC = () => {
           </div>
         </div>
 
+        {editingMenuId && (
+          <div style={{ marginBottom: '12px', padding: '10px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', fontSize: '13px', color: '#1D4ED8', fontWeight: 600 }}>
+            Đang chỉnh sửa dịch vụ. Cập nhật thông tin bên dưới rồi nhấn "Cập nhật".
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '32px' }}>
           <input
             id="menuImageInput"
@@ -1191,7 +1318,7 @@ const AddLocationPage: React.FC = () => {
               height: '100px',
               background: '#f8fafc',
               borderRadius: '16px',
-              border: '2px dashed #E2E8F0',
+              border: `2px dashed ${editingMenuId ? '#93C5FD' : '#E2E8F0'}`,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -1214,7 +1341,7 @@ const AddLocationPage: React.FC = () => {
               </>
             )}
           </div>
-          <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px' }}>
+          <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Tên món ăn</label>
               <input
@@ -1226,7 +1353,7 @@ const AddLocationPage: React.FC = () => {
                   height: '48px',
                   padding: '0 16px',
                   borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
+                  border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
                   background: '#fcfcfc',
                   fontSize: '15px',
                   outline: 'none',
@@ -1246,7 +1373,7 @@ const AddLocationPage: React.FC = () => {
                     height: '48px',
                     padding: '0 40px 0 16px',
                     borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
+                    border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
                     background: '#fcfcfc',
                     fontSize: '15px',
                     outline: 'none',
@@ -1256,7 +1383,67 @@ const AddLocationPage: React.FC = () => {
                 <span style={{ position: 'absolute', right: '14px', color: 'var(--text-secondary)', fontSize: '15px' }}>đ</span>
               </div>
             </div>
-            <Button style={{ height: '48px', minWidth: '88px', padding: '0 18px', borderRadius: '12px', fontSize: '14px', whiteSpace: 'nowrap' }} onClick={handleAddMenuItem}>Thêm</Button>
+            <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Mô tả chi tiết</label>
+              <textarea
+                placeholder="VD: Bao gồm vé vào cửa, nước uống, áp dụng cuối tuần..."
+                value={menuInput.description}
+                onChange={(e) => setMenuInput({ ...menuInput, description: e.target.value })}
+                rows={3}
+                style={{
+                  width: '100%',
+                  minHeight: '88px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
+                  background: '#fcfcfc',
+                  fontSize: '15px',
+                  outline: 'none',
+                  color: 'var(--text-primary)',
+                  resize: 'vertical',
+                  lineHeight: 1.5,
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+            <div style={{ flex: '1 1 100%', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              {editingMenuId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  style={{
+                    height: '52px',
+                    padding: '0 24px',
+                    borderRadius: '14px',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    border: '1px solid #E2E8F0',
+                    background: 'white',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Hủy
+                </button>
+              )}
+              <Button
+                style={{
+                  height: '52px',
+                  minWidth: '150px',
+                  padding: '0 32px',
+                  borderRadius: '14px',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 10px 18px rgba(37, 99, 235, 0.22)',
+                  ...(editingMenuId ? { background: '#0284c7' } : {}),
+                }}
+                onClick={editingMenuId ? handleUpdateMenuItem : handleAddMenuItem}
+              >
+                {editingMenuId ? 'Cập nhật' : 'Thêm'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1292,19 +1479,26 @@ const AddLocationPage: React.FC = () => {
                   alignItems: 'center',
                   gap: '16px',
                   padding: '12px',
-                  background: 'white',
-                  border: '1px solid #E2E8F0',
+                  background: editingMenuId === item.id ? '#EFF6FF' : 'white',
+                  border: `1px solid ${editingMenuId === item.id ? '#93C5FD' : '#E2E8F0'}`,
                   borderRadius: '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                 }}>
                 <img src={item.previewUrl || item.img || 'https://via.placeholder.com/56x56'} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>{item.name}</span>
+                  {item.description && (
+                    <span style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, marginTop: '4px' }}>{item.description}</span>
+                  )}
                   <span style={{ fontSize: '13px', color: '#3b82f6', fontWeight: '600' }}>{item.price}đ</span>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', color: '#94a3b8' }}>
                   <Trash2 size={16} style={{ cursor: 'pointer' }} onClick={() => handleRemoveMenuItem(item.id)} />
-                  <Edit2 size={16} style={{ cursor: 'pointer' }} />
+                  <Edit2
+                    size={16}
+                    style={{ cursor: 'pointer', color: editingMenuId === item.id ? '#2563eb' : '#94a3b8' }}
+                    onClick={() => handleEditMenuItem(item.id)}
+                  />
                 </div>
               </div>
             ))}
@@ -1359,45 +1553,118 @@ const AddLocationPage: React.FC = () => {
           onChange={(e) => {
             if (e.target.files && e.target.files[0]) {
               handleExcelFileUpload(e.target.files[0]);
+              e.target.value = '';
             }
           }}
         />
 
-        <div onClick={() => document.getElementById('fileInput')?.click()} style={{
-          height: '240px',
-          border: '2px dashed #E2E8F0',
-          borderRadius: '24px',
-          background: '#F8FAFC40',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '16px',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-        }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: '#F0F9FF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#3b82f6',
-            }}>
-            <Upload size={24} />
+        {!showExcelPreview ? (
+          <div onClick={() => document.getElementById('fileInput')?.click()} style={{
+            height: '240px',
+            border: '2px dashed #E2E8F0',
+            borderRadius: '24px',
+            background: '#F8FAFC40',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+              <Upload size={24} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
+              <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
+            </div>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
-            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle size={18} color="#22c55e" />
+                <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
+                  {uploadedFile?.name}
+                  <span style={{ color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>— {excelPreviewItems.length} món ăn</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); }}
+                style={{ fontSize: '13px', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+              >
+                Đổi file
+              </button>
+            </div>
+
+            {/* Preview table */}
+            <div style={{ borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden', maxHeight: '360px', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    {['TÊN MÓN', 'GIÁ BÁN', 'MÔ TẢ'].map((col, i) => (
+                      <th key={col} style={{
+                        padding: '14px 20px',
+                        textAlign: 'left',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        color: '#94a3b8',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        borderBottom: '1px solid #E2E8F0',
+                        width: i === 0 ? '30%' : i === 1 ? '20%' : '50%',
+                      }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {excelPreviewItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx < excelPreviewItems.length - 1 ? '1px solid #F1F5F9' : 'none', background: idx % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>{item.name}</td>
+                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#3b82f6' }}>
+                        {parseFloat(item.price).toLocaleString('vi-VN')}đ
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '13px', color: '#64748b' }}>{item.description || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button
+                type="button"
+                onClick={handleCancelExcelImport}
+                style={{
+                  padding: '12px 28px',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  background: 'white',
+                  color: '#64748b',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Hủy
+              </button>
+              <Button
+                onClick={handleConfirmExcelImport}
+                style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}
+              >
+                <CheckCircle size={16} /> Xác nhận
+              </Button>
+            </div>
           </div>
-          <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
-        </div>
+        )}
       </div>
 
-      {uploadedFile && (
+      {fileUploaded && !showExcelPreview && uploadedFile && (
         <div style={{ background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '16px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <CheckCircle size={20} color="#22c55e" />
@@ -1406,7 +1673,7 @@ const AddLocationPage: React.FC = () => {
               <p style={{ fontSize: '12px', color: '#22c55e' }}>Dữ liệu đã được thêm vào danh sách</p>
             </div>
           </div>
-          <button onClick={() => setUploadedFile(null)} style={{ fontSize: '13px', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Xóa</button>
+          <button onClick={() => { setUploadedFile(null); setFileUploaded(false); }} style={{ fontSize: '13px', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Xóa</button>
         </div>
       )}
     </div>
@@ -1414,7 +1681,7 @@ const AddLocationPage: React.FC = () => {
 
   return (
     <>
-      <div style={{ maxWidth: step === 3 ? '1200px' : '1000px', margin: '0 auto', paddingBottom: step === 3 ? '120px' : '40px' }}>
+      <div style={{ maxWidth: step === 3 ? '1200px' : '1000px', margin: '0 auto', paddingBottom: '40px' }}>
         {step !== 3 && (
           <div style={{ marginBottom: '32px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>Thêm địa điểm mới</h2>
@@ -1431,6 +1698,7 @@ const AddLocationPage: React.FC = () => {
             padding: step === 3 ? '0' : '32px',
             boxShadow: step === 3 ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
             border: step === 3 ? 'none' : '1px solid #F1F5F9',
+            marginBottom: step === 3 ? '0' : undefined,
           }}>
           {step !== 3 && (
             <>
@@ -1491,103 +1759,65 @@ const AddLocationPage: React.FC = () => {
           {step === 1 ? renderStep1() : step === 2 ? renderStep2() : renderStep3Initial()}
 
           {/* Footer Actions */}
-          <div style={{
-            marginTop: step === 3 ? '0' : '48px',
-            paddingTop: step === 3 ? '24px' : '32px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: step === 3 ? 'white' : 'transparent',
-            padding: step === 3 ? '24px 40px' : '32px 0 0 0',
-            position: step === 3 ? 'fixed' : 'relative',
-            bottom: 0,
-            left: step === 3 ? '280px' : 'auto',
-            right: 0,
-            zIndex: 10,
-            borderTop: step === 3 ? '1px solid #f1f5f9' : 'none'
-          }}>
-            {step === 3 ? (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '24px', width: '100%' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy</button>
-                {uploadedFile && (
-                  <button onClick={() => {
-                    setUploadedFile(null);
-                    setFileUploaded(false);
-                  }} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Xóa file</button>
-                )}
-                <button onClick={handleBack} style={{ background: 'white', border: '1px solid #E2E8F0', padding: '10px 24px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {step !== 3 && (
+            <div style={{
+              marginTop: '48px',
+              padding: '32px 0 0 0',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '24px',
+            }}>
+              {step === 1 ? (
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  style={{
+                    background: 'transparent',
+                    color: '#64748b',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    padding: '12px 24px',
+                    cursor: 'pointer',
+                    border: 'none',
+                  }}>
+                  Hủy bỏ
+                </button>
+              ) : (
+                <button
+                  onClick={handleBack}
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    border: 'none',
+                  }}>
                   <ArrowLeft size={18} /> Quay lại
                 </button>
-                {/* Ở phần Footer Actions, tìm nút Hoàn tất và sửa lại như sau: */}
-                <Button
-                  onClick={handleNext}
-                  // Bỏ điều kiện formData.menu.length === 0
-                  disabled={isLoading}
-                  style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" /> Đang xử lý...
-                    </>
-                  ) : (
-                    <>
-                      Hoàn tất <CheckCircle size={18} />
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '24px', width: '100%' }}>
-                {step === 1 ? (
-                  <button
-                    onClick={() => navigate('/dashboard')}
-                    style={{
-                      background: 'transparent',
-                      color: '#64748b',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                    }}>
-                    Hủy bỏ
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleBack}
-                    style={{
-                      background: '#F1F5F9',
-                      color: '#475569',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      padding: '12px 24px',
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                    }}>
-                    <ArrowLeft size={18} /> Quay lại
-                  </button>
-                )}
+              )}
 
-                <Button
-                  onClick={handleNext}
-                  disabled={(step === 1 && !canProceedFromStep1) || isLoading}
-                  style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
-                  {isLoading && step === 2 ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" /> Đang xử lý...
-                    </>
-                  ) : (
-                    <>
-                      {step === 1 ? 'Tiếp theo' : 'Hoàn tất'}
-                      {step === 1 ? <ArrowRight size={18} /> : <CheckCircle size={18} />}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+              <Button
+                onClick={handleNext}
+                disabled={(step === 1 && !canProceedFromStep1) || isLoading}
+                style={{ gap: '8px', padding: '12px 32px', borderRadius: '12px' }}>
+                {isLoading && step === 2 ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    {step === 1 ? 'Tiếp theo' : 'Hoàn tất'}
+                    {step === 1 ? <ArrowRight size={18} /> : <CheckCircle size={18} />}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
         {step !== 3 && (

@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Input from '../../../components/UI/Input';
 import Button from '../../../components/UI/Button';
 import { Upload, Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const [isPasswordChangeEnabled, setIsPasswordChangeEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +75,28 @@ const ProfilePage: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'File không hợp lệ',
+        text: 'Vui lòng chọn đúng file hình ảnh.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Ảnh quá lớn',
+        text: 'Vui lòng chọn ảnh có dung lượng tối đa 5MB.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    const previousAvatarUrl = profileData.avatarUrl;
+
     // Tính năng Preview: Hiển thị ngay ảnh vừa chọn
     const previewUrl = URL.createObjectURL(file);
     setProfileData((prev) => ({ ...prev, avatarUrl: previewUrl }));
@@ -87,21 +112,32 @@ const ProfilePage: React.FC = () => {
         if (parsedUser.id) formData.append('userId', parsedUser.id);
       }
 
-      // Gửi FormData lên NestJS, trình duyệt tự sinh boundary multipart/form-data
       const response = await apiClient.post('/upload/avatar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       // Nhận URL trả về và cập nhật lại Avatar (để đảm bảo lấy URL xịn từ Cloudflare)
-      const newAvatarUrl = response.data.url || response.data;
+      const newAvatarUrl =
+        response.data?.url ||
+        response.data?.avatarUrl ||
+        response.data?.avatar_url ||
+        response.data?.data?.url ||
+        response.data?.data?.avatarUrl ||
+        response.data?.data?.avatar_url ||
+        (typeof response.data === 'string' ? response.data : '');
+
+      if (!newAvatarUrl) {
+        throw new Error('Upload thành công nhưng server không trả về URL ảnh.');
+      }
+
       setProfileData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
+      URL.revokeObjectURL(previewUrl);
 
       // Update localStorage (tuỳ chọn) để Header cũng được cập nhật ngay ảnh mới
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         parsedUser.avatarUrl = newAvatarUrl;
+        parsedUser.avatar_url = newAvatarUrl;
         localStorage.setItem('userInfo', JSON.stringify(parsedUser));
         window.dispatchEvent(new Event('userUpdated'));
       }
@@ -114,6 +150,14 @@ const ProfilePage: React.FC = () => {
         showConfirmButton: false,
       });
     } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      setProfileData((prev) => ({ ...prev, avatarUrl: previousAvatarUrl }));
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : 'Không xác định được nguyên nhân.';
+      console.error('Chi tiết lỗi upload avatar:', errorMessage);
       console.error('Lỗi khi tải ảnh:', error);
       Swal.fire({
         icon: 'error',
@@ -123,6 +167,7 @@ const ProfilePage: React.FC = () => {
       // Nếu muốn bạn có thể khôi phục lại previewUrl về avatar mặc định ở đây
     } finally {
       setIsUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -212,6 +257,10 @@ const ProfilePage: React.FC = () => {
           title: 'Thành công',
           text: 'Cập nhật hồ sơ thành công!',
           confirmButtonColor: '#3b82f6',
+          timer: 1500,
+          showConfirmButton: false,
+        }).then(() => {
+          navigate('/dashboard');
         });
       }
     } catch (error: any) {
