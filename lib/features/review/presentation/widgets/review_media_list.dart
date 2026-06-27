@@ -217,7 +217,6 @@ class ReviewMediaList extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.video_library_outlined),
                   title: const Text('Chọn video'),
-                  subtitle: const Text('Tối đa 20MB và 20 giây'),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     onAddVideo();

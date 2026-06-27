@@ -6,7 +6,13 @@ class GetItineraryForReviewUseCase {
 
   GetItineraryForReviewUseCase(this.repository);
 
-  Future<ItineraryReviewEntity> call(String itineraryId) {
-    return repository.getItineraryForReview(itineraryId);
+  Future<ItineraryReviewEntity> call(
+    String itineraryId, {
+    bool forceRefresh = false,
+  }) {
+    return repository.getItineraryForReview(
+      itineraryId,
+      forceRefresh: forceRefresh,
+    );
   }
 }

@@ -77,7 +77,9 @@ class RemoteAuthDataSource implements AuthDataSource {
 
       final accessToken = data['accessToken'] as String;
       final refreshToken = data['refreshToken'] as String;
-      final userModel = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      final userModel = UserModel.fromJson(
+        data['user'] as Map<String, dynamic>,
+      );
 
       await _saveSession(
         accessToken: accessToken,
@@ -259,9 +261,7 @@ class RemoteAuthDataSource implements AuthDataSource {
     final cachedUserJson = await _storage.read(key: _kCachedUser);
 
     // Không có token hoặc user cache → chưa đăng nhập
-    if (accessToken == null ||
-        refreshToken == null ||
-        cachedUserJson == null) {
+    if (accessToken == null || refreshToken == null || cachedUserJson == null) {
       return null;
     }
 
@@ -316,10 +316,7 @@ class RemoteAuthDataSource implements AuthDataSource {
     await Future.wait([
       _storage.write(key: _kAccessToken, value: accessToken),
       _storage.write(key: _kRefreshToken, value: refreshToken),
-      _storage.write(
-        key: _kCachedUser,
-        value: jsonEncode(userModel.toJson()),
-      ),
+      _storage.write(key: _kCachedUser, value: jsonEncode(userModel.toJson())),
     ]);
   }
 
@@ -355,11 +352,24 @@ class RemoteAuthDataSource implements AuthDataSource {
     return nowSeconds >= expSeconds - bufferSeconds;
   }
 
+  String _normalizeLoginErrorMessage(String message) {
+    final lowerMessage = message.toLowerCase();
+    if (lowerMessage.contains('invalid login credential') ||
+        lowerMessage.contains('invalid login credentials') ||
+        message.contains('Đăng nhập thất bại')) {
+      return 'Tài khoản hoặc mật khẩu không đúng.';
+    }
+
+    return message;
+  }
+
   String _extractErrorMessage(DioException e, {required String fallback}) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
       final message = data['message'];
-      if (message is String && message.isNotEmpty) return message;
+      if (message is String && message.isNotEmpty) {
+        return _normalizeLoginErrorMessage(message);
+      }
       if (message is List && message.isNotEmpty) {
         return message
             .map((item) => item.toString())

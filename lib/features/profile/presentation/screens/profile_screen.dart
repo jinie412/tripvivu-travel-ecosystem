@@ -108,18 +108,17 @@ class ProfileScreen extends StatelessWidget {
               _buildMenuItem(
                 icon: Icons.account_circle,
                 title: 'Hồ sơ',
-                onTap: () async {
-                  await Navigator.push(
+                onTap: () {
+                  final profileCubit = context.read<ProfileCubit>();
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BlocProvider(
-                        create: (_) => sl<ProfileCubit>()..loadProfile(),
+                      builder: (context) => BlocProvider.value(
+                        value: profileCubit,
                         child: const EditProfileScreen(),
                       ),
                     ),
                   );
-                  if (!context.mounted) return;
-                  context.read<ProfileCubit>().loadProfile();
                 },
               ),
               const Divider(height: 1),

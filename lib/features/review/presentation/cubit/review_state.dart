@@ -1,5 +1,6 @@
 import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
 import 'package:travel_advisor_mobile/features/review/domain/entities/review_media_item.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 
 abstract class ReviewState {}
 
@@ -18,6 +19,8 @@ class ReviewLoaded extends ReviewState {
   final Map<String, List<ReviewMediaItem>> locationMediaByDetailId;
   final Map<String, double?> locationRatingsBeforeApplyAll;
   final bool isSubmitting;
+  // Cached từ getSubmittedReview khi load: dùng để mở detail không cần gọi API thêm
+  final SubmittedReviewData? submittedReview;
 
   ReviewLoaded({
     required this.itinerary,
@@ -30,6 +33,7 @@ class ReviewLoaded extends ReviewState {
     this.locationMediaByDetailId = const {},
     this.locationRatingsBeforeApplyAll = const {},
     this.isSubmitting = false,
+    this.submittedReview,
   });
 
   ReviewLoaded copyWith({
@@ -43,6 +47,7 @@ class ReviewLoaded extends ReviewState {
     Map<String, List<ReviewMediaItem>>? locationMediaByDetailId,
     Map<String, double?>? locationRatingsBeforeApplyAll,
     bool? isSubmitting,
+    SubmittedReviewData? submittedReview,
   }) {
     return ReviewLoaded(
       itinerary: itinerary ?? this.itinerary,
@@ -57,6 +62,7 @@ class ReviewLoaded extends ReviewState {
       locationRatingsBeforeApplyAll:
           locationRatingsBeforeApplyAll ?? this.locationRatingsBeforeApplyAll,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      submittedReview: submittedReview ?? this.submittedReview,
     );
   }
 }

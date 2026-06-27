@@ -3,15 +3,13 @@ import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'review_state.dart';
 
-import 'package:travel_advisor_mobile/features/review/data/datasources/review_datasource.dart';
 import 'package:travel_advisor_mobile/features/review/domain/entities/itinerary_review_entity.dart';
 import 'package:travel_advisor_mobile/features/review/domain/entities/location_review_entity.dart';
 import 'package:travel_advisor_mobile/features/review/domain/entities/review_media_item.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/review_types.dart';
 import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
 import 'package:travel_advisor_mobile/features/review/domain/usecases/get_itinerary_for_review_usecase.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/utils/review_media_picker.dart';
-import 'package:travel_advisor_mobile/core/config/app_config.dart';
-import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
 
 class ReviewCubit extends Cubit<ReviewState> {
   final GetItineraryForReviewUseCase getItineraryForReview;
@@ -22,8 +20,6 @@ class ReviewCubit extends Cubit<ReviewState> {
     required this.reviewRepository,
   }) : super(ReviewInitial());
 
-  /// 🔧 CHẾ ĐỘ DEMO: Set true để bỏ qua lỗi Backend và dùng dữ liệu mẫu
-  static const bool kDemoMode = AppConfig.kUseMockData;
   static const int _maxImageSizeBytes = 2 * 1024 * 1024;
   static const int _maxVideoSizeBytes = 20 * 1024 * 1024;
   static const Duration _maxVideoDuration = Duration(seconds: 20);
@@ -32,46 +28,15 @@ class ReviewCubit extends Cubit<ReviewState> {
     String itineraryId, {
     double initialRating = 0.0,
     String initialComment = '',
+    bool forceRefresh = false,
   }) async {
     emit(ReviewLoading());
 
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      final itinerary = _generateDemoData();
-      final storedRating =
-          DemoReviewStore.itineraryOverallRatings[itineraryId] ?? 0.0;
-      final storedComment =
-          DemoReviewStore.itineraryOverallComments[itineraryId] ?? '';
-      final generalRating = initialRating > 0 ? initialRating : storedRating;
-      final generalComment = initialComment.trim().isNotEmpty
-          ? initialComment
-          : storedComment;
-
-      var loadedItinerary = itinerary;
-      var locationRatingsBeforeApplyAll = const <String, double?>{};
-      if (generalRating > 0) {
-        locationRatingsBeforeApplyAll = _snapshotLocationRatings(
-          loadedItinerary.locations,
-        );
-        loadedItinerary = _applyRatingToAllLocations(
-          loadedItinerary,
-          generalRating,
-        );
-      }
-
-      emit(
-        ReviewLoaded(
-          itinerary: loadedItinerary,
-          generalRating: generalRating,
-          generalComment: generalComment,
-          locationRatingsBeforeApplyAll: locationRatingsBeforeApplyAll,
-        ),
-      );
-      return;
-    }
-
     try {
-      final itinerary = await getItineraryForReview(itineraryId);
+      final itinerary = await getItineraryForReview(
+        itineraryId,
+        forceRefresh: forceRefresh,
+      );
       var loadedItinerary = itinerary;
       var locationRatingsBeforeApplyAll = const <String, double?>{};
       if (initialRating > 0) {
@@ -84,12 +49,48 @@ class ReviewCubit extends Cubit<ReviewState> {
         );
       }
 
+      // Nếu có địa điểm đã review, pre-fetch submitted review để:
+      // 1. Hiển thị media thumbnail ngay trong tile không cần tap thêm
+      // 2. Cache để mở detail view không tốn thêm 1 API call
+      SubmittedReviewData? submittedReview;
+      var locationMedia = const <String, List<ReviewMediaItem>>{};
+
+      if (itinerary.locations.any((loc) => loc.hasReview)) {
+        try {
+          submittedReview = await reviewRepository.getSubmittedReview(
+            itineraryId,
+            forceRefresh: forceRefresh,
+          );
+          final mediaMap = <String, List<ReviewMediaItem>>{};
+          for (final place in submittedReview.places) {
+            if (place.mediaUrls.isNotEmpty) {
+              mediaMap[place.itineraryDetailId] = place.mediaUrls
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => ReviewMediaItem.fromRemoteUrl(
+                      remoteUrl: e.value,
+                      sortOrder: e.key,
+                    ),
+                  )
+                  .toList();
+            }
+          }
+          locationMedia = mediaMap;
+        } catch (_) {
+          // Non-fatal: vẫn hiển thị trang bình thường,
+          // chỉ mất media preview và tap detail sẽ gọi API lại
+        }
+      }
+
       emit(
         ReviewLoaded(
           itinerary: loadedItinerary,
           generalRating: initialRating,
           generalComment: initialComment,
           locationRatingsBeforeApplyAll: locationRatingsBeforeApplyAll,
+          submittedReview: submittedReview,
+          locationMediaByDetailId: locationMedia,
         ),
       );
     } catch (e) {
@@ -97,76 +98,8 @@ class ReviewCubit extends Cubit<ReviewState> {
     }
   }
 
-  ItineraryReviewEntity _generateDemoData() {
-    // Generate data that matches ItineraryCubit's mock structure
-    final List<String> day1Ids = [
-      'mock_1_1',
-      'mock_1_2',
-      'mock_1_3',
-      'mock_1_4',
-      'mock_1_5',
-    ];
-    final List<String> day2Ids = ['mock_2_1', 'mock_2_2', 'mock_2_3'];
-    final List<String> day3Ids = ['mock_3_1', 'mock_3_2'];
-    final allIds = [...day1Ids, ...day2Ids, ...day3Ids];
-
-    final locations = allIds.asMap().entries.map((entry) {
-      final locId = entry.value;
-      final index = entry.key;
-      final storedRating = DemoReviewStore.getLocationRating(locId);
-
-      return LocationReviewEntity(
-        id: locId,
-        name: index == 0
-            ? 'Dinh Độc Lập'
-            : index == 1
-            ? 'Nhà thờ Đức Bà'
-            : 'Địa điểm ${index + 1}',
-        imageUrl:
-            'https://images.unsplash.com/photo-1559506825-f933e38714eb?w=100&q=80',
-        day: index < 5
-            ? 1
-            : index < 8
-            ? 2
-            : 3,
-        isVisited: true,
-        rating: storedRating, // Priority to user rating
-      );
-    }).toList();
-
-    return ItineraryReviewEntity(
-      id: 'mock_ongoing',
-      title: 'Phú Quốc Hè 2024',
-      imageUrl:
-          'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
-      dateRange: '15/06 - 18/06/2024',
-      status: 'PLANNING',
-      locations: locations,
-    );
-  }
-
   Future<void> loadSubmittedReview(String itineraryId) async {
     emit(ReviewLoading());
-
-    if (kDemoMode) {
-      await Future.delayed(const Duration(milliseconds: 400));
-      final itinerary = _generateDemoData().copyWith(
-        locations: _generateDemoData().locations.map((loc) {
-          return loc.copyWith(
-            rating: 4.0,
-            reviewText: 'Địa điểm rất tuyệt vời!',
-          );
-        }).toList(),
-      );
-      emit(
-        ReviewLoaded(
-          itinerary: itinerary,
-          generalRating: 4.0,
-          generalComment: 'Chuyến đi rất tuyệt!',
-        ),
-      );
-      return;
-    }
 
     try {
       final data = await reviewRepository.getSubmittedReview(itineraryId);
@@ -231,6 +164,7 @@ class ReviewCubit extends Cubit<ReviewState> {
           generalTags: data.overallTags,
           itineraryMedia: itineraryMedia,
           locationMediaByDetailId: locationMedia,
+          submittedReview: data,
         ),
       );
     } catch (e) {
@@ -268,7 +202,10 @@ class ReviewCubit extends Cubit<ReviewState> {
   Map<String, double?> _snapshotLocationRatings(
     List<LocationReviewEntity> locations,
   ) {
-    return {for (final loc in locations) loc.id: loc.rating};
+    return {
+      for (final loc in locations)
+        if (!loc.hasReview) loc.id: loc.rating,
+    };
   }
 
   ItineraryReviewEntity _applyRatingToAllLocations(
@@ -278,6 +215,9 @@ class ReviewCubit extends Cubit<ReviewState> {
     final appliedRating = rating > 0 ? rating : null;
     final newLocations = itinerary.locations
         .map((loc) {
+          if (loc.hasReview) {
+            return loc;
+          }
           if (loc.rating == appliedRating) {
             return loc;
           }
@@ -298,6 +238,9 @@ class ReviewCubit extends Cubit<ReviewState> {
 
     final newLocations = itinerary.locations
         .map((loc) {
+          if (loc.hasReview) {
+            return loc;
+          }
           if (!ratingsByLocationId.containsKey(loc.id)) {
             return loc;
           }
@@ -393,10 +336,10 @@ class ReviewCubit extends Cubit<ReviewState> {
   void setLocationRating(String locationId, double rating) {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;
-
-      // Persist to DemoStore immediately for sync with other screens
-      if (kDemoMode) {
-        DemoReviewStore.saveLocationRating(locationId, rating);
+      if (currentState.itinerary.locations.any(
+        (loc) => loc.id == locationId && loc.hasReview,
+      )) {
+        return;
       }
 
       final newLocations = currentState.itinerary.locations.map((loc) {
@@ -429,6 +372,12 @@ class ReviewCubit extends Cubit<ReviewState> {
   }) {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;
+      if (currentState.itinerary.locations.any(
+        (loc) => loc.id == locationId && loc.hasReview,
+      )) {
+        return;
+      }
+
       final newLocations = currentState.itinerary.locations.map((loc) {
         if (loc.id == locationId) {
           return loc.copyWith(
@@ -477,6 +426,7 @@ class ReviewCubit extends Cubit<ReviewState> {
     );
     emit(currentState.copyWith(itinerary: newItinerary));
   }
+
   Future<void> addImages() async {
     if (state is ReviewLoaded) {
       final currentState = state as ReviewLoaded;
@@ -783,6 +733,95 @@ class ReviewCubit extends Cubit<ReviewState> {
     return submitMedia;
   }
 
+  /// Submits a review for a single place (from itinerary detail screen).
+  /// Uses the /reviews endpoint — never creates an itinerary_reviews row.
+  Future<void> submitSinglePlaceReview({
+    required String itineraryId,
+    required String locationId,
+  }) async {
+    if (state is! ReviewLoaded) {
+      throw StateError('Du lieu danh gia chua san sang.');
+    }
+    final currentState = state as ReviewLoaded;
+
+    final locIdx = currentState.itinerary.locations.indexWhere(
+      (l) => l.id == locationId,
+    );
+    if (locIdx == -1) {
+      throw StateError('Khong tim thay dia diem can danh gia.');
+    }
+
+    final loc = currentState.itinerary.locations[locIdx];
+    if (loc.rating == null) {
+      throw StateError('Vui long chon so sao truoc khi gui.');
+    }
+    if (loc.placeId == null || loc.placeId!.isEmpty) {
+      throw StateError('Khong tim thay ma dia diem de luu danh gia.');
+    }
+
+    emit(currentState.copyWith(isSubmitting: true));
+
+    try {
+      final locationMedia =
+          currentState.locationMediaByDetailId[locationId] ??
+          const <ReviewMediaItem>[];
+
+      await _uploadMediaScope(
+        scope: 'place',
+        itineraryId: itineraryId,
+        itineraryDetailId: locationId,
+        mediaItems: locationMedia,
+        onItemChanged: (item) => _updateLocationMediaItem(locationId, item),
+      );
+
+      // Collect public URLs from updated state after upload
+      final afterUpload = state is ReviewLoaded ? state as ReviewLoaded : null;
+      final uploadedItems =
+          afterUpload?.locationMediaByDetailId[locationId] ??
+          const <ReviewMediaItem>[];
+      final imageUrls = uploadedItems
+          .where(
+            (item) =>
+                item.status == ReviewMediaUploadStatus.uploaded &&
+                (item.remoteUrl?.isNotEmpty ?? false),
+          )
+          .map((item) => item.remoteUrl!)
+          .toList();
+
+      final contentText = loc.reviewText?.trim();
+
+      await reviewRepository.submitPlaceReview(
+        placeId: loc.placeId!,
+        itineraryId: itineraryId,
+        rating: loc.rating!,
+        content: (contentText?.isNotEmpty ?? false) ? contentText : null,
+        tags: loc.reviewTags ?? const [],
+        images: imageUrls,
+      );
+
+      // Mark location as reviewed in state — no re-fetch needed
+      final afterSubmit = state is ReviewLoaded ? state as ReviewLoaded : null;
+      if (afterSubmit != null) {
+        final updatedLocations = afterSubmit.itinerary.locations
+            .map((l) => l.id == locationId ? l.copyWith(hasReview: true) : l)
+            .toList(growable: false);
+        emit(
+          afterSubmit.copyWith(
+            isSubmitting: false,
+            itinerary: afterSubmit.itinerary.copyWith(
+              locations: updatedLocations,
+            ),
+          ),
+        );
+      } else {
+        _setSubmitting(false);
+      }
+    } catch (_) {
+      _setSubmitting(false);
+      rethrow;
+    }
+  }
+
   Future<void> submitReview(String itineraryId) async {
     if (state is! ReviewLoaded) {
       return;
@@ -792,64 +831,15 @@ class ReviewCubit extends Cubit<ReviewState> {
     emit(currentState.copyWith(isSubmitting: true));
 
     try {
-      if (kDemoMode) {
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Save to DemoStore for persistence across screens
-        DemoReviewStore.saveItineraryReview(
-          itineraryId,
-          currentState.generalRating,
-          comment: currentState.generalComment,
-        );
-
-        for (var loc in currentState.itinerary.locations) {
-          if (loc.rating != null) {
-            DemoReviewStore.saveLocationRating(
-              loc.id,
-              loc.rating!,
-              comment: loc.reviewText,
-            );
-          }
-        }
-
-        // TẠM THỜI COMMENT DÒNG RETURN ĐỂ ÉP GỌI XUỐNG BACKEND THẬT DÙ ĐANG Ở CHẾ ĐỘ DEMO
-        // emit(currentState.copyWith(isSubmitting: false));
-        // return;
-      }
-
+      // Fail fast: validate before any IO
       for (final loc in currentState.itinerary.locations) {
+        if (loc.hasReview) {
+          continue;
+        }
         final locationMedia =
             currentState.locationMediaByDetailId[loc.id] ??
             const <ReviewMediaItem>[];
         if (locationMedia.isNotEmpty && loc.rating == null) {
-          for (final item in locationMedia) {
-            _updateLocationMediaItem(
-              loc.id,
-              item.copyWith(
-                status: ReviewMediaUploadStatus.failed,
-                errorMessage: 'Vui long chon so sao truoc khi gui media',
-              ),
-            );
-          }
-          throw Exception('Vui long chon so sao cho dia diem co media');
-        }
-      }
-
-      final itineraryMediaFuture = _uploadMediaScope(
-        scope: 'itinerary',
-        itineraryId: itineraryId,
-        mediaItems: currentState.itineraryMedia,
-        onItemChanged: _updateItineraryMediaItem,
-      );
-
-      final placeReviews = <SubmitPlaceReviewInput>[];
-      for (final loc in currentState.itinerary.locations) {
-        final locationMedia =
-            currentState.locationMediaByDetailId[loc.id] ??
-            const <ReviewMediaItem>[];
-        final hasLocationMedia = locationMedia.isNotEmpty;
-
-        if (hasLocationMedia && loc.rating == null) {
           for (final item in locationMedia) {
             _updateLocationMediaItem(
               loc.id,
@@ -861,31 +851,46 @@ class ReviewCubit extends Cubit<ReviewState> {
           }
           throw Exception('Vui lòng chọn số sao cho địa điểm có media');
         }
+      }
 
-        if (loc.rating == null) {
-          continue;
-        }
+      // Start itinerary media upload
+      final itineraryMediaFuture = _uploadMediaScope(
+        scope: 'itinerary',
+        itineraryId: itineraryId,
+        mediaItems: currentState.itineraryMedia,
+        onItemChanged: _updateItineraryMediaItem,
+      );
 
-        final uploadedLocationMedia = await _uploadMediaScope(
-          scope: 'place',
-          itineraryId: itineraryId,
-          itineraryDetailId: loc.id,
-          mediaItems: locationMedia,
-          onItemChanged: (item) => _updateLocationMediaItem(loc.id, item),
-        );
+      // Start all location uploads concurrently (skip locations with no rating)
+      final locationsToReview = currentState.itinerary.locations
+          .where((loc) => !loc.hasReview && loc.rating != null)
+          .toList();
 
-        placeReviews.add(
-          SubmitPlaceReviewInput(
+      final locationUploadsFuture = Future.wait(
+        locationsToReview.map((loc) async {
+          final locationMedia =
+              currentState.locationMediaByDetailId[loc.id] ??
+              const <ReviewMediaItem>[];
+          final uploadedMedia = await _uploadMediaScope(
+            scope: 'place',
+            itineraryId: itineraryId,
+            itineraryDetailId: loc.id,
+            mediaItems: locationMedia,
+            onItemChanged: (item) => _updateLocationMediaItem(loc.id, item),
+          );
+          return SubmitPlaceReviewInput(
             itineraryDetailId: loc.id,
             rating: loc.rating!.round(),
             content: loc.reviewText,
             tags: loc.reviewTags ?? const [],
-            media: uploadedLocationMedia,
-          ),
-        );
-      }
+            media: uploadedMedia,
+          );
+        }),
+      );
 
+      // Both futures run concurrently; collect results
       final itineraryMedia = await itineraryMediaFuture;
+      final placeReviews = await locationUploadsFuture;
 
       await reviewRepository.submitItineraryReview(
         itineraryId: itineraryId,
@@ -899,7 +904,28 @@ class ReviewCubit extends Cubit<ReviewState> {
         media: itineraryMedia,
       );
 
-      _setSubmitting(false);
+      // Mark submitted locations as reviewed locally — no re-fetch needed
+      final afterSubmit = state is ReviewLoaded ? state as ReviewLoaded : null;
+      if (afterSubmit != null && locationsToReview.isNotEmpty) {
+        final submittedIds = {for (final loc in locationsToReview) loc.id};
+        final updatedLocations = afterSubmit.itinerary.locations
+            .map(
+              (loc) => submittedIds.contains(loc.id)
+                  ? loc.copyWith(hasReview: true)
+                  : loc,
+            )
+            .toList(growable: false);
+        emit(
+          afterSubmit.copyWith(
+            isSubmitting: false,
+            itinerary: afterSubmit.itinerary.copyWith(
+              locations: updatedLocations,
+            ),
+          ),
+        );
+      } else {
+        _setSubmitting(false);
+      }
     } catch (_) {
       _setSubmitting(false);
       rethrow;

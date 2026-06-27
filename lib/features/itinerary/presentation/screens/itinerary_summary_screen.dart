@@ -166,57 +166,15 @@ class _ItinerarySummaryView extends StatelessWidget {
           c.nearbyRestaurantName != p.nearbyRestaurantName,
       listener: _showFoodProximityPopup,
       child: Scaffold(
-      backgroundColor: const Color(0xFFFBFDFF),
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        leadingWidth: 72,
-        titleSpacing: 0,
-        elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.only(left: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Color(0xFF1C1C1E),
-              size: 16,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        title: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              color: Colors.white.withValues(alpha: 0.5),
-              child: const Text(
-                'Tóm tắt lịch trình',
-                style: TextStyle(
-                  color: Color(0xFF1C1C1E),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
+        backgroundColor: const Color(0xFFFBFDFF),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          leadingWidth: 72,
+          titleSpacing: 0,
+          elevation: 0,
+          leading: Container(
+            margin: const EdgeInsets.only(left: 16),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.9),
               shape: BoxShape.circle,
@@ -224,181 +182,206 @@ class _ItinerarySummaryView extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
-                  offset: const Offset(1, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: IconButton(
               icon: const Icon(
-                Icons.edit_rounded,
-                color: Color(0xFF2563EB),
-                size: 20,
+                Icons.arrow_back_ios_new,
+                color: Color(0xFF1C1C1E),
+                size: 16,
               ),
-              onPressed: () => _showEditTitleDialog(context, itin),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-          if (itin.isPublic)
-            Container(
-              margin: EdgeInsets.only(right: canReview ? 8 : 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(1, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: Icon(
-                  itin.isFavorite
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: itin.isFavorite
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF2563EB),
-                  size: 22,
+          title: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
                 ),
-                onPressed: () => _toggleFavorite(context, itin),
+                color: Colors.white.withValues(alpha: 0.5),
+                child: const Text(
+                  'Tóm tắt lịch trình',
+                  style: TextStyle(
+                    color: Color(0xFF1C1C1E),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-          if (canReview)
-            Container(
-              margin: const EdgeInsets.only(right: 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(1, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.stars_rounded,
-                  color: Color(0xFF10B981),
-                  size: 24,
-                ),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => ItineraryRatingPopup(
-                      itineraryId: itin.id,
-                      itineraryTitle: itin.title,
-                      totalLocations: totalVisitCount,
-                      visitedLocations: visitedVisitCount,
+          ),
+          centerTitle: true,
+          actions: [
+            if (itin.isPublic)
+              Container(
+                margin: EdgeInsets.only(right: canReview ? 8 : 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(1, 2),
                     ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header với Glassmorphism Image Card
-                _buildDestinationHeader(
-                  context,
-                  itin,
-                  dateRange,
-                  visitedVisitCount,
-                  totalVisitCount,
+                  ],
                 ),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Tổng quan chuyến đi',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
+                child: IconButton(
+                  icon: Icon(
+                    itin.isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: itin.isFavorite
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFF2563EB),
+                    size: 22,
+                  ),
+                  onPressed: () => _toggleFavorite(context, itin),
+                ),
+              ),
+            if (canReview)
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(1, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.stars_rounded,
+                    color: Color(0xFF10B981),
+                    size: 24,
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => ItineraryRatingPopup(
+                        itineraryId: itin.id,
+                        itineraryTitle: itin.title,
+                        totalLocations: totalVisitCount,
+                        visitedLocations: visitedVisitCount,
                       ),
-                      const SizedBox(height: 20),
-                      _buildStatsGrid(itin),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header với Glassmorphism Image Card
+                  _buildDestinationHeader(
+                    context,
+                    itin,
+                    dateRange,
+                    visitedVisitCount,
+                    totalVisitCount,
+                  ),
 
-                      if (itin.visitedRestaurants.isNotEmpty) ...[
-                        const SizedBox(height: 36),
-                        const SectionHeader(title: 'Món ăn đã đặt'),
-                        const SizedBox(height: 12),
-                        _buildCulinarySection(itin),
-                      ],
-
-                      const SizedBox(height: 36),
-                      _buildBudgetSection(itin, costSnapshot),
-
-                      const SizedBox(height: 36),
-                      const SectionHeader(title: 'Tổng quan theo ngày'),
-                      const SizedBox(height: 12),
-                      ...itin.days
-                          .take(3)
-                          .map(
-                            (day) => ShortItineraryItem(
-                              dayNumber: day.dayNumber,
-                              date: DateFormat('dd/MM/yyyy').format(day.date),
-                              title: _shortDayTitle(day),
-                              icon: Icons.event_note_rounded,
-                              onTap: () => _navigateToDetail(
-                                context,
-                                itin,
-                                initialDay: day.dayNumber,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB),
+                                borderRadius: BorderRadius.circular(2),
                               ),
                             ),
-                          ),
-                      if (itin.days.length > 3)
-                        _buildViewAllDaysButton(context, itin),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Tổng quan chuyến đi',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _buildStatsGrid(itin),
 
-                      if (itin.notes.isNotEmpty) ...[
+                        if (itin.visitedRestaurants.isNotEmpty) ...[
+                          const SizedBox(height: 36),
+                          const SectionHeader(title: 'Món ăn đã đặt'),
+                          const SizedBox(height: 12),
+                          _buildCulinarySection(itin),
+                        ],
+
                         const SizedBox(height: 36),
-                        _buildNotesSection(itin.notes),
-                      ],
+                        _buildBudgetSection(itin, costSnapshot),
 
-                      const SizedBox(height: 120), // Spacing for bottom button
-                    ],
+                        const SizedBox(height: 36),
+                        const SectionHeader(title: 'Tổng quan theo ngày'),
+                        const SizedBox(height: 12),
+                        ...itin.days
+                            .take(3)
+                            .map(
+                              (day) => ShortItineraryItem(
+                                dayNumber: day.dayNumber,
+                                date: DateFormat('dd/MM/yyyy').format(day.date),
+                                title: _shortDayTitle(day),
+                                icon: Icons.event_note_rounded,
+                                onTap: () => _navigateToDetail(
+                                  context,
+                                  itin,
+                                  initialDay: day.dayNumber,
+                                ),
+                              ),
+                            ),
+                        if (itin.days.length > 3)
+                          _buildViewAllDaysButton(context, itin),
+
+                        if (itin.notes.isNotEmpty) ...[
+                          const SizedBox(height: 36),
+                          _buildNotesSection(itin.notes),
+                        ],
+
+                        const SizedBox(
+                          height: 120,
+                        ), // Spacing for bottom button
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Nút xem chi tiết ở dưới cùng (Floating effect)
-          Positioned(
-            bottom: 16,
-            left: 20,
-            right: 20,
-            child: _buildActionBtn(context, itin),
-          ),
-        ],
-      ),
+            // Nút xem chi tiết ở dưới cùng (Floating effect)
+            Positioned(
+              bottom: 16,
+              left: 20,
+              right: 20,
+              child: _buildActionBtn(context, itin),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -614,7 +597,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${itin.title} • ${_formatCompactDateRange(itin.startDate, itin.endDate)}',
+                                  itin.title,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
@@ -719,15 +702,15 @@ class _ItinerarySummaryView extends StatelessWidget {
     return '$left - $right, ${end.year}';
   }
 
-  bool _canReviewItinerary(
-    ItineraryDetailEntity itin,
-    DateTime now,
-  ) {
+  bool _canReviewItinerary(ItineraryDetailEntity itin, DateTime now) {
     final today = DateUtils.dateOnly(now);
     final endDate = DateUtils.dateOnly(itin.endDate);
     final status = itin.status.toUpperCase();
     final hasStarted =
-        status == 'ONGOING' || status == 'COMPLETED' || status == 'UNCOMPLETED' || itin.trackingActive;
+        status == 'ONGOING' ||
+        status == 'COMPLETED' ||
+        status == 'UNCOMPLETED' ||
+        itin.trackingActive;
     return !today.isBefore(endDate) && hasStarted;
   }
 
@@ -1025,7 +1008,7 @@ class _ItinerarySummaryView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Chi ph\u00ed chuy\u1ebfn \u0111i',
+            'Chi phí dự kiến',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -1716,9 +1699,7 @@ class _ItinerarySummaryView extends StatelessWidget {
   }
 
   double _dayActivityCost(ItineraryDayEntity day) {
-    return _visitActivities(
-      day,
-    ).fold<double>(
+    return _visitActivities(day).fold<double>(
       0,
       (sum, activity) => sum + activity.price + activity.transportCost,
     );

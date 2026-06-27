@@ -159,7 +159,7 @@ class _ItineraryReviewDialogState extends State<ItineraryReviewDialog> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: kTravelReviewTags.map((tag) {
+                  children: kMissedLocationReasons.map((tag) {
                     final isSelected = _missedReason == tag;
                     return choiceChip(tag, isSelected);
                   }).toList(),

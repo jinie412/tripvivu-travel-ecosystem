@@ -38,6 +38,12 @@ class TimelineActivityCard extends StatelessWidget {
   /// Đang xử lý check-in (hiện loading spinner thay nút).
   final bool isCheckingIn;
 
+  /// Trạng thái review từ backend: true=đã review, false=chưa, null=chưa load.
+  final bool? hasReview;
+
+  /// Đã ghé địa điểm này theo dữ liệu backend (geofence_visits).
+  final bool backendIsVisited;
+
   const TimelineActivityCard({
     super.key,
     required this.activity,
@@ -62,6 +68,8 @@ class TimelineActivityCard extends StatelessWidget {
     this.trackingStatus,
     this.onCheckIn,
     this.isCheckingIn = false,
+    this.hasReview,
+    this.backendIsVisited = false,
   });
 
   String _formatReviewCount(int? count) {
@@ -311,7 +319,8 @@ class TimelineActivityCard extends StatelessWidget {
 
   bool get _isVisited =>
       activity.status == ActivityStatus.daDi ||
-      trackingStatus?.status == VisitStatus.visited;
+      trackingStatus?.status == VisitStatus.visited ||
+      backendIsVisited;
 
   Widget _buildActivityCard(BuildContext context) {
     if (_isAccommodationStart) {
@@ -466,6 +475,10 @@ class TimelineActivityCard extends StatelessWidget {
   }
 
   Widget _buildCardActions(bool hasUserRated, double? userRating) {
+    // Backend data takes precedence; fall back to demo store when not loaded.
+    final bool backendReviewed = hasReview == true;
+    final bool showAsReviewed = backendReviewed || hasUserRated;
+
     return Wrap(
       spacing: 8,
       runSpacing: 6,
@@ -476,14 +489,21 @@ class TimelineActivityCard extends StatelessWidget {
           color: const Color(0xFF2563EB),
           onTap: onViewDetailTap ?? onCardLongPress,
         ),
-        if (_isVisited)
+        // Hi\u1ec7n n\u00fat khi \u0111\u00e3 gh\u00e9 th\u0103m ho\u1eb7c \u0111\u00e3 c\u00f3 review t\u1eeb backend
+        if (_isVisited || backendReviewed)
           _cardActionButton(
-            icon: hasUserRated ? Icons.star_rounded : Icons.rate_review_rounded,
-            label: hasUserRated
-                ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
-                : isOpeningReview
-                ? '\u0110ang m\u1edf'
-                : '\u0110\u00e1nh gi\u00e1',
+            icon: backendReviewed
+                ? Icons.visibility_rounded
+                : (showAsReviewed
+                    ? Icons.star_rounded
+                    : Icons.rate_review_rounded),
+            label: backendReviewed
+                ? 'Xem \u0111\u00e1nh gi\u00e1'
+                : (showAsReviewed
+                    ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
+                    : isOpeningReview
+                    ? '\u0110ang m\u1edf'
+                    : '\u0110\u00e1nh gi\u00e1'),
             color: const Color(0xFF10B981),
             onTap: isOpeningReview ? null : onRateTap,
             isLoading: isOpeningReview,
