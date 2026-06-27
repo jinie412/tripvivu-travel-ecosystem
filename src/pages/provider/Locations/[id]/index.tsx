@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import Input from '../../../../components/UI/Input';
@@ -16,17 +16,82 @@ import {
   Edit2,
   Star,
   Waves,
+  Loader2,
+  Search,
+  RefreshCw,
+  CheckCircle,
 } from 'lucide-react';
 import { businessLocationAPI } from '../../../../services/businessLocationAPI';
 import { businessReviewAPI } from '../../../../services/businessReviewAPI';
-import { getPlaceDetail, getPlaceServicesByType, updatePlaceDetail, uploadPlaceImage } from '../../../../services/order.service';
+import {
+  getPlaceDetail,
+  getPlaceServicesByType,
+  updatePlaceDetail,
+  uploadPlaceImage,
+  addPlaceMenuItem,
+  updatePlaceMenuItem,
+  deletePlaceMenuItem,
+  addPlaceFreeService,
+  updatePlaceFreeService,
+  deletePlaceFreeService,
+} from '../../../../services/order.service';
+import { apiClient, extractResponseData } from '../../../../services/apiClient';
 import type { Location } from '../../../../types/location';
 import { getCurrentUser } from '../../../../utils/auth';
 
+// ─── Map utilities (same as AddLocation) ─────────────────────────────────────
+type CityOption = { id: string; name: string };
+type BusinessTypeOption = { id: string; name: string };
+
+const VIETNAM_BOUNDS = { minLat: 8.18, maxLat: 23.39, minLng: 102.14, maxLng: 109.47 };
+const MAP_TILE_SIZE = 256;
+const MAP_ZOOM = 6;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const latLngToWorldPixel = (lat: number, lng: number, zoom = MAP_ZOOM) => {
+  const scale = MAP_TILE_SIZE * 2 ** zoom;
+  const sinLat = Math.sin((clamp(lat, -85.05112878, 85.05112878) * Math.PI) / 180);
+  return {
+    x: ((lng + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
+  };
+};
+
+const worldPixelToLatLng = (x: number, y: number, zoom = MAP_ZOOM) => {
+  const scale = MAP_TILE_SIZE * 2 ** zoom;
+  const lng = (x / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return { lat, lng };
+};
+
+const getMapTiles = (centerLat: number, centerLng: number) => {
+  const center = latLngToWorldPixel(centerLat, centerLng);
+  const startX = center.x - 300;
+  const startY = center.y - 200;
+  const firstTileX = Math.floor(startX / MAP_TILE_SIZE);
+  const firstTileY = Math.floor(startY / MAP_TILE_SIZE);
+  const maxTile = 2 ** MAP_ZOOM;
+  const tiles: Array<{ key: string; src: string; left: number; top: number }> = [];
+  for (let x = firstTileX; x <= firstTileX + 3; x += 1) {
+    for (let y = firstTileY; y <= firstTileY + 2; y += 1) {
+      if (y < 0 || y >= maxTile) continue;
+      const wrappedX = ((x % maxTile) + maxTile) % maxTile;
+      tiles.push({
+        key: `${wrappedX}-${y}`,
+        src: `https://tile.openstreetmap.org/${MAP_ZOOM}/${wrappedX}/${y}.png`,
+        left: x * MAP_TILE_SIZE - startX,
+        top: y * MAP_TILE_SIZE - startY,
+      });
+    }
+  }
+  return tiles;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 type TabKey = 'Thông tin chung' | 'Đánh giá' | 'Dịch vụ';
-
 type ReviewSort = 'newest' | 'oldest' | 'highest_rating' | 'lowest_rating';
-
 type ServiceKind = 'free' | 'paid';
 
 interface PlaceSummary {
@@ -45,7 +110,10 @@ interface PlaceDraft {
   name: string;
   address: string;
   city: string;
-  district: string;
+  phone: string;
+  email: string;
+  typeId: string;
+  type: string;
   openTime: string;
   closeTime: string;
   description: string;
@@ -89,7 +157,10 @@ const defaultDraft: PlaceDraft = {
   name: '',
   address: '',
   city: '',
-  district: '',
+  phone: '',
+  email: '',
+  typeId: '',
+  type: '',
   openTime: '',
   closeTime: '',
   description: '',
@@ -98,12 +169,8 @@ const defaultDraft: PlaceDraft = {
 };
 
 const getText = (value: unknown, fallback = ''): string => {
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
-  }
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return fallback;
 };
 
@@ -113,39 +180,24 @@ const getNumber = (value: unknown, fallback = 0): number => {
 };
 
 const getBoolean = (value: unknown, fallback = true): boolean => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return value !== 0;
-  }
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    if (['true', '1', 'yes', 'active', 'đang hoạt động'].includes(normalized)) {
-      return true;
-    }
-    if (['false', '0', 'no', 'inactive', 'tạm ngưng'].includes(normalized)) {
-      return false;
-    }
+    if (['true', '1', 'yes', 'active', 'đang hoạt động'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'inactive', 'tạm ngưng'].includes(normalized)) return false;
   }
   return fallback;
 };
 
 const formatTime = (value: unknown): string => {
   const text = getText(value, '');
-  if (!text) {
-    return '';
-  }
-  if (text.length >= 5) {
-    return text.slice(0, 5);
-  }
-  return text;
+  if (!text) return '';
+  return text.length >= 5 ? text.slice(0, 5) : text;
 };
 
 const formatPrice = (value: number | null): string => {
-  if (value === null || Number.isNaN(value)) {
-    return '0 đ';
-  }
+  if (value === null || Number.isNaN(value)) return '0 đ';
   return `${value.toLocaleString('vi-VN')} đ`;
 };
 
@@ -153,79 +205,46 @@ const createId = (prefix: string): string => `${prefix}-${Date.now()}-${Math.ran
 
 const getStatusMeta = (value: unknown): { label: string; color: string } => {
   const normalized = getText(value, 'chờ duyệt').trim().toLowerCase();
-  if (normalized.includes('approved') || normalized.includes('đã duyệt')) {
-    return { label: 'Đã duyệt', color: '#22c55e' };
-  }
-  if (normalized.includes('rejected') || normalized.includes('từ chối')) {
-    return { label: 'Từ chối', color: '#ef4444' };
-  }
+  if (normalized.includes('approved') || normalized.includes('đã duyệt')) return { label: 'Đã duyệt', color: '#22c55e' };
+  if (normalized.includes('rejected') || normalized.includes('từ chối')) return { label: 'Từ chối', color: '#ef4444' };
   return { label: 'Chờ duyệt', color: '#f59e0b' };
 };
 
 const getServiceIcon = (serviceName: string): React.ReactNode => {
   const lowerName = serviceName.toLowerCase();
-  if (lowerName.includes('wifi')) {
-    return <Wifi size={16} />;
-  }
-  if (lowerName.includes('xe') || lowerName.includes('đậu')) {
-    return <Car size={16} />;
-  }
-  if (lowerName.includes('máy lạnh') || lowerName.includes('điều hòa')) {
-    return <Wind size={16} />;
-  }
-  if (lowerName.includes('thanh toán') || lowerName.includes('thẻ')) {
-    return <CreditCard size={16} />;
-  }
-  if (lowerName.includes('hồ bơi') || lowerName.includes('nước')) {
-    return <Waves size={16} />;
-  }
+  if (lowerName.includes('wifi')) return <Wifi size={16} />;
+  if (lowerName.includes('xe') || lowerName.includes('đậu')) return <Car size={16} />;
+  if (lowerName.includes('máy lạnh') || lowerName.includes('điều hòa')) return <Wind size={16} />;
+  if (lowerName.includes('thanh toán') || lowerName.includes('thẻ')) return <CreditCard size={16} />;
+  if (lowerName.includes('hồ bơi') || lowerName.includes('nước')) return <Waves size={16} />;
   return <Plus size={16} />;
 };
 
 const normalizeGallery = (raw: unknown): string[] => {
-  if (Array.isArray(raw)) {
-    return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
-  }
-  if (typeof raw === 'string' && raw) {
-    return [raw];
-  }
+  if (Array.isArray(raw)) return raw.filter((item): item is string => typeof item === 'string' && item.length > 0);
+  if (typeof raw === 'string' && raw) return [raw];
   return [];
 };
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message || error.response?.data?.error;
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-    if (typeof message === 'string' && message.trim()) {
-      return message;
-    }
-    if (error.message) {
-      return error.message;
-    }
+    if (Array.isArray(message)) return message.join(', ');
+    if (typeof message === 'string' && message.trim()) return message;
+    if (error.message) return error.message;
   }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
+  if (error instanceof Error && error.message) return error.message;
   return fallback;
 };
 
-const normalizePlaceDetail = (raw: unknown): {
-  summary: PlaceSummary;
-  draft: PlaceDraft;
-} => {
+const normalizePlaceDetail = (raw: unknown): { summary: PlaceSummary; draft: PlaceDraft } => {
   const place = Array.isArray(raw) ? raw[0] : raw;
   const data = place && typeof place === 'object' ? (place as Record<string, unknown>) : {};
-  // is_approved: true -> approved, false/null -> pending (chờ duyệt)
   const rawStatus = data.status ?? data.place_status ?? data.approval_status;
   const isApproved = data.is_approved ?? data.approved ?? data.is_active ?? data.active;
   const statusValue = rawStatus ?? (isApproved === true ? 'approved' : isApproved === false ? 'pending' : null);
   const statusMeta = getStatusMeta(statusValue);
-  const gallery = normalizeGallery(data.images ?? data.gallery ?? data.image_urls ?? data.image_url)
-    .filter(Boolean);
+  const gallery = normalizeGallery(data.images ?? data.gallery ?? data.image_urls ?? data.image_url).filter(Boolean);
 
   return {
     summary: {
@@ -240,10 +259,13 @@ const normalizePlaceDetail = (raw: unknown): {
       gallery: gallery.length > 0 ? gallery : ['https://picsum.photos/seed/location/600/400'],
     },
     draft: {
-      name: getText(data.place_name ?? data.name ?? data.title, 'Đang tải...'),
-      address: getText(data.address ?? data.place_address, 'Chưa có địa chỉ'),
+      name: getText(data.place_name ?? data.name ?? data.title, ''),
+      address: getText(data.address ?? data.place_address, ''),
       city: getText(data.city ?? data.place_city ?? data.province, ''),
-      district: getText(data.district ?? data.district_name, ''),
+      phone: getText(data.phone ?? data.contact_phone ?? data.phone_number, ''),
+      email: getText(data.email ?? data.contact_email, ''),
+      typeId: getText(data.type_id ?? data.typeId ?? data.business_type_id, ''),
+      type: getText(data.type_name ?? data.category ?? data.place_type, ''),
       openTime: formatTime(data.open_time ?? data.openTime ?? data.opening_time),
       closeTime: formatTime(data.close_time ?? data.closeTime ?? data.closing_time),
       description: getText(data.description ?? data.place_description, ''),
@@ -261,7 +283,6 @@ const normalizeServiceItem = (raw: unknown, kind: ServiceKind): PlaceServiceItem
     : priceValue === null || priceValue === undefined || priceValue === ''
       ? null
       : Number(String(priceValue).replace(/[^\d.-]/g, ''));
-
   return {
     id: getText(data.id ?? data.service_id ?? data.serviceId, createId(kind)),
     name: getText(data.name ?? data.service_name ?? data.title, 'Dịch vụ'),
@@ -275,17 +296,10 @@ const mergeWithLocationListItem = (
   detail: { summary: PlaceSummary; draft: PlaceDraft },
   locationItem: Location | null,
 ): { summary: PlaceSummary; draft: PlaceDraft } => {
-  if (!locationItem) {
-    return detail;
-  }
-
+  if (!locationItem) return detail;
   const locationStatus = getStatusMeta(locationItem.status);
-  const hasPlaceholderGallery = detail.summary.gallery.length === 1
-    && detail.summary.gallery[0].includes('picsum.photos/seed/location/600/400');
-  const nextGallery = hasPlaceholderGallery && locationItem.image
-    ? [locationItem.image]
-    : detail.summary.gallery;
-
+  const hasPlaceholderGallery = detail.summary.gallery.length === 1 && detail.summary.gallery[0].includes('picsum.photos/seed/location/600/400');
+  const nextGallery = hasPlaceholderGallery && locationItem.image ? [locationItem.image] : detail.summary.gallery;
   return {
     summary: {
       ...detail.summary,
@@ -310,25 +324,12 @@ const LocationEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const currentUser = useMemo(
-    () =>
-      getCurrentUser<{
-        businessId?: string;
-        business_id?: string;
-        vendorId?: string;
-        vendor_id?: string;
-        id?: string;
-      }>(),
+    () => getCurrentUser<{ businessId?: string; business_id?: string; vendorId?: string; vendor_id?: string; id?: string }>(),
     [],
   );
   const vendorCandidates = useMemo(
-    () =>
-      [
-        currentUser?.businessId,
-        currentUser?.business_id,
-        currentUser?.vendorId,
-        currentUser?.vendor_id,
-        currentUser?.id,
-      ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+    () => [currentUser?.businessId, currentUser?.business_id, currentUser?.vendorId, currentUser?.vendor_id, currentUser?.id]
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
     [currentUser],
   );
   const vendorId = vendorCandidates[0] || '';
@@ -340,10 +341,28 @@ const LocationEditPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [generalMessage, setGeneralMessage] = useState<string | null>(null);
-  const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
   const [savingGeneralInfo, setSavingGeneralInfo] = useState(false);
 
+  // Image state — split existing URLs from new file picks
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
+
+  // Map state
+  const [markerPosition, setMarkerPosition] = useState({ x: 50, y: 50 });
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState('');
+
+  // Cities
+  const [cities, setCities] = useState<CityOption[]>([]);
+  const [loadingCities, setLoadingCities] = useState(true);
+  const [citiesError, setCitiesError] = useState<string | null>(null);
+
+  // Business types
+  const [businessTypes, setBusinessTypes] = useState<BusinessTypeOption[]>([]);
+  const [loadingBusinessTypes, setLoadingBusinessTypes] = useState(true);
+  const [businessTypesError, setBusinessTypesError] = useState<string | null>(null);
+
+  // Reviews
   const [reviewRating, setReviewRating] = useState<number | undefined>(undefined);
   const [reviewSort, setReviewSort] = useState<ReviewSort>('newest');
   const [reviewHasImages, setReviewHasImages] = useState(false);
@@ -352,33 +371,77 @@ const LocationEditPage: React.FC = () => {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
 
+  // Services
   const [freeServices, setFreeServices] = useState<PlaceServiceItem[]>([]);
-  const [paidServices, setPaidServices] = useState<PlaceServiceItem[]>([]);
   const [menuItems, setMenuItems] = useState<PlaceServiceItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [serviceEditor, setServiceEditor] = useState<ServiceEditorState | null>(null);
-  const [serviceDraft, setServiceDraft] = useState({
-    id: '',
-    name: '',
-    description: '',
-    price: '',
-    isActive: true,
-  });
+  const [serviceDraft, setServiceDraft] = useState({ id: '', name: '', description: '', price: '', isActive: true });
+  const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceMessage, setServiceMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // ── Load cities ─────────────────────────────────────────────────────────────
+  const loadCities = useCallback(async () => {
+    setLoadingCities(true);
+    setCitiesError(null);
+    try {
+      const response = await apiClient.get<CityOption[] | { data: CityOption[] }>('/cities');
+      const data = extractResponseData<CityOption[]>(response as any);
+      const list: CityOption[] = Array.isArray(data)
+        ? data
+            .map((item: any) => ({
+              id: String(item.id ?? item.city_id ?? item.code ?? item.name ?? ''),
+              name: String(item.name ?? item.city_name ?? item.city ?? item.province ?? ''),
+            }))
+            .filter((item) => item.id && item.name)
+            .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+        : [];
+      if (list.length === 0) throw new Error('Danh sách tỉnh/thành từ hệ thống đang trống.');
+      setCities(list);
+    } catch (error) {
+      setCities([]);
+      setCitiesError(error instanceof Error ? error.message : 'Không thể tải danh sách tỉnh/thành.');
+    } finally {
+      setLoadingCities(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCities(); }, [loadCities]);
+
+  // ── Load business types ──────────────────────────────────────────────────────
+  const loadBusinessTypes = useCallback(async () => {
+    setLoadingBusinessTypes(true);
+    setBusinessTypesError(null);
+    try {
+      const response = await apiClient.get<BusinessTypeOption[] | { data: BusinessTypeOption[] }>('/types');
+      const data = extractResponseData<BusinessTypeOption[]>(response as any);
+      const list: BusinessTypeOption[] = Array.isArray(data)
+        ? data
+            .map((item: any) => ({
+              id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? ''),
+              name: String(item.name ?? item.type_name ?? ''),
+            }))
+            .filter((item) => item.id && item.name)
+            .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+        : [];
+      if (list.length === 0) throw new Error('Danh sách loại hình kinh doanh từ hệ thống đang trống.');
+      setBusinessTypes(list);
+    } catch (error) {
+      setBusinessTypes([]);
+      setBusinessTypesError(error instanceof Error ? error.message : 'Không thể tải danh sách loại hình kinh doanh.');
+    } finally {
+      setLoadingBusinessTypes(false);
+    }
+  }, []);
+
+  useEffect(() => { loadBusinessTypes(); }, [loadBusinessTypes]);
+
+  // ── Load place detail ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchPlaceDetail = async () => {
-      if (!id) {
-        setError('Không tìm thấy địa điểm cần hiển thị.');
-        setLoading(false);
-        return;
-      }
-
-      if (!vendorId) {
-        setError('Không tìm thấy thông tin business. Vui lòng đăng nhập lại.');
-        setLoading(false);
-        return;
-      }
+      if (!id) { setError('Không tìm thấy địa điểm cần hiển thị.'); setLoading(false); return; }
+      if (!vendorId) { setError('Không tìm thấy thông tin business. Vui lòng đăng nhập lại.'); setLoading(false); return; }
 
       try {
         setLoading(true);
@@ -386,70 +449,37 @@ const LocationEditPage: React.FC = () => {
 
         const [detailResult, listResult] = await Promise.allSettled([
           getPlaceDetail(id),
-          businessLocationAPI.getLocations(
-            {
-              vendorId,
-            },
-            {
-              page: 1,
-              limit: 200,
-            },
-          ),
+          businessLocationAPI.getLocations({ vendorId }, { page: 1, limit: 200 }),
         ]);
 
-        const locations = listResult.status === 'fulfilled'
-          ? listResult.value.locations
-          : [];
-        const fromList = locations.find((item) => item.id === id)
-          || null;
+        const locations = listResult.status === 'fulfilled' ? listResult.value.locations : [];
+        const fromList = locations.find((item) => item.id === id) || null;
 
         if (detailResult.status === 'rejected' && !fromList) {
-          throw new Error(
-            getApiErrorMessage(
-              detailResult.reason,
-              'Không thể tải thông tin địa điểm',
-            ),
-          );
+          throw new Error(getApiErrorMessage(detailResult.reason, 'Không thể tải thông tin địa điểm'));
         }
 
         if (listResult.status === 'rejected' && detailResult.status === 'rejected') {
           throw new Error(
-            [
-              getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm'),
-              getApiErrorMessage(listResult.reason, 'Không thể tải danh sách địa điểm'),
-            ].join(' | '),
+            [getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm'), getApiErrorMessage(listResult.reason, 'Không thể tải danh sách địa điểm')].join(' | '),
           );
         }
 
         const rawDetail = detailResult.status === 'fulfilled' && detailResult.value
           ? detailResult.value
-          : {
-              id: fromList?.id,
-              name: fromList?.name,
-              address: fromList?.address,
-              category: fromList?.category,
-              status: fromList?.status,
-              average_rating: fromList?.rating,
-              review_count: fromList?.review_count,
-              image_url: fromList?.image,
-            };
+          : { id: fromList?.id, name: fromList?.name, address: fromList?.address, category: fromList?.category, status: fromList?.status, average_rating: fromList?.rating, review_count: fromList?.review_count, image_url: fromList?.image };
 
         const normalized = normalizePlaceDetail(rawDetail);
         const merged = mergeWithLocationListItem(normalized, fromList);
+
         setPlace(merged.summary);
         setDraft(merged.draft);
         setIsActive(merged.summary.isActive);
-        setGalleryImages(
-          merged.summary.gallery.filter((url) => !url.includes('picsum.photos/seed/location')),
-        );
-        setPendingImageFiles([]);
+        setExistingImageUrls(merged.summary.gallery.filter((url) => !url.includes('picsum.photos/seed/location')));
+        setNewImages([]);
+
         if (detailResult.status === 'rejected') {
-          setGeneralMessage(
-            `Đang hiển thị dữ liệu tạm từ danh sách. Chi tiết lỗi: ${getApiErrorMessage(
-              detailResult.reason,
-              'Không thể tải chi tiết địa điểm',
-            )}`,
-          );
+          setGeneralMessage(`Đang hiển thị dữ liệu tạm từ danh sách. Chi tiết lỗi: ${getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm')}`);
         }
       } catch (err) {
         setError(getApiErrorMessage(err, 'Không thể tải thông tin địa điểm'));
@@ -461,79 +491,44 @@ const LocationEditPage: React.FC = () => {
     void fetchPlaceDetail();
   }, [id, vendorId]);
 
+  // ── Reviews ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchReviews = async () => {
-      if (activeTab !== 'Đánh giá') {
-        return;
-      }
-
+      if (activeTab !== 'Đánh giá') return;
       const placeCandidates = [place?.id, id, id ? decodeURIComponent(id) : undefined]
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
         .filter((value, index, array) => array.indexOf(value) === index);
-
-      if (placeCandidates.length === 0 || vendorCandidates.length === 0) {
-        return;
-      }
-
+      if (placeCandidates.length === 0 || vendorCandidates.length === 0) return;
       try {
         setReviewLoading(true);
         setReviewError(null);
         let loaded = false;
         let lastError: unknown = null;
-
         for (const placeIdCandidate of placeCandidates) {
           for (const vendorIdCandidate of vendorCandidates) {
             try {
-              const response = await businessReviewAPI.getReviews(
-                {
-                  vendorId: vendorIdCandidate,
-                  placeId: placeIdCandidate,
-                  rating: reviewRating,
-                  sort: reviewSort,
-                  hasImages: reviewHasImages || undefined,
-                },
-                1,
-                20,
-              );
-
-              setReviewData({
-                stats: response.stats,
-                reviews: response.reviews,
-                availableTopics: response.availableTopics,
-              });
+              const response = await businessReviewAPI.getReviews({ vendorId: vendorIdCandidate, placeId: placeIdCandidate, rating: reviewRating, sort: reviewSort, hasImages: reviewHasImages || undefined }, 1, 20);
+              setReviewData({ stats: response.stats, reviews: response.reviews, availableTopics: response.availableTopics });
               loaded = true;
               break;
-            } catch (error) {
-              lastError = error;
-            }
+            } catch (error) { lastError = error; }
           }
-
-          if (loaded) {
-            break;
-          }
+          if (loaded) break;
         }
-
-        if (!loaded) {
-          throw lastError || new Error('Không thể tải đánh giá');
-        }
+        if (!loaded) throw lastError || new Error('Không thể tải đánh giá');
       } catch (err) {
         setReviewData(null);
         setReviewError(getApiErrorMessage(err, 'Không thể tải đánh giá'));
-      } finally {
-        setReviewLoading(false);
-      }
+      } finally { setReviewLoading(false); }
     };
-
     void fetchReviews();
   }, [activeTab, id, place?.id, reviewHasImages, reviewRating, reviewSort, vendorCandidates]);
 
+  // ── Services ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchServices = async () => {
       const targetPlaceId = place?.id || id;
-      if (!targetPlaceId || activeTab !== 'Dịch vụ') {
-        return;
-      }
-
+      if (!targetPlaceId || activeTab !== 'Dịch vụ') return;
       try {
         setServicesLoading(true);
         setServicesError(null);
@@ -541,75 +536,99 @@ const LocationEditPage: React.FC = () => {
         const payload = rawServices && typeof rawServices === 'object' ? (rawServices as Record<string, unknown>) : {};
         const nested = (payload.data as Record<string, unknown> | undefined) ?? {};
         const free = Array.isArray(payload.freeServices) ? payload.freeServices : Array.isArray(nested.freeServices) ? (nested.freeServices as unknown[]) : [];
-        const paid = Array.isArray(payload.paidServices) ? payload.paidServices : Array.isArray(nested.paidServices) ? (nested.paidServices as unknown[]) : [];
         const menu = Array.isArray(payload.menuItems) ? payload.menuItems : Array.isArray(nested.menuItems) ? (nested.menuItems as unknown[]) : [];
-
         setFreeServices(free.map((item) => normalizeServiceItem(item, 'free')));
-        setPaidServices(paid.map((item) => normalizeServiceItem(item, 'paid')));
         setMenuItems(menu.map((item) => normalizeServiceItem(item, 'paid')));
       } catch (err) {
         setServicesError(getApiErrorMessage(err, 'Không thể tải dịch vụ'));
         setFreeServices([]);
-        setPaidServices([]);
-      } finally {
-        setServicesLoading(false);
-      }
+      } finally { setServicesLoading(false); }
     };
-
     void fetchServices();
   }, [activeTab, id, place?.id]);
 
-  const locationData = useMemo(() => {
-    return {
-      reviews: {
-        average: reviewData?.stats.averageRating || 0,
-        total: reviewData?.stats.totalReviews || 0,
-        distribution: [5, 4, 3, 2, 1].map((score) => ({
-          score,
-          percentage: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.percent || 0,
-        })),
-        aiInsight: reviewData?.stats.aiInsight || 'Chưa có dữ liệu phân tích AI.',
-        list: (reviewData?.reviews || []).map((review) => ({
-          id: review.id,
-          user: review.userName,
-          date: new Date(review.createdAt).toLocaleDateString('vi-VN'),
-          avatar: `https://picsum.photos/seed/${review.id}/100/100`,
-          rating: review.rating,
-          content: review.content,
-          images: review.images,
-          tags: review.topic ? [{ name: review.topic, color: '#3b82f6' }] : [],
-        })),
-      },
-    };
-  }, [reviewData]);
+  // ── Map helpers ───────────────────────────────────────────────────────────────
+  const currentLat = parseFloat(draft.latitude) || 10.77;
+  const currentLng = parseFloat(draft.longitude) || 106.7;
+  const mapTiles = getMapTiles(currentLat, currentLng);
 
-  const pageTitle = draft.name || place?.name || 'Đang tải...';
-  const statusMeta = place
-    ? { label: place.statusLabel, color: place.statusColor }
-    : { label: 'Chờ duyệt', color: '#f59e0b' };
+  const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = clamp(event.clientX - rect.left, 0, rect.width);
+    const clickY = clamp(event.clientY - rect.top, 0, rect.height);
+    const center = latLngToWorldPixel(currentLat, currentLng);
+    const worldX = center.x - rect.width / 2 + clickX;
+    const worldY = center.y - rect.height / 2 + clickY;
+    const { lat, lng } = worldPixelToLatLng(worldX, worldY);
+    const latitude = clamp(lat, VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
+    const longitude = clamp(lng, VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
+    setMarkerPosition({ x: (clickX / rect.width) * 100, y: (clickY / rect.height) * 100 });
+    setDraft((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
+  };
 
+  const handleFindOnMap = async () => {
+    if (!draft.address.trim() || !draft.city.trim()) {
+      setGeocodeError('Vui lòng nhập địa chỉ và chọn tỉnh/thành trước khi tìm trên bản đồ.');
+      return;
+    }
+    try {
+      setIsGeocoding(true);
+      setGeocodeError('');
+      const params = new URLSearchParams({ format: 'json', q: [draft.address.trim(), draft.city.trim(), 'Việt Nam'].join(', '), countrycodes: 'vn', limit: '1' });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('Không thể kết nối dịch vụ bản đồ.');
+      const results: Array<{ lat: string; lon: string }> = await response.json();
+      const firstResult = results[0];
+      if (!firstResult) throw new Error('Không tìm thấy vị trí phù hợp. Vui lòng thử nhập địa chỉ rõ hơn hoặc chọn thủ công trên bản đồ.');
+      const latitude = clamp(Number(firstResult.lat), VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
+      const longitude = clamp(Number(firstResult.lon), VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
+      if (Number.isNaN(latitude) || Number.isNaN(longitude)) throw new Error('Dịch vụ bản đồ trả về tọa độ không hợp lệ.');
+      setMarkerPosition({ x: 50, y: 50 });
+      setDraft((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
+    } catch (error) {
+      setGeocodeError(error instanceof Error ? error.message : 'Không thể tìm vị trí trên bản đồ.');
+    } finally { setIsGeocoding(false); }
+  };
+
+  // ── Image helpers ─────────────────────────────────────────────────────────────
+  const allImages = [...existingImageUrls, ...newImages.map((img) => img.previewUrl)];
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const remaining = 5 - allImages.length;
+    const toAdd = files.slice(0, remaining).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+    setNewImages((prev) => [...prev, ...toAdd]);
+    e.target.value = '';
+  };
+
+  const handleImageRemove = (index: number) => {
+    const existingCount = existingImageUrls.length;
+    if (index < existingCount) {
+      setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      const newIdx = index - existingCount;
+      setNewImages((prev) => {
+        URL.revokeObjectURL(prev[newIdx].previewUrl);
+        return prev.filter((_, i) => i !== newIdx);
+      });
+    }
+  };
+
+  // ── Validation ────────────────────────────────────────────────────────────────
+  const phoneError = draft.phone && !/^0\d{9}$/.test(draft.phone) ? 'SĐT phải gồm đúng 10 chữ số và bắt đầu bằng số 0.' : '';
+  const emailError = draft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email) ? 'Email không đúng định dạng.' : '';
+
+  // ── Save ──────────────────────────────────────────────────────────────────────
   const savedGeneralInfo = async () => {
-    if (!id || !vendorId) {
-      setGeneralMessage('Không tìm thấy thông tin địa điểm hoặc đối tác.');
-      return;
-    }
-
-    if (!draft.name.trim() || !draft.address.trim()) {
-      setGeneralMessage('Vui lòng nhập đầy đủ tên và địa chỉ địa điểm.');
-      return;
-    }
-
+    if (!id || !vendorId) { setGeneralMessage('Không tìm thấy thông tin địa điểm hoặc đối tác.'); return; }
+    if (!draft.name.trim() || !draft.address.trim()) { setGeneralMessage('Vui lòng nhập đầy đủ tên và địa chỉ địa điểm.'); return; }
+    if (phoneError) { setGeneralMessage('SĐT liên hệ không hợp lệ.'); return; }
+    if (emailError) { setGeneralMessage('Email liên hệ không hợp lệ.'); return; }
     try {
       setSavingGeneralInfo(true);
       setGeneralMessage(null);
-
-      const existingImages = galleryImages.filter((url) => !url.startsWith('blob:'));
-      const uploadedImages = await Promise.all(
-        pendingImageFiles.map((file) => uploadPlaceImage(file, id)),
-      );
-      const imageUrls = [...existingImages, ...uploadedImages]
-        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
-
+      const uploadedImages = await Promise.all(newImages.map((img) => uploadPlaceImage(img.file, id)));
+      const imageUrls = [...existingImageUrls, ...uploadedImages].filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
       await updatePlaceDetail({
         placeId: id,
         vendorId,
@@ -624,99 +643,102 @@ const LocationEditPage: React.FC = () => {
         imageUrls,
         isActive,
       });
-
       navigate('/locations');
     } catch (err) {
       setGeneralMessage(getApiErrorMessage(err, 'Không thể lưu thay đổi địa điểm'));
-    } finally {
-      setSavingGeneralInfo(false);
-    }
+    } finally { setSavingGeneralInfo(false); }
   };
 
+  // ── Services helpers ──────────────────────────────────────────────────────────
   const openServiceEditor = (kind: ServiceKind, service?: PlaceServiceItem) => {
-    setServiceEditor({
-      kind,
-      mode: service ? 'edit' : 'create',
-    });
-    setServiceDraft({
-      id: service?.id || '',
-      name: service?.name || '',
-      description: service?.description || '',
-      price: service?.price !== null && service?.price !== undefined ? String(service.price) : '',
-      isActive: service?.isActive ?? true,
-    });
+    setServiceEditor({ kind, mode: service ? 'edit' : 'create' });
+    setServiceDraft({ id: service?.id || '', name: service?.name || '', description: service?.description || '', price: service?.price !== null && service?.price !== undefined ? String(service.price) : '', isActive: service?.isActive ?? true });
   };
-
-  const closeServiceEditor = () => {
-    setServiceEditor(null);
-    setServiceDraft({
-      id: '',
-      name: '',
-      description: '',
-      price: '',
-      isActive: true,
-    });
-  };
-
-  const saveService = () => {
-    if (!serviceEditor) {
-      return;
-    }
-
+  const closeServiceEditor = () => { setServiceEditor(null); setServiceDraft({ id: '', name: '', description: '', price: '', isActive: true }); };
+  const saveService = async () => {
+    if (!serviceEditor) return;
     const trimmedName = serviceDraft.name.trim();
-    if (!trimmedName) {
-      window.alert('Vui lòng nhập tên dịch vụ');
-      return;
-    }
-
-    const nextService: PlaceServiceItem = {
-      id: serviceDraft.id || createId(serviceEditor.kind),
-      name: trimmedName,
-      description: serviceDraft.description.trim(),
-      price: serviceEditor.kind === 'paid'
-        ? (() => {
-            const numericPrice = Number(String(serviceDraft.price).replace(/[^\d.-]/g, ''));
-            return Number.isFinite(numericPrice) ? numericPrice : 0;
-          })()
-        : null,
-      isActive: serviceDraft.isActive,
-    };
-
-    if (serviceEditor.kind === 'free') {
-      setFreeServices((current) => {
-        if (serviceEditor.mode === 'edit') {
-          return current.map((item) => (item.id === nextService.id ? nextService : item));
+    if (!trimmedName) { window.alert('Vui lòng nhập tên dịch vụ'); return; }
+    const price = serviceEditor.kind === 'paid'
+      ? (() => { const n = Number(String(serviceDraft.price).replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : 0; })()
+      : null;
+    const targetPlaceId = id!;
+    try {
+      setServiceSaving(true);
+      setServiceMessage(null);
+      if (serviceEditor.kind === 'paid') {
+        if (serviceEditor.mode === 'create') {
+          const result = await addPlaceMenuItem({ placeId: targetPlaceId, name: trimmedName, description: serviceDraft.description.trim() || undefined, price: price ?? 0 });
+          const newId = (result?.item as any)?.id ?? (result as any)?.id ?? createId('paid');
+          setMenuItems((current) => [...current, { id: newId, name: trimmedName, description: serviceDraft.description.trim(), price, isActive: true }]);
+        } else {
+          await updatePlaceMenuItem({ itemId: serviceDraft.id, placeId: targetPlaceId, name: trimmedName, description: serviceDraft.description.trim() || undefined, price: price ?? 0 });
+          setMenuItems((current) => current.map((item) => item.id === serviceDraft.id ? { ...item, name: trimmedName, description: serviceDraft.description.trim(), price } : item));
         }
-        return [...current, nextService];
-      });
-    } else {
-      setPaidServices((current) => {
-        if (serviceEditor.mode === 'edit') {
-          return current.map((item) => (item.id === nextService.id ? nextService : item));
+      } else {
+        if (serviceEditor.mode === 'create') {
+          const result = await addPlaceFreeService({ placeId: targetPlaceId, name: trimmedName });
+          const newId = (result as any)?.id ?? createId('free');
+          setFreeServices((current) => [...current, { id: newId, name: trimmedName, description: serviceDraft.description.trim(), price: null, isActive: true }]);
+        } else {
+          const result = await updatePlaceFreeService({ serviceId: serviceDraft.id, placeId: targetPlaceId, name: trimmedName });
+          const newId = (result as any)?.id ?? serviceDraft.id;
+          setFreeServices((current) => current.map((item) => item.id === serviceDraft.id ? { ...item, id: newId, name: trimmedName, description: serviceDraft.description.trim() } : item));
         }
-        return [...current, nextService];
-      });
+      }
+      closeServiceEditor();
+      setServiceMessage({ type: 'success', text: serviceEditor.mode === 'create' ? 'Đã thêm thành công!' : 'Đã cập nhật thành công!' });
+      setTimeout(() => setServiceMessage(null), 3000);
+    } catch (err) {
+      setServiceMessage({ type: 'error', text: getApiErrorMessage(err, 'Không thể lưu dịch vụ') });
+    } finally {
+      setServiceSaving(false);
     }
-
-    closeServiceEditor();
   };
-
-  const deleteService = (kind: ServiceKind, serviceId: string) => {
-    if (kind === 'free') {
-      setFreeServices((current) => current.filter((item) => item.id !== serviceId));
-      return;
+  const deleteService = async (kind: ServiceKind, serviceId: string) => {
+    if (!window.confirm('Bạn có chắc muốn xóa dịch vụ này?')) return;
+    const targetPlaceId = id!;
+    try {
+      if (kind === 'paid') {
+        await deletePlaceMenuItem({ itemId: serviceId, placeId: targetPlaceId });
+        setMenuItems((current) => current.filter((item) => item.id !== serviceId));
+      } else {
+        await deletePlaceFreeService({ serviceId, placeId: targetPlaceId });
+        setFreeServices((current) => current.filter((item) => item.id !== serviceId));
+      }
+      setServiceMessage({ type: 'success', text: 'Đã xóa thành công!' });
+      setTimeout(() => setServiceMessage(null), 3000);
+    } catch (err) {
+      setServiceMessage({ type: 'error', text: getApiErrorMessage(err, 'Không thể xóa dịch vụ') });
     }
-    setPaidServices((current) => current.filter((item) => item.id !== serviceId));
   };
 
-  const togglePaidService = (serviceId: string) => {
-    setPaidServices((current) =>
-      current.map((item) =>
-        item.id === serviceId ? { ...item, isActive: !item.isActive } : item,
-      ),
-    );
-  };
+  // ── Derived ───────────────────────────────────────────────────────────────────
+  const locationData = useMemo(() => ({
+    reviews: {
+      average: reviewData?.stats.averageRating || 0,
+      total: reviewData?.stats.totalReviews || 0,
+      distribution: [5, 4, 3, 2, 1].map((score) => ({ score, percentage: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.percent || 0 })),
+      aiInsight: reviewData?.stats.aiInsight || 'Chưa có dữ liệu phân tích AI.',
+      list: (reviewData?.reviews || []).map((review) => ({
+        id: review.id,
+        user: review.userName,
+        date: new Date(review.createdAt).toLocaleDateString('vi-VN'),
+        avatar: `https://picsum.photos/seed/${review.id}/100/100`,
+        rating: review.rating,
+        content: review.content,
+        images: review.images,
+        tags: review.topic ? [{ name: review.topic, color: '#3b82f6' }] : [],
+      })),
+    },
+  }), [reviewData]);
 
+  const pageTitle = draft.name || place?.name || 'Đang tải...';
+  const statusMeta = place ? { label: place.statusLabel, color: place.statusColor } : { label: 'Chờ duyệt', color: '#f59e0b' };
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // renderGeneralInfo — mirrors AddLocation Step 1
+  // ════════════════════════════════════════════════════════════════════════════
   const renderGeneralInfo = () => (
     <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', padding: '32px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
       {generalMessage && (
@@ -725,148 +747,240 @@ const LocationEditPage: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '48px', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1.2 }}>
-          <Input label="Tên địa điểm" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
-          <Input label="Địa chỉ chi tiết" value={draft.address} onChange={(event) => setDraft((current) => ({ ...current, address: event.target.value }))} />
+      <div style={{ display: 'flex', gap: '48px' }}>
+        {/* ── Left column ── */}
+        <div style={{ flex: 1 }}>
+          <Input
+            label="Tên địa điểm"
+            placeholder="Ví dụ: Khách sạn Marriott Hà Nội"
+            value={draft.name}
+            onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))}
+          />
+          <Input
+            label="Địa chỉ chi tiết"
+            placeholder="Số nhà, tên đường..."
+            value={draft.address}
+            onChange={(e) => setDraft((current) => ({ ...current, address: e.target.value }))}
+          />
 
+          {/* City + Phone */}
           <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
             <div style={{ flex: 1 }}>
-              <Input
-                label="Tỉnh/Thành phố"
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>Tỉnh/Thành</label>
+              <select
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${citiesError ? '#ef4444' : 'var(--border-color)'}`, background: '#fcfcfc', outline: 'none', fontSize: '15px' }}
                 value={draft.city}
-                onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))}
-                style={{ marginBottom: 0 }}
-              />
+                onChange={(e) => setDraft((current) => ({ ...current, city: e.target.value }))}
+                disabled={loadingCities || !!citiesError || cities.length === 0}
+              >
+                {loadingCities ? (
+                  <option value="">Đang tải danh sách tỉnh/thành...</option>
+                ) : citiesError ? (
+                  <option value="">Không tải được danh sách tỉnh/thành</option>
+                ) : cities.length === 0 ? (
+                  <option value="">Danh sách tỉnh/thành đang trống</option>
+                ) : (
+                  <>
+                    <option value="" disabled>-- Chọn tỉnh/thành --</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+              {citiesError && (
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <span style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4 }}>Không thể tải tỉnh/thành từ hệ thống.</span>
+                  <button type="button" onClick={loadCities} disabled={loadingCities} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #fecaca', background: '#fff', color: '#dc2626', borderRadius: '10px', padding: '8px 10px', cursor: loadingCities ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <RefreshCw size={14} /> Tải lại
+                  </button>
+                </div>
+              )}
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>SĐT liên hệ</label>
-              <input
-                value={draft.district}
-                onChange={(event) => setDraft((current) => ({ ...current, district: event.target.value }))}
-                style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fcfcfc', outline: 'none', fontSize: '15px', color: '#1e293b' }}
-                placeholder="Số điện thoại liên hệ..."
+              <Input
+                label="SĐT Liên hệ"
+                placeholder="0xxxxxxxxx"
+                inputMode="numeric"
+                maxLength={10}
+                error={phoneError}
+                value={draft.phone}
+                onChange={(e) => setDraft((current) => ({ ...current, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                style={{ marginBottom: 0 }}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ flex: 1 }}>
-              <Input
-                label="Giờ mở cửa"
-                value={draft.openTime}
-                onChange={(event) => setDraft((current) => ({ ...current, openTime: event.target.value }))}
-                icon={<Clock size={16} />}
-                style={{ marginBottom: 0 }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Input
-                label="Giờ đóng cửa"
-                value={draft.closeTime}
-                onChange={(event) => setDraft((current) => ({ ...current, closeTime: event.target.value }))}
-                icon={<Clock size={16} />}
-                style={{ marginBottom: 0 }}
-              />
-            </div>
-          </div>
+          <Input
+            label="Email liên hệ"
+            type="email"
+            placeholder="example@email.com"
+            error={emailError}
+            value={draft.email}
+            onChange={(e) => setDraft((current) => ({ ...current, email: e.target.value }))}
+          />
 
-          <div>
+          {/* Description */}
+          <div style={{ marginBottom: '24px' }}>
             <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>Mô tả địa điểm</label>
             <textarea
-              style={{ width: '100%', minHeight: '160px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fcfcfc', outline: 'none', fontSize: '15px', color: '#1e293b', lineHeight: '1.6', resize: 'vertical' }}
+              placeholder="Nhập giới thiệu ngắn gọn về địa điểm của bạn..."
+              style={{ width: '100%', minHeight: '120px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#fcfcfc', outline: 'none', fontSize: '15px', color: '#1e293b', lineHeight: '1.6', resize: 'vertical' }}
               value={draft.description}
-              onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
-              placeholder="Nhập mô tả địa điểm..."
+              onChange={(e) => setDraft((current) => ({ ...current, description: e.target.value }))}
             />
+          </div>
+
+          {/* Business type */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>Loại hình kinh doanh</label>
+            <select
+              style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${businessTypesError ? '#ef4444' : 'var(--border-color)'}`, background: '#fcfcfc', outline: 'none', fontSize: '15px', color: '#1e293b' }}
+              value={draft.typeId}
+              onChange={(e) => {
+                const selectedType = businessTypes.find((t) => t.id === e.target.value);
+                setDraft((current) => ({ ...current, typeId: selectedType?.id || '', type: selectedType?.name || '' }));
+              }}
+              disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}
+            >
+              {loadingBusinessTypes ? (
+                <option value="">Đang tải danh sách loại hình...</option>
+              ) : businessTypesError ? (
+                <option value="">Không tải được danh sách loại hình</option>
+              ) : businessTypes.length === 0 ? (
+                <option value="">Danh sách loại hình đang trống</option>
+              ) : (
+                <>
+                  <option value="" disabled>-- Chọn loại hình --</option>
+                  {businessTypes.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </>
+              )}
+            </select>
+            {businessTypesError && (
+              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <span style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4 }}>Không thể tải loại hình kinh doanh từ hệ thống.</span>
+                <button type="button" onClick={loadBusinessTypes} disabled={loadingBusinessTypes} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #fecaca', background: '#fff', color: '#dc2626', borderRadius: '10px', padding: '8px 10px', cursor: loadingBusinessTypes ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  <RefreshCw size={14} /> Tải lại
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Open/Close time */}
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <Input label="Giờ mở cửa" type="time" value={draft.openTime} onChange={(e) => setDraft((current) => ({ ...current, openTime: e.target.value }))} icon={<Clock size={18} />} style={{ marginBottom: 0 }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Input label="Giờ đóng cửa" type="time" value={draft.closeTime} onChange={(e) => setDraft((current) => ({ ...current, closeTime: e.target.value }))} icon={<Clock size={18} />} style={{ marginBottom: 0 }} />
+            </div>
           </div>
         </div>
 
-        <div style={{ flex: 1 }}>
-          <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>Vị trí trên bản đồ</label>
-          <div style={{ width: '100%', height: '240px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden', position: 'relative', marginBottom: '24px' }}>
-            <img
-              src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600&h=400&fit=crop"
-              alt="Map"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', color: '#ef4444' }}>
+        {/* ── Right column ── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Map header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block' }}>Vị trí trên bản đồ</label>
+            <button
+              type="button"
+              onClick={handleFindOnMap}
+              disabled={isGeocoding || !draft.address.trim() || !draft.city.trim()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #bfdbfe', background: '#fff', color: '#2563eb', borderRadius: '10px', padding: '8px 12px', cursor: isGeocoding || !draft.address.trim() || !draft.city.trim() ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap', opacity: isGeocoding || !draft.address.trim() || !draft.city.trim() ? 0.6 : 1 }}
+            >
+              {isGeocoding ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              {isGeocoding ? 'Đang tìm...' : 'Tìm trên bản đồ'}
+            </button>
+          </div>
+          {geocodeError && (
+            <div style={{ color: '#dc2626', fontSize: '13px', lineHeight: 1.4, marginBottom: '10px' }}>{geocodeError}</div>
+          )}
+
+          {/* Interactive map */}
+          <div
+            onClick={handleMapClick}
+            style={{ width: '100%', flex: 1, minHeight: '240px', background: '#f8fafc', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '1px solid #F1F5F9', marginBottom: '24px', cursor: 'crosshair' }}
+          >
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {mapTiles.map((tile) => (
+                <img key={tile.key} src={tile.src} alt="" style={{ position: 'absolute', left: `${tile.left}px`, top: `${tile.top}px`, width: `${MAP_TILE_SIZE}px`, height: `${MAP_TILE_SIZE}px`, userSelect: 'none' }} />
+              ))}
+            </div>
+            <div style={{ position: 'absolute', top: `${markerPosition.y}%`, left: `${markerPosition.x}%`, transform: 'translate(-50%, -100%)', color: '#ef4444', pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
               <MapPin size={32} fill="#ef444433" />
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '32px' }}>
-            <div style={{ flex: 1 }}>
-              <Input label="Vĩ độ (Latitude)" value={draft.latitude} onChange={(event) => setDraft((current) => ({ ...current, latitude: event.target.value }))} style={{ marginBottom: 0 }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <Input label="Kinh độ (Longitude)" value={draft.longitude} onChange={(event) => setDraft((current) => ({ ...current, longitude: event.target.value }))} style={{ marginBottom: 0 }} />
+            <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', color: '#64748b' }}>
+              Nhấn "Tìm trên bản đồ" hoặc click vào bản đồ để chỉnh vị trí.
             </div>
           </div>
 
+          {/* Lat/Lng readonly */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ flex: 1 }}>
+              <Input label="Vĩ độ (Latitude)" type="number" value={draft.latitude} readOnly style={{ marginBottom: 0, cursor: 'not-allowed', background: '#f8fafc' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Input label="Kinh độ (Longitude)" type="number" value={draft.longitude} readOnly style={{ marginBottom: 0, cursor: 'not-allowed', background: '#f8fafc' }} />
+            </div>
+          </div>
+
+          {/* Images */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Hình ảnh địa điểm ({galleryImages.length})</label>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-              {(galleryImages.length ? galleryImages : ['https://picsum.photos/seed/location/200/200']).map((image, index) => (
-                <div key={`${image}-${index}`} style={{ aspectRatio: '1', borderRadius: '12px', overflow: 'hidden', border: '1px solid #F1F5F9' }}>
-                  <img src={image} alt={`Gallery ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '12px' }}>
+              Hình ảnh địa điểm <span style={{ color: '#94a3b8', fontWeight: '400' }}>({allImages.length}/5)</span>
+            </label>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {allImages.map((url, idx) => (
+                <div key={`${url}-${idx}`} style={{ position: 'relative', width: '76px', height: '76px' }}>
+                  <img src={url} alt="" style={{ width: '76px', height: '76px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #E2E8F0' }} />
+                  <button
+                    onClick={() => handleImageRemove(idx)}
+                    style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '800', lineHeight: 1 }}
+                  >×</button>
                 </div>
               ))}
-              <label style={{ aspectRatio: '1', borderRadius: '12px', border: '2px dashed #E2E8F0', background: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', color: '#94a3b8' }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    if (files.length === 0) {
-                      return;
-                    }
-                    setPendingImageFiles((current) => [...current, ...files]);
-                    setGalleryImages((current) => [
-                      ...current.filter((url) => !url.includes('picsum.photos/seed/location')),
-                      ...files.map((file) => URL.createObjectURL(file)),
-                    ]);
-                    event.target.value = '';
-                  }}
-                />
-                <Upload size={20} />
-                <span style={{ fontSize: '10px', fontWeight: '800' }}>TẢI LÊN</span>
-              </label>
+              {allImages.length < 5 && (
+                <>
+                  <input type="file" id="editPlaceImageInput" style={{ display: 'none' }} accept="image/*" multiple onChange={handleImageSelect} />
+                  <div
+                    onClick={() => document.getElementById('editPlaceImageInput')?.click()}
+                    style={{ width: '76px', height: '76px', border: '2px dashed #E2E8F0', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', gap: '4px', cursor: 'pointer', background: '#F8FAFC' }}
+                  >
+                    <Upload size={20} />
+                    <span>Thêm ảnh</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Footer */}
       <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: '16px', alignItems: 'center' }}>
         <span onClick={() => navigate('/locations')} style={{ color: '#64748b', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy bỏ</span>
-        <Button onClick={savedGeneralInfo} disabled={savingGeneralInfo} style={{ padding: '12px 32px', borderRadius: '12px' }}>
-          {savingGeneralInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+        <Button onClick={savedGeneralInfo} disabled={savingGeneralInfo} style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}>
+          {savingGeneralInfo ? (
+            <><Loader2 size={18} className="animate-spin" /> Đang lưu...</>
+          ) : (
+            <><CheckCircle size={18} /> Lưu thay đổi</>
+          )}
         </Button>
       </div>
     </div>
   );
 
+  // ── Reviews render ────────────────────────────────────────────────────────────
   const renderReviews = () => {
     const reviews = locationData.reviews.list;
     const displayAverageRating = locationData.reviews.average;
     const displayTotalReviews = locationData.reviews.total;
     const displayBreakdown = locationData.reviews.distribution.reduce((accumulator, item) => {
-      accumulator[item.score as 1 | 2 | 3 | 4 | 5] = {
-        count: 0,
-        percent: item.percentage,
-      };
+      accumulator[item.score as 1 | 2 | 3 | 4 | 5] = { count: 0, percent: item.percentage };
       return accumulator;
-    }, {
-      5: { count: 0, percent: 0 },
-      4: { count: 0, percent: 0 },
-      3: { count: 0, percent: 0 },
-      2: { count: 0, percent: 0 },
-      1: { count: 0, percent: 0 },
-    } as Record<1 | 2 | 3 | 4 | 5, { count: number; percent: number }>);
+    }, { 5: { count: 0, percent: 0 }, 4: { count: 0, percent: 0 }, 3: { count: 0, percent: 0 }, 2: { count: 0, percent: 0 }, 1: { count: 0, percent: 0 } } as Record<1 | 2 | 3 | 4 | 5, { count: number; percent: number }>);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -874,9 +988,7 @@ const LocationEditPage: React.FC = () => {
           <div style={{ textAlign: 'center', paddingRight: '48px', borderRight: '1px solid #F1F5F9' }}>
             <h1 style={{ fontSize: '48px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>{displayAverageRating}</h1>
             <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', color: '#fbbf24', marginBottom: '8px' }}>
-              {[1, 2, 3, 4, 5].map((score) => (
-                <Star key={score} size={20} fill="#fbbf24" color="#fbbf24" />
-              ))}
+              {[1, 2, 3, 4, 5].map((score) => (<Star key={score} size={20} fill="#fbbf24" color="#fbbf24" />))}
             </div>
             <p style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600' }}>{displayTotalReviews} đánh giá</p>
           </div>
@@ -899,45 +1011,12 @@ const LocationEditPage: React.FC = () => {
         <div>
           <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '20px', fontFamily: '"Outfit", sans-serif' }}>Bộ lọc đánh giá</h5>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              value={reviewRating ?? ''}
-              onChange={(event) => setReviewRating(event.target.value ? Number(event.target.value) : undefined)}
-              style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', background: 'white' }}>
+            <select value={reviewRating ?? ''} onChange={(event) => setReviewRating(event.target.value ? Number(event.target.value) : undefined)} style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '13px', background: 'white' }}>
               <option value="">Tất cả sao</option>
-              <option value="5">5 sao</option>
-              <option value="4">4 sao</option>
-              <option value="3">3 sao</option>
-              <option value="2">2 sao</option>
-              <option value="1">1 sao</option>
+              {[5, 4, 3, 2, 1].map((s) => <option key={s} value={s}>{s} sao</option>)}
             </select>
-
-            <Button
-              variant="outline"
-              onClick={() => setReviewSort('newest')}
-              style={{
-                borderRadius: '10px',
-                fontSize: '13px',
-                padding: '8px 20px',
-                background: reviewSort === 'newest' ? '#EFF6FF' : 'white',
-                borderColor: reviewSort === 'newest' ? '#3b82f6' : '#E2E8F0',
-                color: reviewSort === 'newest' ? '#3b82f6' : '#64748b',
-                fontWeight: '700',
-              }}>
-              Mới nhất
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setReviewHasImages((current) => !current)}
-              style={{
-                borderRadius: '10px',
-                fontSize: '13px',
-                padding: '8px 20px',
-                color: reviewHasImages ? '#3b82f6' : '#64748b',
-                borderColor: reviewHasImages ? '#3b82f6' : '#E2E8F0',
-                background: reviewHasImages ? '#EFF6FF' : 'white',
-              }}>
-              Có hình ảnh
-            </Button>
+            <Button variant="outline" onClick={() => setReviewSort('newest')} style={{ borderRadius: '10px', fontSize: '13px', padding: '8px 20px', background: reviewSort === 'newest' ? '#EFF6FF' : 'white', borderColor: reviewSort === 'newest' ? '#3b82f6' : '#E2E8F0', color: reviewSort === 'newest' ? '#3b82f6' : '#64748b', fontWeight: '700' }}>Mới nhất</Button>
+            <Button variant="outline" onClick={() => setReviewHasImages((current) => !current)} style={{ borderRadius: '10px', fontSize: '13px', padding: '8px 20px', color: reviewHasImages ? '#3b82f6' : '#64748b', borderColor: reviewHasImages ? '#3b82f6' : '#E2E8F0', background: reviewHasImages ? '#EFF6FF' : 'white' }}>Có hình ảnh</Button>
           </div>
         </div>
 
@@ -960,52 +1039,30 @@ const LocationEditPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '4px', color: '#fbbf24' }}>
-                    {[1, 2, 3, 4, 5].map((score) => (
-                      <Star key={score} size={16} fill={score <= review.rating ? '#fbbf24' : 'none'} color="#fbbf24" />
-                    ))}
+                    {[1, 2, 3, 4, 5].map((score) => (<Star key={score} size={16} fill={score <= review.rating ? '#fbbf24' : 'none'} color="#fbbf24" />))}
                   </div>
                 </div>
-
                 <p style={{ fontSize: '15px', color: '#475569', lineHeight: '1.7', marginBottom: '20px' }}>{review.content}</p>
-
                 {review.images.length > 0 && (
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    {review.images.map((image, index) => (
-                      <img key={`${review.id}-${index}`} src={image} alt="Review" style={{ width: '120px', height: '90px', borderRadius: '12px', objectFit: 'cover' }} />
-                    ))}
+                    {review.images.map((image, index) => (<img key={`${review.id}-${index}`} src={image} alt="Review" style={{ width: '120px', height: '90px', borderRadius: '12px', objectFit: 'cover' }} />))}
                   </div>
                 )}
-
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    {review.tags.map((tag) => (
-                      <span key={`${review.id}-${tag.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#F1F5F9', color: tag.color, borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>
-                        {tag.name}
-                      </span>
-                    ))}
+                    {review.tags.map((tag) => (<span key={`${review.id}-${tag.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#F1F5F9', color: tag.color, borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>{tag.name}</span>))}
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setReplyingToId((current) => (current === review.id ? null : review.id))}
-                    style={{ borderRadius: '10px', fontSize: '13px', padding: '6px 20px', color: '#3b82f6', borderColor: '#EFF6FF', background: '#EFF6FF' }}>
+                  <Button variant="outline" onClick={() => setReplyingToId((current) => (current === review.id ? null : review.id))} style={{ borderRadius: '10px', fontSize: '13px', padding: '6px 20px', color: '#3b82f6', borderColor: '#EFF6FF', background: '#EFF6FF' }}>
                     {replyingToId === review.id ? 'Hủy' : 'Trả lời'}
                   </Button>
                 </div>
-
                 {replyingToId === review.id && (
                   <div style={{ marginTop: '24px', padding: '24px', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #F1F5F9' }}>
                     <label style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', display: 'block', marginBottom: '12px' }}>Nội dung phản hồi khách hàng</label>
-                    <textarea
-                      placeholder="Cảm ơn bạn đã phản hồi, chúng tôi sẽ sớm cải thiện..."
-                      style={{ width: '100%', minHeight: '100px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px', resize: 'vertical' }}
-                    />
+                    <textarea placeholder="Cảm ơn bạn đã phản hồi, chúng tôi sẽ sớm cải thiện..." style={{ width: '100%', minHeight: '100px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px', resize: 'vertical' }} />
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                      <Button variant="outline" onClick={() => setReplyingToId(null)} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px' }}>
-                        Hủy bỏ
-                      </Button>
-                      <Button onClick={() => setReplyingToId(null)} style={{ padding: '8px 24px', borderRadius: '8px', fontSize: '13px' }}>
-                        Gửi phản hồi
-                      </Button>
+                      <Button variant="outline" onClick={() => setReplyingToId(null)} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px' }}>Hủy bỏ</Button>
+                      <Button onClick={() => setReplyingToId(null)} style={{ padding: '8px 24px', borderRadius: '8px', fontSize: '13px' }}>Gửi phản hồi</Button>
                     </div>
                   </div>
                 )}
@@ -1017,64 +1074,44 @@ const LocationEditPage: React.FC = () => {
     );
   };
 
+  // ── Services render ───────────────────────────────────────────────────────────
   const renderServiceEditor = (kind: ServiceKind) => {
-    if (!serviceEditor || serviceEditor.kind !== kind) {
-      return null;
-    }
-
+    if (!serviceEditor || serviceEditor.kind !== kind) return null;
+    const isEdit = serviceEditor.mode === 'edit';
+    const editorTitle = kind === 'free'
+      ? (isEdit ? 'Chỉnh sửa tiện ích' : 'Thêm tiện ích mới')
+      : (isEdit ? 'Chỉnh sửa dịch vụ' : 'Thêm dịch vụ mới');
     return (
       <div style={{ marginBottom: '24px', padding: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '20px' }}>
+        <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '20px' }}>{editorTitle}</p>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 280px' }}>
-            <Input
-              label="Tên dịch vụ"
-              value={serviceDraft.name}
-              onChange={(event) => setServiceDraft((current) => ({ ...current, name: event.target.value }))}
-              style={{ marginBottom: 0 }}
-            />
-          </div>
-          <div style={{ flex: '1 1 360px' }}>
-            <Input
-              label="Mô tả"
-              value={serviceDraft.description}
-              onChange={(event) => setServiceDraft((current) => ({ ...current, description: event.target.value }))}
-              style={{ marginBottom: 0 }}
-            />
-          </div>
-          {kind === 'paid' && (
-            <div style={{ flex: '1 1 180px' }}>
-              <Input
-                label="Giá dịch vụ"
-                value={serviceDraft.price}
-                onChange={(event) => setServiceDraft((current) => ({ ...current, price: event.target.value }))}
-                style={{ marginBottom: 0 }}
-                placeholder="Ví dụ: 200000"
-              />
-            </div>
-          )}
+          <div style={{ flex: '1 1 280px' }}><Input label="Tên dịch vụ" value={serviceDraft.name} onChange={(event) => setServiceDraft((current) => ({ ...current, name: event.target.value }))} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: '1 1 360px' }}><Input label="Mô tả" value={serviceDraft.description} onChange={(event) => setServiceDraft((current) => ({ ...current, description: event.target.value }))} style={{ marginBottom: 0 }} /></div>
+          {kind === 'paid' && (<div style={{ flex: '1 1 180px' }}><Input label="Giá (VNĐ)" value={serviceDraft.price} onChange={(event) => setServiceDraft((current) => ({ ...current, price: event.target.value.replace(/[^\d]/g, '') }))} style={{ marginBottom: 0 }} placeholder="Ví dụ: 35000" inputMode="numeric" /></div>)}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
-          <Button variant="outline" onClick={closeServiceEditor}>Hủy</Button>
-          <Button onClick={saveService}>Lưu</Button>
+          <Button variant="outline" onClick={closeServiceEditor} disabled={serviceSaving}>Hủy</Button>
+          <Button onClick={saveService} disabled={serviceSaving} style={{ gap: '8px' }}>
+            {serviceSaving ? <><Loader2 size={16} className="animate-spin" /> Đang lưu...</> : (isEdit ? 'Cập nhật' : 'Thêm mới')}
+          </Button>
         </div>
       </div>
     );
   };
 
-  const isRestaurant = (place?.category ?? '').toLowerCase().includes('nhà hàng') || (place?.category ?? '').toLowerCase().includes('restaurant');
-
   const renderServicesMenu = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+      {serviceMessage && (
+        <div style={{ padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: '600', background: serviceMessage.type === 'success' ? '#f0fdf4' : '#fef2f2', color: serviceMessage.type === 'success' ? '#16a34a' : '#dc2626', border: `1px solid ${serviceMessage.type === 'success' ? '#bbf7d0' : '#fecaca'}` }}>
+          {serviceMessage.text}
+        </div>
+      )}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Tiện ích miễn phí</h5>
-          <Button variant="outline" onClick={() => openServiceEditor('free')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
-            <Plus size={16} /> Thêm tiện ích
-          </Button>
+          <Button variant="outline" onClick={() => openServiceEditor('free')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}><Plus size={16} /> Thêm tiện ích</Button>
         </div>
-
         {renderServiceEditor('free')}
-
         {servicesLoading ? (
           <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', background: 'white', borderRadius: '20px', border: '1px solid #F1F5F9' }}>Đang tải tiện ích...</div>
         ) : servicesError ? (
@@ -1094,10 +1131,7 @@ const LocationEditPage: React.FC = () => {
                 </div>
               </div>
             ))}
-
-            <div
-              onClick={() => openServiceEditor('free')}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', border: '1px solid #E2E8F0', borderStyle: 'dashed', color: '#94a3b8', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', background: 'transparent' }}>
+            <div onClick={() => openServiceEditor('free')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', border: '1px solid #E2E8F0', borderStyle: 'dashed', color: '#94a3b8', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', background: 'transparent' }}>
               <Plus size={16} /> <span>Thêm tiện ích</span>
             </div>
           </div>
@@ -1106,44 +1140,34 @@ const LocationEditPage: React.FC = () => {
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tính phí ({paidServices.length})</h5>
-          <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
-            <Plus size={16} /> Thêm dịch vụ
-          </Button>
+          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ ({menuItems.length})</h5>
+          <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}><Plus size={16} /> Thêm dịch vụ</Button>
         </div>
-
         {renderServiceEditor('paid')}
-
         <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
           {servicesLoading ? (
             <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Đang tải dịch vụ...</div>
-          ) : paidServices.length > 0 ? (
+          ) : servicesError ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: '#ef4444', fontSize: '14px' }}>{servicesError}</div>
+          ) : menuItems.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Tên dịch vụ</th>
-                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Giá dịch vụ</th>
-                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Trạng thái</th>
-                  <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Thao tác</th>
+                  {['Tên dịch vụ', 'Mô tả', 'Giá', ''].map((h, i) => (
+                    <th key={`${h}-${i}`} style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: i === 2 ? 'left' : i === 3 ? 'right' : 'left' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {paidServices.map((service, index) => (
-                  <tr key={service.id} style={{ borderBottom: index < paidServices.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
-                    <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{service.name}</td>
-                    <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6', textAlign: 'center', textDecoration: 'underline' }}>{formatPrice(service.price)}</td>
-                    <td style={{ padding: '24px 32px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => togglePaidService(service.id)}
-                        style={{ width: '44px', height: '24px', background: service.isActive ? '#3b82f6' : '#E2E8F0', borderRadius: '20px', position: 'relative', cursor: 'pointer', display: 'inline-block', verticalAlign: 'middle', border: 'none' }}>
-                        <span style={{ position: 'absolute', right: service.isActive ? '4px' : 'auto', left: service.isActive ? 'auto' : '4px', top: '4px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} />
-                      </button>
-                    </td>
-                    <td style={{ padding: '24px 32px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '16px', color: '#94a3b8', justifyContent: 'center' }}>
-                        <Edit2 size={18} style={{ cursor: 'pointer' }} onClick={() => openServiceEditor('paid', service)} />
-                        <Trash2 size={18} style={{ cursor: 'pointer' }} onClick={() => deleteService('paid', service.id)} />
+                {menuItems.map((item, index) => (
+                  <tr key={item.id} style={{ borderBottom: index < menuItems.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
+                    <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
+                    <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '-'}</td>
+                    <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6' }}>{formatPrice(item.price)}</td>
+                    <td style={{ padding: '24px 32px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', color: '#94a3b8' }}>
+                        <Edit2 size={16} style={{ cursor: 'pointer', color: '#3b82f6' }} onClick={() => openServiceEditor('paid', item)} />
+                        <Trash2 size={16} style={{ cursor: 'pointer', color: '#ef4444' }} onClick={() => deleteService('paid', item.id)} />
                       </div>
                     </td>
                   </tr>
@@ -1151,58 +1175,19 @@ const LocationEditPage: React.FC = () => {
               </tbody>
             </table>
           ) : (
-            <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Chưa có dịch vụ tính phí nào</div>
+            <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+              <p style={{ marginBottom: '16px' }}>Chưa có dịch vụ nào</p>
+              <button onClick={() => openServiceEditor('paid')} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                <Plus size={16} /> Thêm dịch vụ đầu tiên
+              </button>
+            </div>
           )}
         </div>
       </div>
-
-      {isRestaurant && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Quản lý thực đơn món ăn ({menuItems.length})</h5>
-            <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}>
-              <Plus size={16} /> Thêm món
-            </Button>
-          </div>
-
-          <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-            {servicesLoading ? (
-              <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Đang tải thực đơn...</div>
-            ) : menuItems.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Tên món</th>
-                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Mô tả</th>
-                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Giá</th>
-                    <th style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: 'center' }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {menuItems.map((item, index) => (
-                    <tr key={item.id} style={{ borderBottom: index < menuItems.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
-                      <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
-                      <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '-'}</td>
-                      <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6', textAlign: 'center' }}>{formatPrice(item.price)}</td>
-                      <td style={{ padding: '24px 32px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '16px', color: '#94a3b8', justifyContent: 'center' }}>
-                          <Edit2 size={18} style={{ cursor: 'pointer' }} onClick={() => openServiceEditor('paid', item)} />
-                          <Trash2 size={18} style={{ cursor: 'pointer' }} onClick={() => setMenuItems((current) => current.filter((m) => m.id !== item.id))} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>Chưa có món ăn nào trong thực đơn</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 
+  // ── Main render ───────────────────────────────────────────────────────────────
   return (
     <>
       {loading ? (
@@ -1211,6 +1196,7 @@ const LocationEditPage: React.FC = () => {
         <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>
       ) : (
         <div style={{ padding: '0 20px' }}>
+          {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
@@ -1226,36 +1212,16 @@ const LocationEditPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>
-                Trạng thái: <span style={{ color: '#3b82f6' }}>{isActive ? 'Đang hoạt động' : 'Tạm ngưng'}</span>
-              </span>
-              <div
-                onClick={() => setIsActive((current) => !current)}
-                style={{ width: '44px', height: '22px', background: isActive ? '#3b82f6' : '#E2E8F0', borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: '0.2s' }}>
-                <div style={{ position: 'absolute', left: isActive ? '24px' : '4px', top: '3px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', transition: '0.2s' }} />
-              </div>
-            </div>
           </div>
 
+          {/* Tabs */}
           <div style={{ display: 'flex', gap: '32px', marginBottom: '32px', borderBottom: '1px solid #F1F5F9' }}>
             {(['Thông tin chung', 'Đánh giá', 'Dịch vụ'] as TabKey[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '12px 0',
-                  fontSize: '14px',
-                  fontWeight: activeTab === tab ? '700' : '600',
-                  color: activeTab === tab ? '#3b82f6' : '#64748b',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  marginBottom: '-1px',
-                }}>
+                style={{ padding: '12px 0', fontSize: '14px', fontWeight: activeTab === tab ? '700' : '600', color: activeTab === tab ? '#3b82f6' : '#64748b', background: 'transparent', border: 'none', borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s ease', marginBottom: '-1px' }}
+              >
                 {tab}
               </button>
             ))}
@@ -1269,4 +1235,3 @@ const LocationEditPage: React.FC = () => {
 };
 
 export default LocationEditPage;
-

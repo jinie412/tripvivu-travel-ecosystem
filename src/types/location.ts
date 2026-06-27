@@ -3,6 +3,7 @@ export interface Location {
   image: string;
   name: string;
   address: string;
+  city?: string;
   category: string;
   userName: string;
   userAvatar: string;

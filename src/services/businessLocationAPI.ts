@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+﻿import { apiClient } from './apiClient';
 import { Location } from '../types/location';
 
 interface BackendBusinessPlaceItem {
@@ -6,6 +6,9 @@ interface BackendBusinessPlaceItem {
   image_url?: string[] | string | null;
   name: string;
   address: string;
+  city?: string;
+  city_name?: string;
+  province?: string;
   categories: string[];
   rating: number;
   review_count: number;
@@ -57,6 +60,7 @@ const mapLocation = (item: BackendBusinessPlaceItem): Location => {
     image: getPrimaryImage(item.image_url),
     name: item.name,
     address: item.address,
+    city: item.city || item.city_name || item.province || '',
     category: item.categories.join(', ') || 'Khác',
     userName: 'Nhà cung cấp',
     userAvatar: 'NC',

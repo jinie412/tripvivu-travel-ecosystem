@@ -1,10 +1,15 @@
 import React from 'react';
-import Button from '../../../../components/UI/Button';
-import ConfirmDialog from '../../../../components/UI/ConfirmDialog';
-import { Mail, Phone, User, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Mail, Phone, User, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getOrderDetail, updateOrderStatus } from '@/services/order.service';
+import { getOrderDetail } from '@/services/order.service';
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; description: string }> = {
+   pending:    { label: 'Chờ xác nhận', color: '#92400e', bg: '#FEF9C3', dot: '#f59e0b', description: 'Đơn hàng đang chờ nhà hàng xác nhận qua email.' },
+   processing: { label: 'Đang chuẩn bị', color: '#1e40af', bg: '#EFF6FF', dot: '#3b82f6', description: 'Nhà hàng đã xác nhận và đang chuẩn bị món.' },
+   completed:  { label: 'Hoàn thành',    color: '#065f46', bg: '#F0FDF4', dot: '#10b981', description: 'Đơn hàng đã được giao thành công.' },
+   cancelled:  { label: 'Đã hủy',        color: '#991b1b', bg: '#FEF2F2', dot: '#ef4444', description: 'Đơn hàng đã bị hủy.' },
+};
 
 const OrderDetailPage: React.FC = () => {
    const navigate = useNavigate();
@@ -13,39 +18,6 @@ const OrderDetailPage: React.FC = () => {
    const [orderData, setOrderData] = useState<any>(null);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
-   const [updating, setUpdating] = useState(false);
-   const [confirmDialog, setConfirmDialog] = useState<{ newStatus: string; message: string } | null>(null);
-
-   const confirmLabels: Record<string, string> = {
-      processing: 'Xác nhận đơn hàng này?',
-      completed: 'Xác nhận hoàn thành đơn hàng?',
-      cancelled: 'Bạn chắc chắn muốn hủy đơn hàng này?',
-   };
-
-   const requestUpdateStatus = (newStatus: string) => {
-      setConfirmDialog({ newStatus, message: confirmLabels[newStatus] ?? 'Xác nhận thao tác?' });
-   };
-
-   const handleUpdateStatus = async () => {
-      if (!orderData || !confirmDialog) return;
-      const { newStatus } = confirmDialog;
-      setConfirmDialog(null);
-      setUpdating(true);
-      try {
-         await updateOrderStatus(orderData.id, newStatus);
-         const statusMap: { [key: string]: string } = {
-            'pending': 'Chờ xác nhận',
-            'processing': 'Đang chuẩn bị',
-            'completed': 'Hoàn thành',
-            'cancelled': 'Đã hủy',
-         };
-         setOrderData((prev: any) => ({ ...prev, status: newStatus, statusText: statusMap[newStatus] || newStatus }));
-      } catch (err) {
-         console.error('Không thể cập nhật trạng thái:', err);
-      } finally {
-         setUpdating(false);
-      }
-   };
 
    useEffect(() => {
       const fetchOrderDetail = async () => {
@@ -98,18 +70,6 @@ const OrderDetailPage: React.FC = () => {
    if (!orderData) return <div>No data</div>;
    return (
       <>
-         {confirmDialog && (
-            <ConfirmDialog
-               message={confirmDialog.message}
-               confirmColor={
-                  confirmDialog.newStatus === 'cancelled' ? '#ef4444'
-                  : confirmDialog.newStatus === 'completed' ? '#10b981'
-                  : undefined
-               }
-               onConfirm={handleUpdateStatus}
-               onCancel={() => setConfirmDialog(null)}
-            />
-         )}
          <div style={{ padding: '0 20px' }}>
             {/* Breadcrumb & Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
@@ -238,27 +198,23 @@ const OrderDetailPage: React.FC = () => {
                      </div>
                   </div>
 
-                  {/* Actions */}
-                  <div style={{ background: 'white', borderRadius: '24px', padding: '24px', border: '1px solid #F1F5F9', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                     <h5 style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4px' }}>Thao tác đơn hàng</h5>
-
-                     {orderData.status === 'pending' && (
-                        <>
-                           <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px' }} onClick={() => requestUpdateStatus('processing')}>
-                              <CheckCircle size={18} /> Xác nhận
-                           </Button>
-                           <Button variant="outline" fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', color: '#ef4444', borderColor: '#FEE2E2', background: 'transparent' }} onClick={() => requestUpdateStatus('cancelled')}>
-                              <XCircle size={18} /> Hủy đơn
-                           </Button>
-                        </>
-                     )}
-
-                     {orderData.status === 'processing' && (
-                        <Button fullWidth disabled={updating} style={{ borderRadius: '12px', gap: '8px', padding: '14px', background: '#10b981' }} onClick={() => requestUpdateStatus('completed')}>
-                           <CheckCircle size={18} /> Hoàn thành
-                        </Button>
-                     )}
-
+                  {/* Status */}
+                  <div style={{ background: 'white', borderRadius: '24px', padding: '24px', border: '1px solid #F1F5F9' }}>
+                     <h5 style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' as const, marginBottom: '16px' }}>Trạng thái đơn hàng</h5>
+                     {(() => {
+                        const cfg = STATUS_CONFIG[orderData.status] ?? { label: orderData.statusText, color: '#475569', bg: '#F8FAFC', dot: '#94a3b8', description: '' };
+                        return (
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', borderRadius: '14px', background: cfg.bg }}>
+                                 <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
+                                 <span style={{ fontSize: '15px', fontWeight: '800', color: cfg.color }}>{cfg.label}</span>
+                              </div>
+                              {cfg.description ? (
+                                 <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', padding: '0 4px' }}>{cfg.description}</p>
+                              ) : null}
+                           </div>
+                        );
+                     })()}
                   </div>
 
                </div>

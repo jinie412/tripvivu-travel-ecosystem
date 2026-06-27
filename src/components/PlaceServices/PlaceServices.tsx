@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle, BadgeCheck, CircleDollarSign } from 'lucide-react';
 import { getPlaceServicesByType, type PlaceServiceItemResponse } from '../../services/order.service';
 
 interface Service {
@@ -41,8 +41,10 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
         setLoading(true);
         setError(null);
         const data = await getPlaceServicesByType(placeId);
-        setFreeServices((data.freeServices || []).map(toService));
-        setPaidServices((data.paidServices || []).map(toService));
+        const freeList = data.freeServices || data.data?.freeServices || [];
+        const paidList = data.paidServices || data.data?.paidServices || [];
+        setFreeServices(freeList.map(toService));
+        setPaidServices(paidList.map(toService));
       } catch (err) {
         console.error('Error loading services:', err);
         setError('Không thể tải dữ liệu dịch vụ');
@@ -85,7 +87,7 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
       {freeServices.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <h6 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>
-            🎁 Dịch vụ miễn phí ({freeServices.length})
+            <BadgeCheck size={18} /> Dịch vụ miễn phí ({freeServices.length})
           </h6>
           <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #F1F5F9', padding: '24px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             {freeServices.map((service) => (
@@ -134,7 +136,7 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
       {paidServices.length > 0 && (
         <div>
           <h6 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>
-            💰 Dịch vụ tính phí ({paidServices.length})
+            <CircleDollarSign size={18} /> Dịch vụ có phí ({paidServices.length})
           </h6>
           <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #F1F5F9', padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
             {paidServices.map((service) => (

@@ -12,7 +12,9 @@ export interface Order {
   customer_name: string;
   foods: string;
   total_amount: number;
-  status: 'pending' | 'processing' | 'completed';
+  status: string;
+  notes?: string | null;
+  tourist_id?: string;
   // legacy fields
   id?: string;
   time?: string;

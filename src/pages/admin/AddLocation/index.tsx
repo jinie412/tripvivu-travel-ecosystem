@@ -101,6 +101,7 @@ export const AddLocation: React.FC = () => {
   const [vendorsError, setVendorsError] = useState<string | null>(null);
   // Service input state
   const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
+  const [serviceMode, setServiceMode] = useState<'free' | 'paid'>('free');
 
   // Menu item input state
   const [menuInput, setMenuInput] = useState<{
@@ -457,6 +458,12 @@ export const AddLocation: React.FC = () => {
       return;
     }
 
+    const price = parseFloat(menuInput.price);
+    if (Number.isNaN(price) || price <= 0) {
+      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      return;
+    }
+
     const newMenuItem = {
       id: Date.now().toString(),
       name: menuInput.name,
@@ -708,8 +715,13 @@ export const AddLocation: React.FC = () => {
       return;
     }
 
-    if (step === 2 && serviceInput.name.trim()) {
+    if (step === 2 && serviceMode === 'free' && serviceInput.name.trim()) {
       alert('Bạn có dịch vụ chưa thêm vào danh sách. Vui lòng bấm Thêm vào danh sách hoặc xóa nội dung.');
+      return;
+    }
+
+    if (step === 2 && serviceMode === 'paid' && (menuInput.name.trim() || menuInput.price.trim())) {
+      alert('Bạn có dịch vụ có phí chưa thêm vào danh sách. Vui lòng bấm Thêm hoặc xóa nội dung.');
       return;
     }
 
@@ -1201,7 +1213,25 @@ export const AddLocation: React.FC = () => {
 
   const renderStep2 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ background: 'white', padding: '20px 24px', borderRadius: '20px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+        <div>
+          <h4 style={{ fontSize: '1rem', fontWeight: '800', fontFamily: '"Outfit", sans-serif', color: '#0f172a', marginBottom: '4px' }}>Dịch vụ kinh doanh</h4>
+          <p style={{ fontSize: '13px', color: '#64748b' }}>Chọn loại dịch vụ trước khi thêm: tiện ích miễn phí hoặc dịch vụ có giá bán.</p>
+          <p style={{ fontSize: '13px', color: '#2563eb', fontWeight: 700, marginTop: '8px' }}>
+            Đã thêm {formData.amenities.length} dịch vụ miễn phí và {formData.menu.length} dịch vụ có phí. Nút hoàn tất địa điểm sẽ lưu cả hai loại.
+          </p>
+        </div>
+        <div style={{ display: 'flex', padding: '4px', background: '#F1F5F9', borderRadius: '14px', gap: '4px' }}>
+          <button type="button" onClick={() => setServiceMode('free')} style={{ minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: 'none', background: serviceMode === 'free' ? 'white' : 'transparent', color: serviceMode === 'free' ? '#2563eb' : '#64748b', fontWeight: 800, cursor: 'pointer', boxShadow: serviceMode === 'free' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none' }}>
+            Miễn phí ({formData.amenities.length})
+          </button>
+          <button type="button" onClick={() => setServiceMode('paid')} style={{ minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: 'none', background: serviceMode === 'paid' ? 'white' : 'transparent', color: serviceMode === 'paid' ? '#2563eb' : '#64748b', fontWeight: 800, cursor: 'pointer', boxShadow: serviceMode === 'paid' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none' }}>
+            Có phí ({formData.menu.length})
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: serviceMode === 'free' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', color: '#1e293b' }}>
           <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tiện ích</h4>
         </div>
@@ -1273,7 +1303,7 @@ export const AddLocation: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ display: serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
             <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Thực đơn món ăn (Nhà hàng)</h4>
@@ -1341,7 +1371,7 @@ export const AddLocation: React.FC = () => {
               </>
             )}
           </div>
-          <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px' }}>
+          <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Tên món ăn</label>
               <input
@@ -1383,7 +1413,46 @@ export const AddLocation: React.FC = () => {
                 <span style={{ position: 'absolute', right: '14px', color: 'var(--text-secondary)', fontSize: '15px' }}>đ</span>
               </div>
             </div>
-            <Button style={{ height: '48px', minWidth: '88px', padding: '0 18px', borderRadius: '12px', fontSize: '14px', whiteSpace: 'nowrap' }} onClick={handleAddMenuItem}>Thêm</Button>
+            <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Mô tả chi tiết</label>
+              <textarea
+                placeholder="VD: Bao gồm vé vào cửa, nước uống, áp dụng cuối tuần..."
+                value={menuInput.description}
+                onChange={(e) => setMenuInput({ ...menuInput, description: e.target.value })}
+                rows={3}
+                style={{
+                  width: '100%',
+                  minHeight: '88px',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color)',
+                  background: '#fcfcfc',
+                  fontSize: '15px',
+                  outline: 'none',
+                  color: 'var(--text-primary)',
+                  resize: 'vertical',
+                  lineHeight: 1.5,
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+            <div style={{ flex: '1 1 100%', display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                style={{
+                  height: '52px',
+                  minWidth: '150px',
+                  padding: '0 32px',
+                  borderRadius: '14px',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 10px 18px rgba(37, 99, 235, 0.22)',
+                }}
+                onClick={handleAddMenuItem}
+              >
+                Thêm
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1427,6 +1496,9 @@ export const AddLocation: React.FC = () => {
                 <img src={item.previewUrl || item.img || 'https://via.placeholder.com/56x56'} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>{item.name}</span>
+                  {item.description && (
+                    <span style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, marginTop: '4px' }}>{item.description}</span>
+                  )}
                   <span style={{ fontSize: '13px', color: '#3b82f6', fontWeight: '600' }}>{item.price}đ</span>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', color: '#94a3b8' }}>

@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 
 import apiClient from '../../utils/apiClient';
 import { getCurrentUser } from '../../utils/auth';
+import { getOrdersByPlace, isPendingOrder } from '../../services/order.service';
 
 const defaultAvatar =
   'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
@@ -36,11 +37,9 @@ const ProviderLayout: React.FC = () => {
     const vendorId = user?.businessId || user?.id || '';
     if (!vendorId) return;
 
-    apiClient.get('/business/orders', { params: { placeId: vendorId } })
-      .then((res) => {
-        const orders: any[] = Array.isArray(res.data) ? res.data
-          : Array.isArray(res.data?.data) ? res.data.data : [];
-        setPendingOrderCount(orders.filter((o) => o.status === 'pending').length);
+    getOrdersByPlace(vendorId)
+      .then((orders) => {
+        setPendingOrderCount(orders.filter(isPendingOrder).length);
       })
       .catch(() => {});
   }, []);
