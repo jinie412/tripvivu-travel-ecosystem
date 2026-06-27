@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_flutter;
 
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
@@ -30,9 +30,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _logoutAndRedirect() async {
     await supabase_flutter.Supabase.instance.client.auth.signOut();
 
-    const storage = FlutterSecureStorage();
-    await storage.delete(key: 'access_token');
-    await storage.delete(key: 'refresh_token');
+    await AuthStorage.delete('access_token');
+    await AuthStorage.delete('refresh_token');
+    await AuthStorage.delete('cached_user');
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

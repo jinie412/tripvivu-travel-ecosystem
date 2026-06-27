@@ -11,8 +11,6 @@ import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/services/fcm_service.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_state.dart';
-import 'package:travel_advisor_mobile/core/utils/reload.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_shared_widgets.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/widgets/auth_text_field.dart';
 
@@ -64,10 +62,6 @@ class _LoginViewState extends State<_LoginView> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             Navigator.pushReplacementNamed(context, '/home');
-            // Web cần reload để flush auth state trong browser storage
-            if (kIsWeb) {
-              Future.delayed(const Duration(milliseconds: 100), reloadPage);
-            }
           });
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(

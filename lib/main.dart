@@ -27,8 +27,12 @@ const bool kSkipLogin = AppConfig.kSkipLogin;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  await Firebase.initializeApp();
-  await FcmService.init();
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+    await FcmService.init();
+  } else {
+    debugPrint('[FCM] Firebase initialization skipped on web.');
+  }
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',

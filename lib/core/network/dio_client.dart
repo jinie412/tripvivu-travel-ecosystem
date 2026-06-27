@@ -3,7 +3,7 @@ import 'dart:async';
 import 'api_config.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 
 /// Singleton Dio HTTP client.
 /// Configured with baseUrl, timeouts, auth injection, response cache, and 401 retry.
@@ -63,7 +63,6 @@ class DioClient {
 /// Dùng Completer để chống concurrent refresh khi nhiều request cùng hết hạn.
 class _AuthInterceptor extends Interceptor {
   final Dio _dio;
-  final _storage = const FlutterSecureStorage();
 
   /// null = không có refresh nào đang chạy.
   /// non-null = refresh đang chạy, giá trị future trả về true nếu thành công.
@@ -74,7 +73,7 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -105,7 +104,7 @@ class _AuthInterceptor extends Interceptor {
     // Bắt đầu một lần refresh mới
     _refreshCompleter = Completer<bool>();
     try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
+      final refreshToken = await AuthStorage.read('refresh_token');
       if (refreshToken == null || refreshToken.isEmpty) {
         _refreshCompleter!.complete(false);
         _refreshCompleter = null;
@@ -133,9 +132,9 @@ class _AuthInterceptor extends Interceptor {
       }
 
       await Future.wait([
-        _storage.write(key: 'access_token', value: newAccessToken),
-        if (newRefreshToken != null && newRefreshToken.isNotEmpty)
-          _storage.write(key: 'refresh_token', value: newRefreshToken),
+          AuthStorage.write('access_token', newAccessToken),
+          if (newRefreshToken != null && newRefreshToken.isNotEmpty)
+            AuthStorage.write('refresh_token', newRefreshToken),
       ]);
 
       _refreshCompleter!.complete(true);
@@ -153,7 +152,7 @@ class _AuthInterceptor extends Interceptor {
   Future<void> _retryRequest(
       DioException err, ErrorInterceptorHandler handler) async {
     try {
-      final newToken = await _storage.read(key: 'access_token');
+      final newToken = await AuthStorage.read('access_token');
       final retryOptions = err.requestOptions.copyWith(
         headers: {
           ...err.requestOptions.headers,
@@ -173,9 +172,9 @@ class _AuthInterceptor extends Interceptor {
 
   Future<void> _clearTokens() async {
     await Future.wait([
-      _storage.delete(key: 'access_token'),
-      _storage.delete(key: 'refresh_token'),
-      _storage.delete(key: 'cached_user'),
+      AuthStorage.delete('access_token'),
+      AuthStorage.delete('refresh_token'),
+      AuthStorage.delete('cached_user'),
     ]);
   }
 }

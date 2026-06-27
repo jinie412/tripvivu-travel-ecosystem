@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
+import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/create_itinerary_request_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_activity_model.dart';
@@ -52,10 +52,8 @@ abstract class ItineraryDataSource {
 class RemoteItineraryDataSource implements ItineraryDataSource {
   String get baseUrl => ApiConfig.baseUrl;
 
-  final _storage = const FlutterSecureStorage();
-
   Future<Map<String, String>> _authHeaders() async {
-    final token = await _storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
     return {
       'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
@@ -65,8 +63,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   @override
   Future<List<ItineraryModel>> getItineraries({String? query}) async {
     final userId = await AuthUtils.requireCurrentUserId();
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
     final trimmedQuery = query?.trim();
 
     final res = await http.get(
@@ -176,8 +173,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
   @override
   Future<ItineraryDetailModel> getItineraryDetail(String id) async {
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
     final touristId = await AuthUtils.getCurrentUserId();
 
     final res = await http.get(
@@ -246,8 +242,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
   @override
   Future<String> createItinerary(CreateItineraryRequestModel request) async {
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
+    final token = await AuthStorage.read('access_token');
 
     final res = await http.post(
       Uri.parse('$baseUrl/itinerary/plan'),
