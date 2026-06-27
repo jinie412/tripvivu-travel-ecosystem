@@ -229,7 +229,7 @@ export const AlgorithmRunner: React.FC = () => {
             onRunNow={() => {}}
           />
           <AlgoDropdown
-            title="Lọc – Phân loại đánh giá"
+            title="Lọc đánh giá"
             available={true}
             autoEnabled={reviewAutoEnabled}
             onAutoChange={setReviewAutoEnabled}

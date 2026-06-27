@@ -202,7 +202,20 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                     </div>
                   </td>
                   <td data-label="Địa điểm">
-                    <a href="#" className="rv-location-link" onClick={(e) => e.preventDefault()}>{review.locationName}</a>
+                    {review.locationId ? (
+                      <button
+                        type="button"
+                        className="rv-location-link"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          navigate(`/admin/locations/${review.locationId}`);
+                        }}>
+                        {review.locationName}
+                      </button>
+                    ) : (
+                      <span className="rv-location-link rv-location-link-disabled">{review.locationName}</span>
+                    )}
                   </td>
                   <td data-label="Nội dung">
                     <span className="rv-content-preview">{review.content}</span>

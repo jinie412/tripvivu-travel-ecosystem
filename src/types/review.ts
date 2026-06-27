@@ -2,6 +2,7 @@ export interface Review {
   id: string;
   userAvatar: string;
   userName: string;
+  locationId?: string;
   locationName: string;
   content: string;
   rating: number;

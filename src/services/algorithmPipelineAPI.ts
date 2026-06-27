@@ -30,6 +30,11 @@ export interface PipelineRunResponse {
 
 export interface PipelineHistoryItem {
   run_id: string;
+  algorithm_id?: string | null;
+  algorithm_name?: string;
+  status?: string;
+  action?: string;
+  details?: Record<string, unknown> | null;
   started_at: string;
   completed_at: string;
   total_reviews: number;
@@ -39,6 +44,7 @@ export interface PipelineHistoryItem {
   duration_seconds: number;
   success: boolean;
   error: string | null;
+  created_at?: string;
 }
 
 export interface PipelineHistoryResponse {

@@ -83,6 +83,21 @@ export const LocationDetail: React.FC = () => {
     }
   };
 
+  const handleUpdateCoordinates = async (latitude: number, longitude: number) => {
+    if (!id) {
+      return;
+    }
+
+    const updated = await locationAPI.updateLocationCoordinates(id, {
+      latitude,
+      longitude,
+    });
+
+    setLocation((current) => current
+      ? { ...current, lat: updated.latitude, lng: updated.longitude }
+      : current);
+  };
+
   return (
     <div className="location-detail-page">
       <div className="location-detail-header-wrapper">
@@ -147,7 +162,7 @@ export const LocationDetail: React.FC = () => {
           {/* Right Column */}
           <div className="ld-col-right">
             <GeneralInfo location={location} />
-            <LocationMap location={location} />
+            <LocationMap location={location} onCoordinatesSave={handleUpdateCoordinates} />
           </div>
         </div>
       </div>
