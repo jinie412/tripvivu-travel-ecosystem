@@ -615,6 +615,7 @@ class _ExploreViewState extends State<_ExploreView> {
   ) {
     final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
     final detailId = state.nearbyRestaurantDetailId ?? '';
+    final placeId = state.nearbyRestaurantPlaceId ?? '';
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
@@ -634,7 +635,7 @@ class _ExploreViewState extends State<_ExploreView> {
             ctx,
             MaterialPageRoute(
               builder: (_) =>
-                  FoodMenuScreen(placeId: detailId, restaurantName: name),
+                  FoodMenuScreen(placeId: placeId, restaurantName: name, itineraryDetailId: detailId),
             ),
           );
         },

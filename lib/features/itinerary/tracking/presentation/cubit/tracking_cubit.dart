@@ -25,16 +25,18 @@ import 'tracking_state.dart';
 /// Thông tin tối giản về quán ăn, dùng để lưu/khôi phục qua SharedPreferences.
 class _FoodSpot {
   final String id;
+  final String placeId;
   final String name;
   final double lat;
   final double lng;
 
-  const _FoodSpot({required this.id, required this.name, required this.lat, required this.lng});
+  const _FoodSpot({required this.id, required this.placeId, required this.name, required this.lat, required this.lng});
 
-  Map<String, dynamic> toJson() => {'i': id, 'n': name, 'a': lat, 'o': lng};
+  Map<String, dynamic> toJson() => {'i': id, 'p': placeId, 'n': name, 'a': lat, 'o': lng};
 
   factory _FoodSpot.fromJson(Map<String, dynamic> j) => _FoodSpot(
         id: j['i'] as String? ?? '',
+        placeId: j['p'] as String? ?? '',
         name: j['n'] as String? ?? '',
         lat: (j['a'] as num).toDouble(),
         lng: (j['o'] as num).toDouble(),
@@ -174,10 +176,14 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   }
 
   void _startFoodProximityWatch(List<ItineraryActivityEntity> activities) {
+    final placeIdByDetailId = {
+      for (final p in state.places) p.itineraryDetailId: p.placeId,
+    };
     _foodSpots = activities
         .where((a) => _isFoodCategory(a.category) && a.latitude != null && a.longitude != null)
         .map((a) => _FoodSpot(
               id: a.id,
+              placeId: a.placeId ?? placeIdByDetailId[a.id] ?? '',
               name: a.locationName.isNotEmpty ? a.locationName : a.title,
               lat: a.latitude!,
               lng: a.longitude!,
@@ -202,9 +208,21 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     if (raw == null || raw.isEmpty) return;
     try {
       final list = jsonDecode(raw) as List;
+      final placeIdByDetailId = {
+        for (final p in state.places) p.itineraryDetailId: p.placeId,
+      };
       _foodSpots = list
           .map((j) => _FoodSpot.fromJson(Map<String, dynamic>.from(j as Map)))
           .where((s) => s.id.isNotEmpty)
+          .map((s) => s.placeId.isNotEmpty
+              ? s
+              : _FoodSpot(
+                  id: s.id,
+                  placeId: placeIdByDetailId[s.id] ?? '',
+                  name: s.name,
+                  lat: s.lat,
+                  lng: s.lng,
+                ))
           .toList();
     } catch (_) {
       _foodSpots = [];
@@ -282,6 +300,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
         if (state.nearbyRestaurantDetailId != s.id) {
           emit(state.copyWith(
             nearbyRestaurantDetailId: s.id,
+            nearbyRestaurantPlaceId: s.placeId,
             nearbyRestaurantName: s.name,
           ));
         }

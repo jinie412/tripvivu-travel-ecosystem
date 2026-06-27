@@ -14,6 +14,7 @@ class TrackingState extends Equatable {
   final String? message; // lỗi hoặc thông báo ngắn
   // Quán ăn gần vị trí hiện tại (trong kBán kính cấu hình)
   final String? nearbyRestaurantDetailId;
+  final String? nearbyRestaurantPlaceId;
   final String? nearbyRestaurantName;
 
   const TrackingState({
@@ -25,6 +26,7 @@ class TrackingState extends Equatable {
     this.checkingInDetailId,
     this.message,
     this.nearbyRestaurantDetailId,
+    this.nearbyRestaurantPlaceId,
     this.nearbyRestaurantName,
   });
 
@@ -54,6 +56,7 @@ class TrackingState extends Equatable {
     String? message,
     bool clearMessage = false,
     String? nearbyRestaurantDetailId,
+    String? nearbyRestaurantPlaceId,
     String? nearbyRestaurantName,
     bool clearNearbyRestaurant = false,
   }) {
@@ -69,6 +72,9 @@ class TrackingState extends Equatable {
       nearbyRestaurantDetailId: clearNearbyRestaurant
           ? null
           : (nearbyRestaurantDetailId ?? this.nearbyRestaurantDetailId),
+      nearbyRestaurantPlaceId: clearNearbyRestaurant
+          ? null
+          : (nearbyRestaurantPlaceId ?? this.nearbyRestaurantPlaceId),
       nearbyRestaurantName: clearNearbyRestaurant
           ? null
           : (nearbyRestaurantName ?? this.nearbyRestaurantName),
@@ -85,6 +91,7 @@ class TrackingState extends Equatable {
         checkingInDetailId,
         message,
         nearbyRestaurantDetailId,
+        nearbyRestaurantPlaceId,
         nearbyRestaurantName,
       ];
 }

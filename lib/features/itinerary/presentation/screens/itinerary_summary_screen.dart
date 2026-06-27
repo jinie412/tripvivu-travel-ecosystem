@@ -116,6 +116,7 @@ class _ItinerarySummaryView extends StatelessWidget {
   void _showFoodProximityPopup(BuildContext ctx, TrackingState state) {
     final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
     final detailId = state.nearbyRestaurantDetailId ?? '';
+    final placeId = state.nearbyRestaurantPlaceId ?? '';
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
@@ -135,7 +136,7 @@ class _ItinerarySummaryView extends StatelessWidget {
             ctx,
             MaterialPageRoute(
               builder: (_) =>
-                  FoodMenuScreen(placeId: detailId, restaurantName: name),
+                  FoodMenuScreen(placeId: placeId, restaurantName: name, itineraryDetailId: detailId),
             ),
           );
         },

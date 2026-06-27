@@ -5,6 +5,10 @@ import 'package:travel_advisor_mobile/features/food/data/datasources/food_remote
 import 'package:travel_advisor_mobile/features/food/domain/entities/food_item_entity.dart';
 
 class FoodState extends Equatable {
+  static const allCategoryLabel = 'Tất cả';
+  static const mainCategoryLabel = 'Món chính';
+  static const drinkCategoryLabel = 'Đồ uống';
+
   final String placeId;
   final String? itineraryDetailId;
   final String restaurantName;
@@ -13,7 +17,9 @@ class FoodState extends Equatable {
   final String selectedMainCategory;
   final String selectedSubCategory;
   final List<String> subCategories;
+  final bool isLoading;
   final bool isSubmitting;
+  final String? errorMessage;
 
   const FoodState({
     required this.placeId,
@@ -24,7 +30,9 @@ class FoodState extends Equatable {
     required this.selectedMainCategory,
     required this.selectedSubCategory,
     required this.subCategories,
+    required this.isLoading,
     required this.isSubmitting,
+    required this.errorMessage,
   });
 
   factory FoodState.initial() => const FoodState(
@@ -32,28 +40,34 @@ class FoodState extends Equatable {
         itineraryDetailId: null,
         restaurantName: '',
         allItems: [],
-        mainCategories: ['Tất cả', 'Món chính', 'Đồ uống'],
-        selectedMainCategory: 'Tất cả',
-        selectedSubCategory: 'Tất cả',
-        subCategories: ['Tất cả'],
+        mainCategories: [
+          FoodState.allCategoryLabel,
+          FoodState.mainCategoryLabel,
+          FoodState.drinkCategoryLabel,
+        ],
+        selectedMainCategory: FoodState.allCategoryLabel,
+        selectedSubCategory: FoodState.allCategoryLabel,
+        subCategories: [FoodState.allCategoryLabel],
+        isLoading: false,
         isSubmitting: false,
+        errorMessage: null,
       );
 
   List<FoodItemEntity> get filteredItems {
     var items = allItems;
 
-    if (selectedMainCategory != 'Tất cả') {
-      if (selectedMainCategory == 'Đồ uống') {
+    if (selectedMainCategory != FoodState.allCategoryLabel) {
+      if (selectedMainCategory == FoodState.drinkCategoryLabel) {
         items = items.where((i) => i.category == 'drink').toList();
       } else {
         items = items.where((i) => i.category == 'main').toList();
       }
     }
 
-    if (selectedSubCategory != 'Tất cả') {
-      if (selectedSubCategory == 'Đồ uống') {
+    if (selectedSubCategory != FoodState.allCategoryLabel) {
+      if (selectedSubCategory == FoodState.drinkCategoryLabel) {
         items = items.where((i) => i.category == 'drink').toList();
-      } else if (selectedSubCategory == 'Món chính') {
+      } else if (selectedSubCategory == FoodState.mainCategoryLabel) {
         items = items.where((i) => i.category == 'main').toList();
       }
     }
@@ -74,7 +88,10 @@ class FoodState extends Equatable {
     String? selectedMainCategory,
     String? selectedSubCategory,
     List<String>? subCategories,
+    bool? isLoading,
     bool? isSubmitting,
+    String? errorMessage,
+    bool clearErrorMessage = false,
   }) {
     return FoodState(
       placeId: placeId ?? this.placeId,
@@ -87,7 +104,10 @@ class FoodState extends Equatable {
       selectedMainCategory: selectedMainCategory ?? this.selectedMainCategory,
       selectedSubCategory: selectedSubCategory ?? this.selectedSubCategory,
       subCategories: subCategories ?? this.subCategories,
+      isLoading: isLoading ?? this.isLoading,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
@@ -101,7 +121,9 @@ class FoodState extends Equatable {
         selectedMainCategory,
         selectedSubCategory,
         subCategories,
+        isLoading,
         isSubmitting,
+        errorMessage,
       ];
 }
 
@@ -117,6 +139,19 @@ class FoodCubit extends Cubit<FoodState> {
     required String restaurantName,
     String? itineraryDetailId,
   }) async {
+    print('[FoodCubit] loadRestaurantMenu called | placeId="$placeId" | restaurant="$restaurantName"');
+    emit(state.copyWith(
+      placeId: placeId,
+      itineraryDetailId: itineraryDetailId,
+      restaurantName: restaurantName,
+      allItems: const [],
+      subCategories: const [FoodState.allCategoryLabel],
+      selectedMainCategory: FoodState.allCategoryLabel,
+      selectedSubCategory: FoodState.allCategoryLabel,
+      isLoading: true,
+      clearErrorMessage: true,
+    ));
+
     try {
       final result = await _remote.getFoodItems(placeId: placeId);
       final subCats = _buildSubCategories(result.items);
@@ -128,37 +163,46 @@ class FoodCubit extends Cubit<FoodState> {
             result.placeName.isNotEmpty ? result.placeName : restaurantName,
         allItems: result.items,
         subCategories: subCats,
-        selectedMainCategory: 'Tất cả',
-        selectedSubCategory: 'Tất cả',
+        selectedMainCategory: FoodState.allCategoryLabel,
+        selectedSubCategory: FoodState.allCategoryLabel,
+        isLoading: false,
+        clearErrorMessage: true,
       ));
-    } catch (_) {
-      final isComTam = restaurantName.contains('Cơm tấm');
-      final mockItems = isComTam ? _comTamMenu() : _generalMenu();
-      final subCats = _buildSubCategories(mockItems);
-
+    } catch (e, st) {
+      print('[FoodCubit] loadRestaurantMenu error | placeId=$placeId | $e');
+      print(st);
       emit(state.copyWith(
         placeId: placeId,
         itineraryDetailId: itineraryDetailId,
         restaurantName: restaurantName,
-        allItems: mockItems,
-        subCategories: subCats,
-        selectedMainCategory: 'Tất cả',
-        selectedSubCategory: 'Tất cả',
+        allItems: const [],
+        subCategories: const [FoodState.allCategoryLabel],
+        selectedMainCategory: FoodState.allCategoryLabel,
+        selectedSubCategory: FoodState.allCategoryLabel,
+        isLoading: false,
+        errorMessage: e.toString(),
       ));
     }
   }
 
   List<String> _buildSubCategories(List<FoodItemEntity> items) {
     final sub = items
-        .map((item) => item.category == 'drink' ? 'Đồ uống' : 'Món chính')
+        .map(
+          (item) => item.category == 'drink'
+              ? FoodState.drinkCategoryLabel
+              : FoodState.mainCategoryLabel,
+        )
         .toSet()
         .toList();
     sub.sort();
-    return ['Tất cả', ...sub];
+    return [FoodState.allCategoryLabel, ...sub];
   }
 
   void selectMainCategory(String cat) {
-    emit(state.copyWith(selectedMainCategory: cat, selectedSubCategory: 'Tất cả'));
+    emit(state.copyWith(
+      selectedMainCategory: cat,
+      selectedSubCategory: FoodState.allCategoryLabel,
+    ));
   }
 
   void selectSubCategory(String subCat) {
@@ -200,71 +244,13 @@ class FoodCubit extends Cubit<FoodState> {
         items: selectedItems,
       );
 
-      final resetItems = state.allItems
-          .map((item) => item.copyWith(quantity: 0))
-          .toList();
+      final resetItems =
+          state.allItems.map((item) => item.copyWith(quantity: 0)).toList();
       emit(state.copyWith(allItems: resetItems, isSubmitting: false));
       return result;
     } catch (e) {
       emit(state.copyWith(isSubmitting: false));
       rethrow;
     }
-  }
-
-  List<FoodItemEntity> _comTamMenu() {
-    return const [
-      FoodItemEntity(
-        id: 'food-001',
-        title: 'Cơm tấm sườn bì chả',
-        description:
-            'Đặc sản trứ danh, sườn nướng mật ong béo ngậy kèm bì chả truyền thống.',
-        price: 75000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80',
-        category: 'main',
-      ),
-      FoodItemEntity(
-        id: 'food-002',
-        title: 'Cơm sườn non nướng',
-        description:
-            'Sườn non nguyên bẹ, ướp gia vị đậm đà, nướng than hồng thơm nức.',
-        price: 95000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&q=80',
-        category: 'main',
-      ),
-      FoodItemEntity(
-        id: 'drink-001',
-        title: 'Sữa hột gà',
-        description: 'Thức uống bổ dưỡng truyền thống, béo ngậy hương vị xưa.',
-        price: 35000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&q=80',
-        category: 'drink',
-      ),
-      FoodItemEntity(
-        id: 'drink-002',
-        title: 'Trà đá dư vị',
-        description: 'Trà nồng ấm đá mát lạnh, giải nhiệt ngày nắng.',
-        price: 5000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80',
-        category: 'drink',
-      ),
-    ];
-  }
-
-  List<FoodItemEntity> _generalMenu() {
-    return const [
-      FoodItemEntity(
-        id: 'food-gen-001',
-        title: 'Món ăn đặc sắc',
-        description: 'Vui lòng chọn nhà hàng cụ thể để xem thực đơn chính xác.',
-        price: 50000,
-        imageUrl:
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
-        category: 'main',
-      ),
-    ];
   }
 }

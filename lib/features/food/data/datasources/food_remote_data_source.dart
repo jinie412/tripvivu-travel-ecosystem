@@ -165,6 +165,7 @@ class FoodRemoteDataSource {
         'page': page,
         'limit': limit,
       },
+      options: _client.forceRefreshOptions,
     );
 
     final data = response.data as Map<String, dynamic>;
