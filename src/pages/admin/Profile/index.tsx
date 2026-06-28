@@ -4,6 +4,7 @@ import Button from '../../../components/UI/Button';
 import { Upload, Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const AdminProfilePage: React.FC = () => {
   const [isPasswordChangeEnabled, setIsPasswordChangeEnabled] = useState(false);
@@ -26,39 +27,89 @@ const AdminProfilePage: React.FC = () => {
     fullName: '',
     email: '',
     phone: '',
-    nationalId: '',
+
     dateOfBirth: '',
-    address: '',
+
     avatarUrl: '',
   });
-  
+
   const defaultAvatar =
     'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
   const bodyFont = '"Plus Jakarta Sans", "Outfit", sans-serif';
   const headingFont = '"Outfit", "Plus Jakarta Sans", sans-serif';
 
   useEffect(() => {
-    // Tải thông tin từ localStorage
-    const storedUser = localStorage.getItem('userInfo');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setProfileData({
-        fullName: parsedUser.fullName || '',
-        email: parsedUser.email || '',
-        phone: parsedUser.phone || '',
-        nationalId: parsedUser.nationalId || '',
-        dateOfBirth: parsedUser.dateOfBirth ? parsedUser.dateOfBirth.slice(0, 10) : '',
-        address: parsedUser.address || '',
-        avatarUrl: parsedUser.avatar_url || '',
-      });
-    }
-    setIsLoading(false);
+    const fetchProfile = async () => {
+      try {
+        const response = await apiClient.get('/admin/users/profile/me');
+        const data = response.data;
+
+        setProfileData({
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || data.phoneNumber || '',
+          dateOfBirth: data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : '',
+
+          avatarUrl: data.avatarUrl || data.avatar_url || '',
+        });
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin hồ sơ Admin:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi',
+          text: 'Không thể tải thông tin hồ sơ. Phiên đăng nhập có thể đã hết hạn.',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
+
+  const updateStoredUser = (updates: Record<string, unknown>) => {
+    const storedUser = localStorage.getItem('userInfo');
+    if (!storedUser) return;
+
+    const parsedUser = JSON.parse(storedUser);
+    localStorage.setItem('userInfo', JSON.stringify({ ...parsedUser, ...updates }));
+    window.dispatchEvent(new Event('userUpdated'));
+  };
+
+  const extractAvatarUrl = (data: any) =>
+    data?.url ||
+    data?.avatarUrl ||
+    data?.avatar_url ||
+    data?.data?.url ||
+    data?.data?.avatarUrl ||
+    data?.data?.avatar_url ||
+    (typeof data === 'string' ? data : '');
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'File kh?ng h?p l?',
+        text: 'Vui l?ng ch?n ??ng file h?nh ?nh.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'warning',
+        title: '?nh qu? l?n',
+        text: 'Vui l?ng ch?n ?nh c? dung l??ng t?i ?a 5MB.',
+      });
+      event.target.value = '';
+      return;
+    }
+
+    const previousAvatarUrl = profileData.avatarUrl;
     const previewUrl = URL.createObjectURL(file);
     setProfileData((prev) => ({ ...prev, avatarUrl: previewUrl }));
 
@@ -74,20 +125,17 @@ const AdminProfilePage: React.FC = () => {
       }
 
       const response = await apiClient.post('/upload/avatar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const newAvatarUrl = response.data.url || response.data;
-      setProfileData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
-
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        parsedUser.avatar_url = newAvatarUrl;
-        localStorage.setItem('userInfo', JSON.stringify(parsedUser));
-        window.dispatchEvent(new Event('userUpdated'));
+      const newAvatarUrl = extractAvatarUrl(response.data);
+      if (!newAvatarUrl) {
+        throw new Error('Upload th?nh c?ng nh?ng server kh?ng tr? v? URL ?nh.');
       }
+
+      setProfileData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
+      URL.revokeObjectURL(previewUrl);
+      updateStoredUser({ avatarUrl: newAvatarUrl, avatar_url: newAvatarUrl });
 
       Swal.fire({
         icon: 'success',
@@ -97,7 +145,18 @@ const AdminProfilePage: React.FC = () => {
         showConfirmButton: false,
       });
     } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      setProfileData((prev) => ({ ...prev, avatarUrl: previousAvatarUrl }));
+
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.response?.data?.error || error.message
+        : error instanceof Error
+          ? error.message
+          : 'Không xác định được nguyên nhân.';
+
+      console.error('Chi tiết lỗi upload avatar:', errorMessage);
       console.error('Lỗi khi tải ảnh:', error);
+
       Swal.fire({
         icon: 'error',
         title: 'Lỗi',
@@ -105,6 +164,7 @@ const AdminProfilePage: React.FC = () => {
       });
     } finally {
       setIsUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -152,31 +212,21 @@ const AdminProfilePage: React.FC = () => {
       const updatePayload = {
         fullName: profileData.fullName,
         phone: profileData.phone,
-        nationalId: profileData.nationalId,
         dateOfBirth: profileData.dateOfBirth || null,
-        address: profileData.address,
         avatarUrl: profileData.avatarUrl,
       };
 
       await apiClient.patch('/admin/users/profile/me', updatePayload);
 
-      const storedUser = localStorage.getItem('userInfo');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        const updatedUser = {
-          ...parsedUser,
-          fullName: updatePayload.fullName,
-          phone: updatePayload.phone,
-          nationalId: updatePayload.nationalId,
-          dateOfBirth: updatePayload.dateOfBirth,
-          address: updatePayload.address,
-          avatar_url: updatePayload.avatarUrl,
-        };
-        localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-        window.dispatchEvent(new Event('userUpdated'));
-      }
+      updateStoredUser({
+        fullName: updatePayload.fullName,
+        phone: updatePayload.phone,
+        dateOfBirth: updatePayload.dateOfBirth,
+        avatarUrl: updatePayload.avatarUrl,
+        avatar_url: updatePayload.avatarUrl,
+      });
 
-      // 2. Cập nhật mật khẩu nếu có
+      // update password
       if (isPasswordChangeEnabled && passwords.oldPassword && passwords.newPassword) {
         await apiClient.put('/auth/change-password', {
           currentPassword: passwords.oldPassword,
@@ -219,7 +269,9 @@ const AdminProfilePage: React.FC = () => {
   return (
     <>
       <div style={{ maxWidth: '1000px', margin: '0 auto', fontFamily: bodyFont }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', marginBottom: '32px', fontFamily: headingFont }}>Hồ sơ Admin</h2>
+        <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', marginBottom: '32px', fontFamily: headingFont }}>
+          Hồ sơ Admin
+        </h2>
 
         <div
           style={{
@@ -239,7 +291,9 @@ const AdminProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h4 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', fontFamily: headingFont }}>Ảnh đại diện</h4>
+                <h4 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px', fontFamily: headingFont }}>
+                  Ảnh đại diện
+                </h4>
                 <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
                   Tải lên ảnh mới để thay đổi diện mạo hồ sơ của bạn.
                 </p>
@@ -265,7 +319,9 @@ const AdminProfilePage: React.FC = () => {
                   borderRadius: '12px',
                   marginBottom: '24px',
                 }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '700', fontFamily: headingFont }}>Vui lòng kiểm tra lại các thông tin sau:</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '700', fontFamily: headingFont }}>
+                  Vui lòng kiểm tra lại các thông tin sau:
+                </h4>
                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px' }}>
                   {formErrors.map((err, index) => (
                     <li key={index}>{err}</li>
@@ -275,16 +331,21 @@ const AdminProfilePage: React.FC = () => {
             )}
 
             <div style={{ marginBottom: '48px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', marginBottom: '24px', fontFamily: headingFont }}>Thông tin cơ bản</h4>
+              <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', marginBottom: '24px', fontFamily: headingFont }}>
+                Thông tin cơ bản
+              </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
                 <Input label="Họ và tên" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} />
                 <div style={{ opacity: 0.7 }}>
                   <Input label="Email" value={profileData.email} disabled style={{ background: '#F8FAFC' }} />
                 </div>
                 <Input label="Số điện thoại" value={profileData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} />
-                <Input label="Căn cước công dân" value={profileData.nationalId} onChange={(e) => handleInputChange('nationalId', e.target.value)} />
-                <Input label="Ngày sinh" type="date" value={profileData.dateOfBirth} onChange={(e) => handleInputChange('dateOfBirth', e.target.value)} />
-                <Input label="Địa chỉ" value={profileData.address} onChange={(e) => handleInputChange('address', e.target.value)} />
+                <Input
+                  label="Ngày sinh"
+                  type="date"
+                  value={profileData.dateOfBirth}
+                  onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                />
               </div>
             </div>
 
@@ -368,7 +429,10 @@ const AdminProfilePage: React.FC = () => {
               gap: '16px',
               borderTop: '1px solid #F1F5F9',
             }}>
-            <Button variant="outline" style={{ background: 'white', borderColor: '#E2E8F0', color: '#64748b' }} onClick={() => window.history.back()}>
+            <Button
+              variant="outline"
+              style={{ background: 'white', borderColor: '#E2E8F0', color: '#64748b' }}
+              onClick={() => window.history.back()}>
               Hủy bỏ
             </Button>
             <Button style={{ padding: '12px 32px' }} onClick={handleSaveProfile} disabled={isSaving}>
