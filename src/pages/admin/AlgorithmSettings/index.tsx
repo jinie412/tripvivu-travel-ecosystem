@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Info } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import { AccordionCard, AlgoGroup, Tip } from './components/AlgorithmSettingsPrimitives';
 import { TwoTowerSettingsCard } from './components/TwoTowerSettingsCard';
+import { hybridConfigAPI } from '../../../services/hybridConfigAPI';
 import './AlgorithmSettings.css';
 
 const DEFAULT_TOPICS_C3 = [
@@ -56,6 +57,9 @@ export const AlgorithmSettings: React.FC = () => {
   const [banner, setBanner] = useState<string | null>(null);
   const showBanner = (ctx: string) => setBanner(`Thay đổi này sẽ ảnh hưởng đến ${ctx} đang được xử lý.`);
   const [distanceWeight, setDistanceWeight] = useState(0.4);
+  const [candidateCount, setCandidateCount] = useState(10);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const [recommendationSaving, setRecommendationSaving] = useState(false);
   const [topicThreshold, setTopicThreshold] = useState(0.18);
   const [minConfidence, setMinConfidence] = useState(0.55);
   const [labelMargin, setLabelMargin] = useState(0.1);
@@ -66,6 +70,55 @@ export const AlgorithmSettings: React.FC = () => {
   const [maxK, setMaxK] = useState(5);
   const [upgradeMode, setUpgradeMode] = useState<UpgradeMode>('representative');
   const [topicsC5, setTopicsC5] = useState(() => DEFAULT_TOPICS_C5.map((t) => ({ ...t })));
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadRecommendationSettings() {
+      setRecommendationLoading(true);
+      try {
+        const data = await hybridConfigAPI.getWeights();
+        if (!alive) return;
+        setDistanceWeight(Number(data.distance_weight ?? 0.4));
+        setCandidateCount(Number(data.candidate_count ?? 10));
+      } catch {
+        if (alive) setBanner('Không thể tải cấu hình thuật toán gợi ý.');
+      } finally {
+        if (alive) setRecommendationLoading(false);
+      }
+    }
+
+    loadRecommendationSettings();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const saveRecommendationSettings = async () => {
+    if (outOfRange(distanceWeight, 0, 1)) {
+      setBanner('Trọng số khoảng cách phải nằm trong khoảng 0 - 1.');
+      return;
+    }
+    if (outOfRange(candidateCount, 1, 50) || !Number.isInteger(candidateCount)) {
+      setBanner('Số địa điểm ứng viên phải là số nguyên trong khoảng 1 - 50.');
+      return;
+    }
+
+    setRecommendationSaving(true);
+    try {
+      const data = await hybridConfigAPI.updateWeights({
+        distance_weight: distanceWeight,
+        candidate_count: candidateCount,
+      });
+      setDistanceWeight(Number(data.distance_weight ?? distanceWeight));
+      setCandidateCount(Number(data.candidate_count ?? candidateCount));
+      setBanner('Đã lưu cấu hình thuật toán gợi ý.');
+    } catch {
+      setBanner('Không thể lưu cấu hình thuật toán gợi ý. Vui lòng thử lại.');
+    } finally {
+      setRecommendationSaving(false);
+    }
+  };
 
   return (
     <div className="page-container as-page">
@@ -99,26 +152,50 @@ export const AlgorithmSettings: React.FC = () => {
 
         <AlgoGroup title="Thuật toán gợi ý">
           <AccordionCard
-            title="Trọng số mô hình"
+            title="Cấu hình gợi ý"
             open={open.weights}
             onToggle={() => toggle('weights')}
-            onSave={() => {}}
-            onReset={() => setDistanceWeight(0.4)}>
-            <div className="as-field">
-              <label className="as-label">
-                Trọng số khoảng cách
-                <Tip text="Mức độ ảnh hưởng của khoảng cách địa lý lên điểm gợi ý (0.0 - 1.0)" />
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                max={1}
-                className={`as-input${outOfRange(distanceWeight, 0, 1) ? ' as-input--err' : ''}`}
-                value={distanceWeight}
-                onChange={(e) => setDistanceWeight(Number(e.target.value))}
-              />
-              <span className="as-hint">Khuyến nghị: 0.20 - 0.60</span>
+            onSave={saveRecommendationSettings}
+            onReset={() => {
+              setDistanceWeight(0.4);
+              setCandidateCount(10);
+            }}
+            saveDisabled={recommendationLoading || recommendationSaving}
+            saveLabel={recommendationSaving ? 'Đang lưu...' : 'Lưu thay đổi'}>
+            {recommendationLoading && <div className="as-muted as-loading-line">Đang tải cấu hình thuật toán gợi ý...</div>}
+            <div className="as-row as-row--2col">
+              <div className="as-field">
+                <label className="as-label">
+                  Trọng số khoảng cách
+                  <Tip text="Hệ số khoảng cách trong Hybrid Recommender. model_weight luôn bằng 1 - distance_weight." />
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={1}
+                  className={"as-input" + (outOfRange(distanceWeight, 0, 1) ? " as-input--err" : "")}
+                  value={distanceWeight}
+                  onChange={(e) => setDistanceWeight(Number(e.target.value))}
+                />
+                <span className="as-hint">Giá trị hợp lệ: 0 - 1</span>
+              </div>
+
+              <div className="as-field">
+                <label className="as-label">
+                  Số địa điểm ứng viên
+                  <Tip text="Số kết quả mặc định truyền vào tham số k của Hybrid Recommender khi request không truyền k." />
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  className={"as-input" + (outOfRange(candidateCount, 1, 50) || !Number.isInteger(candidateCount) ? " as-input--err" : "")}
+                  value={candidateCount}
+                  onChange={(e) => setCandidateCount(Number(e.target.value))}
+                />
+                <span className="as-hint">Mặc định hiện tại của model: 10</span>
+              </div>
             </div>
           </AccordionCard>
         </AlgoGroup>
