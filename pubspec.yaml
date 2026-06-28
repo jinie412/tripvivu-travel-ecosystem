@@ -54,6 +54,7 @@ dependencies:
 
   # Image caching
   cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
 
   # Swipe-to-action for list items
   flutter_slidable: ^3.1.1
@@ -116,6 +117,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/images/
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

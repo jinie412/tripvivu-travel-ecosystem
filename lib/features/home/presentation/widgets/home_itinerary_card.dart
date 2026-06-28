@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/default_avatar.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 
 class HomeItineraryCard extends StatelessWidget {
@@ -69,13 +70,9 @@ class HomeItineraryCard extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
+            DefaultAvatar(
               radius: 12,
-              backgroundImage: CachedNetworkImageProvider(
-                item.authorAvatar.isNotEmpty
-                    ? item.authorAvatar
-                    : 'https://i.pravatar.cc/100?u=${item.id}',
-              ),
+              imageUrl: item.authorAvatar,
             ),
             const SizedBox(width: 8),
             Flexible(

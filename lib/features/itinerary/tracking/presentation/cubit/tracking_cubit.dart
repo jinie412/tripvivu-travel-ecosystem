@@ -116,6 +116,10 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   StreamSubscription<Position>? _locationSub;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   List<_FoodSpot> _foodSpots = [];
+  String? _showingNearbyRestaurantId;
+  final Set<String> _dismissedNearbyRestaurantIds = <String>{};
+  static String? _globalShowingNearbyRestaurantId;
+  static final Set<String> _globalDismissedNearbyRestaurantIds = <String>{};
   bool _wasOffline = false;
   final _connectivity = Connectivity();
 
@@ -147,6 +151,10 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     _enteredAt.clear();
     _dwellSentIds.clear();
     _visitedIds.clear();
+    _showingNearbyRestaurantId = null;
+    _dismissedNearbyRestaurantIds.clear();
+    _globalShowingNearbyRestaurantId = null;
+    _globalDismissedNearbyRestaurantIds.clear();
   }
 
   // Stale detection được xử lý trong cubit, không phải từ widget lifecycle.
@@ -295,6 +303,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   void _checkFoodProximity(Position pos) {
     if (isClosed || _foodSpots.isEmpty) return;
     for (final s in _foodSpots) {
+      if (_dismissedNearbyRestaurantIds.contains(s.id)) continue;
       final km = _haversineKm(pos.latitude, pos.longitude, s.lat, s.lng);
       if (km <= _foodProximityKm) {
         if (state.nearbyRestaurantDetailId != s.id) {
@@ -310,6 +319,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     if (state.nearbyRestaurantDetailId != null) {
       emit(state.copyWith(clearNearbyRestaurant: true));
     }
+    _showingNearbyRestaurantId = null;
   }
 
   /// Phát hiện geofence **chủ động** ở foreground: tính khoảng cách tới từng
@@ -460,7 +470,27 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   }
 
   /// Ẩn popup gợi ý đặt món (người dùng đã đóng).
+  bool claimNearbyRestaurantPopup(String? detailId) {
+    if (detailId == null || detailId.isEmpty) return false;
+    if (_showingNearbyRestaurantId == detailId) return false;
+    if (_dismissedNearbyRestaurantIds.contains(detailId)) return false;
+    if (_globalShowingNearbyRestaurantId == detailId) return false;
+    if (_globalDismissedNearbyRestaurantIds.contains(detailId)) return false;
+    _showingNearbyRestaurantId = detailId;
+    _globalShowingNearbyRestaurantId = detailId;
+    return true;
+  }
+
   void dismissNearbyRestaurant() {
+    final detailId = state.nearbyRestaurantDetailId ?? _showingNearbyRestaurantId;
+    if (detailId != null && detailId.isNotEmpty) {
+      _dismissedNearbyRestaurantIds.add(detailId);
+      _globalDismissedNearbyRestaurantIds.add(detailId);
+      if (_globalShowingNearbyRestaurantId == detailId) {
+        _globalShowingNearbyRestaurantId = null;
+      }
+    }
+    _showingNearbyRestaurantId = null;
     emit(state.copyWith(clearNearbyRestaurant: true));
   }
 

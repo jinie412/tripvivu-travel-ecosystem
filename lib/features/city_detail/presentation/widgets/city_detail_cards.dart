@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/default_avatar.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 
 class LikeButton extends StatefulWidget {
@@ -141,9 +142,9 @@ class ItineraryCard extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
+            DefaultAvatar(
               radius: 12,
-              backgroundImage: CachedNetworkImageProvider(item.authorAvatar),
+              imageUrl: item.authorAvatar,
             ),
             const SizedBox(width: 8),
             Text(

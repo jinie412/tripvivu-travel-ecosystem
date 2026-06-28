@@ -483,6 +483,7 @@ class _ExploreViewState extends State<_ExploreView> {
             },
             child: ActivityVerticalCard(
               showFavorite: false,
+              showLocationIcon: false,
               item: CityActivity(
                 id: item.id,
                 name: item.name,
@@ -613,9 +614,13 @@ class _ExploreViewState extends State<_ExploreView> {
     BuildContext ctx,
     TrackingState state,
   ) {
+    if (ModalRoute.of(ctx)?.isCurrent != true) return;
     final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
     final detailId = state.nearbyRestaurantDetailId ?? '';
     final placeId = state.nearbyRestaurantPlaceId ?? '';
+    if (!ctx.read<TrackingCubit>().claimNearbyRestaurantPopup(detailId)) {
+      return;
+    }
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,

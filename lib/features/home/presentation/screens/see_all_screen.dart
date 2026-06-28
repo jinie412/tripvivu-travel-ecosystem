@@ -18,17 +18,8 @@ class SeeAllScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      floatingActionButton: onAddTap != null
-          ? FloatingActionButton.extended(
-              onPressed: onAddTap,
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
-              label: Text('Thêm địa điểm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            )
-          : null,
       body: Column(
         children: [
-          // Premium Blue Header
           Container(
             color: AppColors.primary,
             padding: EdgeInsets.only(
@@ -49,7 +40,11 @@ class SeeAllScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.primary, size: 20),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
@@ -67,7 +62,6 @@ class SeeAllScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Custom Search Bar for consistency
                 Container(
                   height: 44,
                   decoration: BoxDecoration(
@@ -82,7 +76,10 @@ class SeeAllScreen extends StatelessWidget {
                       Expanded(
                         child: Text(
                           'Tìm kiếm ${title.toLowerCase()}...',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],

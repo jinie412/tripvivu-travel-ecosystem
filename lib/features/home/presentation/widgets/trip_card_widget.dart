@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/core/widgets/default_avatar.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
@@ -121,14 +122,9 @@ class _TripCardWidgetState extends State<TripCardWidget> {
           // Row 2: Avatar + Author + Views + Likes
           Row(
             children: [
-              CircleAvatar(
+              DefaultAvatar(
                 radius: 12,
-                backgroundImage: NetworkImage(
-                  widget.item.authorAvatar.isNotEmpty
-                      ? widget.item.authorAvatar
-                      : 'https://i.pravatar.cc/100?u=${widget.item.id}',
-                ),
-                backgroundColor: Colors.grey[200],
+                imageUrl: widget.item.authorAvatar,
               ),
               const SizedBox(width: 8),
               Expanded(

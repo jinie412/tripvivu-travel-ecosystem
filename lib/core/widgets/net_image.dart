@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'app_image_cache_manager.dart';
+
 class NetImage extends StatelessWidget {
   final String? url;
   final int? placeholderColor;
@@ -23,15 +25,14 @@ class NetImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rawUrl = url?.trim() ?? '';
-    final placeholder = Container(
-      width: width ?? double.infinity,
-      height: height ?? double.infinity,
-      decoration: BoxDecoration(
-        color: placeholderColor != null
-            ? Color(placeholderColor!)
-            : const Color(0xFFE5E7EB),
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
+    final bg = placeholderColor != null
+        ? Color(placeholderColor!)
+        : const Color(0xFFE5E7EB);
+    final placeholder = _Placeholder(
+      color: bg,
+      borderRadius: borderRadius,
+      width: width,
+      height: height,
     );
 
     if (rawUrl.isEmpty || _isUnsafeImageUrl(rawUrl)) return placeholder;
@@ -40,9 +41,12 @@ class NetImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(borderRadius),
       child: CachedNetworkImage(
         imageUrl: rawUrl,
+        cacheManager: AppImageCacheManager(),
         fit: fit,
         width: width ?? double.infinity,
         height: height ?? double.infinity,
+        fadeInDuration: const Duration(milliseconds: 200),
+        fadeOutDuration: const Duration(milliseconds: 100),
         placeholder: (context, url) => placeholder,
         errorWidget: (context, url, error) => placeholder,
       ),
@@ -51,13 +55,33 @@ class NetImage extends StatelessWidget {
 
   bool _isUnsafeImageUrl(String value) {
     final uri = Uri.tryParse(value);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-      return true;
-    }
-
-    // Some shortened URLs in older itinerary data return non-image payloads
-    // on Android and trigger native ImageDecoder errors before Flutter can
-    // show errorWidget. Treat them as missing images.
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return true;
     return uri.host.toLowerCase() == 'tinyurl.vn';
+  }
+}
+
+class _Placeholder extends StatelessWidget {
+  final Color color;
+  final double borderRadius;
+  final double? width;
+  final double? height;
+
+  const _Placeholder({
+    required this.color,
+    required this.borderRadius,
+    this.width,
+    this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width ?? double.infinity,
+      height: height ?? double.infinity,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
   }
 }

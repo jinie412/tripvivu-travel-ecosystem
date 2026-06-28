@@ -7,12 +7,14 @@ import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_
 class ActivityVerticalCard extends StatefulWidget {
   final CityActivity item;
   final bool showFavorite;
+  final bool showLocationIcon;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const ActivityVerticalCard({
     super.key,
     required this.item,
     this.showFavorite = true,
+    this.showLocationIcon = true,
     this.onFavoriteChanged,
   });
 
@@ -150,8 +152,14 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined, color: Colors.grey[600], size: 14),
-                          const SizedBox(width: 4),
+                          if (widget.showLocationIcon) ...[
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.grey[600],
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                           Expanded(
                             child: Text(
                               widget.item.address,

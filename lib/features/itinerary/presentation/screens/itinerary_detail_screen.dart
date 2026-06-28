@@ -1531,9 +1531,13 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _showFoodProximityPopup(BuildContext ctx, TrackingState state) {
+    if (ModalRoute.of(ctx)?.isCurrent != true) return;
     final name = state.nearbyRestaurantName ?? 'Quán ăn gần đây';
     final detailId = state.nearbyRestaurantDetailId ?? '';
     final placeId = state.nearbyRestaurantPlaceId ?? '';
+    if (!ctx.read<TrackingCubit>().claimNearbyRestaurantPopup(detailId)) {
+      return;
+    }
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,

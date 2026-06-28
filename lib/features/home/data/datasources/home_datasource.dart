@@ -394,8 +394,8 @@ class RemoteHomeDataSource implements HomeDataSource {
     final days = (json['days'] as num?)?.toInt() ?? 0;
     final imageGallery = _toStringList(json['image_gallery']);
     final primaryImage = (json['image'] ?? '').toString();
-    final creatorId = (json['creator_id'] ?? '').toString();
     final creatorName = (json['creator_name'] ?? 'Traveler').toString().trim();
+    final creatorAvatar = (json['creator_avatar'] ?? json['author_avatar'] ?? '').toString().trim();
 
     final favoriteCount = (json['favorite_count'] as num?)?.toInt() ?? 0;
     final avgRating = ((json['average_rating'] as num?) ?? 0).toDouble();
@@ -404,8 +404,7 @@ class RemoteHomeDataSource implements HomeDataSource {
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? 'Lịch trình gợi ý').toString(),
       authorName: creatorName.isEmpty ? 'Traveler' : creatorName,
-      authorAvatar:
-          creatorId.isEmpty ? '' : 'https://i.pravatar.cc/100?u=$creatorId',
+      authorAvatar: creatorAvatar,
       days: '$days ngày',
       location: (json['location'] ?? 'Không xác định').toString(),
       views: ((json['participant_count'] as num?)?.toInt() ?? 0).toString(),
@@ -421,10 +420,11 @@ class RemoteHomeDataSource implements HomeDataSource {
   }
 
   DestinationModel _mapPlace(Map<String, dynamic> json, bool isHotel) {
+    final imageUrl = (json['image_url'] ?? json['image'] ?? '').toString();
     return DestinationModel(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? 'Không xác định').toString(),
-      imageUrl: (json['image'] ?? '').toString(),
+      imageUrl: imageUrl,
       placeholderColor: isHotel ? 0xFFD4C5B0 : 0xFF4A8C5C,
       averageRating: ((json['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
