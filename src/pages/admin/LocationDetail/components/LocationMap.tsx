@@ -20,7 +20,8 @@ interface MapPreviewProps {
 const MAP_TILE_SIZE = 256;
 const DEFAULT_MAP_ZOOM = 15;
 const MIN_MAP_ZOOM = 12;
-const MAX_MAP_ZOOM = 18;
+const MAX_MAP_ZOOM = 19;
+const OSM_MAX_TILE_ZOOM = 19;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -35,15 +36,17 @@ const latLngToWorldPixel = (lat: number, lng: number, zoom: number) => {
 };
 
 const getMapTiles = (centerLat: number, centerLng: number, zoom: number, width: number, height: number) => {
-  const center = latLngToWorldPixel(centerLat, centerLng, zoom);
-  const startX = center.x - width / 2;
-  const startY = center.y - height / 2;
+  const tileZoom = Math.min(zoom, OSM_MAX_TILE_ZOOM);
+  const overzoomScale = 2 ** (zoom - tileZoom);
+  const center = latLngToWorldPixel(centerLat, centerLng, tileZoom);
+  const startX = center.x - width / (2 * overzoomScale);
+  const startY = center.y - height / (2 * overzoomScale);
   const firstTileX = Math.floor(startX / MAP_TILE_SIZE);
   const firstTileY = Math.floor(startY / MAP_TILE_SIZE);
-  const lastTileX = Math.floor((startX + width) / MAP_TILE_SIZE);
-  const lastTileY = Math.floor((startY + height) / MAP_TILE_SIZE);
-  const maxTile = 2 ** zoom;
-  const tiles: Array<{ key: string; src: string; left: number; top: number }> = [];
+  const lastTileX = Math.floor((startX + width / overzoomScale) / MAP_TILE_SIZE);
+  const lastTileY = Math.floor((startY + height / overzoomScale) / MAP_TILE_SIZE);
+  const maxTile = 2 ** tileZoom;
+  const tiles: Array<{ key: string; src: string; left: number; top: number; size: number }> = [];
 
   for (let x = firstTileX; x <= lastTileX; x += 1) {
     for (let y = firstTileY; y <= lastTileY; y += 1) {
@@ -51,9 +54,10 @@ const getMapTiles = (centerLat: number, centerLng: number, zoom: number, width: 
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
-        left: x * MAP_TILE_SIZE - startX,
-        top: y * MAP_TILE_SIZE - startY,
+        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
+        top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
+        size: MAP_TILE_SIZE * overzoomScale,
       });
     }
   }
@@ -108,7 +112,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({ lat, lng, locationName, zoom, w
               alt=""
               loading="lazy"
               decoding="async"
-              style={{ left: tile.left, top: tile.top }}
+              style={{ left: tile.left, top: tile.top, width: tile.size, height: tile.size }}
             />
           ))}
         </div>
@@ -129,7 +133,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({ location, onCoordinate
   const lng = Number(location.lng);
   const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
   const [isMapOpen, setIsMapOpen] = React.useState(false);
-  const [zoom, setZoom] = React.useState(DEFAULT_MAP_ZOOM + 1);
+  const [zoom, setZoom] = React.useState(MAX_MAP_ZOOM);
   const [draftLat, setDraftLat] = React.useState('');
   const [draftLng, setDraftLng] = React.useState('');
   const [isSavingCoordinates, setIsSavingCoordinates] = React.useState(false);

@@ -1,5 +1,6 @@
 import { apiClient, extractResponseData } from './apiClient';
 import { Location, LocationDetailInfo, LocationStatsInfo } from '../types/location';
+import { applyLocationApprovalOverride, clearLocationApprovalOverride } from '../utils/locationApprovalOverride';
 
 type BackendPlaceStatus = 'pending' | 'approved' | 'rejected';
 
@@ -45,6 +46,7 @@ export interface AdminCreatePlacePayload {
   p_lng: number;
   p_vendor_id?: string;
   p_email: string;
+  p_phone?: string;
   p_type_id: string;
   p_type_name: string;
   p_categories: string[];
@@ -266,7 +268,7 @@ export const locationAPI = {
     });
 
     return {
-      data: response.data.data.map(mapLocation),
+      data: response.data.data.map(mapLocation).map(applyLocationApprovalOverride),
       total: response.data.pagination.total,
     };
   },
@@ -285,7 +287,7 @@ export const locationAPI = {
   getLocationById: async (id: string): Promise<LocationDetailInfo | null> => {
     try {
       const response = await apiClient.get<BackendPlaceDetailResponse>(`/admin/places/${id}`);
-      return mapLocationDetail(extractResponseData(response));
+      return applyLocationApprovalOverride(mapLocationDetail(extractResponseData(response)));
     } catch {
       return null;
     }
@@ -298,16 +300,19 @@ export const locationAPI = {
 
   approveLocation: async (id: string): Promise<void> => {
     await apiClient.patch(`/admin/places/${id}/approve`);
+    clearLocationApprovalOverride(id);
   },
 
   rejectLocation: async (id: string, reason?: string): Promise<void> => {
     await apiClient.patch(`/admin/places/${id}/reject`, {
       note: reason || undefined,
     });
+    clearLocationApprovalOverride(id);
   },
 
   deleteLocation: async (id: string): Promise<void> => {
     await apiClient.delete(`/admin/places/${id}`);
+    clearLocationApprovalOverride(id);
   },
 
   updateLocationCoordinates: async (

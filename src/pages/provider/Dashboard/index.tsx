@@ -10,7 +10,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { businessLocationAPI } from '@/services/businessLocationAPI';
-import { getDashboardStats, getFoodPerformance, getOrdersByPlace, getPlaceServicesByType, isPendingOrder } from '@/services/order.service';
+import { getDashboardStats, getFoodPerformance, getOrdersByPlace, getPlaceServicesByType, isPendingOrder, normalizeOrderStatus } from '@/services/order.service';
 import { getCurrentUser } from '@/utils/auth';
 import type { Location } from '@/types/location';
 
@@ -234,6 +234,8 @@ const isOrderInSelectedPeriod = (order: unknown, month?: number, year?: number):
   return date.getMonth() + 1 === month && date.getFullYear() === year;
 };
 
+const isCompletedOrder = (order: unknown): boolean => normalizeOrderStatus(order) === 'completed';
+
 const parseOrderItems = (order: Record<string, unknown>): Array<{ name: string; quantity: number; price: number }> => {
   const rawItems = Array.isArray(order.items)
     ? order.items
@@ -299,7 +301,7 @@ const aggregateOrderPerformanceItems = (items: PerformanceItem[]): PerformanceIt
     itemMap.set(key, {
       ...current,
       orderCount,
-      revenue: current.price * orderCount,
+      revenue: current.revenue + item.revenue,
       rating: Math.max(current.rating, item.rating),
       rawDate: current.rawDate || item.rawDate,
     });
@@ -318,6 +320,7 @@ const buildOrderPerformance = (
 
   const items = orders.flatMap((order, orderIndex) => {
     const data = order && typeof order === 'object' ? (order as Record<string, unknown>) : {};
+    const completedOrder = isCompletedOrder(data);
     const locationName = getOrderLocationName(data);
     const location =
       locationById.get(textFrom(data.placeId, data.place_id, data.location_id)) ||
@@ -326,7 +329,9 @@ const buildOrderPerformance = (
     return parseOrderItems(data).map((orderItem, itemIndex) => {
       const baselineItem = findBaselinePerformanceItem(baseline, locationName || location?.name || '', orderItem.name);
       const price = orderItem.price || baselineItem?.price || 0;
-      const orderCount = orderItem.quantity || 1;
+      const requestedCount = orderItem.quantity || 1;
+      const orderCount = completedOrder ? requestedCount : 0;
+      const revenue = price * orderCount;
 
       return {
         id: baselineItem?.id || `order-performance-${orderIndex}-${itemIndex}`,
@@ -335,7 +340,7 @@ const buildOrderPerformance = (
         category: baselineItem?.category || location?.category || 'Địa điểm',
         price,
         orderCount,
-        revenue: price * orderCount,
+        revenue,
         rating: baselineItem?.rating || location?.rating || 0,
         rawDate: textFrom(data.ordered_time, data.created_at, data.createdAt, data.order_date, data.date),
         imageUrl: baselineItem?.imageUrl,
@@ -464,8 +469,8 @@ const dedupePerformanceItems = (items: PerformanceItem[]): PerformanceItem[] => 
     itemMap.set(key, {
       ...current,
       id: current.id || item.id,
-      orderCount: Math.max(current.orderCount, item.orderCount),
-      revenue: current.price * Math.max(current.orderCount, item.orderCount),
+      orderCount: item.orderCount,
+      revenue: Math.max(current.revenue, item.revenue),
       rating: Math.max(current.rating, item.rating),
       rawDate: current.rawDate || item.rawDate,
       imageUrl: current.imageUrl || item.imageUrl,
@@ -492,8 +497,8 @@ const mergePerformanceItems = (...groups: PerformanceItem[][]): PerformanceItem[
       ...item,
       id: current.id || item.id,
       category: current.category !== 'Địa điểm' ? current.category : item.category,
-      orderCount: Math.max(current.orderCount, item.orderCount),
-      revenue: item.price * Math.max(current.orderCount, item.orderCount),
+      orderCount: item.orderCount,
+      revenue: item.revenue,
       rating: Math.max(current.rating, item.rating),
       rawDate: item.rawDate || current.rawDate,
       imageUrl: current.imageUrl || item.imageUrl,
@@ -623,7 +628,7 @@ const DashboardPage: React.FC = () => {
           : [];
       const fallbackPerformance = fallbackResult.status === 'fulfilled' ? fallbackResult.value.performance : [];
       const fallbackStats = fallbackResult.status === 'fulfilled' ? fallbackResult.value.stats : null;
-      normalizedPerformance = normalizedPerformance.length > 0 ? mergePerformanceItems(fallbackPerformance, normalizedPerformance) : fallbackPerformance;
+      normalizedPerformance = normalizedPerformance.length > 0 ? mergePerformanceItems(normalizedPerformance, fallbackPerformance) : fallbackPerformance;
 
       if (statsResult.status === 'rejected' && fallbackResult.status === 'fulfilled') {
         nextStats = fallbackResult.value.stats;

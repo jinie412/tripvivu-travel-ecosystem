@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import Input from '../../../../components/UI/Input';
@@ -38,6 +38,7 @@ import {
 import { apiClient, extractResponseData } from '../../../../services/apiClient';
 import type { Location } from '../../../../types/location';
 import { getCurrentUser } from '../../../../utils/auth';
+import { markLocationPendingApproval } from '../../../../utils/locationApprovalOverride';
 
 // ─── Map utilities (same as AddLocation) ─────────────────────────────────────
 type CityOption = { id: string; name: string };
@@ -45,7 +46,10 @@ type BusinessTypeOption = { id: string; name: string };
 
 const VIETNAM_BOUNDS = { minLat: 8.18, maxLat: 23.39, minLng: 102.14, maxLng: 109.47 };
 const MAP_TILE_SIZE = 256;
-const MAP_ZOOM = 6;
+const MAP_ZOOM = 15;
+const SELECTED_LOCATION_ZOOM = 19;
+const OSM_MAX_TILE_ZOOM = 19;
+const DEFAULT_MAP_SIZE = { width: 600, height: 400 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -66,27 +70,127 @@ const worldPixelToLatLng = (x: number, y: number, zoom = MAP_ZOOM) => {
   return { lat, lng };
 };
 
-const getMapTiles = (centerLat: number, centerLng: number) => {
-  const center = latLngToWorldPixel(centerLat, centerLng);
-  const startX = center.x - 300;
-  const startY = center.y - 200;
+const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_SIZE.width, height = DEFAULT_MAP_SIZE.height, zoom = MAP_ZOOM) => {
+  const tileZoom = Math.min(zoom, OSM_MAX_TILE_ZOOM);
+  const overzoomScale = 2 ** (zoom - tileZoom);
+  const center = latLngToWorldPixel(centerLat, centerLng, tileZoom);
+  const startX = center.x - width / (2 * overzoomScale);
+  const startY = center.y - height / (2 * overzoomScale);
   const firstTileX = Math.floor(startX / MAP_TILE_SIZE);
   const firstTileY = Math.floor(startY / MAP_TILE_SIZE);
-  const maxTile = 2 ** MAP_ZOOM;
-  const tiles: Array<{ key: string; src: string; left: number; top: number }> = [];
-  for (let x = firstTileX; x <= firstTileX + 3; x += 1) {
-    for (let y = firstTileY; y <= firstTileY + 2; y += 1) {
+  const lastTileX = Math.floor((startX + width / overzoomScale) / MAP_TILE_SIZE);
+  const lastTileY = Math.floor((startY + height / overzoomScale) / MAP_TILE_SIZE);
+  const maxTile = 2 ** tileZoom;
+  const tiles: Array<{ key: string; src: string; left: number; top: number; size: number }> = [];
+  for (let x = firstTileX; x <= lastTileX; x += 1) {
+    for (let y = firstTileY; y <= lastTileY; y += 1) {
       if (y < 0 || y >= maxTile) continue;
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
-        key: `${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${MAP_ZOOM}/${wrappedX}/${y}.png`,
-        left: x * MAP_TILE_SIZE - startX,
-        top: y * MAP_TILE_SIZE - startY,
+        key: `${zoom}-${wrappedX}-${y}`,
+        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
+        top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
+        size: MAP_TILE_SIZE * overzoomScale,
       });
     }
   }
   return tiles;
+};
+
+type GeocodeResult = {
+  lat: string;
+  lon: string;
+  display_name?: string;
+  importance?: number;
+};
+
+const normalizeSearchText = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const getCityAliases = (city: string) => {
+  const normalizedCity = normalizeSearchText(city);
+  const aliases = [city.trim()];
+
+  if (normalizedCity.includes('ho chi minh') || normalizedCity.includes('hcm')) {
+    aliases.push('Ho Chi Minh City', 'Saigon');
+  }
+
+  return aliases.filter((alias, index, list) => alias && list.indexOf(alias) === index);
+};
+
+const getAddressVariants = (address: string) => {
+  const segments = address
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const firstSegment = segments[0] || address.trim();
+  const streetWithNumber = firstSegment.replace(/^\s*(?:so|số)\s+/i, '').trim();
+  const streetWithoutNumber = streetWithNumber
+    .replace(/^\d+[a-zA-Z0-9/-]*\s+/i, '')
+    .trim();
+
+  return [
+    address.trim(),
+    [streetWithNumber, ...segments.slice(1)].filter(Boolean).join(', '),
+    streetWithNumber,
+    streetWithoutNumber,
+  ].filter((variant, index, list) => variant && list.indexOf(variant) === index);
+};
+
+const pickBestGeocodeResult = (results: GeocodeResult[], city: string, address: string) => {
+  const normalizedCityAliases = getCityAliases(city).map(normalizeSearchText);
+  const addressTokens = normalizeSearchText(address)
+    .split(' ')
+    .filter((token) => token.length >= 3)
+    .slice(0, 6);
+
+  return results
+    .map((result) => {
+      const displayName = normalizeSearchText(result.display_name || '');
+      const cityScore = normalizedCityAliases.some((alias) => alias && displayName.includes(alias)) ? 100 : 0;
+      const addressScore = addressTokens.reduce((score, token) => score + (displayName.includes(token) ? 8 : 0), 0);
+      const importanceScore = Number(result.importance || 0) * 10;
+      return { result, score: cityScore + addressScore + importanceScore };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.result;
+};
+
+const geocodeAddress = async (address: string, city: string, placeName = '') => {
+  const cityAliases = getCityAliases(city);
+  const addressVariants = getAddressVariants(address);
+  const queryCandidates = addressVariants.flatMap((addressVariant) =>
+    cityAliases.flatMap((cityAlias) => [
+      [placeName.trim(), addressVariant, cityAlias, 'Vietnam'].filter(Boolean).join(', '),
+      [addressVariant, cityAlias, 'Vietnam'].filter(Boolean).join(', '),
+    ]),
+  ).filter((query, index, list) => query && list.indexOf(query) === index);
+
+  for (const query of queryCandidates) {
+    const params = new URLSearchParams({
+      format: 'json',
+      q: query,
+      countrycodes: 'vn',
+      limit: '5',
+      addressdetails: '1',
+      namedetails: '1',
+      extratags: '1',
+      bounded: '1',
+      viewbox: `${VIETNAM_BOUNDS.minLng},${VIETNAM_BOUNDS.maxLat},${VIETNAM_BOUNDS.maxLng},${VIETNAM_BOUNDS.minLat}`,
+      'accept-language': 'vi',
+    });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Không thể kết nối dịch vụ bản đồ.');
+    const results: GeocodeResult[] = await response.json();
+    const bestResult = pickBestGeocodeResult(results, city, address);
+    if (bestResult) return bestResult;
+  }
+
+  return null;
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -323,6 +427,7 @@ const mergeWithLocationListItem = (
 const LocationEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const mapRef = useRef<HTMLDivElement | null>(null);
   const currentUser = useMemo(
     () => getCurrentUser<{ businessId?: string; business_id?: string; vendorId?: string; vendor_id?: string; id?: string }>(),
     [],
@@ -348,7 +453,8 @@ const LocationEditPage: React.FC = () => {
   const [newImages, setNewImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
 
   // Map state
-  const [markerPosition, setMarkerPosition] = useState({ x: 50, y: 50 });
+  const [mapSize, setMapSize] = useState(DEFAULT_MAP_SIZE);
+  const [mapZoom, setMapZoom] = useState(MAP_ZOOM);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
 
@@ -436,6 +542,25 @@ const LocationEditPage: React.FC = () => {
   }, []);
 
   useEffect(() => { loadBusinessTypes(); }, [loadBusinessTypes]);
+
+  useEffect(() => {
+    const element = mapRef.current;
+    if (!element) return;
+
+    const updateMapSize = () => {
+      const rect = element.getBoundingClientRect();
+      setMapSize({
+        width: Math.max(Math.round(rect.width), 1),
+        height: Math.max(Math.round(rect.height), 1),
+      });
+    };
+
+    updateMapSize();
+    const observer = new ResizeObserver(updateMapSize);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [activeTab]);
 
   // ── Load place detail ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -550,19 +675,19 @@ const LocationEditPage: React.FC = () => {
   // ── Map helpers ───────────────────────────────────────────────────────────────
   const currentLat = parseFloat(draft.latitude) || 10.77;
   const currentLng = parseFloat(draft.longitude) || 106.7;
-  const mapTiles = getMapTiles(currentLat, currentLng);
+  const mapTiles = getMapTiles(currentLat, currentLng, mapSize.width, mapSize.height, mapZoom);
 
   const handleMapClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = clamp(event.clientX - rect.left, 0, rect.width);
     const clickY = clamp(event.clientY - rect.top, 0, rect.height);
-    const center = latLngToWorldPixel(currentLat, currentLng);
+    const center = latLngToWorldPixel(currentLat, currentLng, mapZoom);
     const worldX = center.x - rect.width / 2 + clickX;
     const worldY = center.y - rect.height / 2 + clickY;
-    const { lat, lng } = worldPixelToLatLng(worldX, worldY);
+    const { lat, lng } = worldPixelToLatLng(worldX, worldY, mapZoom);
     const latitude = clamp(lat, VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
     const longitude = clamp(lng, VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
-    setMarkerPosition({ x: (clickX / rect.width) * 100, y: (clickY / rect.height) * 100 });
+    setMapZoom(SELECTED_LOCATION_ZOOM);
     setDraft((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
   };
 
@@ -574,16 +699,12 @@ const LocationEditPage: React.FC = () => {
     try {
       setIsGeocoding(true);
       setGeocodeError('');
-      const params = new URLSearchParams({ format: 'json', q: [draft.address.trim(), draft.city.trim(), 'Việt Nam'].join(', '), countrycodes: 'vn', limit: '1' });
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, { headers: { Accept: 'application/json' } });
-      if (!response.ok) throw new Error('Không thể kết nối dịch vụ bản đồ.');
-      const results: Array<{ lat: string; lon: string }> = await response.json();
-      const firstResult = results[0];
+      const firstResult = await geocodeAddress(draft.address, draft.city, draft.name);
       if (!firstResult) throw new Error('Không tìm thấy vị trí phù hợp. Vui lòng thử nhập địa chỉ rõ hơn hoặc chọn thủ công trên bản đồ.');
       const latitude = clamp(Number(firstResult.lat), VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
       const longitude = clamp(Number(firstResult.lon), VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
       if (Number.isNaN(latitude) || Number.isNaN(longitude)) throw new Error('Dịch vụ bản đồ trả về tọa độ không hợp lệ.');
-      setMarkerPosition({ x: 50, y: 50 });
+      setMapZoom(SELECTED_LOCATION_ZOOM);
       setDraft((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
     } catch (error) {
       setGeocodeError(error instanceof Error ? error.message : 'Không thể tìm vị trí trên bản đồ.');
@@ -635,6 +756,10 @@ const LocationEditPage: React.FC = () => {
         name: draft.name.trim(),
         address: draft.address.trim(),
         city: draft.city.trim(),
+        email: draft.email.trim(),
+        phone: draft.phone.trim(),
+        p_email: draft.email.trim(),
+        p_phone: draft.phone.trim(),
         latitude: draft.latitude,
         longitude: draft.longitude,
         openTime: draft.openTime,
@@ -642,7 +767,18 @@ const LocationEditPage: React.FC = () => {
         description: draft.description,
         imageUrls,
         isActive,
+        status: 'pending',
+        placeStatus: 'pending',
+        approvalStatus: 'pending',
+        place_status: 'pending',
+        approval_status: 'pending',
+        isApproved: false,
+        is_approved: false,
+        approved: false,
       });
+      markLocationPendingApproval(id);
+      const pendingStatus = getStatusMeta('pending');
+      setPlace((current) => current ? { ...current, statusLabel: pendingStatus.label, statusColor: pendingStatus.color } : current);
       navigate('/locations');
     } catch (err) {
       setGeneralMessage(getApiErrorMessage(err, 'Không thể lưu thay đổi địa điểm'));
@@ -900,15 +1036,16 @@ const LocationEditPage: React.FC = () => {
 
           {/* Interactive map */}
           <div
+            ref={mapRef}
             onClick={handleMapClick}
             style={{ width: '100%', flex: 1, minHeight: '240px', background: '#f8fafc', borderRadius: '16px', position: 'relative', overflow: 'hidden', border: '1px solid #F1F5F9', marginBottom: '24px', cursor: 'crosshair' }}
           >
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
               {mapTiles.map((tile) => (
-                <img key={tile.key} src={tile.src} alt="" style={{ position: 'absolute', left: `${tile.left}px`, top: `${tile.top}px`, width: `${MAP_TILE_SIZE}px`, height: `${MAP_TILE_SIZE}px`, userSelect: 'none' }} />
+                <img key={tile.key} src={tile.src} alt="" style={{ position: 'absolute', left: `${tile.left}px`, top: `${tile.top}px`, width: `${tile.size}px`, height: `${tile.size}px`, userSelect: 'none' }} />
               ))}
             </div>
-            <div style={{ position: 'absolute', top: `${markerPosition.y}%`, left: `${markerPosition.x}%`, transform: 'translate(-50%, -100%)', color: '#ef4444', pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', color: '#ef4444', pointerEvents: 'none', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
               <MapPin size={32} fill="#ef444433" />
             </div>
             <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', color: '#64748b' }}>

@@ -118,7 +118,20 @@ export const normalizeOrderStatus = (orderOrStatus: unknown): string => {
   if (['processing', 'confirmed', 'confirm', 'in_progress'].includes(status)) {
     return 'processing';
   }
-  if (['completed', 'complete', 'done', 'finished'].includes(status)) {
+  if ([
+    'completed',
+    'complete',
+    'done',
+    'finished',
+    'delivered',
+    'success',
+    'succeeded',
+    'paid',
+    'hoàn_thành',
+    'hoan_thanh',
+    'đã_hoàn_thành',
+    'da_hoan_thanh',
+  ].includes(status)) {
     return 'completed';
   }
   if (['cancelled', 'canceled', 'cancel'].includes(status)) {
@@ -375,6 +388,10 @@ export const updatePlaceDetail = async (payload: {
   name: string;
   address: string;
   city?: string;
+  email?: string;
+  phone?: string;
+  p_email?: string;
+  p_phone?: string;
   latitude?: number | string;
   longitude?: number | string;
   openTime?: string;
@@ -382,6 +399,14 @@ export const updatePlaceDetail = async (payload: {
   description?: string;
   imageUrls?: string[];
   isActive?: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
+  placeStatus?: 'pending' | 'approved' | 'rejected';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  place_status?: 'pending' | 'approved' | 'rejected';
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  isApproved?: boolean;
+  is_approved?: boolean;
+  approved?: boolean;
 }): Promise<any> => {
   const res = await apiClient.put('/business/place-detail', payload);
   return extractResponseData<any>(res as any);

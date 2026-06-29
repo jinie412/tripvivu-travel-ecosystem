@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Input from '../../../components/UI/Input';
 import Button from '../../../components/UI/Button';
 import {
@@ -25,6 +25,105 @@ import * as XLSX from 'xlsx';
 
 type CityOption = { id: string; name: string };
 type BusinessTypeOption = { id: string; name: string };
+type AmenityDraft = { id: string; name: string; description: string; icon: React.ReactNode };
+type MenuDraft = { id: string; name: string; description: string; price: string; img: string; imageFile?: File | null; previewUrl?: string };
+type AddLocationFormData = {
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  latitude: number;
+  longitude: number;
+  type: string;
+  typeId: string;
+  openTime: string;
+  closeTime: string;
+  description: string;
+  amenities: AmenityDraft[];
+  menu: MenuDraft[];
+};
+type AddLocationDraft = {
+  step: number;
+  fileUploaded: boolean;
+  serviceMode: 'free' | 'paid';
+  formData: Omit<AddLocationFormData, 'amenities' | 'menu'> & {
+    amenities: Array<Omit<AmenityDraft, 'icon'>>;
+    menu: Array<Omit<MenuDraft, 'imageFile' | 'previewUrl'>>;
+  };
+};
+
+const ADD_LOCATION_DRAFT_KEY = 'provider:add-location:draft:v1';
+const DEFAULT_ADD_LOCATION_FORM_DATA: AddLocationFormData = {
+  name: '',
+  address: '',
+  city: '',
+  phone: '',
+  email: '',
+  latitude: 10.77,
+  longitude: 106.7,
+  type: '',
+  typeId: '',
+  openTime: '08:00',
+  closeTime: '22:00',
+  description: '',
+  amenities: [],
+  menu: [],
+};
+
+const isBrowser = () => typeof window !== 'undefined';
+
+const restoreAddLocationDraft = (): AddLocationDraft | null => {
+  if (!isBrowser()) return null;
+  try {
+    const raw = window.localStorage.getItem(ADD_LOCATION_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<AddLocationDraft>;
+    if (!parsed.formData || typeof parsed.formData !== 'object') return null;
+
+    return {
+      step: typeof parsed.step === 'number' ? Math.min(Math.max(parsed.step, 1), 3) : 1,
+      fileUploaded: Boolean(parsed.fileUploaded),
+      serviceMode: parsed.serviceMode === 'paid' ? 'paid' : 'free',
+      formData: {
+        ...DEFAULT_ADD_LOCATION_FORM_DATA,
+        ...parsed.formData,
+        phone: String(parsed.formData.phone ?? '').replace(/\D/g, '').slice(0, 10),
+        latitude: Number(parsed.formData.latitude) || DEFAULT_ADD_LOCATION_FORM_DATA.latitude,
+        longitude: Number(parsed.formData.longitude) || DEFAULT_ADD_LOCATION_FORM_DATA.longitude,
+        amenities: Array.isArray(parsed.formData.amenities) ? parsed.formData.amenities : [],
+        menu: Array.isArray(parsed.formData.menu) ? parsed.formData.menu : [],
+      },
+    };
+  } catch {
+    return null;
+  }
+};
+
+const buildRestoredFormData = (draft: AddLocationDraft | null): AddLocationFormData => ({
+  ...(draft?.formData ?? DEFAULT_ADD_LOCATION_FORM_DATA),
+  amenities: (draft?.formData.amenities ?? []).map((item) => ({
+    id: item.id || Date.now().toString(),
+    name: item.name || '',
+    description: item.description || '',
+    icon: <Wifi size={18} />,
+  })),
+  menu: (draft?.formData.menu ?? []).map((item) => ({
+    id: item.id || Date.now().toString(),
+    name: item.name || '',
+    description: item.description || '',
+    price: item.price || '',
+    img: item.img || '',
+    imageFile: null,
+    previewUrl: '',
+  })),
+});
+
+const buildPersistableFormData = (formData: AddLocationFormData): AddLocationDraft['formData'] => ({
+  ...formData,
+  amenities: formData.amenities.map(({ id, name, description }) => ({ id, name, description })),
+  menu: formData.menu.map(({ id, name, description, price, img }) => ({ id, name, description, price, img })),
+});
 
 const PRESET_FREE_SERVICES = [
   { name: 'Trà đá miễn phí', description: '' },
@@ -40,7 +139,10 @@ const VIETNAM_BOUNDS = {
   maxLng: 109.47,
 };
 const MAP_TILE_SIZE = 256;
-const MAP_ZOOM = 6;
+const MAP_ZOOM = 15;
+const SELECTED_LOCATION_ZOOM = 19;
+const OSM_MAX_TILE_ZOOM = 19;
+const DEFAULT_MAP_SIZE = { width: 600, height: 400 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -63,24 +165,29 @@ const worldPixelToLatLng = (x: number, y: number, zoom = MAP_ZOOM) => {
   return { lat, lng };
 };
 
-const getMapTiles = (centerLat: number, centerLng: number) => {
-  const center = latLngToWorldPixel(centerLat, centerLng);
-  const startX = center.x - 300;
-  const startY = center.y - 200;
+const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_SIZE.width, height = DEFAULT_MAP_SIZE.height, zoom = MAP_ZOOM) => {
+  const tileZoom = Math.min(zoom, OSM_MAX_TILE_ZOOM);
+  const overzoomScale = 2 ** (zoom - tileZoom);
+  const center = latLngToWorldPixel(centerLat, centerLng, tileZoom);
+  const startX = center.x - width / (2 * overzoomScale);
+  const startY = center.y - height / (2 * overzoomScale);
   const firstTileX = Math.floor(startX / MAP_TILE_SIZE);
   const firstTileY = Math.floor(startY / MAP_TILE_SIZE);
-  const maxTile = 2 ** MAP_ZOOM;
-  const tiles: Array<{ key: string; src: string; left: number; top: number }> = [];
+  const lastTileX = Math.floor((startX + width / overzoomScale) / MAP_TILE_SIZE);
+  const lastTileY = Math.floor((startY + height / overzoomScale) / MAP_TILE_SIZE);
+  const maxTile = 2 ** tileZoom;
+  const tiles: Array<{ key: string; src: string; left: number; top: number; size: number }> = [];
 
-  for (let x = firstTileX; x <= firstTileX + 3; x += 1) {
-    for (let y = firstTileY; y <= firstTileY + 2; y += 1) {
+  for (let x = firstTileX; x <= lastTileX; x += 1) {
+    for (let y = firstTileY; y <= lastTileY; y += 1) {
       if (y < 0 || y >= maxTile) continue;
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
-        key: `${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${MAP_ZOOM}/${wrappedX}/${y}.png`,
-        left: x * MAP_TILE_SIZE - startX,
-        top: y * MAP_TILE_SIZE - startY,
+        key: `${zoom}-${wrappedX}-${y}`,
+        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
+        top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
+        size: MAP_TILE_SIZE * overzoomScale,
       });
     }
   }
@@ -88,20 +195,124 @@ const getMapTiles = (centerLat: number, centerLng: number) => {
   return tiles;
 };
 
+type GeocodeResult = {
+  lat: string;
+  lon: string;
+  display_name?: string;
+  importance?: number;
+};
+
+const normalizeSearchText = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const getCityAliases = (city: string) => {
+  const normalizedCity = normalizeSearchText(city);
+  const aliases = [city.trim()];
+
+  if (normalizedCity.includes('ho chi minh') || normalizedCity.includes('hcm')) {
+    aliases.push('Ho Chi Minh City', 'Saigon');
+  }
+
+  return aliases.filter((alias, index, list) => alias && list.indexOf(alias) === index);
+};
+
+const getAddressVariants = (address: string) => {
+  const segments = address
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const firstSegment = segments[0] || address.trim();
+  const streetWithNumber = firstSegment.replace(/^\s*(?:so|số)\s+/i, '').trim();
+  const streetWithoutNumber = streetWithNumber
+    .replace(/^\d+[a-zA-Z0-9/-]*\s+/i, '')
+    .trim();
+
+  return [
+    address.trim(),
+    [streetWithNumber, ...segments.slice(1)].filter(Boolean).join(', '),
+    streetWithNumber,
+    streetWithoutNumber,
+  ].filter((variant, index, list) => variant && list.indexOf(variant) === index);
+};
+
+const pickBestGeocodeResult = (results: GeocodeResult[], city: string, address: string) => {
+  const normalizedCityAliases = getCityAliases(city).map(normalizeSearchText);
+  const addressTokens = normalizeSearchText(address)
+    .split(' ')
+    .filter((token) => token.length >= 3)
+    .slice(0, 6);
+
+  return results
+    .map((result) => {
+      const displayName = normalizeSearchText(result.display_name || '');
+      const cityScore = normalizedCityAliases.some((alias) => alias && displayName.includes(alias)) ? 100 : 0;
+      const addressScore = addressTokens.reduce((score, token) => score + (displayName.includes(token) ? 8 : 0), 0);
+      const importanceScore = Number(result.importance || 0) * 10;
+      return { result, score: cityScore + addressScore + importanceScore };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.result;
+};
+
+const geocodeAddress = async (address: string, city: string, placeName = '') => {
+  const cityAliases = getCityAliases(city);
+  const addressVariants = getAddressVariants(address);
+  const queryCandidates = addressVariants.flatMap((addressVariant) =>
+    cityAliases.flatMap((cityAlias) => [
+      [placeName.trim(), addressVariant, cityAlias, 'Vietnam'].filter(Boolean).join(', '),
+      [addressVariant, cityAlias, 'Vietnam'].filter(Boolean).join(', '),
+    ]),
+  ).filter((query, index, list) => query && list.indexOf(query) === index);
+
+  for (const query of queryCandidates) {
+    const params = new URLSearchParams({
+      format: 'json',
+      q: query,
+      countrycodes: 'vn',
+      limit: '5',
+      addressdetails: '1',
+      namedetails: '1',
+      extratags: '1',
+      bounded: '1',
+      viewbox: `${VIETNAM_BOUNDS.minLng},${VIETNAM_BOUNDS.maxLat},${VIETNAM_BOUNDS.maxLng},${VIETNAM_BOUNDS.minLat}`,
+      'accept-language': 'vi',
+    });
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Không thể kết nối dịch vụ bản đồ.');
+    }
+
+    const results: GeocodeResult[] = await response.json();
+    const bestResult = pickBestGeocodeResult(results, city, address);
+    if (bestResult) return bestResult;
+  }
+
+  return null;
+};
+
 const AddLocationPage: React.FC = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [fileUploaded, setFileUploaded] = useState(false);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const [restoredDraft] = useState(() => restoreAddLocationDraft());
+  const [step, setStep] = useState(() => restoredDraft?.step ?? 1);
+  const [fileUploaded, setFileUploaded] = useState(() => restoredDraft?.fileUploaded ?? false);
   const [showExcelImport, setShowExcelImport] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [selectedImages, setSelectedImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
-  const [markerPosition, setMarkerPosition] = useState({ x: 62.2, y: 49.6 });
+  const [mapSize, setMapSize] = useState(DEFAULT_MAP_SIZE);
+  const [mapZoom, setMapZoom] = useState(MAP_ZOOM);
   // Service input state
   const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
-  const [serviceMode, setServiceMode] = useState<'free' | 'paid'>('free');
+  const [serviceMode, setServiceMode] = useState<'free' | 'paid'>(() => restoredDraft?.serviceMode ?? 'free');
 
   // Menu item input state
   const [menuInput, setMenuInput] = useState<{
@@ -125,22 +336,39 @@ const AddLocationPage: React.FC = () => {
     fetchAllServices().then(setDbServices);
   }, []);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    city: '',
-    phone: '',
-    email: '',
-    latitude: 10.77,
-    longitude: 106.7,
-    type: '',
-    typeId: '',
-    openTime: '08:00',
-    closeTime: '22:00',
-    description: '',
-    amenities: [] as { id: string; name: string; description: string; icon: React.ReactNode }[],
-    menu: [] as { id: string; name: string; description: string; price: string; img: string; imageFile?: File | null; previewUrl?: string }[],
-  });
+  useEffect(() => {
+    const element = mapRef.current;
+    if (!element) return;
+
+    const updateMapSize = () => {
+      const rect = element.getBoundingClientRect();
+      setMapSize({
+        width: Math.max(Math.round(rect.width), 1),
+        height: Math.max(Math.round(rect.height), 1),
+      });
+    };
+
+    updateMapSize();
+    const observer = new ResizeObserver(updateMapSize);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [step]);
+
+  const [formData, setFormData] = useState<AddLocationFormData>(() => buildRestoredFormData(restoredDraft));
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+
+    const draft: AddLocationDraft = {
+      step,
+      fileUploaded,
+      serviceMode,
+      formData: buildPersistableFormData(formData),
+    };
+
+    window.localStorage.setItem(ADD_LOCATION_DRAFT_KEY, JSON.stringify(draft));
+  }, [fileUploaded, formData, serviceMode, step]);
 
   const [cities, setCities] = useState<CityOption[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
@@ -263,14 +491,14 @@ const AddLocationPage: React.FC = () => {
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = clamp(event.clientX - rect.left, 0, rect.width);
     const clickY = clamp(event.clientY - rect.top, 0, rect.height);
-    const center = latLngToWorldPixel(formData.latitude, formData.longitude);
+    const center = latLngToWorldPixel(formData.latitude, formData.longitude, mapZoom);
     const worldX = center.x - rect.width / 2 + clickX;
     const worldY = center.y - rect.height / 2 + clickY;
-    const { lat, lng } = worldPixelToLatLng(worldX, worldY);
+    const { lat, lng } = worldPixelToLatLng(worldX, worldY, mapZoom);
     const latitude = clamp(lat, VIETNAM_BOUNDS.minLat, VIETNAM_BOUNDS.maxLat);
     const longitude = clamp(lng, VIETNAM_BOUNDS.minLng, VIETNAM_BOUNDS.maxLng);
 
-    setMarkerPosition({ x: (clickX / rect.width) * 100, y: (clickY / rect.height) * 100 });
+    setMapZoom(SELECTED_LOCATION_ZOOM);
     setFormData((prev) => ({
       ...prev,
       latitude: Number(latitude.toFixed(6)),
@@ -279,8 +507,6 @@ const AddLocationPage: React.FC = () => {
   };
 
   const handleFindOnMap = async () => {
-    const addressParts = [formData.address.trim(), formData.city.trim(), 'Việt Nam'].filter(Boolean);
-
     if (!formData.address.trim() || !formData.city.trim()) {
       setGeocodeError('Vui lòng nhập địa chỉ và chọn tỉnh/thành trước khi tìm trên bản đồ.');
       return;
@@ -290,24 +516,7 @@ const AddLocationPage: React.FC = () => {
       setIsGeocoding(true);
       setGeocodeError('');
 
-      const params = new URLSearchParams({
-        format: 'json',
-        q: addressParts.join(', '),
-        countrycodes: 'vn',
-        limit: '1',
-      });
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Không thể kết nối dịch vụ bản đồ.');
-      }
-
-      const results: Array<{ lat: string; lon: string }> = await response.json();
-      const firstResult = results[0];
+      const firstResult = await geocodeAddress(formData.address, formData.city, formData.name);
 
       if (!firstResult) {
         throw new Error('Không tìm thấy vị trí phù hợp. Vui lòng thử nhập địa chỉ rõ hơn hoặc chọn thủ công trên bản đồ.');
@@ -320,7 +529,7 @@ const AddLocationPage: React.FC = () => {
         throw new Error('Dịch vụ bản đồ trả về tọa độ không hợp lệ.');
       }
 
-      setMarkerPosition({ x: 50, y: 50 });
+      setMapZoom(SELECTED_LOCATION_ZOOM);
       setFormData((prev) => ({
         ...prev,
         latitude: Number(latitude.toFixed(6)),
@@ -704,6 +913,7 @@ const AddLocationPage: React.FC = () => {
 
       // 4. Gọi API lưu vào Supabase qua hàm create_full_place
       await addNewPlace(payload);
+      window.localStorage.removeItem(ADD_LOCATION_DRAFT_KEY);
 
       alert('Tạo địa điểm và lưu ảnh thành công!');
       navigate('/dashboard');
@@ -759,7 +969,7 @@ const AddLocationPage: React.FC = () => {
     }
   };
 
-  const mapTiles = getMapTiles(formData.latitude, formData.longitude);
+  const mapTiles = getMapTiles(formData.latitude, formData.longitude, mapSize.width, mapSize.height, mapZoom);
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', gap: '48px' }}>
@@ -1009,6 +1219,7 @@ const AddLocationPage: React.FC = () => {
           </div>
         )}
         <div
+          ref={mapRef}
           onClick={handleMapClick}
           style={{
             width: '100%',
@@ -1032,8 +1243,8 @@ const AddLocationPage: React.FC = () => {
                   position: 'absolute',
                   left: `${tile.left}px`,
                   top: `${tile.top}px`,
-                  width: `${MAP_TILE_SIZE}px`,
-                  height: `${MAP_TILE_SIZE}px`,
+                  width: `${tile.size}px`,
+                  height: `${tile.size}px`,
                   userSelect: 'none',
                 }}
               />
@@ -1042,8 +1253,8 @@ const AddLocationPage: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              top: `${markerPosition.y}%`,
-              left: `${markerPosition.x}%`,
+              top: '50%',
+              left: '50%',
               transform: 'translate(-50%, -100%)',
               color: '#ef4444',
               pointerEvents: 'none',
