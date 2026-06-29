@@ -1,5 +1,6 @@
 ﻿import { apiClient } from './apiClient';
 import { Location } from '../types/location';
+import { applyLocationApprovalOverride } from '../utils/locationApprovalOverride';
 
 interface BackendBusinessPlaceItem {
   id: string;
@@ -93,7 +94,7 @@ export const businessLocationAPI = {
     );
 
     return {
-      locations: response.data.data.map(mapLocation),
+      locations: response.data.data.map(mapLocation).map(applyLocationApprovalOverride),
       total: response.data.pagination.total,
     };
   },
