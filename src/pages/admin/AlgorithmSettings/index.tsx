@@ -1,34 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Info } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import { AccordionCard, AlgoGroup, Tip } from './components/AlgorithmSettingsPrimitives';
 import { TwoTowerSettingsCard } from './components/TwoTowerSettingsCard';
 import { hybridConfigAPI } from '../../../services/hybridConfigAPI';
+import {
+  algorithmSettingsAPI,
+  ReviewFilterSettingsResponse,
+  } from '../../../services/algorithmSettingsAPI';
 import './AlgorithmSettings.css';
 
-const DEFAULT_TOPICS_C3 = [
-  { name: 'Giao thông', hours: 24 },
-  { name: 'Thời tiết', hours: 24 },
-  { name: 'Đông đúc', hours: 48 },
-  { name: 'Dịch vụ', hours: 72 },
-  { name: 'Giá cả', hours: 72 },
-  { name: 'Cơ sở hạ tầng', hours: 168 },
-  { name: 'Đồ ăn & uống', hours: 168 },
-  { name: 'Hoạt động', hours: 168 },
-  { name: 'Không khí', hours: 720 },
-];
+type CardKey = 'weights' | 'classification' | 'conflict' | 'time' | 'twoTower';
 
-const DEFAULT_TOPICS_C5 = [
-  { name: 'Giao thông', window: 1, minCount: 3, similarity: 0.75 },
-  { name: 'Thời tiết', window: 1, minCount: 3, similarity: 0.75 },
-  { name: 'Đông đúc', window: 2, minCount: 3, similarity: 0.70 },
-  { name: 'Dịch vụ', window: 3, minCount: 5, similarity: 0.70 },
-  { name: 'Giá cả', window: 3, minCount: 5, similarity: 0.70 },
-  { name: 'Cơ sở hạ tầng', window: 7, minCount: 5, similarity: 0.65 },
-  { name: 'Đồ ăn & uống', window: 7, minCount: 5, similarity: 0.65 },
-  { name: 'Hoạt động', window: 7, minCount: 5, similarity: 0.65 },
-  { name: 'Không khí', window: 30, minCount: 10, similarity: 0.6 },
-];
+const outOfRange = (value: number, min: number, max: number) =>
+  Number.isNaN(value) || value < min || value > max;
 
 const hoursToLabel = (hours: number): string => {
   if (hours <= 0) return '-';
@@ -38,11 +23,7 @@ const hoursToLabel = (hours: number): string => {
   return `${days} ngày`;
 };
 
-const outOfRange = (v: number, min: number, max: number) => v < min || v > max || Number.isNaN(v);
-
-type CardKey = 'weights' | 'classification' | 'conflict' | 'time' | 'twoTower';
-type ConflictMode = 'all' | 'limit_k';
-type UpgradeMode = 'representative' | 'all_clusters';
+const formatRange = (min: number, max: number) => `Khuyến nghị: ${min} - ${max}`;
 
 export const AlgorithmSettings: React.FC = () => {
   const [open, setOpen] = useState<Record<CardKey, boolean>>({
@@ -52,27 +33,57 @@ export const AlgorithmSettings: React.FC = () => {
     time: false,
     twoTower: false,
   });
-  const toggle = (k: CardKey) => setOpen((p) => ({ ...p, [k]: !p[k] }));
+  const toggle = (key: CardKey) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const [banner, setBanner] = useState<string | null>(null);
-  const showBanner = (ctx: string) => setBanner(`Thay đổi này sẽ ảnh hưởng đến ${ctx} đang được xử lý.`);
   const [distanceWeight, setDistanceWeight] = useState(0.4);
   const [candidateCount, setCandidateCount] = useState(10);
+  const [recommendationActive, setRecommendationActive] = useState<boolean | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationSaving, setRecommendationSaving] = useState(false);
-  const [topicThreshold, setTopicThreshold] = useState(0.18);
-  const [minConfidence, setMinConfidence] = useState(0.55);
-  const [labelMargin, setLabelMargin] = useState(0.1);
-  const [topicsC3, setTopicsC3] = useState(() => DEFAULT_TOPICS_C3.map((t) => ({ ...t })));
-  const [conflictThreshold, setConflictThreshold] = useState(0.65);
-  const [windowFactor, setWindowFactor] = useState(6);
-  const [conflictMode, setConflictMode] = useState<ConflictMode>('all');
-  const [maxK, setMaxK] = useState(5);
-  const [upgradeMode, setUpgradeMode] = useState<UpgradeMode>('representative');
-  const [topicsC5, setTopicsC5] = useState(() => DEFAULT_TOPICS_C5.map((t) => ({ ...t })));
+
+  const [reviewFilterSettings, setReviewFilterSettings] = useState<ReviewFilterSettingsResponse | null>(null);
+  const [reviewFilterDraft, setReviewFilterDraft] = useState<Record<string, number>>({});
+  const [reviewFilterActive, setReviewFilterActive] = useState<boolean | null>(null);
+  const [reviewFilterLoading, setReviewFilterLoading] = useState(false);
+  const [reviewFilterSaving, setReviewFilterSaving] = useState(false);
+  const [twoTowerActive, setTwoTowerActive] = useState<boolean | null>(null);
+
+  const reviewFilterTopics = useMemo(
+    () => reviewFilterSettings?.topics ?? [],
+    [reviewFilterSettings],
+  );
+
+  const applyReviewFilterSettings = (data: ReviewFilterSettingsResponse) => {
+    setReviewFilterSettings(data);
+    setReviewFilterActive(Boolean(data.algorithm.isActive));
+    setReviewFilterDraft(
+      Object.fromEntries(
+        Object.entries(data.parameters).map(([name, meta]) => [name, Number(meta.currentValue)]),
+      ),
+    );
+  };
 
   useEffect(() => {
     let alive = true;
+
+    async function loadAlgorithmStatuses() {
+      try {
+        const data = await algorithmSettingsAPI.getAlgorithmStatuses();
+        if (!alive) return;
+        if (typeof data.hybrid_recommender === 'boolean') {
+          setRecommendationActive(data.hybrid_recommender);
+        }
+        if (typeof data.review_filter === 'boolean') {
+          setReviewFilterActive(data.review_filter);
+        }
+        if (typeof data.two_tower_retrieval === 'boolean') {
+          setTwoTowerActive(data.two_tower_retrieval);
+        }
+      } catch {
+        // Status badges are refreshed again by the detailed setting requests.
+      }
+    }
 
     async function loadRecommendationSettings() {
       setRecommendationLoading(true);
@@ -81,6 +92,7 @@ export const AlgorithmSettings: React.FC = () => {
         if (!alive) return;
         setDistanceWeight(Number(data.distance_weight ?? 0.4));
         setCandidateCount(Number(data.candidate_count ?? 10));
+        setRecommendationActive(Boolean(data.is_active));
       } catch {
         if (alive) setBanner('Không thể tải cấu hình thuật toán gợi ý.');
       } finally {
@@ -88,7 +100,21 @@ export const AlgorithmSettings: React.FC = () => {
       }
     }
 
+    async function loadReviewFilterSettings() {
+      setReviewFilterLoading(true);
+      try {
+        const data = await algorithmSettingsAPI.getReviewFilterSettings();
+        if (alive) applyReviewFilterSettings(data);
+      } catch {
+        if (alive) setBanner('Không thể tải cấu hình thuật toán lọc đánh giá.');
+      } finally {
+        if (alive) setReviewFilterLoading(false);
+      }
+    }
+
+    loadAlgorithmStatuses();
     loadRecommendationSettings();
+    loadReviewFilterSettings();
     return () => {
       alive = false;
     };
@@ -112,12 +138,121 @@ export const AlgorithmSettings: React.FC = () => {
       });
       setDistanceWeight(Number(data.distance_weight ?? distanceWeight));
       setCandidateCount(Number(data.candidate_count ?? candidateCount));
+      setRecommendationActive(Boolean(data.is_active));
       setBanner('Đã lưu cấu hình thuật toán gợi ý.');
     } catch {
       setBanner('Không thể lưu cấu hình thuật toán gợi ý. Vui lòng thử lại.');
     } finally {
       setRecommendationSaving(false);
     }
+  };
+
+  const param = (name: string) => reviewFilterSettings?.parameters[name];
+  const value = (name: string) => Number(reviewFilterDraft[name] ?? param(name)?.currentValue ?? 0);
+  const setParam = (name: string, nextValue: number) => {
+    setReviewFilterDraft((prev) => ({ ...prev, [name]: nextValue }));
+  };
+  const inputClass = (name: string, extra = '') => {
+    const meta = param(name);
+    const invalid = meta ? outOfRange(value(name), meta.minValue, meta.maxValue) : false;
+    return `as-input${extra}${invalid ? ' as-input--err' : ''}`;
+  };
+  const integerParam = (name: string) =>
+    name === 'top_k' ||
+    name.startsWith('ttl_hours.') ||
+    name.startsWith('lookback_multiplier.') ||
+    name.startsWith('window_days.') ||
+    name.startsWith('threshold.');
+
+  const validateReviewFilter = (names: string[]) => {
+    for (const name of names) {
+      const meta = param(name);
+      const nextValue = value(name);
+      if (!meta) continue;
+      if (outOfRange(nextValue, meta.minValue, meta.maxValue)) {
+        setBanner(`${meta.description || name} phải nằm trong khoảng ${meta.minValue} - ${meta.maxValue}.`);
+        return false;
+      }
+      if (integerParam(name) && !Number.isInteger(nextValue)) {
+        setBanner(`${meta.description || name} phải là số nguyên.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const saveReviewFilter = async (names: string[]) => {
+    if (!validateReviewFilter(names)) return;
+    setReviewFilterSaving(true);
+    try {
+      const data = await algorithmSettingsAPI.updateReviewFilterSettings({
+        parameters: Object.fromEntries(names.map((name) => [name, value(name)])),
+      });
+      applyReviewFilterSettings(data);
+      setBanner('Đã lưu tham số thuật toán lọc đánh giá.');
+    } catch {
+      setBanner('Không thể lưu tham số thuật toán lọc đánh giá.');
+    } finally {
+      setReviewFilterSaving(false);
+    }
+  };
+
+  const resetReviewFilter = async () => {
+    setReviewFilterSaving(true);
+    try {
+      const data = await algorithmSettingsAPI.resetReviewFilterSettings();
+      applyReviewFilterSettings(data);
+      setBanner('Đã khôi phục mặc định tham số thuật toán lọc đánh giá.');
+    } catch {
+      setBanner('Không thể khôi phục mặc định tham số thuật toán lọc đánh giá.');
+    } finally {
+      setReviewFilterSaving(false);
+    }
+  };
+
+  const allTopicNames = (prefix: string) => reviewFilterTopics.map((topic) => `${prefix}.${topic.key}`);
+  const classificationNames = [
+    'topic_other_threshold',
+    'classifier_confidence_threshold',
+    'classifier_ambiguity_margin',
+    ...allTopicNames('ttl_hours'),
+  ];
+  const conflictNames = [
+    'conflict_score_threshold',
+    'candidate_mode',
+    'top_k',
+    ...allTopicNames('lookback_multiplier'),
+  ];
+  const timeNames = [
+    'promotion_mode',
+    ...allTopicNames('window_days'),
+    ...allTopicNames('threshold'),
+    ...allTopicNames('sim_threshold'),
+  ];
+
+  const renderNumberInput = (name: string, extra = '', step = 1) => {
+    const meta = param(name);
+    return (
+      <input
+        type="number"
+        step={step}
+        min={meta?.minValue}
+        max={meta?.maxValue}
+        className={inputClass(name, extra)}
+        value={value(name)}
+        onChange={(event) => setParam(name, Number(event.target.value))}
+      />
+    );
+  };
+
+  const renderHint = (name: string) => {
+    const meta = param(name);
+    return meta ? <span className="as-hint">{formatRange(meta.minValue, meta.maxValue)}</span> : null;
+  };
+
+  const statusBadge = (isActive: boolean | null | undefined) => {
+    if (isActive === null || isActive === undefined) return undefined;
+    return isActive ? 'Đang hoạt động' : 'Tạm tắt';
   };
 
   return (
@@ -150,7 +285,7 @@ export const AlgorithmSettings: React.FC = () => {
           </div>
         )}
 
-        <AlgoGroup title="Thuật toán gợi ý">
+        <AlgoGroup title="Thuật toán gợi ý" badge={statusBadge(recommendationActive)}>
           <AccordionCard
             title="Cấu hình gợi ý"
             open={open.weights}
@@ -200,72 +335,33 @@ export const AlgorithmSettings: React.FC = () => {
           </AccordionCard>
         </AlgoGroup>
 
-        <AlgoGroup title="Thuật toán lọc - phân loại đánh giá">
+        <AlgoGroup title="Thuật toán lọc đánh giá" badge={statusBadge(reviewFilterActive ?? reviewFilterSettings?.algorithm.isActive)}>
+          {reviewFilterLoading && <div className="as-muted as-loading-line">Đang tải tham số thuật toán lọc - phân loại đánh giá...</div>}
+
           <AccordionCard
             title="Phân loại đánh giá"
             open={open.classification}
             onToggle={() => toggle('classification')}
-            onSave={() => {}}
-            onReset={() => {
-              setTopicThreshold(0.18);
-              setMinConfidence(0.55);
-              setLabelMargin(0.1);
-              setTopicsC3(DEFAULT_TOPICS_C3.map((t) => ({ ...t })));
-            }}>
+            onSave={() => saveReviewFilter(classificationNames)}
+            onReset={resetReviewFilter}
+            saveDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            resetDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            saveLabel={reviewFilterSaving ? 'Đang lưu...' : 'Lưu thay đổi'}>
             <div className="as-row as-row--3col">
               <div className="as-field">
-                <label className="as-label">
-                  Ngưỡng nhận dạng chủ đề
-                  <Tip text="Điểm tối thiểu để gán chủ đề cho đánh giá" />
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={1}
-                  className={`as-input${outOfRange(topicThreshold, 0, 1) ? ' as-input--err' : ''}`}
-                  value={topicThreshold}
-                  onChange={(e) => {
-                    setTopicThreshold(Number(e.target.value));
-                    showBanner('các đánh giá đang chờ phân loại');
-                  }}
-                />
-                <span className="as-hint">Khuyến nghị: 0.10 - 0.30</span>
+                <label className="as-label">Ngưỡng nhận dạng chủ đề <Tip text="Điểm tối thiểu để xác định chủ đề; thấp hơn ngưỡng sẽ xếp vào Khác." /></label>
+                {renderNumberInput('topic_other_threshold', '', 0.01)}
+                {renderHint('topic_other_threshold')}
               </div>
               <div className="as-field">
-                <label className="as-label">
-                  Độ tin cậy tối thiểu của mô hình
-                  <Tip text="Ngưỡng tin cậy để chấp nhận kết quả phân loại" />
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={1}
-                  className={`as-input${outOfRange(minConfidence, 0, 1) ? ' as-input--err' : ''}`}
-                  value={minConfidence}
-                  onChange={(e) => {
-                    setMinConfidence(Number(e.target.value));
-                    showBanner('các đánh giá đang chờ phân loại');
-                  }}
-                />
-                <span className="as-hint">Khuyến nghị: 0.40 - 0.70</span>
+                <label className="as-label">Độ tin cậy tối thiểu của mô hình <Tip text="PhoBERT phải đạt mức này mới phán quyết ngắn hạn/dài hạn." /></label>
+                {renderNumberInput('classifier_confidence_threshold', '', 0.01)}
+                {renderHint('classifier_confidence_threshold')}
               </div>
               <div className="as-field">
-                <label className="as-label">
-                  Biên độ phân biệt nhãn
-                  <Tip text="Khoảng cách tối thiểu giữa các nhãn để tránh xung đột phân loại" />
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={1}
-                  className={`as-input${outOfRange(labelMargin, 0, 1) ? ' as-input--err' : ''}`}
-                  value={labelMargin}
-                  onChange={(e) => setLabelMargin(Number(e.target.value))}
-                />
-                <span className="as-hint">Khuyến nghị: 0.05 - 0.20</span>
+                <label className="as-label">Biên độ phân biệt nhãn <Tip text="Khoảng cách tối thiểu giữa hai nhãn để tránh mô hình do dự." /></label>
+                {renderNumberInput('classifier_ambiguity_margin', '', 0.01)}
+                {renderHint('classifier_ambiguity_margin')}
               </div>
             </div>
 
@@ -274,26 +370,24 @@ export const AlgorithmSettings: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Chủ đề</th>
-                    <th>Thời hạn (giờ)</th>
-                    <th>Tương đương</th>
+                    <th>Thời hạn (giờ) <Tip text="Số giờ đánh giá ngắn hạn còn hiệu lực theo từng chủ đề trước khi bị ẩn." /></th>
+                    <th>Khuyến nghị <Tip text="Khoảng giá trị tối thiểu - tối đa của thời hạn." /></th>
+                    <th>Tương đương <Tip text="Quy đổi thời hạn giờ sang ngày để dễ đối chiếu." /></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topicsC3.map((row, idx) => (
-                    <tr key={row.name}>
-                      <td>{row.name}</td>
-                      <td>
-                        <input
-                          type="number"
-                          className="as-input as-input--inline"
-                          value={row.hours}
-                          min={1}
-                          onChange={(e) => setTopicsC3((p) => p.map((t, i) => (i === idx ? { ...t, hours: Number(e.target.value) } : t)))}
-                        />
-                      </td>
-                      <td className="as-muted">{hoursToLabel(row.hours)}</td>
-                    </tr>
-                  ))}
+                  {reviewFilterTopics.map((topic) => {
+                    const name = `ttl_hours.${topic.key}`;
+                    const meta = param(name);
+                    return (
+                      <tr key={topic.key}>
+                        <td>{topic.label}</td>
+                        <td>{renderNumberInput(name, ' as-input--inline')}</td>
+                        <td className="as-muted">{meta ? `${meta.minValue} - ${meta.maxValue}` : '-'}</td>
+                        <td className="as-muted">{hoursToLabel(value(name))}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -303,82 +397,64 @@ export const AlgorithmSettings: React.FC = () => {
             title="Phát hiện xung đột"
             open={open.conflict}
             onToggle={() => toggle('conflict')}
-            onSave={() => {}}
-            onReset={() => {
-              setConflictThreshold(0.65);
-              setWindowFactor(6);
-              setConflictMode('all');
-              setMaxK(5);
-            }}>
+            onSave={() => saveReviewFilter(conflictNames)}
+            onReset={resetReviewFilter}
+            saveDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            resetDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            saveLabel={reviewFilterSaving ? 'Đang lưu...' : 'Lưu thay đổi'}>
             <div className="as-stack">
               <div className="as-field">
-                <label className="as-label">
-                  Ngưỡng điểm xung đột
-                  <Tip text="Điểm cosine similarity tối thiểu để phát hiện xung đột giữa hai đánh giá (0.50 - 0.90)" />
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min={0.5}
-                  max={0.9}
-                  className={`as-input as-input--sm${outOfRange(conflictThreshold, 0.5, 0.9) ? ' as-input--err' : ''}`}
-                  value={conflictThreshold}
-                  onChange={(e) => {
-                    setConflictThreshold(Number(e.target.value));
-                    showBanner('các cặp đánh giá');
-                  }}
-                />
+                <label className="as-label">Ngưỡng điểm xung đột <Tip text="Điểm tối thiểu để xác nhận hai đánh giá mâu thuẫn nhau." /></label>
+                {renderNumberInput('conflict_score_threshold', ' as-input--sm', 0.01)}
+                {renderHint('conflict_score_threshold')}
               </div>
 
               <div className="as-field">
-                <label className="as-label">
-                  Hệ số cửa sổ tra cứu
-                  <Tip text="Nhân với khoảng thời gian phân loại để tính cửa sổ nhìn lại (1 - 20)" />
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  className={`as-input as-input--sm${outOfRange(windowFactor, 1, 20) ? ' as-input--err' : ''}`}
-                  value={windowFactor}
-                  onChange={(e) => setWindowFactor(Number(e.target.value))}
-                />
-                <span className="as-hint">
-                  Ví dụ: Đồ ăn (7 ngày x {windowFactor} = {7 * windowFactor} ngày nhìn lại)
-                </span>
-              </div>
-
-              <div className="as-field">
-                <label className="as-label">Chế độ lựa chọn đánh giá so sánh</label>
+                <label className="as-label">Chế độ lựa chọn đánh giá so sánh <Tip text="Chọn phạm vi đánh giá dùng để đối chiếu khi phát hiện xung đột." /></label>
                 <div className="as-radio-group">
                   <label className="as-radio">
-                    <input type="radio" name="conflictMode" checked={conflictMode === 'all'} onChange={() => setConflictMode('all')} />
+                    <input type="radio" name="candidateMode" checked={value('candidate_mode') === 0} onChange={() => setParam('candidate_mode', 0)} />
                     So sánh tất cả
+                    <Tip text="Dùng toàn bộ đánh giá còn nằm trong cửa sổ tra cứu của chủ đề." />
                   </label>
                   <label className="as-radio">
-                    <input
-                      type="radio"
-                      name="conflictMode"
-                      checked={conflictMode === 'limit_k'}
-                      onChange={() => setConflictMode('limit_k')}
-                    />
+                    <input type="radio" name="candidateMode" checked={value('candidate_mode') === 1} onChange={() => setParam('candidate_mode', 1)} />
                     Giới hạn K đánh giá
+                    <Tip text="Chỉ dùng tối đa K đánh giá gần nhất trong cửa sổ tra cứu để giảm chi phí xử lý." />
                   </label>
                 </div>
-
-                {conflictMode === 'limit_k' && (
+                {value('candidate_mode') === 1 && (
                   <div className="as-indented">
                     <label className="as-label">Số đánh giá tối đa để so sánh</label>
-                    <input
-                      type="number"
-                      min={3}
-                      max={50}
-                      className={`as-input as-input--sm${outOfRange(maxK, 3, 50) ? ' as-input--err' : ''}`}
-                      value={maxK}
-                      onChange={(e) => setMaxK(Number(e.target.value))}
-                    />
+                    {renderNumberInput('top_k', ' as-input--sm')}
+                    {renderHint('top_k')}
                   </div>
                 )}
+              </div>
+
+              <div className="as-table-wrap">
+                <table className="as-table">
+                  <thead>
+                    <tr>
+                      <th>Chủ đề</th>
+                      <th>Hệ số cửa sổ tra cứu <Tip text="Cửa sổ tìm đánh giá = thời hạn hiệu lực của chủ đề nhân với hệ số này." /></th>
+                      <th>Khuyến nghị <Tip text="Khoảng giá trị tối thiểu - tối đa của hệ số cửa sổ tra cứu." /></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reviewFilterTopics.map((topic) => {
+                      const name = `lookback_multiplier.${topic.key}`;
+                      const meta = param(name);
+                      return (
+                        <tr key={topic.key}>
+                          <td>{topic.label}</td>
+                          <td>{renderNumberInput(name, ' as-input--inline')}</td>
+                          <td className="as-muted">{meta ? `${meta.minValue} - ${meta.maxValue}` : '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </AccordionCard>
@@ -387,38 +463,25 @@ export const AlgorithmSettings: React.FC = () => {
             title="Quản lý thời gian"
             open={open.time}
             onToggle={() => toggle('time')}
-            onSave={() => {}}
-            onReset={() => {
-              setUpgradeMode('representative');
-              setTopicsC5(DEFAULT_TOPICS_C5.map((t) => ({ ...t })));
-            }}>
+            onSave={() => saveReviewFilter(timeNames)}
+            onReset={resetReviewFilter}
+            saveDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            resetDisabled={reviewFilterLoading || reviewFilterSaving || !reviewFilterSettings}
+            saveLabel={reviewFilterSaving ? 'Đang lưu...' : 'Lưu thay đổi'}>
             <div className="as-field as-field--mb">
-              <label className="as-label">Chế độ nâng cấp đánh giá</label>
+              <label className="as-label">Chế độ nâng cấp đánh giá <Tip text="Chọn cách chuyển đánh giá ngắn hạn trong cụm đủ điều kiện thành dài hạn." /></label>
               <div className="as-radio-group">
                 <label className="as-radio">
-                  <input
-                    type="radio"
-                    name="upgradeMode"
-                    checked={upgradeMode === 'representative'}
-                    onChange={() => setUpgradeMode('representative')}
-                  />
+                  <input type="radio" name="promotionMode" checked={value('promotion_mode') === 0} onChange={() => setParam('promotion_mode', 0)} />
                   Chỉ nâng cấp đánh giá đại diện
+                  <Tip text="Chỉ đánh giá đại diện của cụm được nâng cấp lên dài hạn." />
                 </label>
                 <label className="as-radio">
-                  <input
-                    type="radio"
-                    name="upgradeMode"
-                    checked={upgradeMode === 'all_clusters'}
-                    onChange={() => setUpgradeMode('all_clusters')}
-                  />
+                  <input type="radio" name="promotionMode" checked={value('promotion_mode') === 1} onChange={() => setParam('promotion_mode', 1)} />
                   Nâng cấp toàn bộ cụm
+                  <Tip text="Tất cả đánh giá trong cụm đủ điều kiện được nâng cấp lên dài hạn." />
                 </label>
               </div>
-              <span className="as-hint">
-                {upgradeMode === 'representative'
-                  ? 'Chỉ cập nhật đánh giá đại diện nhất trong mỗi cụm.'
-                  : 'Cập nhật toàn bộ đánh giá trong tất cả các cụm, tiêu tốn nhiều tài nguyên hơn.'}
-              </span>
             </div>
 
             <div className="as-table-wrap">
@@ -426,48 +489,18 @@ export const AlgorithmSettings: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Chủ đề</th>
-                    <th>Cửa sổ (ngày)</th>
-                    <th>Số tối thiểu</th>
-                    <th>Ngưỡng tương đồng</th>
+                    <th>Cửa sổ (ngày) <Tip text="Số ngày gần nhất dùng để gom các đánh giá cùng chủ đề thành cụm." /></th>
+                    <th>Số tối thiểu <Tip text="Số đánh giá tối thiểu trong cụm để đủ điều kiện tạo nhận xét dài hạn." /></th>
+                    <th>Ngưỡng tương đồng <Tip text="Điểm giống nhau tối thiểu để hai đánh giá được gom vào cùng một cụm." /></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topicsC5.map((row, idx) => (
-                    <tr key={row.name}>
-                      <td>{row.name}</td>
-                      <td>
-                        <input
-                          type="number"
-                          className="as-input as-input--inline"
-                          value={row.window}
-                          min={1}
-                          onChange={(e) => setTopicsC5((p) => p.map((t, i) => (i === idx ? { ...t, window: Number(e.target.value) } : t)))}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="as-input as-input--inline"
-                          value={row.minCount}
-                          min={1}
-                          onChange={(e) =>
-                            setTopicsC5((p) => p.map((t, i) => (i === idx ? { ...t, minCount: Number(e.target.value) } : t)))
-                          }
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          max={1}
-                          className="as-input as-input--inline"
-                          value={row.similarity}
-                          onChange={(e) =>
-                            setTopicsC5((p) => p.map((t, i) => (i === idx ? { ...t, similarity: Number(e.target.value) } : t)))
-                          }
-                        />
-                      </td>
+                  {reviewFilterTopics.map((topic) => (
+                    <tr key={topic.key}>
+                      <td>{topic.label}</td>
+                      <td>{renderNumberInput(`window_days.${topic.key}`, ' as-input--inline')}</td>
+                      <td>{renderNumberInput(`threshold.${topic.key}`, ' as-input--inline')}</td>
+                      <td>{renderNumberInput(`sim_threshold.${topic.key}`, ' as-input--inline', 0.01)}</td>
                     </tr>
                   ))}
                 </tbody>

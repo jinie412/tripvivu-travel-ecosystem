@@ -10,8 +10,8 @@ import {
 import './AlgorithmRunHistory.css';
 
 const ALGORITHM_LABELS: Record<string, string> = {
-  review_filter: 'Phân loại đánh giá',
-  two_tower_retrieval: 'Gợi ý địa điểm',
+  review_filter: 'Lọc đánh giá',
+  two_tower_retrieval: 'Lập lịch - Mô hình truy xuất địa điểm',
   hybrid_recommender: 'Gợi ý địa điểm',
 };
 
@@ -25,10 +25,40 @@ const getReviewFilterMessage = (
   total: number,
 ): string => `Đã xử lý ${processed}/${total} đánh giá đã duyệt đang chờ xử lý`;
 
+const formatValue = (value: unknown): string => {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+  }
+  if (typeof value === 'boolean') return value ? 'Bật' : 'Tắt';
+  if (value === null || value === undefined) return '-';
+  return String(value);
+};
+
 const getDetailText = (row: PipelineHistoryItem): string => {
   if (row.error) return row.error;
 
   const details = row.details ?? {};
+  const detailMessage = details.message;
+  if (typeof detailMessage === 'string' && detailMessage.trim()) {
+    return detailMessage;
+  }
+
+  const changes = details.changes;
+  if (Array.isArray(changes) && changes.length > 0) {
+    const summary = changes
+      .slice(0, 3)
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const change = item as Record<string, unknown>;
+        const label = String(change.label ?? change.parameter ?? 'Tham số');
+        return `${label}: ${formatValue(change.oldValue)} → ${formatValue(change.newValue)}`;
+      })
+      .filter(Boolean)
+      .join('; ');
+    const suffix = changes.length > 3 ? `; và ${changes.length - 3} tham số khác` : '';
+    return `Đã cập nhật ${changes.length} tham số. ${summary}${suffix}`;
+  }
+
   const message = details.result_message;
 
   if (row.algorithm_name === 'review_filter') {
