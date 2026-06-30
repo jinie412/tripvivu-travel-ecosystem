@@ -20,6 +20,13 @@ int _toInt(dynamic v, [int fallback = 0]) {
   return int.tryParse(v.toString()) ?? fallback;
 }
 
+int _demoDwell(int seconds) {
+  if (seconds <= 0) return TrackingConfig.dwellSeconds;
+  return seconds > TrackingConfig.maxDemoDwellSeconds
+      ? TrackingConfig.maxDemoDwellSeconds
+      : seconds;
+}
+
 String? _toStr(dynamic v) => v?.toString();
 
 /// Lấy giá trị đầu tiên không null trong nhiều key có thể có.
@@ -68,33 +75,41 @@ class TrackingGeofence {
   });
 
   factory TrackingGeofence.fromJson(Map<String, dynamic> j) => TrackingGeofence(
-        itineraryDetailId:
-            _toStr(_pick(j, ['itineraryDetailId', 'itinerary_detail_id'])) ?? '',
-        geofenceId: _toStr(_pick(j, ['geofenceId', 'geofence_id'])),
-        placeId: _toStr(_pick(j, ['placeId', 'place_id'])),
-        name: _toStr(_pick(j, ['name', 'placeName', 'place_name', 'title'])),
-        latitude: _toDouble(_pick(j, ['latitude', 'lat'])) ?? 0,
-        longitude: _toDouble(_pick(j, ['longitude', 'lng', 'lon'])) ?? 0,
-        radiusM: _toInt(_pick(j, ['radiusM', 'radius_m', 'radius']), TrackingConfig.radiusM),
-        dwellThresholdSeconds: _toInt(
-          _pick(j, ['dwellThresholdSeconds', 'dwell_threshold_seconds']),
-          TrackingConfig.dwellSeconds,
-        ),
-      );
+    itineraryDetailId:
+        _toStr(_pick(j, ['itineraryDetailId', 'itinerary_detail_id'])) ?? '',
+    geofenceId: _toStr(_pick(j, ['geofenceId', 'geofence_id'])),
+    placeId: _toStr(_pick(j, ['placeId', 'place_id'])),
+    name: _toStr(_pick(j, ['name', 'placeName', 'place_name', 'title'])),
+    latitude: _toDouble(_pick(j, ['latitude', 'lat'])) ?? 0,
+    longitude: _toDouble(_pick(j, ['longitude', 'lng', 'lon'])) ?? 0,
+    radiusM: _toInt(
+      _pick(j, ['radiusM', 'radius_m', 'radius']),
+      TrackingConfig.radiusM,
+    ),
+    dwellThresholdSeconds: _demoDwell(
+      _toInt(
+        _pick(j, ['dwellThresholdSeconds', 'dwell_threshold_seconds']),
+        TrackingConfig.dwellSeconds,
+      ),
+    ),
+  );
 
   Map<String, dynamic> toJson() => {
-        'itineraryDetailId': itineraryDetailId,
-        'geofenceId': geofenceId,
-        'placeId': placeId,
-        'name': name,
-        'latitude': latitude,
-        'longitude': longitude,
-        'radiusM': radiusM,
-        'dwellThresholdSeconds': dwellThresholdSeconds,
-      };
+    'itineraryDetailId': itineraryDetailId,
+    'geofenceId': geofenceId,
+    'placeId': placeId,
+    'name': name,
+    'latitude': latitude,
+    'longitude': longitude,
+    'radiusM': radiusM,
+    'dwellThresholdSeconds': dwellThresholdSeconds,
+  };
 
   bool get hasValidLocation =>
-      latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180 &&
+      latitude >= -90 &&
+      latitude <= 90 &&
+      longitude >= -180 &&
+      longitude <= 180 &&
       !(latitude == 0 && longitude == 0);
 }
 
@@ -216,7 +231,8 @@ class TrackingStatusResult {
   factory TrackingStatusResult.fromAny(dynamic body) {
     if (body is! Map) return const TrackingStatusResult();
     final m = Map<String, dynamic>.from(body);
-    final summary = (_pick(m, ['summary']) as Map?)?.cast<String, dynamic>() ??
+    final summary =
+        (_pick(m, ['summary']) as Map?)?.cast<String, dynamic>() ??
         const <String, dynamic>{};
     final rawPlaces =
         _pick(m, ['places', 'items', 'data']) as List? ?? const [];
@@ -227,7 +243,9 @@ class TrackingStatusResult {
       total: _toInt(_pick(summary, ['total'])),
       places: rawPlaces
           .whereType<Map>()
-          .map((e) => TrackingPlaceStatus.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => TrackingPlaceStatus.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList(),
     );
   }
@@ -295,12 +313,16 @@ class EndDayResult {
 
     return EndDayResult(
       removedGeofenceIds: ids(['removedGeofenceIds', 'removed_geofence_ids']),
-      removedItineraryDetailIds:
-          ids(['removedItineraryDetailIds', 'removed_itinerary_detail_ids']),
+      removedItineraryDetailIds: ids([
+        'removedItineraryDetailIds',
+        'removed_itinerary_detail_ids',
+      ]),
       removedPlaceIds: ids(['removedPlaceIds', 'removed_place_ids']),
       nextDayDate: dt(['nextDayDate', 'next_day_date']),
       nextDayAlarmAt: dt(['nextDayAlarmAt', 'next_day_alarm_at']),
-      itineraryStatus: _toStr(_pick(m, ['itineraryStatus', 'itinerary_status'])),
+      itineraryStatus: _toStr(
+        _pick(m, ['itineraryStatus', 'itinerary_status']),
+      ),
     );
   }
 }
