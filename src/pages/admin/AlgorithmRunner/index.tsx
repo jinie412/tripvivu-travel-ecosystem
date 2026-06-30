@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Loader2 } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import {
@@ -36,7 +36,10 @@ interface AlgoDropdownProps {
   runTime: string;
   onRunTimeChange: (v: string) => void;
   isRunning: boolean;
+  scheduleSaving?: boolean;
+  scheduleDirty?: boolean;
   lastRun?: string;
+  onSaveSchedule?: () => void;
   onRunNow: () => void;
 }
 
@@ -46,7 +49,7 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
   frequency, onFrequencyChange,
   runDay, onRunDayChange,
   runTime, onRunTimeChange,
-  isRunning, lastRun, onRunNow,
+  isRunning, scheduleSaving = false, scheduleDirty = false, lastRun, onSaveSchedule, onRunNow,
 }) => (
   <div className="ar-dropdown">
     <div className="ar-dropdown__header">
@@ -58,6 +61,12 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
     </div>
 
     <div className="ar-dropdown__body">
+          {lastRun && (
+            <div className="ar-dropdown__last-run ar-dropdown__last-run--top">
+              <span className="ar-dropdown__last-run-label">Lần chạy cuối</span>
+              <span className="ar-dropdown__last-run-time">{lastRun}</span>
+            </div>
+          )}
           <div className="ar-dropdown__schedule">
             <div className="ar-dropdown__field">
               <label className="ar-dropdown__field-label">ĐỊNH KỲ</label>
@@ -114,12 +123,29 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
             )}
           </div>
 
+          {onSaveSchedule && (
+            <div className="ar-dropdown__schedule-actions">
+              <button
+                className={`ar-btn-primary${(!available || scheduleSaving || !scheduleDirty) ? ' ar-btn-primary--disabled' : ''}`}
+                type="button"
+                onClick={onSaveSchedule}
+                disabled={!available || scheduleSaving || !scheduleDirty}
+              >
+                {scheduleSaving ? (
+                  <>
+                    <Loader2 size={14} className="ar-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  'Lưu thay đổi'
+                )}
+              </button>
+            </div>
+          )}
+
           <div className="ar-dropdown__footer">
             <div className="ar-dropdown__last-run">
               <span className="ar-dropdown__last-run-label">Chạy thủ công</span>
-              {lastRun && (
-                <span className="ar-dropdown__last-run-time">Lần cuối: {lastRun}</span>
-              )}
             </div>
             <button
               className={`ar-btn-primary${(autoEnabled || !available || isRunning) ? ' ar-btn-primary--disabled' : ''}`}
@@ -150,6 +176,8 @@ export const AlgorithmRunner: React.FC = () => {
   const [reviewRunDay, setReviewRunDay] = useState('1');
   const [reviewRunTime, setReviewRunTime] = useState('02:00');
   const [reviewRunning, setReviewRunning] = useState(false);
+  const [reviewScheduleSaving, setReviewScheduleSaving] = useState(false);
+  const [reviewScheduleDirty, setReviewScheduleDirty] = useState(false);
   const [reviewLastRun, setReviewLastRun] = useState<string | undefined>(undefined);
 
   // ── Recommend pipeline ──
@@ -165,6 +193,90 @@ export const AlgorithmRunner: React.FC = () => {
   const [scheduleRunTime, setScheduleRunTime] = useState('04:00');
 
   const [runResult, setRunResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadReviewSchedule() {
+      try {
+        const schedule = await algorithmPipelineAPI.getReviewFilterSchedule();
+        if (!alive) return;
+        setReviewAutoEnabled(schedule.autoEnabled);
+        setReviewFrequency(schedule.frequency);
+        setReviewRunDay(schedule.runDay);
+        setReviewRunTime(schedule.runTime);
+        setReviewScheduleDirty(false);
+        if (schedule.lastRunAt) {
+          setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
+        }
+      } catch (err: unknown) {
+        if (!alive) return;
+        const message = err instanceof Error ? err.message : 'Không thể tải lịch chạy tự động';
+        setRunResult(`Lỗi: ${message}`);
+      }
+    }
+
+    void loadReviewSchedule();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const saveReviewSchedule = async () => {
+    setReviewScheduleSaving(true);
+    try {
+      const schedule = await algorithmPipelineAPI.updateReviewFilterSchedule({
+        autoEnabled: reviewAutoEnabled,
+        frequency: reviewFrequency as 'daily' | 'weekly' | 'monthly',
+        runTime: reviewRunTime,
+        runDay: Number(reviewRunDay),
+      });
+      setReviewAutoEnabled(schedule.autoEnabled);
+      setReviewFrequency(schedule.frequency);
+      setReviewRunDay(schedule.runDay);
+      setReviewRunTime(schedule.runTime);
+      setReviewScheduleDirty(false);
+      if (schedule.lastRunAt) {
+        setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
+      }
+      setRunResult('Đã lưu lịch chạy tự động thuật toán lọc đánh giá.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Không thể lưu lịch chạy tự động';
+      setRunResult(`Lỗi: ${message}`);
+    } finally {
+      setReviewScheduleSaving(false);
+    }
+  };
+
+  const handleReviewAutoChange = (next: boolean) => {
+    setReviewAutoEnabled(next);
+    setReviewScheduleDirty(true);
+  };
+
+  const handleReviewFrequencyChange = (next: string) => {
+    const frequency = next as 'daily' | 'weekly' | 'monthly';
+    const nextDay =
+      frequency === 'weekly'
+        ? ['0', '1', '2', '3', '4', '5', '6'].includes(reviewRunDay)
+          ? reviewRunDay
+          : '1'
+        : frequency === 'monthly'
+          ? String(Math.min(Math.max(Number(reviewRunDay) || 1, 1), 28))
+          : reviewRunDay;
+    setReviewFrequency(frequency);
+    setReviewRunDay(nextDay);
+    setReviewScheduleDirty(true);
+  };
+
+  const handleReviewRunTimeChange = (next: string) => {
+    setReviewRunTime(next);
+    setReviewScheduleDirty(true);
+  };
+
+  const handleReviewRunDayChange = (next: string) => {
+    setReviewRunDay(next);
+    setReviewScheduleDirty(true);
+  };
 
   const handleRunReviewPipeline = async () => {
     setReviewRunning(true);
@@ -232,15 +344,18 @@ export const AlgorithmRunner: React.FC = () => {
             title="Lọc đánh giá"
             available={true}
             autoEnabled={reviewAutoEnabled}
-            onAutoChange={setReviewAutoEnabled}
+            onAutoChange={handleReviewAutoChange}
             frequency={reviewFrequency}
-            onFrequencyChange={setReviewFrequency}
+            onFrequencyChange={handleReviewFrequencyChange}
             runDay={reviewRunDay}
-            onRunDayChange={setReviewRunDay}
+            onRunDayChange={handleReviewRunDayChange}
             runTime={reviewRunTime}
-            onRunTimeChange={setReviewRunTime}
+            onRunTimeChange={handleReviewRunTimeChange}
             isRunning={reviewRunning}
+            scheduleSaving={reviewScheduleSaving}
+            scheduleDirty={reviewScheduleDirty}
             lastRun={reviewLastRun}
+            onSaveSchedule={saveReviewSchedule}
             onRunNow={handleRunReviewPipeline}
           />
           <AlgoDropdown
