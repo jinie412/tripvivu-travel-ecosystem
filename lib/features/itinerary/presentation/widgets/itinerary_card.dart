@@ -342,6 +342,7 @@ class ItineraryCard extends StatelessWidget {
 
   bool _shouldShowStart(ItineraryEntity item) {
     if (item.status == ItineraryStatus.completed) return false;
+    if (item.status == ItineraryStatus.uncompleted) return false;
     if (item.status == ItineraryStatus.ongoing) return true;
     if (item.startDate == null) return false;
 

@@ -22,6 +22,17 @@ class StartTrackingUseCase {
 }
 
 /// Lấy danh sách geofence của một ngày (đăng ký lại).
+class RestoreActiveTrackingUseCase {
+  final TrackingRepository repo;
+  RestoreActiveTrackingUseCase(this.repo);
+
+  Future<TrackingStartResult> call({
+    required String touristId,
+    int radiusM = TrackingConfig.radiusM,
+  }) =>
+      repo.active(touristId: touristId, radiusM: radiusM);
+}
+
 class GetGeofencesUseCase {
   final TrackingRepository repo;
   GetGeofencesUseCase(this.repo);

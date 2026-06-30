@@ -9,6 +9,11 @@ abstract class TrackingRepository {
     int radiusM,
   });
 
+  Future<TrackingStartResult> active({
+    required String touristId,
+    int radiusM,
+  });
+
   Future<List<TrackingGeofence>> geofences({
     required String itineraryId,
     required DateTime date,

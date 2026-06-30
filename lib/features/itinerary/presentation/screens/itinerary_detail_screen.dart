@@ -17,6 +17,7 @@ import 'package:travel_advisor_mobile/features/food/presentation/screens/food_me
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
@@ -76,6 +77,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   Map<String, bool> _hasReviewById = {};
   Map<String, bool> _isVisitedFromBackendById = {};
   bool _reviewStatusLoading = false;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -1477,6 +1479,17 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     );
   }
 
+  Future<void> _onRefresh() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    try {
+      await context.read<ItineraryCubit>().refreshDetail(widget.itineraryId);
+      if (mounted) await _loadReviewStatuses();
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<TrackingCubit, TrackingState>(
@@ -1524,6 +1537,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             isEditMode: _isEditMode,
             onEditModeTap: _onEditModeTap,
             onDiscardTap: _onDiscardChanges,
+            isRefreshing: _isRefreshing,
+            onRefreshTap: _onRefresh,
           ),
         ),
       ),
@@ -1579,11 +1594,13 @@ class _DayCostSummaryCard extends StatelessWidget {
   final ItineraryDayEntity day;
   final List<ItineraryActivityEntity> visitActivities;
   final bool Function(ItineraryActivityEntity activity) isHotelStart;
+  final Map<String, bool> visitedByBackend;
 
   const _DayCostSummaryCard({
     required this.day,
     required this.visitActivities,
     required this.isHotelStart,
+    this.visitedByBackend = const {},
   });
 
   @override
@@ -1601,7 +1618,11 @@ class _DayCostSummaryCard extends StatelessWidget {
       (sum, activity) => sum + activity.transportCost,
     );
     final visitedCount = visitActivities
-        .where((activity) => activity.status == ActivityStatus.daDi)
+        .where(
+          (activity) =>
+              activity.status == ActivityStatus.daDi ||
+              (visitedByBackend[activity.id] ?? false),
+        )
         .length;
     final totalCost = placeCost + hotelCost + selfDriveCost;
 
@@ -1945,6 +1966,8 @@ class _ItineraryDetailView extends StatelessWidget {
   final bool isEditMode;
   final VoidCallback onEditModeTap;
   final VoidCallback onDiscardTap;
+  final bool isRefreshing;
+  final VoidCallback onRefreshTap;
 
   const _ItineraryDetailView({
     required this.selectedDay,
@@ -1976,6 +1999,8 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.isEditMode,
     required this.onEditModeTap,
     required this.onDiscardTap,
+    required this.isRefreshing,
+    required this.onRefreshTap,
   });
 
   @override
@@ -2083,16 +2108,47 @@ class _ItineraryDetailView extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          // Thanh kéo (drag handle)
+                          // Thanh kéo (drag handle) + nút refresh
                           Padding(
-                            padding: const EdgeInsets.only(top: 12, bottom: 8),
-                            child: Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
+                            padding: const EdgeInsets.only(top: 8, bottom: 4),
+                            child: Row(
+                              children: [
+                                const SizedBox(width: 48),
+                                Expanded(
+                                  child: Center(
+                                    child: Container(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade300,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 48,
+                                  child: isRefreshing
+                                      ? const Center(
+                                          child: SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        )
+                                      : IconButton(
+                                          icon: const Icon(
+                                            Icons.refresh_rounded,
+                                            size: 20,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          onPressed: onRefreshTap,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                ),
+                              ],
                             ),
                           ),
                           // Nội dung cuộn được
@@ -2100,6 +2156,7 @@ class _ItineraryDetailView extends StatelessWidget {
                             child: ListView(
                               controller: sheetScrollController,
                               padding: EdgeInsets.zero,
+                              physics: const AlwaysScrollableScrollPhysics(),
                               children: [
                                 _buildContentCard(
                                   context,
@@ -2347,6 +2404,7 @@ class _ItineraryDetailView extends StatelessWidget {
             day: currentDayData,
             visitActivities: _visitActivities(currentDayData),
             isHotelStart: _isHotelStart,
+            visitedByBackend: reviewIsVisitedById,
           ),
           const SizedBox(height: AppSizes.s16),
           TrackingSection(
@@ -2356,9 +2414,22 @@ class _ItineraryDetailView extends StatelessWidget {
             activities: currentDayData.activities,
             showStartButton: false,
             dbTrackingActive: itin.trackingActive,
-            onStopped: () => context
-                .read<ItineraryCubit>()
-                .toggleItineraryStatus(itin.id, false),
+            onStopped: () {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final endPlusOne = DateTime(
+                itin.endDate.year,
+                itin.endDate.month,
+                itin.endDate.day,
+              ).add(const Duration(days: 1));
+              context.read<ItineraryCubit>().toggleItineraryStatus(
+                    itin.id,
+                    false,
+                    stoppedStatus: !today.isBefore(endPlusOne)
+                        ? ItineraryStatus.completed
+                        : ItineraryStatus.uncompleted,
+                  );
+            },
           ),
           // Dùng Builder để đọc TrackingCubit (được provide ở ItineraryDetailScreen)
           // và truyền trackingStatus cho từng TimelineActivityCard.

@@ -99,6 +99,8 @@ ItineraryStatus _mapStatus(String? status) {
   switch (status?.toLowerCase()) {
     case 'completed':
       return ItineraryStatus.completed;
+    case 'uncompleted':
+      return ItineraryStatus.uncompleted;
     case 'ongoing':
       return ItineraryStatus.ongoing;
     case 'upcoming':

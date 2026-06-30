@@ -20,7 +20,25 @@ class CurrentItineraryCard extends StatelessWidget {
     this.item,
     this.isStarted = false,
     this.onToggle,
-  });  @override
+  });
+
+  String _statusLabel(ItineraryEntity item) {
+    if (isStarted) return 'ĐANG DIỄN RA';
+    switch (item.status) {
+      case ItineraryStatus.upcoming:
+        return 'SẮP DIỄN RA';
+      case ItineraryStatus.completed:
+        return 'HOÀN THÀNH';
+      case ItineraryStatus.uncompleted:
+        return 'CHƯA HOÀN THÀNH';
+      case ItineraryStatus.ongoing:
+        return 'ĐANG DIỄN RA';
+      case ItineraryStatus.draft:
+        return 'ĐANG TẠO';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (item == null) {
       return const SizedBox.shrink(); // Hide if no current itinerary
@@ -128,13 +146,7 @@ class CurrentItineraryCard extends StatelessWidget {
                     ),
                   if (onToggle != null) const SizedBox(height: 8),
                   Text(
-                    isStarted
-                        ? 'ĐANG DIỄN RA'
-                        : (item!.status == ItineraryStatus.upcoming
-                            ? 'SẮP DIỄN RA'
-                            : item!.status == ItineraryStatus.completed
-                                ? 'HOÀN THÀNH'
-                                : 'ĐANG DIỄN RA'),
+                    _statusLabel(item!),
                     style: const TextStyle(color: AppColors.primary, fontSize: 9, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 2),

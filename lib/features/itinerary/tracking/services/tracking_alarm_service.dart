@@ -107,9 +107,22 @@ Future<void> onTrackingNextDay() async {
       'radiusM': ctx.radiusM,
     });
     final geofences = TrackingStartResult.fromAny(res.data).geofences;
-    if (geofences.isEmpty) return;
+    if (geofences.isEmpty) {
+      await TrackingContextStore.saveLastError(
+        'onTrackingNextDay: $nextDate has no valid geofences',
+      );
+      return;
+    }
 
-    await GeofenceTrackingService().registerAll(geofences);
+    final p = nextDate.split('-');
+    Duration? ttl;
+    if (p.length == 3) {
+      final endOfDay = DateTime(
+          int.parse(p[0]), int.parse(p[1]), int.parse(p[2]), 23, 59);
+      final diff = endOfDay.difference(DateTime.now());
+      ttl = diff.isNegative ? null : diff;
+    }
+    await GeofenceTrackingService().registerAll(geofences, expiration: ttl);
 
     // Cập nhật context sang ngày mới.
     final newCtx = TrackingContextStore.build(
@@ -124,7 +137,6 @@ Future<void> onTrackingNextDay() async {
     await TrackingContextStore.clearNextDate();
 
     // Đặt alarm kết thúc ngày mới lúc 23:00.
-    final p = nextDate.split('-');
     if (p.length == 3) {
       final endAt = DateTime(
           int.parse(p[0]), int.parse(p[1]), int.parse(p[2]), 23, 0);

@@ -7,7 +7,7 @@ class TrackingConfig {
 
   /// Bán kính geofence mỗi địa điểm (mét).
   /// Tăng nếu trigger không nhạy; giảm nếu có false positive.
-  static const int radiusM = 200;
+  static const int radiusM = 100;
 
   /// Thời gian ở lại tối thiểu để tính "Đã đến nơi" (giây).
   /// Android loitering delay = giá trị này.

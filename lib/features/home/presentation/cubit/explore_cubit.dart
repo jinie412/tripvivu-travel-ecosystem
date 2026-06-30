@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/explore_home
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/domain/usecases/home_usecases.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class ExploreCubit extends Cubit<ExploreState> {
@@ -68,6 +69,33 @@ class ExploreCubit extends Cubit<ExploreState> {
     );
     _cachedSuggestions = result;
     return result;
+  }
+
+  void updateCurrentItineraryStatus(
+    String itineraryId,
+    ItineraryStatus status,
+  ) {
+    final current = state;
+    if (current is! ExploreLoaded) return;
+    final item = current.currentItinerary;
+    if (item == null || item.id != itineraryId) return;
+
+    emit(
+      ExploreLoaded(
+        suggestions: current.suggestions,
+        destinations: current.destinations,
+        hotels: current.hotels,
+        restaurants: current.restaurants,
+        allSuggestions: current.allSuggestions,
+        allDestinations: current.allDestinations,
+        allHotels: current.allHotels,
+        allRestaurants: current.allRestaurants,
+        currentItinerary: item.copyWith(
+          status: status,
+          trackingActive: status == ItineraryStatus.ongoing,
+        ),
+      ),
+    );
   }
 
   Future<List<TripSuggestion>> loadSuggestionsPage({

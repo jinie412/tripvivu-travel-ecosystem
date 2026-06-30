@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
+import 'package:travel_advisor_mobile/core/services/notification_service.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
@@ -47,6 +48,7 @@ class _FoodSpot {
 /// `/start` → đăng ký geofence → đặt AlarmManager 23h → tải trạng thái bản đồ.
 class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   final StartTrackingUseCase _start;
+  final RestoreActiveTrackingUseCase _restoreActive;
   final GetTrackingStatusUseCase _status;
   final SendTrackingEventUseCase _sendEvent;
   final ManualCheckInUseCase _checkIn;
@@ -80,6 +82,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
 
   TrackingCubit({
     required StartTrackingUseCase start,
+    required RestoreActiveTrackingUseCase restoreActive,
     required GetTrackingStatusUseCase status,
     required SendTrackingEventUseCase sendEvent,
     required ManualCheckInUseCase checkIn,
@@ -87,6 +90,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     required GeofenceTrackingService geofenceSvc,
     required TrackingAlarmService alarmSvc,
   })  : _start = start,
+        _restoreActive = restoreActive,
         _status = status,
         _sendEvent = sendEvent,
         _checkIn = checkIn,
@@ -118,6 +122,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   List<_FoodSpot> _foodSpots = [];
   String? _showingNearbyRestaurantId;
   final Set<String> _dismissedNearbyRestaurantIds = <String>{};
+  final Set<String> _foodNotifiedIds = <String>{};
   static String? _globalShowingNearbyRestaurantId;
   static final Set<String> _globalDismissedNearbyRestaurantIds = <String>{};
   bool _wasOffline = false;
@@ -140,7 +145,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   static const double _highAccuracyRangeM = 500;
 
   /// Ngưỡng dwell foreground (giây): nhỏ để phản hồi nhanh, vẫn >= backend.
-  static int _foregroundDwell(int threshold) => threshold.clamp(15, 120);
+  static int _foregroundDwell(int threshold) => threshold < 15 ? 15 : threshold;
 
   /// Xoá trạng thái phát hiện geofence (khi bắt đầu/khôi phục/dừng).
   void _resetDetectionState() {
@@ -153,6 +158,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     _visitedIds.clear();
     _showingNearbyRestaurantId = null;
     _dismissedNearbyRestaurantIds.clear();
+    _foodNotifiedIds.clear();
     _globalShowingNearbyRestaurantId = null;
     _globalDismissedNearbyRestaurantIds.clear();
   }
@@ -306,6 +312,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
       if (_dismissedNearbyRestaurantIds.contains(s.id)) continue;
       final km = _haversineKm(pos.latitude, pos.longitude, s.lat, s.lng);
       if (km <= _foodProximityKm) {
+        _showNearbyFoodNotification(s);
         if (state.nearbyRestaurantDetailId != s.id) {
           emit(state.copyWith(
             nearbyRestaurantDetailId: s.id,
@@ -325,6 +332,22 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   /// Phát hiện geofence **chủ động** ở foreground: tính khoảng cách tới từng
   /// điểm dừng và tự gửi ENTER/DWELL/EXIT — phản hồi trong vài giây thay vì chờ
   /// native geofence (passive, có thể trễ vài phút).
+  Future<void> _showNearbyFoodNotification(_FoodSpot spot) async {
+    if (_foodNotifiedIds.contains(spot.id)) return;
+    _foodNotifiedIds.add(spot.id);
+    await NotificationService().showNotification(
+      title: 'Quán ăn gần bạn',
+      body: 'Bạn đang gần ${spot.name}. Nhấn để đặt món trước.',
+      payload: jsonEncode({
+        'action': 'open_food_order',
+        'itinerary_id': state.itineraryId ?? '',
+        'itinerary_detail_id': spot.id,
+        'place_id': spot.placeId,
+        'restaurant_name': spot.name,
+      }),
+    );
+  }
+
   void _evaluateGeofences() {
     if (isClosed || !state.isActive) return;
     final pos = _lastPosition;
@@ -501,13 +524,216 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
         : (dotenv.env['EXPLORE_TOURIST_ID']?.trim() ?? '');
   }
 
+  // Date helpers used by restore/rollover. Keep date-only values in local time.
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  String _fmtYmd(DateTime d) => TrackingRemoteDataSource.fmtDate(d);
+
+  DateTime? _parseYmd(String raw) {
+    try {
+      final p = raw.split('-');
+      if (p.length == 3) {
+        return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+      }
+      final parsed = DateTime.tryParse(raw);
+      return parsed == null ? null : _dateOnly(parsed.toLocal());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _hasReachedTrackingDayEnd(DateTime date) {
+    final now = DateTime.now();
+    final d = _dateOnly(date);
+    final today = _dateOnly(now);
+    if (d.isBefore(today)) return true;
+    return d == today && !now.isBefore(DateTime(d.year, d.month, d.day, 23));
+  }
+
+  Future<bool> _rolloverStaleContext(
+    TrackingContext ctx,
+    DateTime ctxDate,
+  ) async {
+    final today = _dateOnly(DateTime.now());
+    var current = _dateOnly(ctxDate);
+    if (!_hasReachedTrackingDayEnd(current)) return false;
+
+    await _geofenceSvc.removeAll();
+    await _alarmSvc.cancelAll();
+
+    while (_hasReachedTrackingDayEnd(current)) {
+      final end = await _endDay(
+        itineraryId: ctx.itineraryId,
+        date: current,
+        markPendingAsSkipped: true,
+      );
+
+      if (end.itineraryStatus == 'completed' || end.nextDayDate == null) {
+        await TrackingContextStore.clear();
+        await TrackingContextStore.clearNextDate();
+        await TrackingContextStore.clearFoodSpots();
+        emit(const TrackingState());
+        return true;
+      }
+
+      current = _dateOnly(end.nextDayDate!.toLocal());
+      if (current.isAfter(today)) {
+        await TrackingContextStore.saveNextDate(_fmtYmd(current));
+        await TrackingContextStore.clear();
+        await TrackingContextStore.clearFoodSpots();
+        final alarmAt = end.nextDayAlarmAt ??
+            DateTime(current.year, current.month, current.day, 7);
+        await _alarmSvc.scheduleNextDay(alarmAt);
+        emit(const TrackingState());
+        return true;
+      }
+    }
+
+    _touristId = ctx.touristId;
+    final result = await _start(
+      itineraryId: ctx.itineraryId,
+      touristId: ctx.touristId,
+      date: current,
+      radiusM: ctx.radiusM,
+    );
+    final geofences = result.geofences.where((g) => g.hasValidLocation).toList();
+
+    if (geofences.isEmpty) {
+      await TrackingContextStore.saveLastError(
+        'rolloverStaleContext: ${_fmtYmd(current)} has no valid geofences',
+      );
+      return true;
+    }
+
+    final endOfDay = DateTime(current.year, current.month, current.day, 23, 59);
+    final ttl = endOfDay.difference(DateTime.now());
+    final registered = await _geofenceSvc.registerAll(
+      geofences,
+      expiration: ttl.isNegative ? null : ttl,
+    );
+
+    await TrackingContextStore.save(TrackingContextStore.build(
+      baseUrl: ctx.baseUrl,
+      touristId: ctx.touristId,
+      itineraryId: ctx.itineraryId,
+      date: _fmtYmd(current),
+      radiusM: ctx.radiusM,
+      geofences: geofences,
+    ));
+    await TrackingContextStore.clearNextDate();
+
+    final dayEndAt = DateTime(current.year, current.month, current.day, 23, 0);
+    if (dayEndAt.isAfter(DateTime.now())) {
+      await _alarmSvc.scheduleEndOfDay(dayEndAt);
+    }
+
+    _resetDetectionState();
+    _geofences = geofences;
+    final status = await _status(itineraryId: ctx.itineraryId, date: current);
+    for (final p in status.places) {
+      if (p.status == VisitStatus.visited || p.status == VisitStatus.skipped) {
+        _visitedIds.add(p.itineraryDetailId);
+      }
+    }
+
+    emit(state.copyWith(
+      phase: registered > 0 ? TrackingPhase.active : TrackingPhase.error,
+      itineraryId: ctx.itineraryId,
+      date: current,
+      registeredCount: registered,
+      places: status.places,
+      message: registered > 0
+          ? 'Đã tự chuyển theo dõi sang ngày ${_fmtYmd(current)}.'
+          : 'Không đăng ký được geofence cho ngày ${_fmtYmd(current)}.',
+    ));
+
+    if (registered > 0) {
+      _startRefreshTimer();
+      await _restoreFoodProximityWatch();
+      _subscribeLocationStream();
+    }
+    return true;
+  }
+
+  Future<void> _restoreActiveFromBackend() async {
+    final touristId = await _resolveTouristId();
+    if (touristId.isEmpty) return;
+
+    try {
+      final result = await _restoreActive(touristId: touristId);
+      if (!result.active || result.itineraryId == null || result.date == null) {
+        return;
+      }
+
+      final geofences =
+          result.geofences.where((g) => g.hasValidLocation).toList();
+      if (geofences.isEmpty) return;
+
+      _touristId = touristId;
+      await _geofenceSvc.removeAll();
+
+      final date = _dateOnly(result.date!);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59);
+      final ttl = endOfDay.difference(DateTime.now());
+      final registered = await _geofenceSvc.registerAll(
+        geofences,
+        expiration: ttl.isNegative ? null : ttl,
+      );
+
+      await TrackingContextStore.save(TrackingContextStore.build(
+        baseUrl: ApiConfig.baseUrl,
+        touristId: touristId,
+        itineraryId: result.itineraryId!,
+        date: _fmtYmd(date),
+        radiusM: TrackingConfig.radiusM,
+        geofences: geofences,
+      ));
+
+      final dayEndAt = DateTime(date.year, date.month, date.day, 23, 0);
+      if (dayEndAt.isAfter(DateTime.now())) {
+        await _alarmSvc.scheduleEndOfDay(dayEndAt);
+      }
+
+      _resetDetectionState();
+      _geofences = geofences;
+      final status = await _status(itineraryId: result.itineraryId!, date: date);
+      for (final p in status.places) {
+        if (p.status == VisitStatus.visited || p.status == VisitStatus.skipped) {
+          _visitedIds.add(p.itineraryDetailId);
+        }
+      }
+
+      emit(state.copyWith(
+        phase: registered > 0 ? TrackingPhase.active : TrackingPhase.error,
+        itineraryId: result.itineraryId,
+        date: date,
+        registeredCount: registered,
+        places: status.places,
+        message: registered > 0
+            ? 'Đã khôi phục theo dõi lịch trình hôm nay.'
+            : 'Không đăng ký được geofence cho lịch trình đang active.',
+      ));
+
+      if (registered > 0) {
+        _startRefreshTimer();
+        await _restoreFoodProximityWatch();
+        _subscribeLocationStream();
+      }
+    } catch (e) {
+      await TrackingContextStore.saveLastError('restoreActiveFromBackend: $e');
+    }
+  }
+
   /// Khôi phục trạng thái theo dõi khi app khởi động lại.
   /// Đọc TrackingContext từ SharedPreferences (đã lưu lúc start hoặc qua đêm sang ngày mới).
   Future<void> restoreIfActive() async {
     if (state.isActive) return;
 
     final ctx = await TrackingContextStore.load();
-    if (ctx == null || ctx.itineraryId.isEmpty || ctx.date.isEmpty) return;
+    if (ctx == null || ctx.itineraryId.isEmpty || ctx.date.isEmpty) {
+      await _restoreActiveFromBackend();
+      return;
+    }
 
     // Kiểm tra context thuộc đúng user hiện tại — tránh khôi phục tracking
     // của user khác khi đăng nhập tài khoản mới trên cùng thiết bị.
@@ -517,12 +743,14 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
       return;
     }
 
-    DateTime? date;
-    try {
-      final p = ctx.date.split('-');
-      if (p.length == 3) date = DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
-    } catch (_) {}
+    DateTime? date = _parseYmd(ctx.date);
     if (date == null) return;
+
+    try {
+      if (await _rolloverStaleContext(ctx, date)) return;
+    } catch (e) {
+      await TrackingContextStore.saveLastError('restoreIfActive.rollover: $e');
+    }
 
     _touristId = ctx.touristId;
     _resetDetectionState();

@@ -125,7 +125,8 @@ class TimelineActivityCard extends StatelessWidget {
           showLine: true,
           isCompleted:
               activity.status == ActivityStatus.daDi ||
-              trackingStatus?.status == VisitStatus.visited,
+              trackingStatus?.status == VisitStatus.visited ||
+              backendIsVisited,
           isEditMode: isEditMode,
         ),
 

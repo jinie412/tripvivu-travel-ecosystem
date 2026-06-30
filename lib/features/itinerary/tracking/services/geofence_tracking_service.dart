@@ -40,9 +40,13 @@ class GeofenceTrackingService {
           iosSettings: const IosGeofenceSettings(initialTrigger: true),
           androidSettings: AndroidGeofenceSettings(
             initialTriggers: const {GeofenceEvent.enter},
-            // Cap 120s để Android DWELL fire trong vòng 2 phút ngay cả khi
-            // backend trả về threshold cao (legacy data). Min 30s cho test nhanh.
-            loiteringDelay: Duration(seconds: g.dwellThresholdSeconds.clamp(30, 120)),
+            // Dwell must match backend threshold; keep only a small lower bound
+            // so malformed/legacy rows do not fire immediately.
+            loiteringDelay: Duration(
+              seconds: g.dwellThresholdSeconds < 30
+                  ? 30
+                  : g.dwellThresholdSeconds,
+            ),
             notificationResponsiveness: const Duration(seconds: 10),
             expiration: expiration,
           ),

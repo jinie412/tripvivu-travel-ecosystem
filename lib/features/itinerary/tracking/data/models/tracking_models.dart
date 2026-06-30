@@ -100,15 +100,25 @@ class TrackingGeofence {
 
 /// Kết quả `/start`.
 class TrackingStartResult {
+  final bool active;
+  final String? itineraryId;
+  final DateTime? date;
   final String? itineraryStatus;
   final List<TrackingGeofence> geofences;
 
-  const TrackingStartResult({this.itineraryStatus, this.geofences = const []});
+  const TrackingStartResult({
+    this.active = true,
+    this.itineraryId,
+    this.date,
+    this.itineraryStatus,
+    this.geofences = const [],
+  });
 
   /// BE có thể trả về thẳng một List, hoặc object bọc trong `geofences`/`data`.
   factory TrackingStartResult.fromAny(dynamic body) {
     if (body is List) {
       return TrackingStartResult(
+        active: true,
         geofences: body
             .whereType<Map>()
             .map((e) => TrackingGeofence.fromJson(Map<String, dynamic>.from(e)))
@@ -119,6 +129,9 @@ class TrackingStartResult {
       final m = Map<String, dynamic>.from(body);
       final raw = _pick(m, ['geofences', 'data', 'items']) as List? ?? const [];
       return TrackingStartResult(
+        active: _pick(m, ['active']) != false,
+        itineraryId: _toStr(_pick(m, ['itineraryId', 'itinerary_id'])),
+        date: DateTime.tryParse(_toStr(_pick(m, ['date'])) ?? ''),
         itineraryStatus: _toStr(_pick(m, ['itineraryStatus', 'status'])),
         geofences: raw
             .whereType<Map>()

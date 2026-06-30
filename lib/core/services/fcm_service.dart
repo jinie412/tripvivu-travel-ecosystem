@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/widgets.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+import 'package:travel_advisor_mobile/core/services/notification_navigation_service.dart';
 
 /// Background message handler — must be a top-level function.
 @pragma('vm:entry-point')
@@ -36,6 +39,9 @@ class FcmService {
     const iosInit = DarwinInitializationSettings();
     await _localNotif.initialize(
       settings: const InitializationSettings(android: androidInit, iOS: iosInit),
+      onDidReceiveNotificationResponse: (response) {
+        NotificationNavigationService.handlePayload(response.payload);
+      },
     );
 
     if (Platform.isAndroid) {
@@ -64,8 +70,20 @@ class FcmService {
             priority: Priority.high,
           ),
         ),
+        payload: jsonEncode(message.data),
       );
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      NotificationNavigationService.handleData(message.data);
+    });
+
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationNavigationService.handleData(initialMessage.data);
+      });
+    }
   }
 
   /// Request permission and register FCM token for the given user.

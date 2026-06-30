@@ -22,6 +22,13 @@ class TrackingRepositoryImpl implements TrackingRepository {
       );
 
   @override
+  Future<TrackingStartResult> active({
+    required String touristId,
+    int radiusM = TrackingConfig.radiusM,
+  }) =>
+      _remote.active(touristId: touristId, radiusM: radiusM);
+
+  @override
   Future<List<TrackingGeofence>> geofences({
     required String itineraryId,
     required DateTime date,

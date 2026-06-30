@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:travel_advisor_mobile/core/services/notification_service.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
@@ -47,12 +50,72 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    _initNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initNotifications();
+    });
   }
 
   Future<void> _initNotifications() async {
     await NotificationService().init();
-    await NotificationService().requestPermission();
+    if (!mounted) return;
+    await _requestNotificationPermissionWithReason();
+  }
+
+  Future<void> _requestNotificationPermissionWithReason() async {
+    final status = await Permission.notification.status;
+    if (status.isGranted) return;
+
+    final allow = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cho phép nhận thông báo?'),
+        content: const Text(
+          'Ứng dụng dùng thông báo để báo khi bạn check-in địa điểm trong lịch trình, '
+          'nhắc mở đúng ngày lịch trình và gợi ý đặt món khi bạn gần quán ăn. '
+          'Bạn có thể tắt quyền này bất cứ lúc nào trong Cài đặt.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Để sau'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cho phép'),
+          ),
+        ],
+      ),
+    );
+    if (allow != true) return;
+
+    final granted = await NotificationService().requestPermission();
+    if (!mounted || granted) return;
+
+    final after = await Permission.notification.status;
+    if (after.isPermanentlyDenied) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Thông báo đang bị tắt'),
+          content: const Text(
+            'Bạn đã tắt quyền thông báo cho ứng dụng. Mở Cài đặt để bật lại nếu muốn nhận nhắc check-in và đặt món.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                openAppSettings();
+              },
+              child: const Text('Mở Cài đặt'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _listenToNotifications(String touristId) {
@@ -76,14 +139,24 @@ class _MainShellState extends State<MainShell> {
               try {
                 final notificationResponse = await Supabase.instance.client
                     .from('notifications')
-                    .select('title, content')
+                    .select('title, content, type, action_type, target_type, metadata')
                     .eq('id', newRow['notification_id'])
                     .single();
+                final metadata = notificationResponse['metadata'];
+                final payload = <String, dynamic>{
+                  if (metadata is Map) ...Map<String, dynamic>.from(metadata),
+                  if (notificationResponse['action_type'] != null)
+                    'action': notificationResponse['action_type'].toString(),
+                  if (notificationResponse['type'] != null)
+                    'type': notificationResponse['type'].toString(),
+                  'notification_id': newRow['notification_id'].toString(),
+                };
 
                 if (mounted) {
                   NotificationService().showNotification(
                     title: notificationResponse['title'] ?? 'Thông báo',
                     body: notificationResponse['content'] ?? '',
+                    payload: jsonEncode(payload),
                   );
                 }
               } catch (e) {
