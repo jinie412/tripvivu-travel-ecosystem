@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Bell, TrendingUp, TrendingDown, AlertTriangle, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
+import { locationAPI } from '../../../services/locationAPI';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './Dashboard.css';
 
@@ -13,9 +14,7 @@ import './Dashboard.css';
 interface DashStats {
   totalUsers: number;
   newUsersMonth: number;
-  totalLocations: number;
   totalReviews: number;
-  pendingApproval: number;
   pendingReviews: number;
   violationReviews: number;
 }
@@ -60,9 +59,7 @@ function getWeeksInMonth(month: number, year: number): number {
 const EMPTY_STATS: DashStats = {
   totalUsers: 0,
   newUsersMonth: 0,
-  totalLocations: 0,
   totalReviews: 0,
-  pendingApproval: 0,
   pendingReviews: 0,
   violationReviews: 0,
 };
@@ -87,8 +84,8 @@ export const AdminDashboard: React.FC = () => {
       const res = await apiClient.get('/admin/dashboard/stats');
       return res.data?.data ?? EMPTY_STATS;
     },
-    staleTime: 5 * 60 * 1000, // dữ liệu "tươi" 5 phút — không refetch khi quay lại trang
-    gcTime: 30 * 60 * 1000, // giữ cache 30 phút sau khi unmount
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // ---------------------------------------------------------
@@ -102,9 +99,19 @@ export const AdminDashboard: React.FC = () => {
       const res = await apiClient.get('/admin/dashboard/chart', { params, signal });
       return (res.data?.data ?? []) as ActivityPoint[];
     },
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000, // giữ cache 1 giờ sau unmount
-    placeholderData: keepPreviousData, // không flash loading khi đổi tháng/tuần
+    staleTime: 0,
+    gcTime: 0,
+    placeholderData: keepPreviousData,
+  });
+
+  // ---------------------------------------------------------
+  // Location stats — gọi cùng API với trang quản lý địa điểm
+  // ---------------------------------------------------------
+  const { data: locationStats } = useQuery({
+    queryKey: ['location-stats'],
+    queryFn: () => locationAPI.getLocationStats(),
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // ---------------------------------------------------------
@@ -127,8 +134,8 @@ export const AdminDashboard: React.FC = () => {
         uncompleted: Number(loc.uncompletedPct ?? 0),
       })) as TopLocation[];
     },
-    staleTime: 60 * 60 * 1000,
-    gcTime: 2 * 60 * 60 * 1000, // giữ cache 2 giờ sau unmount
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // ---------------------------------------------------------
@@ -141,8 +148,8 @@ export const AdminDashboard: React.FC = () => {
         const res = await apiClient.get('/admin/dashboard/interactions');
         return res.data?.data ?? { noInteraction: 0, createdTrip: 0, completedTrip: 0 };
       },
-      staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000, // giữ cache 30 phút sau unmount
+      staleTime: 0,
+      gcTime: 0,
     });
 
   const userChangePct = calcChangePct(stats.totalUsers, stats.newUsersMonth);
@@ -183,9 +190,9 @@ export const AdminDashboard: React.FC = () => {
           />
           <StatCard
             label="Tổng địa điểm"
-            value={loadingStats ? '—' : stats.totalLocations.toLocaleString('vi-VN')}
+            value={locationStats ? locationStats.totalLocations.toLocaleString('vi-VN') : '—'}
             changePct={0}
-            loading={loadingStats}
+            loading={!locationStats}
           />
           <StatCard
             label="Tổng đánh giá"
@@ -208,7 +215,7 @@ export const AdminDashboard: React.FC = () => {
                 Xem danh sách
               </Link>
             </div>
-            <div className="dash-status-value">{loadingStats ? '—' : String(stats.pendingApproval).padStart(2, '0')}</div>
+            <div className="dash-status-value">{locationStats ? String(locationStats.pendingApproval).padStart(2, '0') : '—'}</div>
           </div>
 
           <div className="dash-status-card dash-status-blue">

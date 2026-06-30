@@ -68,11 +68,12 @@ const AdminProfilePage: React.FC = () => {
   }, []);
 
   const updateStoredUser = (updates: Record<string, unknown>) => {
-    const storedUser = localStorage.getItem('userInfo');
+    const storage = localStorage.getItem('userInfo') ? localStorage : sessionStorage;
+    const storedUser = storage.getItem('userInfo');
     if (!storedUser) return;
 
     const parsedUser = JSON.parse(storedUser);
-    localStorage.setItem('userInfo', JSON.stringify({ ...parsedUser, ...updates }));
+    storage.setItem('userInfo', JSON.stringify({ ...parsedUser, ...updates }));
     window.dispatchEvent(new Event('userUpdated'));
   };
 
@@ -92,18 +93,18 @@ const AdminProfilePage: React.FC = () => {
     if (!file.type.startsWith('image/')) {
       Swal.fire({
         icon: 'warning',
-        title: 'File kh?ng h?p l?',
-        text: 'Vui l?ng ch?n ??ng file h?nh ?nh.',
+        title: 'File không hợp lệ',
+        text: 'Vui lòng chọn đúng file hình ảnh.',
       });
       event.target.value = '';
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 2 * 1024 * 1024) {
       Swal.fire({
         icon: 'warning',
-        title: '?nh qu? l?n',
-        text: 'Vui l?ng ch?n ?nh c? dung l??ng t?i ?a 5MB.',
+        title: 'Ảnh quá lớn',
+        text: 'Vui lòng chọn ảnh có dung lượng tối đa 2MB.',
       });
       event.target.value = '';
       return;
@@ -118,30 +119,23 @@ const AdminProfilePage: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const storedUser = localStorage.getItem('userInfo');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        if (parsedUser.id) formData.append('userId', parsedUser.id);
-      }
-
-      const response = await apiClient.post('/upload/avatar', formData, {
+      const response = await apiClient.post('/upload/avatar-draft', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       const newAvatarUrl = extractAvatarUrl(response.data);
       if (!newAvatarUrl) {
-        throw new Error('Upload th?nh c?ng nh?ng server kh?ng tr? v? URL ?nh.');
+        throw new Error('Upload thành công nhưng server không trả về URL ảnh.');
       }
 
       setProfileData((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
       URL.revokeObjectURL(previewUrl);
-      updateStoredUser({ avatarUrl: newAvatarUrl, avatar_url: newAvatarUrl });
 
       Swal.fire({
         icon: 'success',
-        title: 'Thành công',
-        text: 'Tải ảnh đại diện lên thành công!',
-        timer: 1000,
+        title: 'Ảnh đã sẵn sàng',
+        text: 'Nhấn "Lưu thay đổi" để cập nhật ảnh đại diện.',
+        timer: 1500,
         showConfirmButton: false,
       });
     } catch (error) {

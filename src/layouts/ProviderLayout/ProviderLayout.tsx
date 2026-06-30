@@ -115,9 +115,7 @@ const ProviderLayout: React.FC = () => {
         <nav className="provider-sidebar-menu">
           <div className="provider-menu-group">
             <h4 className="provider-menu-title">TỔNG QUAN</h4>
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
+            <NavLink to="/dashboard" className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </NavLink>
@@ -125,23 +123,15 @@ const ProviderLayout: React.FC = () => {
 
           <div className="provider-menu-group">
             <h4 className="provider-menu-title">QUẢN LÝ</h4>
-            <NavLink
-              to="/locations"
-              className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
+            <NavLink to="/locations" className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
               <Building2 size={20} />
               <span>Danh sách địa điểm</span>
             </NavLink>
-            <NavLink
-              to="/orders"
-              className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
+            <NavLink to="/orders" className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}>
               <ShoppingBag size={20} />
               <span>Đơn đặt món</span>
-              {pendingOrderCount > 0 && (
-                <span className="provider-menu-badge">{pendingOrderCount}</span>
-              )}
             </NavLink>
           </div>
-
         </nav>
 
         {/* Footer */}

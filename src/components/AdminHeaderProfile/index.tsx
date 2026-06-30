@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import authAPI from '../../services/authService';
 
 interface AdminHeaderProfileProps {
@@ -15,7 +15,20 @@ interface CurrentUser {
 }
 
 export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName = false }) => {
-  const currentUser = authAPI.getCurrentUser() as CurrentUser | null;
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(authAPI.getCurrentUser() as CurrentUser | null);
+  const [avatarCacheBuster, setAvatarCacheBuster] = useState(() => Date.now());
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      setCurrentUser(authAPI.getCurrentUser() as CurrentUser | null);
+      setAvatarCacheBuster(Date.now());
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdate);
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdate);
+    };
+  }, []);
 
   const getInitials = (name?: string, email?: string): string => {
     if (name) {
@@ -46,17 +59,15 @@ export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName
   const headerAvatarStyle = getAvatarColor(userInitials);
 
   const headerUserAvatar =
-    (typeof currentUser?.avatar === 'string' && currentUser.avatar) ||
-    (typeof currentUser?.avatarUrl === 'string' && currentUser.avatarUrl) ||
     (typeof currentUser?.avatar_url === 'string' && currentUser.avatar_url) ||
-    (typeof currentUser?.avartar_url === 'string' && currentUser.avartar_url) ||
+    (typeof currentUser?.avatarUrl === 'string' && currentUser.avatarUrl) ||
     undefined;
 
   return (
     <>
       {headerUserAvatar ? (
         <img
-          src={headerUserAvatar}
+          src={`${headerUserAvatar}${headerUserAvatar.includes('?') ? '&' : '?'}t=${avatarCacheBuster}`}
           alt={fullName || 'Admin'}
           style={{
             width: '36px',

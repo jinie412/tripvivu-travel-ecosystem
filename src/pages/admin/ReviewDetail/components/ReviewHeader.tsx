@@ -11,12 +11,7 @@ export const ReviewHeader: React.FC<ReviewHeaderProps> = ({ review }) => {
   const renderStars = (rating: number) => (
     <div className="rd-stars">
       {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          size={18}
-          fill={i < rating ? '#facc15' : 'none'}
-          color={i < rating ? '#facc15' : '#d1d5db'}
-        />
+        <Star key={i} size={18} fill={i < rating ? '#facc15' : 'none'} color={i < rating ? '#facc15' : '#d1d5db'} />
       ))}
     </div>
   );
@@ -25,9 +20,7 @@ export const ReviewHeader: React.FC<ReviewHeaderProps> = ({ review }) => {
     <div className="rd-header">
       {/* Thông tin người đánh giá */}
       <div className="rd-user-info">
-        <div className="rd-user-avatar">
-          {review.userAvatar}
-        </div>
+        <div className="rd-user-avatar">{review.userAvatar}</div>
         <div className="rd-user-details">
           <h3 className="rd-user-name">{review.userName}</h3>
           <span className="rd-user-meta">

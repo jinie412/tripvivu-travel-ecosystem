@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Eye, EyeOff, Camera, ChevronDown } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../utils/apiClient'; // Import thư viện gọi API
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
@@ -8,6 +9,7 @@ import './AddUser.css';
 
 export const AddUser: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // State quản lý loading khi submit
   const [isUploading, setIsUploading] = useState(false);
@@ -50,7 +52,7 @@ export const AddUser: React.FC = () => {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
 
-      const response = await apiClient.post('/upload/avatar', formDataUpload, {
+      const response = await apiClient.post('/upload/avatar-draft', formDataUpload, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -114,7 +116,11 @@ export const AddUser: React.FC = () => {
       // 2. Gọi API POST để tạo người dùng
       await apiClient.post('/admin/users', payload);
 
-      // 3. Hiển thị thông báo và điều hướng về trang danh sách
+      // 3. Invalidate cache để UserManagement refetch danh sách mới nhất
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-stats'] });
+
+      // 4. Hiển thị thông báo và điều hướng về trang danh sách
       Swal.fire({
         icon: 'success',
         title: 'Thành công',
