@@ -279,6 +279,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
+    bool allowReduceTime = false,
   }) async {
     final headers = await _authHeaders();
     final body = {
@@ -286,6 +287,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       'dayNumber': dayNumber,
       if (preferredTime != null) 'preferredTime': preferredTime,
       'isLocked': isLocked,
+      'allowReduceTime': allowReduceTime,
     };
 
     final res = await http.post(

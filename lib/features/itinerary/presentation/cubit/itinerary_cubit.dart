@@ -1322,12 +1322,45 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
+  /// Trả về khung giờ hoạt động trong ngày theo thứ tự ưu tiên:
+  /// 1. Giờ người dùng đặt lúc tạo lịch trình (dailyStartTime / dailyEndTime)
+  /// 2. Derive từ các hoạt động thực tế của ngày đầu tiên có dữ liệu
+  /// 3. Hardcode dự phòng cuối cùng khi không có bất kỳ dữ liệu nào
+  ({String startTime, String endTime}) _resolveTimeWindow(ItineraryDetailEntity itin) {
+    final hasStart = itin.dailyStartTime?.isNotEmpty == true;
+    final hasEnd = itin.dailyEndTime?.isNotEmpty == true;
+
+    if (hasStart && hasEnd) {
+      return (startTime: itin.dailyStartTime!, endTime: itin.dailyEndTime!);
+    }
+
+    // Derive từ ngày đầu tiên có hoạt động
+    for (final day in itin.days) {
+      if (day.activities.isEmpty) continue;
+      final dayStart = hasStart
+          ? itin.dailyStartTime!
+          : day.activities.first.startTime;
+      // Dùng fallback "22:00" thay vì last_activity.endTime + 90 phút.
+      // Lý do: khi thêm địa điểm mới, lịch có thể kéo dài hơn giờ kết thúc hiện tại,
+      // nên window cần đủ rộng để optimizer xếp được.
+      final derivedEnd = hasEnd ? itin.dailyEndTime! : '22:00';
+      return (startTime: dayStart, endTime: derivedEnd);
+    }
+
+    // Dự phòng cuối cùng — không có dữ liệu nào để dựa vào
+    return (
+      startTime: itin.dailyStartTime ?? '07:00',
+      endTime: itin.dailyEndTime ?? '22:00',
+    );
+  }
+
   int _estimateTimeDiffMin(double? lat1, double? lng1, double? lat2, double? lng2) {
     if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return 5;
     final dist = _haversineKm(lat1, lng1, lat2, lng2);
-    if (dist < 0.1) return 2;
-    // 30 km/h = 0.5 km/min => minutes = dist / 0.5 = dist * 2
-    return (dist * 2).ceil() + 5;
+    // Mô hình: đường thực tế ≈ Haversine × 1.3, tốc độ xe máy ~30 km/h
+    // → phút = dist × 1.3 / 30 × 60 + 2 ≈ dist × 2.0 + 2
+    // Ví dụ: 2km → 6 phút (khớp Google Maps), 5km → 12 phút
+    return (dist * 2.0 + 2).ceil().clamp(3, 120);
   }
 
   ItineraryDayEntity _recalculateDayTimesSequential(ItineraryDayEntity day) {
@@ -1425,14 +1458,18 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     final dayNum = updatedDays.firstWhere((d) => d.activities.any((a) => a.id == oldActivityId)).dayNumber;
 
     if (autoOptimize) {
-      final dailyStartTime = (itin.dailyStartTime?.isNotEmpty == true) ? itin.dailyStartTime! : '08:00';
-      final dailyEndTime = (itin.dailyEndTime?.isNotEmpty == true) ? itin.dailyEndTime! : '21:00';
+      final window = _resolveTimeWindow(itin);
+      final dayEntity = updatedDays.firstWhere(
+        (d) => d.dayNumber == dayNum,
+        orElse: () => updatedDays.first,
+      );
 
       final finalDays = await _optimizeSpecificDay(
         updatedDays,
         dayNum,
-        dailyStartTime: dailyStartTime,
-        dailyEndTime: dailyEndTime,
+        dailyStartTime: window.startTime,
+        dailyEndTime: window.endTime,
+        visitDate: dayEntity.date,
       );
 
       emit(currentState.copyWithSelected(
@@ -1449,7 +1486,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
-  Future<({String? activityId, int? dayNumber, bool isFull})?> addActivityToDay(
+  Future<({String? activityId, int? dayNumber, bool isFull, bool canReduceTime})?> addActivityToDay(
     int dayNumber,
     String placeId,
     String placeName, {
@@ -1460,6 +1497,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? category,
     String? openHourCompressed,
     int durationMinutes = 60,
+    bool allowReduceTime = false,
   }) async {
     if (state is! ItineraryLoaded) return null;
     final currentState = state as ItineraryLoaded;
@@ -1472,8 +1510,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     List<ItineraryDayEntity>? updatedDaysResult;
     String? newActivityId;
 
-    final dailyStartTime = (itin.dailyStartTime?.isNotEmpty == true) ? itin.dailyStartTime! : '08:00';
-    final dailyEndTime = (itin.dailyEndTime?.isNotEmpty == true) ? itin.dailyEndTime! : '21:00';
+    final window = _resolveTimeWindow(itin);
+    final dailyStartTime = window.startTime;
+    final dailyEndTime = window.endTime;
 
     int timeToMinutes(String timeStr) {
       final parts = timeStr.split(':');
@@ -1482,6 +1521,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
 
     final dailyEndMin = timeToMinutes(dailyEndTime);
+
+    // 5 phút buffer di chuyển tối thiểu trước khi hoạt động mới bắt đầu
+    const kTravelBufferMin = 5;
 
     for (int i = 0; i < itin.days.length; i++) {
       int checkDayNum = ((dayNumber - 1 + i) % itin.days.length) + 1;
@@ -1492,6 +1534,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
          startTime = dayToTest.activities.last.endTime;
       }
       final endTime = _shiftTimeStr(startTime, durationMinutes);
+
+      // Kiểm tra sức chứa bằng ước tính đơn giản, không tính lại toàn bộ lịch.
+      // Tránh _recalculateDayTimesSequential ở đây vì nó làm thay đổi thời gian
+      // của các hoạt động cũ (gây Issue 3) và có thể đẩy endTime ảo vượt 21:00 (gây Issue 2).
+      final estimatedEndMin = timeToMinutes(startTime) + kTravelBufferMin + durationMinutes;
+      if (estimatedEndMin > dailyEndMin) {
+        continue; // Ngày này không đủ chỗ về thời gian, thử ngày tiếp theo
+      }
 
       final newActivity = ItineraryActivityEntity(
         id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
@@ -1510,65 +1560,57 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
       newActivityId = newActivity.id;
 
-      var testDay = dayToTest.copyWith(activities: [...dayToTest.activities, newActivity]);
-      testDay = _recalculateDayTimesSequential(testDay);
-
-      if (testDay.activities.isNotEmpty) {
-        final lastEndTime = testDay.activities.last.endTime;
-        if (timeToMinutes(lastEndTime) <= dailyEndMin) {
-           // Nếu thỏa mãn về mặt thời gian tuần tự, gửi cho AI để check ràng buộc chặt
-           var candidateDays = itin.days.map((day) {
-             if (day.dayNumber == checkDayNum) return testDay;
-             return day;
-           }).toList();
-
-           candidateDays = await _optimizeSpecificDay(
-             candidateDays,
-             checkDayNum,
-             dailyStartTime: dailyStartTime,
-             dailyEndTime: dailyEndTime,
-           );
-
-           final optimizedDay = candidateDays.firstWhere((d) => d.dayNumber == checkDayNum);
-           final hasNewActivity = optimizedDay.activities.any((a) => a.id == newActivity.id);
-
-           if (hasNewActivity) {
-              targetDayNumber = checkDayNum;
-              updatedDaysResult = candidateDays;
-              break;
-           }
+      // Thêm hoạt động mới mà KHÔNG tính lại thời gian các hoạt động cũ.
+      // Để AI optimizer xử lý việc sắp xếp lại đúng thứ tự và thời gian.
+      var candidateDays = itin.days.map((day) {
+        if (day.dayNumber == checkDayNum) {
+          return dayToTest.copyWith(
+            activities: [...dayToTest.activities, newActivity],
+          );
         }
-      } else {
-         targetDayNumber = checkDayNum;
+        return day;
+      }).toList();
 
-         var candidateDays = itin.days.map((day) {
-           if (day.dayNumber == checkDayNum) return testDay;
-           return day;
-         }).toList();
+      try {
+        candidateDays = await _optimizeSpecificDay(
+          candidateDays,
+          checkDayNum,
+          dailyStartTime: dailyStartTime,
+          dailyEndTime: dailyEndTime,
+          allowReduceTime: allowReduceTime,
+          newActivityId: newActivity.id,
+          visitDate: dayToTest.date,
+        );
+      } catch (e) {
+        if (e.toString().contains('SCHEDULE_FULL')) {
+          continue; // Try next day
+        }
+        rethrow;
+      }
 
-         updatedDaysResult = await _optimizeSpecificDay(
-           candidateDays,
-           checkDayNum,
-           dailyStartTime: dailyStartTime,
-           dailyEndTime: dailyEndTime,
-         );
-         break;
+      final optimizedDay = candidateDays.firstWhere((d) => d.dayNumber == checkDayNum);
+      final hasNewActivity = optimizedDay.activities.any((a) => a.id == newActivity.id);
+
+      if (hasNewActivity) {
+        targetDayNumber = checkDayNum;
+        updatedDaysResult = candidateDays;
+        break;
       }
     }
 
     if (targetDayNumber == -1 || updatedDaysResult == null) {
        // Khôi phục state cũ nhưng KHÔNG emit lỗi cứng ở đây, trả về để UI hỏi người dùng
        emit(currentState);
-       return (activityId: null, dayNumber: null, isFull: true);
+       return (activityId: null, dayNumber: null, isFull: true, canReduceTime: !allowReduceTime);
     }
 
     final newItin = itin.copyWith(days: updatedDaysResult);
     emit(currentState.copyWithSelected(newItin));
 
-    return (activityId: newActivityId, dayNumber: targetDayNumber, isFull: false);
+    return (activityId: newActivityId, dayNumber: targetDayNumber, isFull: false, canReduceTime: false);
   }
 
-  Future<({String? activityId, int? dayNumber, bool isFull})?> addDayAndActivity(
+  Future<({String? activityId, int? dayNumber, bool isFull, bool canReduceTime})?> addDayAndActivity(
     String placeId,
     String placeName, {
     double? lat,
@@ -1578,6 +1620,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? category,
     String? openHourCompressed,
     int durationMinutes = 60,
+    bool allowReduceTime = false,
   }) async {
     if (state is! ItineraryLoaded) return null;
     final currentState = state as ItineraryLoaded;
@@ -1614,6 +1657,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       category: category,
       openHourCompressed: openHourCompressed,
       durationMinutes: durationMinutes,
+      allowReduceTime: false,
     );
   }
 
@@ -1699,11 +1743,17 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }).toList();
 
       if (updatedDayNum != null) {
+        final window = _resolveTimeWindow(itin);
+        final deletedDayEntity = itin.days.firstWhere(
+          (d) => d.dayNumber == updatedDayNum,
+          orElse: () => itin.days.first,
+        );
         updatedDays = await _optimizeSpecificDay(
           updatedDays,
           updatedDayNum!,
-          dailyStartTime: itin.dailyStartTime,
-          dailyEndTime: itin.dailyEndTime,
+          dailyStartTime: window.startTime,
+          dailyEndTime: window.endTime,
+          visitDate: deletedDayEntity.date,
         );
       }
 
@@ -1716,11 +1766,14 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     int dayNumber, {
     String? dailyStartTime,
     String? dailyEndTime,
+    bool allowReduceTime = false,
+    String? newActivityId,
+    DateTime? visitDate,
   }) async {
-    int timeToMinutes(String timeStr) {
-      final parts = timeStr.split(':');
-      if (parts.length < 2) return 0;
-      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    String? visitDateStr;
+    if (visitDate != null) {
+      visitDateStr =
+          '${visitDate.year}-${visitDate.month.toString().padLeft(2, '0')}-${visitDate.day.toString().padLeft(2, '0')}';
     }
 
     final List<ItineraryDayEntity> newDays = [];
@@ -1730,18 +1783,25 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           d.activities,
           dailyStartTime: dailyStartTime,
           dailyEndTime: dailyEndTime,
+          allowReduceTime: allowReduceTime,
+          newActivityId: newActivityId,
+          visitDate: visitDateStr,
         );
 
         final List<ItineraryActivityEntity> actsWithTransport = List.from(optimized);
         for (int i = 0; i < actsWithTransport.length - 1; i++) {
           final currentAct = actsWithTransport[i];
           final nextAct = actsWithTransport[i + 1];
-          final endMin = timeToMinutes(currentAct.endTime);
-          final nextStartMin = timeToMinutes(nextAct.startTime);
-          int gap = nextStartMin - endMin;
-          if (gap < 0) gap = 0;
+          // Dùng Haversine để hiện thời gian di chuyển thực tế.
+          // KHÔNG dùng gap thời gian (nextStart - currentEnd) vì gap đó bao gồm
+          // cả thời gian rảnh trong lịch (VD: chợ đêm 19:00 sau activity kết thúc 09:00
+          // sẽ cho gap = 10 tiếng, nhưng thực tế chỉ đi 6 phút).
+          final transitMin = _estimateTimeDiffMin(
+            currentAct.latitude, currentAct.longitude,
+            nextAct.latitude, nextAct.longitude,
+          );
           actsWithTransport[i] = currentAct.copyWith(
-            transportInfo: gap > 0 ? '$gap phút di chuyển' : null,
+            transportInfo: '$transitMin phút di chuyển',
           );
         }
 

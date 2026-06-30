@@ -109,10 +109,22 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           (d) => d.dayNumber == _selectedDay,
         );
         if (dayData.activities.isNotEmpty) {
-          final lastActivity = dayData.activities.last;
-          refLat = lastActivity.latitude;
-          refLng = lastActivity.longitude;
-          proposedVisitTime = lastActivity.endTime;
+          // Dùng tọa độ trung bình của ngày để gợi ý bao phủ toàn khu vực,
+          // không bị bias về phía địa điểm cuối ngày
+          final validActivities = dayData.activities
+              .where((a) => a.latitude != null && a.longitude != null)
+              .toList();
+          if (validActivities.isNotEmpty) {
+            refLat = validActivities
+                    .map((a) => a.latitude!)
+                    .reduce((s, v) => s + v) /
+                validActivities.length;
+            refLng = validActivities
+                    .map((a) => a.longitude!)
+                    .reduce((s, v) => s + v) /
+                validActivities.length;
+          }
+          proposedVisitTime = dayData.activities.last.endTime;
         }
       } catch (_) {}
     }
@@ -138,6 +150,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       referenceLng: refLng,
       existingIds: existingIds,
       visitDate: visitDate,
+      proposedVisitTime: proposedVisitTime,
       destinationCity: destinationCity,
       onAdd: (place) async {
         final success = await context.read<ItineraryCubit>().addActivityToDay(
@@ -154,164 +167,17 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         if (!mounted) return;
 
         if (success != null && success.isFull) {
-          showDialog(
-            context: context,
-            builder: (ctx) => Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 48),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Kín lịch trình',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Tất cả các ngày trong lịch trình đều đã kín chỗ và không thể chèn thêm "${place.name}". Bạn có muốn kéo dài chuyến đi thêm 1 ngày để thêm địa điểm này không?',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              Navigator.pop(ctx, true);
-                              final res = await context.read<ItineraryCubit>().addDayAndActivity(
-                                place.id,
-                                place.name,
-                                lat: place.latitude,
-                                lng: place.longitude,
-                                imageUrl: place.imageUrl,
-                                address: place.address,
-                                category: place.category,
-                                openHourCompressed: place.openHourCompressed,
-                              );
-                              if (mounted && res != null && !res.isFull) {
-                                final addedDayNumber = res.dayNumber;
-                                final newActivityId = res.activityId;
-
-                                if (addedDayNumber != null && addedDayNumber != _selectedDay) {
-                                  setState(() {
-                                    _selectedDay = addedDayNumber;
-                                  });
-                                }
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Đã kéo dài chuyến đi và thêm "${place.name}" vào Ngày $addedDayNumber'),
-                                    backgroundColor: const Color(0xFF10B981), // AppColorsExt.success
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                );
-
-                                Future.delayed(const Duration(milliseconds: 300), () {
-                                  if (mounted && newActivityId != null) {
-                                    _scrollToActivity(newActivityId);
-                                  }
-                                });
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                            child: const Text('Thêm ngày', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
+          if (success.canReduceTime) {
+            _showReduceTimeDialog(context, place);
+          } else {
+            _showExtendTripDialog(context, place);
+          }
           return;
         }
 
         if (success != null && !success.isFull) {
-          final addedDayNumber = success.dayNumber;
-          final newActivityId = success.activityId;
-
-          if (addedDayNumber != _selectedDay) {
-            final oldDay = _selectedDay;
-            setState(() {
-              _selectedDay = addedDayNumber!;
-            });
-            showDialog(
-              context: context,
-              builder: (ctx) => Dialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 48),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Thông báo thay đổi ngày',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Địa điểm "${place.name}" đã được hệ thống xếp vào Ngày $addedDayNumber để tối ưu lịch trình và thời gian mở cửa.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
-                          child: const Text('Đã hiểu', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Đã thêm "${place.name}" vào lịch trình'),
-                backgroundColor: const Color(0xFF10B981), // AppColorsExt.success
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            );
-          }
-
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted && newActivityId != null) {
-              _scrollToActivity(newActivityId);
-            }
-          });
+          _handleSuccessAdd(context, success, place);
+          return;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1490,6 +1356,226 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     }
   }
 
+  void _handleSuccessAdd(BuildContext context, dynamic success, dynamic place) {
+    final addedDayNumber = success.dayNumber as int?;
+    final newActivityId = success.activityId as String?;
+    final originalDay = _selectedDay;
+
+    if (addedDayNumber != null && addedDayNumber != originalDay) {
+      setState(() {
+        _selectedDay = addedDayNumber;
+      });
+
+      // Thông báo rõ ràng khi địa điểm được thêm vào ngày khác với ngày đang xem
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.r16)),
+          title: Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  color: AppColors.primary, size: 22),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Đã chuyển sang ngày khác',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Text(
+            'Ngày $originalDay đã đủ lịch.\n\n'
+            '"${place.name}" đã được thêm vào Ngày $addedDayNumber.',
+            style: const TextStyle(height: 1.5, fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.r8)),
+                elevation: 0,
+              ),
+              child: const Text('Đã hiểu',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã thêm "${place.name}" vào Ngày $addedDayNumber'),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && newActivityId != null) {
+        _scrollToActivity(newActivityId);
+      }
+    });
+  }
+
+  void _showReduceTimeDialog(BuildContext context, dynamic place) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.timer_off_rounded, color: Colors.orange, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Lịch trình đã kín',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Không thể chèn thêm "${place.name}". Bạn có muốn hệ thống tự động giảm bớt thời gian tham quan ở các địa điểm khác để chèn điểm này vào không?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx, false);
+                        _showExtendTripDialog(context, place);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx, true);
+                        final retrySuccess = await context.read<ItineraryCubit>().addActivityToDay(
+                          _selectedDay,
+                          place.id,
+                          place.name,
+                          lat: place.latitude,
+                          lng: place.longitude,
+                          imageUrl: place.imageUrl,
+                          address: place.address,
+                          category: place.category,
+                          openHourCompressed: place.openHourCompressed,
+                          allowReduceTime: true,
+                        );
+                        if (!mounted) return;
+                        
+                        if (retrySuccess != null && retrySuccess.isFull) {
+                          _showExtendTripDialog(context, place);
+                        } else if (retrySuccess != null && !retrySuccess.isFull) {
+                          _handleSuccessAdd(context, retrySuccess, place);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Giảm giờ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showExtendTripDialog(BuildContext context, dynamic place) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Kín lịch trình',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Tất cả các ngày trong lịch trình đều đã kín chỗ. Bạn có muốn kéo dài chuyến đi thêm 1 ngày để thêm địa điểm này không?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx, true);
+                        final res = await context.read<ItineraryCubit>().addDayAndActivity(
+                          place.id,
+                          place.name,
+                          lat: place.latitude,
+                          lng: place.longitude,
+                          imageUrl: place.imageUrl,
+                          address: place.address,
+                          category: place.category,
+                          openHourCompressed: place.openHourCompressed,
+                        );
+                        if (mounted && res != null && !res.isFull) {
+                          _handleSuccessAdd(context, res, place);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Thêm ngày', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<TrackingCubit, TrackingState>(
@@ -2347,58 +2433,60 @@ class _ItineraryDetailView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Text(
-            '$destinationCount điểm trong ngày',
-            style: AppTextStylesExt.bodyMedium.copyWith(
-              color: const Color(0xFF0F172A),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s12),
-          if (isEditMode)
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onAddPlaceTap,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '$destinationCount điểm trong ngày',
+                style: AppTextStylesExt.bodyMedium.copyWith(
+                  color: const Color(0xFF0F172A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (isEditMode)
+                GestureDetector(
+                  onTap: onAddPlaceTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 9,
                     ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.accent],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.24),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.accent],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                      SizedBox(width: 5),
-                      Text(
-                        'Thêm địa điểm',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.24),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                        SizedBox(width: 5),
+                        Text(
+                          'Thêm địa điểm',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
+            ],
+          ),
           const SizedBox(height: AppSizes.s16),
           _DayCostSummaryCard(
             day: currentDayData,

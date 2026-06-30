@@ -1,18 +1,26 @@
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:dio/dio.dart';
 
 class OptimizeRouteApi {
   static Future<List<ItineraryActivityEntity>> optimizeDay(
     List<ItineraryActivityEntity> activities, {
     String? dailyStartTime,
     String? dailyEndTime,
+    bool allowReduceTime = false,
+    /// ID của activity vừa được thêm mới — optimizer sẽ chèn nó vào vị trí tối ưu
+    /// thay vì buộc nó phải đứng sau tất cả activities cũ.
+    String? newActivityId,
+    /// Ngày tham quan "YYYY-MM-DD" — dùng để parse openHourCompressed đúng ngày
+    /// (chợ đêm mở tối, bãi biển mở sáng, v.v.)
+    String? visitDate,
   }) async {
     if (activities.length <= 1) return activities;
-    
+
     try {
       final client = sl<DioClient>();
-      
+
       final payload = {
         'activities': activities.map((a) {
           // Tính duration từ startTime/endTime
@@ -39,15 +47,20 @@ class OptimizeRouteApi {
             'price':             a.price,
             'rating':            a.rating,
             'reviewCount':       a.reviewCount,
-            // ─── Fields mới cho TSPTW ───────────────────
+            // ─── Fields cho TSPTW ──────────────────────
             'durationMinutes':   duration,
-            'isLocked':          false,          // entity chưa có field này → mặc định false
+            'isLocked':          false,
             'lockedArriveTime':  null,
             'openHourCompressed': a.openHourCompressed,
+            // is_new = true → optimizer có thể chèn activity này vào BẤT KỲ vị trí nào,
+            // không bị ràng buộc phải đứng sau tất cả activity cũ.
+            'isNew': newActivityId != null && a.id == newActivityId,
           };
         }).toList(),
         if (dailyStartTime != null) 'dailyStartTime': dailyStartTime,
         if (dailyEndTime != null) 'dailyEndTime': dailyEndTime,
+        'allowReduceTime': allowReduceTime,
+        if (visitDate != null) 'visitDate': visitDate,
       };
 
       final response = await client.dio.post('/itinerary/optimize-day', data: payload);
@@ -84,6 +97,9 @@ class OptimizeRouteApi {
         );
       }).toList();
     } catch (e) {
+      if (e is DioException && e.response?.statusCode == 400 && e.response?.data?['message'] == 'SCHEDULE_FULL') {
+        throw Exception('SCHEDULE_FULL');
+      }
       print('Error optimizing route: $e');
       return activities;
     }
