@@ -58,10 +58,11 @@ export const AccordionCard: React.FC<CardProps> = ({
   </div>
 );
 
-export const AlgoGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+export const AlgoGroup: React.FC<{ title: string; badge?: string; children: React.ReactNode }> = ({ title, badge, children }) => (
   <div className="as-group">
     <div className="as-group__header">
       <span className="as-group__title">{title}</span>
+      {badge && <span className="as-card__badge">{badge}</span>}
     </div>
     <div className="as-group__body">{children}</div>
   </div>

@@ -43,7 +43,58 @@ export interface UpdateTwoTowerSettingsRequest {
   quotas?: Partial<Record<IntentKey, Partial<Record<SlotKey, number>>>>;
 }
 
+export type ReviewFilterTopicKey =
+  | 'traffic'
+  | 'weather'
+  | 'crowd'
+  | 'service'
+  | 'price'
+  | 'infra'
+  | 'cleanliness'
+  | 'food'
+  | 'atmosphere'
+  | 'activity'
+  | 'other';
+
+export interface ReviewFilterSettingsResponse {
+  algorithm: {
+    id: string;
+    name: 'review_filter';
+    description: string | null;
+    isActive: boolean;
+    updatedAt: string | null;
+  };
+  topics: Array<{ key: ReviewFilterTopicKey; label: string }>;
+  parameters: Record<string, ParameterMeta>;
+}
+
+export interface UpdateReviewFilterSettingsRequest {
+  parameters: Record<string, number>;
+}
+
+export type AlgorithmStatusesResponse = Record<string, boolean>;
+
 export const algorithmSettingsAPI = {
+  getAlgorithmStatuses: async (): Promise<AlgorithmStatusesResponse> => {
+    const response = await apiClient.get<AlgorithmStatusesResponse>('/admin/algorithm-settings/statuses');
+    return response.data;
+  },
+
+  getReviewFilterSettings: async (): Promise<ReviewFilterSettingsResponse> => {
+    const response = await apiClient.get<ReviewFilterSettingsResponse>('/admin/algorithm-settings/review-filter');
+    return response.data;
+  },
+
+  updateReviewFilterSettings: async (payload: UpdateReviewFilterSettingsRequest): Promise<ReviewFilterSettingsResponse> => {
+    const response = await apiClient.patch<ReviewFilterSettingsResponse>('/admin/algorithm-settings/review-filter', payload);
+    return response.data;
+  },
+
+  resetReviewFilterSettings: async (): Promise<ReviewFilterSettingsResponse> => {
+    const response = await apiClient.post<ReviewFilterSettingsResponse>('/admin/algorithm-settings/review-filter/reset');
+    return response.data;
+  },
+
   getTwoTowerSettings: async (): Promise<TwoTowerSettingsResponse> => {
     const response = await apiClient.get<TwoTowerSettingsResponse>('/admin/algorithm-settings/two-tower');
     return response.data;

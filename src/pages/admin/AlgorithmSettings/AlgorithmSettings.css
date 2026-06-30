@@ -66,7 +66,7 @@
 .as-group {
   border: 0.5px solid var(--border-color);
   border-radius: var(--border-radius-lg);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .as-group__header {
@@ -141,7 +141,8 @@
   background: var(--bg-surface);
   border: 0.5px solid var(--border-color);
   border-radius: var(--border-radius-lg);
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .as-card__header {
@@ -192,6 +193,8 @@
 
 .as-card__body {
   padding: 4px 20px 20px;
+  position: relative;
+  z-index: 2;
 }
 
 .as-card__footer {
@@ -424,7 +427,7 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.15s;
-  z-index: 100;
+  z-index: 5000;
   line-height: 1.45;
   overflow-wrap: break-word;
 }
@@ -539,7 +542,7 @@
 /* ── Table ─────────────────────────────────────────────────────────────────── */
 
 .as-table-wrap {
-  overflow-x: auto;
+  overflow: visible;
   margin-top: 16px;
 }
 
@@ -559,6 +562,12 @@
   padding: 10px 12px;
   border-bottom: 0.5px solid var(--border-color);
   white-space: nowrap;
+  overflow: visible;
+}
+
+.as-table th .as-tooltip__bubble {
+  bottom: auto;
+  top: calc(100% + 6px);
 }
 
 .as-table td {

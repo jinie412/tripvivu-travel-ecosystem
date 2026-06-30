@@ -203,6 +203,11 @@
   gap: 2px;
 }
 
+.ar-dropdown__last-run--top {
+  padding-bottom: 12px;
+  border-bottom: 0.5px solid var(--border-color);
+}
+
 .ar-dropdown__last-run-label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -212,6 +217,11 @@
 .ar-dropdown__last-run-time {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.ar-dropdown__schedule-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* ── Badge ───────────────────────────────────────────────────────────────────── */

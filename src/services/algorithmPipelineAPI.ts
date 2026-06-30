@@ -52,6 +52,23 @@ export interface PipelineHistoryResponse {
   total: number;
 }
 
+export type ReviewFilterScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface ReviewFilterSchedule {
+  autoEnabled: boolean;
+  frequency: ReviewFilterScheduleFrequency;
+  runTime: string;
+  runDay: string;
+  lastRunAt: string | null;
+}
+
+export interface UpdateReviewFilterScheduleRequest {
+  autoEnabled?: boolean;
+  frequency?: ReviewFilterScheduleFrequency;
+  runTime?: string;
+  runDay?: number;
+}
+
 const formatDuration = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   const mins = Math.floor(seconds / 60);
@@ -85,6 +102,23 @@ export const algorithmPipelineAPI = {
     const response = await apiClient.get<PipelineHistoryResponse>(
       '/admin/algorithm-pipeline/history',
       { params: { limit } },
+    );
+    return response.data;
+  },
+
+  getReviewFilterSchedule: async (): Promise<ReviewFilterSchedule> => {
+    const response = await apiClient.get<ReviewFilterSchedule>(
+      '/admin/algorithm-pipeline/review-filter/schedule',
+    );
+    return response.data;
+  },
+
+  updateReviewFilterSchedule: async (
+    request: UpdateReviewFilterScheduleRequest,
+  ): Promise<ReviewFilterSchedule> => {
+    const response = await apiClient.patch<ReviewFilterSchedule>(
+      '/admin/algorithm-pipeline/review-filter/schedule',
+      request,
     );
     return response.data;
   },
