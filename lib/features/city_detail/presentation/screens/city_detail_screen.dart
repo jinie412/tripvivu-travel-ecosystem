@@ -265,7 +265,7 @@ class _OverviewTabContent extends StatelessWidget {
 
         // ── LỊCH TRÌNH CỘNG ĐỒNG ──────────────────────────────────
         SectionHeader(
-          title: 'Lịch trình cộng đồng',
+          title: 'Gợi ý từ cộng đồng',
           onSeeAll: () => onTabSelected(1),
         ),
         const SizedBox(height: 12),

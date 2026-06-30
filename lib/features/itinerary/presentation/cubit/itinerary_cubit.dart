@@ -358,6 +358,22 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
+  /// Refresh chi tiết lịch trình mà không xóa dữ liệu hiện tại khỏi màn hình.
+  /// Dùng cho pull-to-refresh: data cũ vẫn hiển thị, chỉ thay thế khi có data mới.
+  Future<void> refreshDetail(String id) async {
+    if (state is! ItineraryLoaded) return;
+    try {
+      final detail = await _getItineraryDetail(id);
+      if (!isClosed && state is ItineraryLoaded) {
+        emit(
+          (state as ItineraryLoaded).copyWithSelected(_materializeMockDays(detail)),
+        );
+      }
+    } catch (_) {
+      // Silent — không làm gián đoạn UI khi refresh lỗi
+    }
+  }
+
   ItineraryDetailEntity _materializeMockDays(ItineraryDetailEntity itin) {
     if (!kDemoMode) return itin;
     if (itin.days.isNotEmpty) return itin;
@@ -1109,16 +1125,27 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     );
   }
 
-  void toggleItineraryStatus(String id, bool isOngoing) {
+  void toggleItineraryStatus(
+    String id,
+    bool isOngoing, {
+    ItineraryStatus? stoppedStatus,
+  }) {
     if (state is ItineraryLoaded) {
       final currentState = state as ItineraryLoaded;
+      final targetStatus = isOngoing
+          ? ItineraryStatus.ongoing
+          : (stoppedStatus ?? ItineraryStatus.uncompleted);
       final updatedList = currentState.itineraries.map((itinerary) {
         if (itinerary.id == id) {
           return itinerary.copyWith(
-            status: isOngoing
-                ? ItineraryStatus.ongoing
-                : ItineraryStatus.upcoming,
+            status: targetStatus,
             trackingActive: isOngoing,
+          );
+        }
+        if (isOngoing && itinerary.status == ItineraryStatus.ongoing) {
+          return itinerary.copyWith(
+            status: ItineraryStatus.uncompleted,
+            trackingActive: false,
           );
         }
         return itinerary;

@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:math';
+import 'notification_navigation_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -36,7 +37,7 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Xử lý khi user bấm vào notification
+        NotificationNavigationService.handlePayload(response.payload);
       },
     );
 

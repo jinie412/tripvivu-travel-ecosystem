@@ -32,6 +32,18 @@ class TrackingRemoteDataSource {
     return TrackingStartResult.fromAny(res.data);
   }
 
+  /// Khôi phục tracking active sau khi đăng nhập: BE tự chọn ngày hiện tại.
+  Future<TrackingStartResult> active({
+    required String touristId,
+    int radiusM = TrackingConfig.radiusM,
+  }) async {
+    final res = await _dio.get('$_base/active', queryParameters: {
+      'touristId': touristId,
+      'radiusM': radiusM,
+    });
+    return TrackingStartResult.fromAny(res.data);
+  }
+
   /// 2) Lấy lại danh sách geofence (AlarmManager đăng ký lại sáng hôm sau).
   Future<List<TrackingGeofence>> geofences({
     required String itineraryId,

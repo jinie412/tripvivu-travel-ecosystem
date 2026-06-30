@@ -31,6 +31,7 @@ import 'package:travel_advisor_mobile/features/review/domain/repositories/review
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/city_detail_screen.dart';
 
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/core/services/activity_service.dart';
@@ -103,6 +104,22 @@ class _ExploreViewState extends State<_ExploreView> {
   Future<void> _onToggleItinerary(bool value, String itineraryId) async {
     final trackingCubit = context.read<TrackingCubit>();
     final itineraryCubit = context.read<ItineraryCubit>();
+    ItineraryStatus statusAfterStop() {
+      final exploreState = context.read<ExploreCubit>().state;
+      final item = exploreState is ExploreLoaded
+          ? exploreState.currentItinerary
+          : null;
+      final endDate = item?.endDate;
+      if (endDate == null) return ItineraryStatus.uncompleted;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final endPlusOne = DateTime(endDate.year, endDate.month, endDate.day)
+          .add(const Duration(days: 1));
+      return !today.isBefore(endPlusOne)
+          ? ItineraryStatus.completed
+          : ItineraryStatus.uncompleted;
+    }
+
     if (!value) {
       final ok = await showDialog<bool>(
         context: context,
@@ -126,7 +143,15 @@ class _ExploreViewState extends State<_ExploreView> {
       if (ok != true || !mounted) return;
       await trackingCubit.stop();
       if (!mounted) return;
-      itineraryCubit.toggleItineraryStatus(itineraryId, false);
+      final stoppedStatus = statusAfterStop();
+      itineraryCubit.toggleItineraryStatus(
+        itineraryId,
+        false,
+        stoppedStatus: stoppedStatus,
+      );
+      context
+          .read<ExploreCubit>()
+          .updateCurrentItineraryStatus(itineraryId, stoppedStatus);
       _orderPlaces = const [];
       _currentOrderPlaceIndex = 0;
       return;
@@ -151,6 +176,9 @@ class _ExploreViewState extends State<_ExploreView> {
     if (!mounted || !trackingCubit.state.isActive) return;
 
     itineraryCubit.toggleItineraryStatus(itineraryId, true);
+    context
+        .read<ExploreCubit>()
+        .updateCurrentItineraryStatus(itineraryId, ItineraryStatus.ongoing);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

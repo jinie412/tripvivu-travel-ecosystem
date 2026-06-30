@@ -495,8 +495,9 @@ class RemoteHomeDataSource implements HomeDataSource {
     switch (value.toLowerCase()) {
       case 'pending':
       case 'upcoming':
-      case 'uncompleted':
         return ItineraryStatus.upcoming;
+      case 'uncompleted':
+        return ItineraryStatus.uncompleted;
       case 'ongoing':
         return ItineraryStatus.ongoing;
       case 'completed':

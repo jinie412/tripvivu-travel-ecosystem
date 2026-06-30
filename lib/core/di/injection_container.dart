@@ -203,6 +203,7 @@ Future<void> initDependencies() async {
     () => TrackingRepositoryImpl(sl()),
   );
   sl.registerLazySingleton(() => StartTrackingUseCase(sl()));
+  sl.registerLazySingleton(() => RestoreActiveTrackingUseCase(sl()));
   sl.registerLazySingleton(() => GetGeofencesUseCase(sl()));
   sl.registerLazySingleton(() => SendTrackingEventUseCase(sl()));
   sl.registerLazySingleton(() => ManualCheckInUseCase(sl()));
@@ -215,6 +216,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(
     () => TrackingCubit(
       start: sl(),
+      restoreActive: sl(),
       status: sl(),
       sendEvent: sl(),
       checkIn: sl(),

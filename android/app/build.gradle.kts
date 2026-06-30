@@ -47,6 +47,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
+        multiDexEnabled = true
     }
 
     buildTypes {

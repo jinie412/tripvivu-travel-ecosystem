@@ -29,8 +29,15 @@ const bool _useMockData = AppConfig.kUseMockData;
 
 class ItinerarySummaryScreen extends StatefulWidget {
   final String itineraryId;
+  final String? initialVisitDate;
+  final bool autoOpenDetail;
 
-  const ItinerarySummaryScreen({super.key, required this.itineraryId});
+  const ItinerarySummaryScreen({
+    super.key,
+    required this.itineraryId,
+    this.initialVisitDate,
+    this.autoOpenDetail = false,
+  });
 
   @override
   State<ItinerarySummaryScreen> createState() => _ItinerarySummaryScreenState();
@@ -63,7 +70,11 @@ class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
       existingCubit = context.read<TrackingCubit>();
     } catch (_) {}
 
-    final view = _ItinerarySummaryView(itineraryId: widget.itineraryId);
+    final view = _ItinerarySummaryView(
+      itineraryId: widget.itineraryId,
+      initialVisitDate: widget.initialVisitDate,
+      autoOpenDetail: widget.autoOpenDetail,
+    );
     if (existingCubit != null) return view;
     return BlocProvider<TrackingCubit>(
       create: (_) => sl<TrackingCubit>(),
@@ -72,9 +83,23 @@ class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
   }
 }
 
-class _ItinerarySummaryView extends StatelessWidget {
+class _ItinerarySummaryView extends StatefulWidget {
   final String itineraryId;
-  const _ItinerarySummaryView({required this.itineraryId});
+  final String? initialVisitDate;
+  final bool autoOpenDetail;
+
+  const _ItinerarySummaryView({
+    required this.itineraryId,
+    this.initialVisitDate,
+    this.autoOpenDetail = false,
+  });
+
+  @override
+  State<_ItinerarySummaryView> createState() => _ItinerarySummaryViewState();
+}
+
+class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
+  bool _didAutoOpenDetail = false;
 
   @override
   Widget build(BuildContext context) {
@@ -108,9 +133,30 @@ class _ItinerarySummaryView extends StatelessWidget {
         }
 
         final itin = state.selectedItinerary!;
+        _maybeAutoOpenDetail(context, itin);
         return _buildContent(context, itin);
       },
     );
+  }
+
+  void _maybeAutoOpenDetail(BuildContext context, ItineraryDetailEntity itin) {
+    if (!widget.autoOpenDetail || _didAutoOpenDetail) return;
+    _didAutoOpenDetail = true;
+    final initialDay = _dayForVisitDate(itin, widget.initialVisitDate);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      _navigateToDetail(context, itin, initialDay: initialDay);
+    });
+  }
+
+  int _dayForVisitDate(ItineraryDetailEntity itin, String? visitDate) {
+    if (visitDate == null || visitDate.isEmpty) return 1;
+    for (final day in itin.days) {
+      final ymd =
+          '${day.date.year.toString().padLeft(4, '0')}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
+      if (ymd == visitDate) return day.dayNumber;
+    }
+    return 1;
   }
 
   void _showFoodProximityPopup(BuildContext ctx, TrackingState state) {
@@ -860,7 +906,7 @@ class _ItinerarySummaryView extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () => context
                       .read<ItineraryCubit>()
-                      .ensureItinerarySelected(itineraryId),
+                      .ensureItinerarySelected(widget.itineraryId),
                   icon: const Icon(Icons.refresh_rounded, size: 20),
                   label: const Text(
                     'Thử lại',

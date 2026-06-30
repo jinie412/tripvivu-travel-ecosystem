@@ -10,6 +10,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/services/fcm_service.dart';
+import 'core/services/notification_navigation_service.dart';
 import 'core/navigation/main_shell.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/auth_gate_screen.dart';
@@ -63,7 +64,7 @@ class TravelAdvisorApp extends StatefulWidget {
 }
 
 class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
-  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _navigatorKey = NotificationNavigationService.navigatorKey;
   late final AppLinks _appLinks;
 
   @override

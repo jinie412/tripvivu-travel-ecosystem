@@ -39,9 +39,12 @@ class TrackingPermissions {
       case TrackingPermResult.serviceOff:
         return 'Vui lòng bật Dịch vụ vị trí (GPS) để theo dõi lịch trình.';
       case TrackingPermResult.deniedForeground:
-        return 'Cần quyền truy cập vị trí để theo dõi lịch trình.';
+        return 'Ứng dụng cần quyền vị trí để xác định khi bạn đến các địa điểm trong lịch trình. '
+            'Dữ liệu chỉ dùng cho trạng thái chuyến đi và không công khai vị trí của bạn.';
       case TrackingPermResult.deniedBackground:
-        return 'Cần quyền vị trí "Luôn cho phép" (Always Allow) để theo dõi khi tắt app. '
+        return 'Cần quyền vị trí "Luôn cho phép" để geofence tiếp tục hoạt động khi app tắt, '
+            'giúp tự đánh dấu "Đã ghé" đúng địa điểm trong lịch trình. '
+            'Ứng dụng không chia sẻ vị trí riêng tư của bạn cho người khác. '
             'Mở Cài đặt → Quyền → Vị trí → Luôn cho phép.';
       case TrackingPermResult.granted:
         return '';

@@ -371,6 +371,7 @@ class _ItineraryCardWithStart extends StatelessWidget {
 
   bool get _shouldShowStart {
     if (item.status == ItineraryStatus.completed) return false;
+    if (item.status == ItineraryStatus.uncompleted) return false;
     if (item.status == ItineraryStatus.draft) return false;
     if (item.status == ItineraryStatus.ongoing) return true;
     // upcoming: chỉ hiện khi đã tới ngày bắt đầu
@@ -423,6 +424,18 @@ class _StartButtonState extends State<_StartButton> {
   bool _isOngoing(TrackingState trackingState) {
     if (widget.item.trackingActive) return true;
     return trackingState.isActive && trackingState.itineraryId == widget.item.id;
+  }
+
+  ItineraryStatus _statusAfterStop() {
+    final endDate = widget.item.endDate;
+    if (endDate == null) return ItineraryStatus.uncompleted;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final endPlusOne = DateTime(endDate.year, endDate.month, endDate.day)
+        .add(const Duration(days: 1));
+    return !today.isBefore(endPlusOne)
+        ? ItineraryStatus.completed
+        : ItineraryStatus.uncompleted;
   }
 
   Future<void> _onTap(bool isOngoing) async {
@@ -494,7 +507,11 @@ class _StartButtonState extends State<_StartButton> {
     if (ok != true || !mounted) return;
     await context.read<TrackingCubit>().stop();
     if (!mounted) return;
-    context.read<ItineraryCubit>().toggleItineraryStatus(widget.item.id, false);
+    context.read<ItineraryCubit>().toggleItineraryStatus(
+          widget.item.id,
+          false,
+          stoppedStatus: _statusAfterStop(),
+        );
   }
 
   void _showConflictDialog() {
@@ -631,6 +648,8 @@ class _FilterEmptyView extends StatelessWidget {
         return 'đang diễn ra';
       case ItineraryStatus.completed:
         return 'đã kết thúc';
+      case ItineraryStatus.uncompleted:
+        return 'chưa hoàn thành';
       case ItineraryStatus.draft:
         return 'đang tạo';
       default:
