@@ -259,7 +259,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                             height: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
                         BudgetSliderSection(
                           currentBudget: tripForm.budget,
                           onChanged: (v) =>

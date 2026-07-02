@@ -64,6 +64,10 @@ class ActivityEditConflictDetected extends ActivityEditState {
   final String endTime;
   final double actualCost;
   final bool isEditing;
+  
+  final bool canExtend;
+  final bool canReduce;
+  final bool canAddDay;
 
   const ActivityEditConflictDetected({
     required this.message,
@@ -73,10 +77,24 @@ class ActivityEditConflictDetected extends ActivityEditState {
     required this.endTime,
     this.actualCost = 0.0,
     this.isEditing = true,
+    this.canExtend = false,
+    this.canReduce = false,
+    this.canAddDay = false,
   });
 
   @override
-  List<Object?> get props => [message, activity, notes, startTime, endTime, actualCost, isEditing];
+  List<Object?> get props => [
+        message,
+        activity,
+        notes,
+        startTime,
+        endTime,
+        actualCost,
+        isEditing,
+        canExtend,
+        canReduce,
+        canAddDay,
+      ];
 }
 
 class ActivityEditError extends ActivityEditState {

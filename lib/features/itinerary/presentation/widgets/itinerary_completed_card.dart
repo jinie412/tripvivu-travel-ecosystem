@@ -214,16 +214,26 @@ class ItineraryCompletedCard extends StatelessWidget {
   }
 
   Widget _buildImage() {
+    final assetPlaceholder = ClipRect(
+      child: Transform.scale(
+        scale: 1.1,
+        child: Image.asset(
+          'assets/images/itinerary_placeholder.png',
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      ),
+    );
     if (item.imageUrl == null || item.imageUrl!.isEmpty) {
-      return Container(color: Color(item.placeholderColor));
+      return assetPlaceholder;
     }
     return CachedNetworkImage(
       imageUrl: item.imageUrl!,
       fit: BoxFit.cover,
       placeholder: (context, url) =>
           Container(color: Color(item.placeholderColor)),
-      errorWidget: (context, url, error) =>
-          Container(color: Color(item.placeholderColor)),
+      errorWidget: (context, url, error) => assetPlaceholder,
     );
   }
 

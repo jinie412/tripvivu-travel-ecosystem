@@ -34,7 +34,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
   // Write mode state
   double _rating = 0;
   bool _isPublic = true;
-  String _missedReason = '';
+  final Set<String> _selectedTags = {};
   final TextEditingController _commentController = TextEditingController();
   bool _isSubmitting = false;
 
@@ -94,7 +94,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
         overallContent: _commentController.text.trim().isEmpty
             ? null
             : _commentController.text.trim(),
-        overallTags: _missedReason.isNotEmpty ? [_missedReason] : const [],
+        overallTags: _selectedTags.toList(),
         applyAllPlaces: false,
       );
       if (!mounted) return;
@@ -151,16 +151,28 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: switch (_mode) {
-            _PopupMode.loading => _buildLoading(),
-            _PopupMode.write => _buildWriteMode(),
-            _PopupMode.read => _buildReadMode(),
-            _PopupMode.error => _buildWriteMode(),
-          },
-        ),
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: switch (_mode) {
+                _PopupMode.loading => _buildLoading(),
+                _PopupMode.write => _buildWriteMode(),
+                _PopupMode.read => _buildReadMode(),
+                _PopupMode.error => _buildWriteMode(),
+              },
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -213,9 +225,9 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         const Divider(),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -225,39 +237,40 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildHeader(),
-        const Text(
-          'Bạn đánh giá thế nào về lịch trình này?',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1E293B),
+        const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Bạn đánh giá thế nào về lịch trình này?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1E293B),
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            return IconButton(
-              icon: Icon(
-                index < _rating
-                    ? Icons.star_rounded
-                    : Icons.star_outline_rounded,
-                color: index < _rating
-                    ? const Color(0xFFF59E0B)
-                    : const Color(0xFFCBD5E1),
-                size: 40,
-              ),
-              onPressed: () => setState(() => _rating = index + 1.0),
-            );
-          }),
-        ),
-        TextButton.icon(
-          onPressed: () => _goToDetailScreen(),
-          icon: const Icon(Icons.stars_rounded, size: 18),
-          label: const Text(
-            'Đánh giá chi tiết địa điểm',
-            style: TextStyle(fontWeight: FontWeight.w600),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return IconButton(
+                icon: Icon(
+                  index < _rating
+                      ? Icons.star_rounded
+                      : Icons.star_outline_rounded,
+                  color: index < _rating
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFCBD5E1),
+                  size: 40,
+                ),
+                onPressed: () => setState(() => _rating = index + 1.0),
+              );
+            }),
           ),
+        ),
+        TextButton(
+          onPressed: () => _goToDetailScreen(),
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -265,6 +278,10 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
+          ),
+          child: const Text(
+            'Đánh giá chi tiết địa điểm',
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(height: 12),
@@ -282,18 +299,21 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
           ),
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children:
-              (_isHighlyCompleted
-                      ? kItineraryReviewTags
-                      : kMissedLocationReasons)
-                  .map((reason) {
-                    final isSelected = _missedReason == reason;
-                    return _choiceChip(reason, isSelected);
-                  })
-                  .toList(),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children:
+                (_isHighlyCompleted
+                        ? kItineraryReviewTags
+                        : kMissedLocationReasons)
+                    .map((reason) {
+                      final isSelected = _selectedTags.contains(reason);
+                      return _choiceChip(reason, isSelected);
+                    })
+                    .toList(),
+          ),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -318,11 +338,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
         ),
         const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
               SizedBox(
@@ -491,11 +507,19 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
 
   Widget _choiceChip(String label, bool isSelected) {
     return InkWell(
-      onTap: () => setState(() => _missedReason = label),
+      onTap: () {
+        setState(() {
+          if (_selectedTags.contains(label)) {
+            _selectedTags.remove(label);
+          } else {
+            _selectedTags.add(label);
+          }
+        });
+      },
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -517,7 +541,7 @@ class _ItineraryRatingPopupState extends State<ItineraryRatingPopup> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
+            color: isSelected ? Colors.white : const Color(0xFF475569),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
           ),
         ),

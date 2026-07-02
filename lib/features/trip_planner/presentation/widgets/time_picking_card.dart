@@ -172,6 +172,7 @@ class _TimeDropdownField extends StatelessWidget {
         DropdownButtonFormField<String>(
           key: ValueKey(value),
           initialValue: value,
+          isExpanded: true,
           items: options
               .map(
                 (time) => DropdownMenuItem<String>(
@@ -181,16 +182,20 @@ class _TimeDropdownField extends StatelessWidget {
               )
               .toList(),
           onChanged: onChanged,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 20),
           decoration: InputDecoration(
             prefixIcon: const Icon(
               Icons.access_time_rounded,
-              size: 18,
+              size: 16,
               color: AppColors.primary,
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
             ),
             filled: true,
             fillColor: AppColors.inputFill,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: AppColors.inputBorder.withValues(alpha: 0.3)),

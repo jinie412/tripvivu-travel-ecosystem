@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -409,16 +409,27 @@ class _PlaceImageSlideshowState extends State<_PlaceImageSlideshow> {
   @override
   Widget build(BuildContext context) {
     final images = widget.images;
-    final placeholder = Container(color: Color(widget.placeholderColor));
+    final assetPlaceholder = ClipRect(
+      child: Transform.scale(
+        scale: 1.1,
+        child: Image.asset(
+          'assets/images/itinerary_placeholder.png',
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+      ),
+    );
+    final colorPlaceholder = Container(color: Color(widget.placeholderColor));
 
-    if (images.isEmpty) return placeholder;
+    if (images.isEmpty) return assetPlaceholder;
 
     if (images.length == 1) {
       return CachedNetworkImage(
         imageUrl: images[0],
         fit: BoxFit.cover,
-        placeholder: (_, _) => placeholder,
-        errorWidget: (_, _, _) => placeholder,
+        placeholder: (_, _) => colorPlaceholder,
+        errorWidget: (_, _, _) => assetPlaceholder,
       );
     }
 
@@ -432,8 +443,8 @@ class _PlaceImageSlideshowState extends State<_PlaceImageSlideshow> {
           itemBuilder: (_, i) => CachedNetworkImage(
             imageUrl: images[i],
             fit: BoxFit.cover,
-            placeholder: (_, _) => placeholder,
-            errorWidget: (_, _, _) => placeholder,
+            placeholder: (_, _) => colorPlaceholder,
+            errorWidget: (_, _, _) => assetPlaceholder,
           ),
         ),
         Positioned(

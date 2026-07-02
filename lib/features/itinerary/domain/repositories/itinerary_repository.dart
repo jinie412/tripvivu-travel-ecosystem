@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 abstract class ItineraryRepository {
   Future<List<ItineraryEntity>> getItineraries({
@@ -23,6 +24,8 @@ abstract class ItineraryRepository {
     double? actualCost,
     String? userNotes,
     bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
   });
   Future<void> deleteActivity(String itineraryId, String activityId);
 
@@ -41,11 +44,21 @@ abstract class ItineraryRepository {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
   });
 
   Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
     String itineraryId,
     String activityId,
-    String newPlaceId,
+    String newPlaceId, {
+    bool? allowReduceTime,
+    bool? extendTime,
+  });
+
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
+    String itineraryId,
+    Map<String, dynamic> payload,
   );
 }

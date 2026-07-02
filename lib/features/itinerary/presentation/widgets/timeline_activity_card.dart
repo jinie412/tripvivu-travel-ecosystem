@@ -181,6 +181,14 @@ class TimelineActivityCard extends StatelessWidget {
     bool isCompleted = false,
     bool isEditMode = false,
   }) {
+    String _formatTime(String t) {
+      if (t.length >= 5) {
+        return t.substring(0, 5);
+      }
+      return t;
+    }
+    
+    final formattedTime = _formatTime(time);
     final isStartTime = label.contains('Tham quan');
     final isAccommodationStart = _isAccommodationStart;
     return IntrinsicHeight(
@@ -203,7 +211,7 @@ class TimelineActivityCard extends StatelessWidget {
                             vertical: 2,
                           ),
                           child: Text(
-                            time,
+                            formattedTime,
                             style: AppTextStylesExt.bodySmall.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -220,7 +228,7 @@ class TimelineActivityCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         child: Text(
-                          time,
+                          formattedTime,
                           style: AppTextStylesExt.bodySmall.copyWith(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -545,12 +553,16 @@ class TimelineActivityCard extends StatelessWidget {
             else
               Icon(icon, size: 13, color: color),
             const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: color,
-                fontWeight: FontWeight.w800,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

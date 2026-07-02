@@ -97,5 +97,4 @@ const List<String> kMissedLocationReasons = [
   'Địa điểm không như mong đợi',
   'Thời tiết không thuận lợi',
   'Sức khỏe không đảm bảo',
-  'Tìm thấy địa điểm khác thú vị hơn',
 ];

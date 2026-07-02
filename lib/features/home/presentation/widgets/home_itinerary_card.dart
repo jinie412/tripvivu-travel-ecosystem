@@ -145,11 +145,7 @@ class HomeItineraryCard extends StatelessWidget {
     if (gallery.isEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(_radius),
-        child: Container(
-          color: Color(item.placeholderColor),
-          alignment: Alignment.center,
-          child: const Icon(Icons.image, color: Colors.white, size: 40),
-        ),
+        child: _assetPlaceholder(),
       );
     }
 
@@ -185,17 +181,8 @@ class HomeItineraryCard extends StatelessWidget {
                         const BorderRadius.only(bottomRight: r),
                       )
                     : ClipRRect(
-                        borderRadius:
-                            const BorderRadius.only(bottomRight: r),
-                        child: Container(
-                          color: Color(item.placeholderColor)
-                              .withValues(alpha: 0.35),
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.landscape,
-                            color: Colors.white54,
-                          ),
-                        ),
+                        borderRadius: const BorderRadius.only(bottomRight: r),
+                        child: _assetPlaceholder(),
                       ),
               ),
             ],
@@ -213,11 +200,19 @@ class HomeItineraryCard extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
-        errorWidget: (context, url, error) => Container(
-          color: Color(item.placeholderColor).withValues(alpha: 0.75),
-          alignment: Alignment.center,
-          child: const Icon(Icons.broken_image, color: Colors.white),
-        ),
+        errorWidget: (context, url, error) => _assetPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _assetPlaceholder() {
+    return Transform.scale(
+      scale: 1.1,
+      child: Image.asset(
+        'assets/images/itinerary_placeholder.png',
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
       ),
     );
   }

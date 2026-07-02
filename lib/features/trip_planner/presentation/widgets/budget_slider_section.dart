@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/utils/input_formatter.dart';
 
 class BudgetSliderSection extends StatefulWidget {
   final double currentBudget;
@@ -37,9 +38,10 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
     super.initState();
     _unlimited = widget.currentBudget <= 0;
     _focusNode = FocusNode();
-    _controller = TextEditingController(
-      text: _unlimited ? '' : widget.currentBudget.round().toString(),
-    );
+    final initialText = _unlimited 
+        ? '' 
+        : NumberFormat.decimalPattern('vi').format(widget.currentBudget);
+    _controller = TextEditingController(text: initialText);
   }
 
   @override
@@ -47,7 +49,9 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentBudget != widget.currentBudget) {
       _unlimited = widget.currentBudget <= 0;
-      _controller.text = _unlimited ? '' : widget.currentBudget.round().toString();
+      _controller.text = _unlimited 
+          ? '' 
+          : NumberFormat.decimalPattern('vi').format(widget.currentBudget);
     }
   }
 
@@ -61,7 +65,7 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
   void _selectPreset(double value) {
     setState(() {
       _unlimited = false;
-      _controller.text = value.round().toString();
+      _controller.text = NumberFormat.decimalPattern('vi').format(value);
     });
     widget.onChanged(value);
     _focusNode.unfocus();
@@ -81,6 +85,9 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
       if (_unlimited) {
         _controller.clear();
         widget.onChanged(0);
+        _focusNode.unfocus();
+      } else {
+        _focusNode.requestFocus();
       }
     });
   }
@@ -96,21 +103,6 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              'Ngân sách',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         InkWell(
           onTap: _toggleUnlimited,
           borderRadius: BorderRadius.circular(14),
@@ -146,7 +138,10 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
           focusNode: _focusNode,
           // Không disabled — tap vào sẽ tự tắt unlimited qua _onTextFieldTap
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            CurrencyInputFormatter(),
+          ],
           decoration: InputDecoration(
             labelText: 'Ngân sách dự kiến / người',
             hintText: _unlimited ? 'Bấm để nhập ngân sách...' : 'Nhập số tiền',
@@ -172,8 +167,11 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
           ),
           onTap: _onTextFieldTap,
           onChanged: (value) {
-            if (_unlimited) return;
-            final amount = double.tryParse(value) ?? 0;
+            if (_unlimited) {
+              setState(() => _unlimited = false);
+            }
+            final text = value.replaceAll(RegExp(r'\D'), '');
+            final amount = double.tryParse(text) ?? 0;
             widget.onChanged(amount);
           },
         ),

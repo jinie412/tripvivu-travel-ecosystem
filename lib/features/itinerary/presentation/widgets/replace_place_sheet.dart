@@ -108,10 +108,17 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         final newQuery = _searchController.text.trim();
         if (_searchQuery != newQuery) {
           setState(() => _searchQuery = newQuery);
-          _loadNearbyPlaces(q: newQuery);
+          _loadNearbyPlaces(q: newQuery.isEmpty ? null : newQuery);
         }
       }
     });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    setState(() => _searchQuery = '');
+    _loadNearbyPlaces(); // reload gợi ý ban đầu (q = null)
   }
 
   @override
@@ -254,10 +261,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                 currentActivity: widget.currentActivity,
                 searchController: _searchController,
                 searchQuery: _searchQuery,
-                onClearSearch: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
+                onClearSearch: _clearSearch,
                 onClose: () => Navigator.pop(context),
               ),
               Expanded(
@@ -389,8 +393,9 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                           rating: fav.rating,
                           reviewCount: fav.reviewCount,
                           imageUrl: fav.image,
-                          latitude: widget.currentActivity.latitude,
-                          longitude: widget.currentActivity.longitude,
+                          // FavoritePlaceEntity không có tọa độ riêng
+                          latitude: null,
+                          longitude: null,
                         );
                         Navigator.pop(ctx);
                         await _onSelect(place);

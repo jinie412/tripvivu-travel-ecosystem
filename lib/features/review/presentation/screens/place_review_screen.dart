@@ -15,6 +15,7 @@ import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_
 import 'package:travel_advisor_mobile/features/review/presentation/utils/review_media_picker.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/review_media_list.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/star_rating_input.dart';
+import 'package:travel_advisor_mobile/features/review/domain/entities/location_review_entity.dart';
 
 class PlaceReviewScreen extends StatefulWidget {
   final String locationId;
@@ -50,15 +51,23 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
     super.initState();
     final state = widget.reviewCubit.state;
     if (state is ReviewLoaded) {
-      final loc = state.itinerary.locations.firstWhere(
-        (l) => l.id == widget.locationId,
+      final loc = state.itinerary.locations.cast<LocationReviewEntity?>().firstWhere(
+        (l) => l?.id == widget.locationId,
+        orElse: () => null,
       );
-      _rating = loc.rating ?? 0.0;
-      _reviewController = TextEditingController(text: loc.reviewText ?? '');
-      _mediaItems = List<ReviewMediaItem>.from(
-        state.locationMediaByDetailId[widget.locationId] ?? const [],
-      );
-      _selectedTags = List<String>.from(loc.reviewTags ?? []);
+      if (loc == null) {
+        _rating = 0.0;
+        _reviewController = TextEditingController();
+        _mediaItems = [];
+        _selectedTags = [];
+      } else {
+        _rating = loc.rating ?? 0.0;
+        _reviewController = TextEditingController(text: loc.reviewText ?? '');
+        _mediaItems = List<ReviewMediaItem>.from(
+          state.locationMediaByDetailId[widget.locationId] ?? const [],
+        );
+        _selectedTags = List<String>.from(loc.reviewTags ?? []);
+      }
     } else {
       _rating = 0.0;
       _reviewController = TextEditingController();
@@ -265,9 +274,11 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       builder: (context, state) {
         if (state is! ReviewLoaded) return const Scaffold();
 
-        final location = state.itinerary.locations.firstWhere(
-          (l) => l.id == widget.locationId,
+        final location = state.itinerary.locations.cast<LocationReviewEntity?>().firstWhere(
+          (l) => l?.id == widget.locationId,
+          orElse: () => null,
         );
+        if (location == null) return const Scaffold();
 
         return Scaffold(
           backgroundColor: Colors.white,

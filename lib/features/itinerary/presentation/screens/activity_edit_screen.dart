@@ -70,7 +70,7 @@ class ActivityEditScreen extends StatelessWidget {
         body: BlocConsumer<ActivityEditCubit, ActivityEditState>(
           listener: (context, state) {
             if (state is ActivityEditConflictDetected) {
-              _showConflictResolutionSheet(context);
+              _showConflictResolutionSheet(context, state);
             }
             if (state is ActivityEditSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -183,13 +183,30 @@ class ActivityEditScreen extends StatelessWidget {
     );
   }
 
-  void _showConflictResolutionSheet(BuildContext context) {
+  void _showConflictResolutionSheet(
+    BuildContext context,
+    ActivityEditConflictDetected state,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ConflictResolutionSheet(
-        onSelect: () => context.read<ActivityEditCubit>().resolveConflict(2),
+        canExtend: state.canExtend,
+        canReduce: state.canReduce,
+        canAddDay: state.canAddDay,
+        onSelect: (option) {
+          Navigator.pop(context); // Close sheet
+          if (option == 1) {
+            context.read<ActivityEditCubit>().resolveConflict(extendTime: true);
+          } else if (option == 2) {
+            context.read<ActivityEditCubit>().resolveConflict(allowReduceTime: true);
+          }
+          // Note: Add Day is usually for addActivity, but if returned here:
+          else if (option == 3) {
+            // Not handled in updateActivity usually
+          }
+        },
       ),
     );
   }

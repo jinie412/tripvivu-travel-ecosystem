@@ -29,7 +29,7 @@
         </intent>
     </queries>
     <application
-        android:label="travel_advisor_mobile"
+        android:label="Tripvivu"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">

@@ -38,8 +38,8 @@ class PublicVisibilitySwitch extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.only(
-        left: compact ? 7 : 8,
-        right: compact ? 0 : 2,
+        left: compact ? 8 : 10,
+        right: compact ? 4 : 6,
         top: compact ? 3 : 4,
         bottom: compact ? 3 : 4,
       ),
@@ -53,31 +53,35 @@ class PublicVisibilitySwitch extends StatelessWidget {
         children: [
           Icon(
             value ? Icons.public_rounded : Icons.lock_outline_rounded,
-            size: compact ? 12 : 13,
+            size: compact ? 12 : 14,
             color: value ? switchColor : secondary,
           ),
           const SizedBox(width: 4),
           Text(
             value ? 'Công khai' : 'Riêng tư',
             style: TextStyle(
-              fontSize: compact ? 9 : 10,
+              fontSize: compact ? 10 : 11,
               fontWeight: FontWeight.w900,
               color: foreground,
             ),
           ),
-          SizedBox(width: compact ? 0 : 2),
-          Transform.scale(
-            scale: compact ? 0.52 : 0.62,
-            child: Switch.adaptive(
-              value: value,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              activeThumbColor: switchColor,
-              activeTrackColor: switchColor.withValues(alpha: 0.34),
-              inactiveThumbColor: dark ? Colors.white : const Color(0xFFCBD5E1),
-              inactiveTrackColor: dark
-                  ? Colors.white.withValues(alpha: 0.24)
-                  : const Color(0xFFE2E8F0),
-              onChanged: onChanged,
+          SizedBox(width: compact ? 4 : 6),
+          SizedBox(
+            width: compact ? 30 : 34,
+            height: compact ? 18 : 22,
+            child: FittedBox(
+              fit: BoxFit.fill,
+              child: Switch.adaptive(
+                value: value,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                activeThumbColor: switchColor,
+                activeTrackColor: switchColor.withValues(alpha: 0.34),
+                inactiveThumbColor: dark ? Colors.white : const Color(0xFFCBD5E1),
+                inactiveTrackColor: dark
+                    ? Colors.white.withValues(alpha: 0.24)
+                    : const Color(0xFFE2E8F0),
+                onChanged: onChanged,
+              ),
             ),
           ),
         ],

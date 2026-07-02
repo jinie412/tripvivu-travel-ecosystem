@@ -7,6 +7,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 /// Implementation cụ thể của [ItineraryRepository].
 ///
@@ -89,6 +90,8 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
     double? actualCost,
     String? userNotes,
     bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
   }) {
     return _dataSource.updateActivity(
       itineraryId,
@@ -98,6 +101,8 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       actualCost: actualCost,
       userNotes: userNotes,
       isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
     );
   }
 
@@ -136,6 +141,9 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
   }) {
     return _dataSource.addActivityToItinerary(
       itineraryId,
@@ -143,6 +151,9 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       placeId,
       preferredTime: preferredTime,
       isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+      addExtraDay: addExtraDay,
     );
   }
 
@@ -150,12 +161,28 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
     String itineraryId,
     String activityId,
-    String newPlaceId,
-  ) {
+    String newPlaceId, {
+    bool? allowReduceTime,
+    bool? extendTime,
+  }) {
     return _dataSource.replaceActivityInItinerary(
       itineraryId,
       activityId,
       newPlaceId,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+    );
+  }
+
+  @override
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
+    String itineraryId,
+    Map<String, dynamic> payload,
+  ) async {
+    final result = await _dataSource.optimizeDay(itineraryId, payload);
+    return (
+      optimized: result.optimized.map((m) => m.toEntity()).toList(),
+      reorderNotes: result.reorderNotes,
     );
   }
 }

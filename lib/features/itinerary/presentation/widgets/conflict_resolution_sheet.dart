@@ -3,9 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 
 class ConflictResolutionSheet extends StatelessWidget {
-  final VoidCallback onSelect;
+  final bool canExtend;
+  final bool canReduce;
+  final bool canAddDay;
+  final void Function(int) onSelect;
 
-  const ConflictResolutionSheet({super.key, required this.onSelect});
+  const ConflictResolutionSheet({
+    super.key,
+    required this.canExtend,
+    required this.canReduce,
+    required this.canAddDay,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +55,7 @@ class ConflictResolutionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Lịch trình của bạn đang gặp xung đột về thời gian tại Dinh Độc Lập.',
+              'Lịch trình của bạn đã quá tải.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18, 
@@ -57,50 +66,57 @@ class ConflictResolutionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '“Chúng tôi gợi ý bạn nên chọn Phương án C để có thời gian nghỉ ngơi tốt hơn.”',
+              'Thời gian hoạt động trong ngày đã hết. Vui lòng chọn một trong các phương án sau:',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13, 
                 color: Color(0xFF64748B), 
-                fontStyle: FontStyle.italic,
               ),
             ),
             const SizedBox(height: 32),
-            _optionCard(
-              context,
-              'A',
-              'Giữ nguyên & Tối ưu lộ trình',
-              '+15p di chuyển',
-              const Color(0xFFEFF6FF),
-              const Color(0xFF2563EB),
-              'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=400&q=80', // Map preview mock
-            ),
-            const SizedBox(height: 16),
-            _optionCard(
-              context,
-              'B',
-              'Bỏ qua điểm này',
-              'Tiết kiệm 45.000₫',
-              const Color(0xFFECFDF5),
-              const Color(0xFF10B981),
-              'https://images.unsplash.com/photo-1580519542036-c47de6196ba5?w=400&q=80', // Coin/Money mock
-            ),
-            const SizedBox(height: 16),
-            _optionCard(
-              context,
-              'C',
-              'Dời sang Ngày 2',
-              'Lịch trình cân bằng',
-              const Color(0xFFEFF6FF),
-              const Color(0xFF2563EB),
-              'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&q=80', // Zen/Balance mock
-              isRecommended: true,
-            ),
-            const SizedBox(height: 24),
+            if (canExtend) ...[
+              _optionCard(
+                context,
+                '1',
+                'Kéo dài thời gian trong ngày',
+                'Cho phép thêm thời gian',
+                const Color(0xFFEFF6FF),
+                const Color(0xFF2563EB),
+                null,
+                onTap: () => onSelect(1),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (canReduce) ...[
+              _optionCard(
+                context,
+                '2',
+                'Giảm giờ tham quan các nơi khác',
+                'Tối ưu lại thời gian',
+                const Color(0xFFECFDF5),
+                const Color(0xFF10B981),
+                null,
+                onTap: () => onSelect(2),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (canAddDay) ...[
+              _optionCard(
+                context,
+                '3',
+                'Thêm 1 ngày vào lịch trình',
+                'Kéo dài chuyến đi',
+                const Color(0xFFFEE2E2),
+                const Color(0xFFEF4444),
+                null,
+                onTap: () => onSelect(3),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Bỏ qua tất cả gợi ý',
+              onPressed: () => onSelect(0),
+              child: const Text(
+                'Hủy bỏ chỉnh sửa',
                 style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
               ),
             ),
@@ -114,77 +130,82 @@ class ConflictResolutionSheet extends StatelessWidget {
     BuildContext context,
     String id,
     String title,
-    String tag,
-    Color tagBg,
-    Color tagText,
-    String imageUrl, {
+    String subtitle,
+    Color bgColor,
+    Color iconColor,
+    String? imageUrl, {
     bool isRecommended = false,
+    VoidCallback? onTap,
   }) {
-    Widget card = Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isRecommended ? AppColors.primary : const Color(0xFFF1F5F9),
-          width: isRecommended ? 2 : 1,
+    Widget card = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isRecommended ? AppColors.primary : const Color(0xFFF1F5F9),
+            width: isRecommended ? 2 : 1,
+          ),
+          boxShadow: [
+            if (isRecommended)
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
         ),
-        boxShadow: [
-          if (isRecommended)
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isRecommended ? AppColors.primary : const Color(0xFFF1F5F9),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                id,
-                style: TextStyle(
-                  color: isRecommended ? Colors.white : const Color(0xFF64748B),
-                  fontWeight: FontWeight.bold,
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isRecommended ? AppColors.primary : const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  id,
+                  style: TextStyle(
+                    color: isRecommended ? Colors.white : const Color(0xFF64748B),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF1E293B),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
+                  const SizedBox(height: 6),
+                  _tag(subtitle, bgColor, iconColor),
+                ],
+              ),
+            ),
+            if (imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  imageUrl,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 6),
-                _tag(tag, tagBg, tagText),
-              ],
-            ),
-          ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              imageUrl,
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
 
@@ -225,7 +246,7 @@ class ConflictResolutionSheet extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: onSelect,
+      onTap: () => onSelect(0),
       child: card,
     );
   }

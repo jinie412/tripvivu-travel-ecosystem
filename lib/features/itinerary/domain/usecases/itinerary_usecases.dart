@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
 /// UseCase: Lấy danh sách lịch trình (có thể lọc theo status).
 class GetItinerariesUseCase {
@@ -88,6 +89,8 @@ class UpdateActivityUseCase {
     double? actualCost,
     String? userNotes,
     bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
   }) {
     return _repository.updateActivity(
       itineraryId,
@@ -97,6 +100,8 @@ class UpdateActivityUseCase {
       actualCost: actualCost,
       userNotes: userNotes,
       isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
     );
   }
 }
@@ -130,6 +135,16 @@ class AddActivityUseCase {
       preferredTime: preferredTime,
       isLocked: isLocked,
     );
+  }
+}
+
+/// UseCase: Tối ưu hoá cục bộ một ngày (không lưu DB).
+class OptimizeDayUseCase {
+  final ItineraryRepository _repository;
+  OptimizeDayUseCase(this._repository);
+
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> call(String itineraryId, Map<String, dynamic> payload) {
+    return _repository.optimizeDay(itineraryId, payload);
   }
 }
 

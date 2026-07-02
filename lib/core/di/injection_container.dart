@@ -182,6 +182,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateItineraryTitleUseCase(sl()));
   sl.registerLazySingleton(() => UpdateActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteActivityUseCase(sl()));
+  sl.registerLazySingleton(() => AddActivityUseCase(sl()));
+  sl.registerLazySingleton(() => ReplaceActivityUseCase(sl()));
+  sl.registerLazySingleton(() => OptimizeDayUseCase(sl()));
   sl.registerFactory(
     () => ItineraryCubit(
       getItineraries: sl(),
@@ -192,6 +195,7 @@ Future<void> initDependencies() async {
       updateTitle: sl(),
       toggleVisibility: sl(),
       deleteActivity: sl(),
+      optimizeDayUseCase: sl(),
     ),
   );
 

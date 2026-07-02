@@ -11,6 +11,7 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_d
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/core/error/conflict_exception.dart';
 
 abstract class ItineraryDataSource {
   Future<List<ItineraryModel>> getItineraries({String? query});
@@ -26,6 +27,8 @@ abstract class ItineraryDataSource {
     double? actualCost,
     String? userNotes,
     bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
   });
   Future<void> deleteActivity(String itineraryId, String activityId);
 
@@ -41,11 +44,21 @@ abstract class ItineraryDataSource {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
   });
   Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
     String itineraryId,
     String activityId,
-    String newPlaceId,
+    String newPlaceId, {
+    bool? allowReduceTime,
+    bool? extendTime,
+  });
+
+  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})> optimizeDay(
+    String itineraryId,
+    Map<String, dynamic> payload,
   );
 }
 
@@ -138,6 +151,8 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     double? actualCost,
     String? userNotes,
     bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
   }) async {
     final headers = await _authHeaders();
     final body = <String, dynamic>{};
@@ -146,12 +161,18 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (actualCost != null) body['actualCost'] = actualCost;
     if (userNotes != null) body['userNotes'] = userNotes;
     if (isLocked != null) body['isLocked'] = isLocked;
+    if (allowReduceTime != null) body['allowReduceTime'] = allowReduceTime;
+    if (extendTime != null) body['extendTime'] = extendTime;
 
     final res = await http.patch(
       Uri.parse('$baseUrl/itinerary/$itineraryId/activities/$activityId'),
       headers: headers,
       body: jsonEncode(body),
     );
+    if (res.statusCode == 409) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ConflictException.fromJson(data);
+    }
     if (res.statusCode != 200) {
       throw Exception(
         'Failed to update activity: ${res.statusCode}\n${res.body}',
@@ -220,7 +241,11 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
             .map(
               (act) => {
                 'id': act.id,
-                'placeId': act.placeId ?? act.id,
+                // Chỉ gửi placeId nếu có giá trị hợp lệ (UUID từ DB).
+                // Không fallback sang act.id vì act.id có thể là timestamp tạm thời
+                // → gây FK constraint violation khi backend INSERT.
+                if (act.placeId != null && act.placeId!.isNotEmpty)
+                  'placeId': act.placeId,
                 'startTime': act.startTime,
                 'endTime': act.endTime,
               },
@@ -269,7 +294,16 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       if (id is String && id.isNotEmpty) return id;
       throw Exception('Response tạo lịch trình không có id hợp lệ');
     }
-    throw Exception('Tạo lịch trình thất bại: ${res.statusCode}\n${res.body}');
+    String errMsg = 'Tạo lịch trình thất bại: ${res.statusCode}';
+    try {
+      final errBody = jsonDecode(res.body);
+      if (errBody['message'] != null) {
+        errMsg = errBody['message'].toString();
+      }
+    } catch (_) {
+      errMsg = '$errMsg\n${res.body}';
+    }
+    throw Exception(errMsg);
   }
 
   @override
@@ -279,7 +313,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
-    bool allowReduceTime = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
   }) async {
     final headers = await _authHeaders();
     final body = {
@@ -287,7 +323,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       'dayNumber': dayNumber,
       if (preferredTime != null) 'preferredTime': preferredTime,
       'isLocked': isLocked,
-      'allowReduceTime': allowReduceTime,
+      if (allowReduceTime != null) 'allowReduceTime': allowReduceTime,
+      if (extendTime != null) 'extendTime': extendTime,
+      if (addExtraDay != null) 'addExtraDay': addExtraDay,
     };
 
     final res = await http.post(
@@ -300,6 +338,10 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return CustomizeActivityResponseModel.fromJson(data);
     }
+    if (res.statusCode == 409) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ConflictException.fromJson(data);
+    }
     throw Exception('Failed to add activity: ${res.statusCode}\n${res.body}');
   }
 
@@ -307,11 +349,15 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
     String itineraryId,
     String activityId,
-    String newPlaceId,
-  ) async {
+    String newPlaceId, {
+    bool? allowReduceTime,
+    bool? extendTime,
+  }) async {
     final headers = await _authHeaders();
     final body = {
       'newPlaceId': newPlaceId,
+      if (allowReduceTime != null) 'allowReduceTime': allowReduceTime,
+      if (extendTime != null) 'extendTime': extendTime,
     };
 
     final res = await http.patch(
@@ -323,6 +369,10 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return CustomizeActivityResponseModel.fromJson(data);
+    }
+    if (res.statusCode == 409) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ConflictException.fromJson(data);
     }
     throw Exception('Failed to replace activity: ${res.statusCode}\n${res.body}');
   }
@@ -452,5 +502,48 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       }
     }
     return const [];
+  }
+
+  @override
+  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})> optimizeDay(
+    String itineraryId,
+    Map<String, dynamic> payload,
+  ) async {
+    final headers = await _authHeaders();
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary/optimize-day'),
+      headers: headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final data = jsonDecode(res.body);
+      final optimized = data['optimized'] as List;
+      final reorderNotes = (data['reorderNotes'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      return (
+        optimized: optimized
+            .map((json) => ItineraryActivityModel.fromJson(json))
+            .toList(),
+        reorderNotes: reorderNotes,
+      );
+    }
+    if (res.statusCode == 409) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ConflictException.fromJson(data);
+    }
+    
+    try {
+      final data = jsonDecode(res.body);
+      if (data['message'] == 'SCHEDULE_FULL') {
+        throw Exception('Lịch trình đã quá kín, không thể giảm thêm thời gian.');
+      }
+      if (data['message'] != null) {
+        throw Exception(data['message']);
+      }
+    } on FormatException catch (_) {
+      // Bỏ qua lỗi parse JSON để ném lỗi mặc định bên dưới
+    }
+    
+    throw Exception('Failed to optimize day: ${res.statusCode}');
   }
 }

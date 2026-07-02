@@ -85,10 +85,20 @@ class ReviewItineraryCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                NetImage(
-                  url: itinerary.imageUrl,
-                  placeholderColor: AppColors.blobMedium.toARGB32(),
-                ),
+                (itinerary.imageUrl.isNotEmpty)
+                    ? NetImage(
+                        url: itinerary.imageUrl,
+                        placeholderColor: AppColors.blobMedium.toARGB32(),
+                      )
+                    : Transform.scale(
+                        scale: 1.1,
+                        child: Image.asset(
+                          'assets/images/itinerary_placeholder.png',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
                 Container(color: Colors.black.withValues(alpha: 0.3)),
                 Padding(
                   padding: const EdgeInsets.all(16),

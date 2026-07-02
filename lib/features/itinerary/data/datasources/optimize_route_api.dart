@@ -4,7 +4,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:dio/dio.dart';
 
 class OptimizeRouteApi {
-  static Future<List<ItineraryActivityEntity>> optimizeDay(
+  static Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
     List<ItineraryActivityEntity> activities, {
     String? dailyStartTime,
     String? dailyEndTime,
@@ -16,7 +16,7 @@ class OptimizeRouteApi {
     /// (chợ đêm mở tối, bãi biển mở sáng, v.v.)
     String? visitDate,
   }) async {
-    if (activities.length <= 1) return activities;
+    if (activities.length <= 1) return (optimized: activities, reorderNotes: <String>[]);
 
     try {
       final client = sl<DioClient>();
@@ -66,12 +66,14 @@ class OptimizeRouteApi {
       final response = await client.dio.post('/itinerary/optimize-day', data: payload);
       
       final data = response.data['optimized'] as List;
-      if (data.isEmpty) return [];
+      final reorderNotes = (response.data['reorderNotes'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      
+      if (data.isEmpty) return (optimized: <ItineraryActivityEntity>[], reorderNotes: <String>[]);
 
       // Build lookup map để tra nhanh bằng id
       final originalMap = {for (final a in activities) a.id: a};
 
-      return data.map((json) {
+      final mappedOptimized = data.map((json) {
         final String id = json['id'] ?? '';
         final original = originalMap[id];
 
@@ -96,12 +98,14 @@ class OptimizeRouteApi {
           transportInfo: json['transportInfo'] ?? original.transportInfo,
         );
       }).toList();
+      
+      return (optimized: mappedOptimized, reorderNotes: reorderNotes);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 400 && e.response?.data?['message'] == 'SCHEDULE_FULL') {
         throw Exception('SCHEDULE_FULL');
       }
       print('Error optimizing route: $e');
-      return activities;
+      return (optimized: activities, reorderNotes: <String>[]);
     }
   }
 }
