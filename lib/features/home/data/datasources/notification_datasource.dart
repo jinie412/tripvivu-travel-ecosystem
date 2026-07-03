@@ -7,6 +7,11 @@ abstract class NotificationDataSource {
   Future<NotificationModel> getNotificationDetail(String id);
   Future<NotificationModel> markAsRead(String id);
   Future<void> markAllAsRead();
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  });
 }
 
 class MockNotificationDataSource implements NotificationDataSource {
@@ -96,6 +101,13 @@ class MockNotificationDataSource implements NotificationDataSource {
 
   @override
   Future<void> markAllAsRead() async {}
+
+  @override
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  }) async {}
 }
 
 class RemoteNotificationDataSource implements NotificationDataSource {
@@ -147,6 +159,23 @@ class RemoteNotificationDataSource implements NotificationDataSource {
     await _client.dio.patch(
       '/notifications/read-all',
       queryParameters: {'tourist_id': touristId},
+    );
+  }
+
+  @override
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  }) async {
+    final touristId = await AuthUtils.requireCurrentUserId();
+    await _client.dio.post(
+      '/itinerary/$itineraryId/share/respond',
+      data: {
+        'userId': touristId,
+        'notificationId': notificationId,
+        'action': accept ? 'accept' : 'reject',
+      },
     );
   }
 

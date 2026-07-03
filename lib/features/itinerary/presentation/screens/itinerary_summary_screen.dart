@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
@@ -15,6 +17,7 @@ import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
@@ -186,8 +189,11 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           Navigator.push(
             ctx,
             MaterialPageRoute(
-              builder: (_) =>
-                  FoodMenuScreen(placeId: placeId, restaurantName: name, itineraryDetailId: detailId),
+              builder: (_) => FoodMenuScreen(
+                placeId: placeId,
+                restaurantName: name,
+                itineraryDetailId: detailId,
+              ),
             ),
           );
         },
@@ -256,6 +262,16 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           ),
           centerTitle: true,
           actions: [
+            Container(
+              margin: EdgeInsets.only(
+                right: itin.isPublic || canReview ? 8 : 16,
+              ),
+              alignment: Alignment.center,
+              child: _floatingCircleButton(
+                Icons.share_outlined,
+                () => _showShareSheet(context, itin),
+              ),
+            ),
             if (itin.isPublic)
               Container(
                 margin: EdgeInsets.only(right: canReview ? 8 : 16),
@@ -274,21 +290,17 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
               Container(
                 margin: const EdgeInsets.only(right: 16),
                 alignment: Alignment.center,
-                child: _floatingCircleButton(
-                  Icons.stars_rounded,
-                  () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => ItineraryRatingPopup(
-                        itineraryId: itin.id,
-                        itineraryTitle: itin.title,
-                        totalLocations: totalVisitCount,
-                        visitedLocations: visitedVisitCount,
-                      ),
-                    );
-                  },
-                  iconColor: const Color(0xFF10B981),
-                ),
+                child: _floatingCircleButton(Icons.stars_rounded, () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => ItineraryRatingPopup(
+                      itineraryId: itin.id,
+                      itineraryTitle: itin.title,
+                      totalLocations: totalVisitCount,
+                      visitedLocations: visitedVisitCount,
+                    ),
+                  );
+                }, iconColor: const Color(0xFF10B981)),
               ),
           ],
         ),
@@ -538,112 +550,112 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           bottom: 32,
         ),
         child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'ĐIỂM ĐẾN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 2.0,
-                        ),
-                      ),
-                    ),
-                    PublicVisibilitySwitch(
-                      value: itin.isPublic,
-                      dark: true,
-                      borderless: true,
-                      compact: true,
-                      onChanged: (value) =>
-                          _confirmVisibilityChange(context, itin, value),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  itin.destination,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    height: 1.1,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: () => _showEditTitleDialog(context, itin),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            itin.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withValues(alpha: 0.95),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      Expanded(
+                        child: Text(
+                          'ĐIỂM ĐẾN',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.0,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.edit_rounded,
-                          size: 16,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ],
+                      ),
+                      PublicVisibilitySwitch(
+                        value: itin.isPublic,
+                        dark: true,
+                        borderless: true,
+                        compact: true,
+                        onChanged: (value) =>
+                            _confirmVisibilityChange(context, itin, value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    itin.destination,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.1,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () => _showEditTitleDialog(context, itin),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              itin.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.95),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _summaryInfoPill(
-                      Icons.route_rounded,
-                      '$visitedVisitCount/$totalVisitCount địa điểm',
-                    ),
-                    _summaryInfoPill(
-                      Icons.calendar_month_rounded,
-                      _formatFullDateRange(itin.startDate, itin.endDate),
-                    ),
-                    if ((itin.tripIntent ?? '').trim().isNotEmpty)
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
                       _summaryInfoPill(
-                        Icons.local_offer_outlined,
-                        itin.tripIntent!.trim(),
+                        Icons.route_rounded,
+                        '$visitedVisitCount/$totalVisitCount địa điểm',
                       ),
-                  ],
-                ),
-              ],
+                      _summaryInfoPill(
+                        Icons.calendar_month_rounded,
+                        _formatFullDateRange(itin.startDate, itin.endDate),
+                      ),
+                      if ((itin.tripIntent ?? '').trim().isNotEmpty)
+                        _summaryInfoPill(
+                          Icons.local_offer_outlined,
+                          itin.tripIntent!.trim(),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -785,15 +797,11 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFE2E8F0),
-                    ),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFE2E8F0),
-                    ),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -869,6 +877,365 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showShareSheet(BuildContext context, ItineraryDetailEntity itin) {
+    final controller = TextEditingController();
+    final cubit = context.read<ItineraryCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    var isSubmitting = false;
+    var isCreatingLink = false;
+    String? errorText;
+    ItineraryShareLink? shareLink;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          Future<ItineraryShareLink?> ensureShareLink() async {
+            if (shareLink != null) return shareLink;
+            setModalState(() => isCreatingLink = true);
+            try {
+              final created = await cubit.createShareLink(itin.id);
+              setModalState(() {
+                shareLink = created;
+                isCreatingLink = false;
+              });
+              return created;
+            } catch (e) {
+              if (sheetContext.mounted) {
+                setModalState(() => isCreatingLink = false);
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Không thể tạo link chia sẻ: ${e.toString().replaceFirst('Exception: ', '')}',
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              return null;
+            }
+          }
+
+          Future<void> copyShareLink() async {
+            final link = await ensureShareLink();
+            if (link == null) return;
+            await Clipboard.setData(ClipboardData(text: link.message));
+            messenger
+              ..clearSnackBars()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('Đã sao chép link mời tham gia lịch trình'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          }
+
+          Future<void> openSocialShare(String channel) async {
+            final link = await ensureShareLink();
+            if (link == null) return;
+            await Clipboard.setData(ClipboardData(text: link.message));
+
+            Uri? uri;
+            if (channel == 'facebook') {
+              uri = Uri.parse(
+                'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(link.deepLink)}',
+              );
+            } else if (channel == 'zalo') {
+              uri = Uri.parse(
+                'https://zalo.me/share?u=${Uri.encodeComponent(link.deepLink)}',
+              );
+            } else if (channel == 'tiktok') {
+              uri = Uri.parse('tiktok://');
+            }
+
+            if (uri != null && await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Đã sao chép link. Bạn có thể dán vào ứng dụng muốn chia sẻ.',
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+
+          Future<void> submit() async {
+            final recipient = controller.text.trim();
+            if (recipient.isEmpty) {
+              setModalState(
+                () => errorText = 'Vui lòng nhập email hoặc số điện thoại',
+              );
+              return;
+            }
+
+            setModalState(() {
+              isSubmitting = true;
+              errorText = null;
+            });
+
+            try {
+              await cubit.shareItinerary(itin.id, recipient);
+              if (!sheetContext.mounted) return;
+              Navigator.pop(sheetContext);
+              messenger.clearSnackBars();
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Đã gửi lời mời chia sẻ lịch trình'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } catch (e) {
+              if (!sheetContext.mounted) return;
+              final message = e.toString().replaceFirst('Exception: ', '');
+              setModalState(() {
+                isSubmitting = false;
+                errorText = message.isEmpty
+                    ? 'Người dùng không tồn tại, vui lòng kiểm tra lại'
+                    : message;
+              });
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: const [
+                      Icon(Icons.ios_share_rounded, color: Color(0xFF2563EB)),
+                      SizedBox(width: 10),
+                      Text(
+                        'Chia sẻ lịch trình',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    itin.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Mời trực tiếp',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF0F172A),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.send,
+                    enabled: !isSubmitting,
+                    onSubmitted: (_) => submit(),
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setModalState(() => errorText = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Nhập email hoặc số điện thoại',
+                      prefixIcon: const Icon(Icons.person_add_alt_1_rounded),
+                      errorText: errorText,
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF2563EB),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: isSubmitting ? null : submit,
+                      icon: isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded),
+                      label: Text(isSubmitting ? 'Đang gửi...' : 'Chia sẻ'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFF93C5FD),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  const Divider(height: 1),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Chia sẻ link qua mạng xã hội',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (isCreatingLink)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _shareChannelButton(
+                        icon: Icons.link_rounded,
+                        label: 'Copy',
+                        color: const Color(0xFF475569),
+                        onTap: isCreatingLink ? null : copyShareLink,
+                      ),
+                      _shareChannelButton(
+                        icon: Icons.facebook_rounded,
+                        label: 'Facebook',
+                        color: const Color(0xFF1877F2),
+                        onTap: isCreatingLink
+                            ? null
+                            : () => openSocialShare('facebook'),
+                      ),
+                      _shareChannelButton(
+                        icon: Icons.chat_bubble_rounded,
+                        label: 'Zalo',
+                        color: const Color(0xFF0068FF),
+                        onTap: isCreatingLink
+                            ? null
+                            : () => openSocialShare('zalo'),
+                      ),
+                      _shareChannelButton(
+                        icon: Icons.music_note_rounded,
+                        label: 'TikTok',
+                        color: const Color(0xFF111827),
+                        onTap: isCreatingLink
+                            ? null
+                            : () => openSocialShare('tiktok'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Người nhận bấm link sẽ mở app nếu đã cài. Fallback CH Play sẽ cấu hình sau khi app được phát hành.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).whenComplete(controller.dispose);
+  }
+
+  Widget _shareChannelButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: onTap == null ? 0.06 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color.withValues(alpha: 0.9)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1111,154 +1478,157 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _BudgetMetric(
-            label:
-                'Chi ph\u00ed \u01b0\u1edbc t\u00ednh to\u00e0n l\u1ecbch tr\u00ecnh',
-            value: estimatedLabel,
-            icon: Icons.receipt_long_rounded,
-            color: const Color(0xFF10B981),
-            fullWidth: true,
-          ),
-          if (itin.hotelCost > 0 || itin.transportCost > 0) ...[
-            const SizedBox(height: 12),
-            _BudgetMetric(
-              label: itin.durationDays > 0
-                  ? 'L\u01b0u tr\u00fa (${formatter.format(itin.hotelCost / itin.durationDays)} ${itin.currency}/ng\u00e0y)'
-                  : 'L\u01b0u tr\u00fa',
-              value: itin.hotelCost > 0
-                  ? '${formatter.format(itin.hotelCost)} ${itin.currency}'
-                  : '\u0110ang c\u1eadp nh\u1eadt',
-              icon: Icons.hotel_rounded,
-              color: const Color(0xFF0F766E),
-              fullWidth: true,
-            ),
-            const SizedBox(height: 12),
-            _BudgetMetric(
-              label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
-              value: itin.transportCost > 0
-                  ? '${formatter.format(itin.transportCost)} ${itin.currency}'
-                  : '\u0110ang c\u1eadp nh\u1eadt',
-              icon: Icons.two_wheeler_rounded,
-              color: const Color(0xFF2563EB),
-              fullWidth: true,
-            ),
-            if (itin.rideHailingTransportCost > 0) ...[
-              const SizedBox(height: 12),
-              _BudgetMetric(
-                label: 'Be/Grab tham kh\u1ea3o',
-                value:
-                    '${formatter.format(itin.rideHailingTransportCost)} ${itin.currency}',
-                icon: Icons.local_taxi_rounded,
-                color: const Color(0xFF7C3AED),
+                label:
+                    'Chi ph\u00ed \u01b0\u1edbc t\u00ednh to\u00e0n l\u1ecbch tr\u00ecnh',
+                value: estimatedLabel,
+                icon: Icons.receipt_long_rounded,
+                color: const Color(0xFF10B981),
                 fullWidth: true,
               ),
-            ],
-          ],
-          const SizedBox(height: 18),
-          if (estimatedCost > 0) ...[
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Chi ph\u00ed \u0111\u00e3 chi',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF475569),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+              if (itin.hotelCost > 0 || itin.transportCost > 0) ...[
+                const SizedBox(height: 12),
+                _BudgetMetric(
+                  label: itin.durationDays > 0
+                      ? 'L\u01b0u tr\u00fa (${formatter.format(itin.hotelCost / itin.durationDays)} ${itin.currency}/ng\u00e0y)'
+                      : 'L\u01b0u tr\u00fa',
+                  value: itin.hotelCost > 0
+                      ? '${formatter.format(itin.hotelCost)} ${itin.currency}'
+                      : '\u0110ang c\u1eadp nh\u1eadt',
+                  icon: Icons.hotel_rounded,
+                  color: const Color(0xFF0F766E),
+                  fullWidth: true,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: Text(
-                    spentLabel,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFB45309),
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                const SizedBox(height: 12),
+                _BudgetMetric(
+                  label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
+                  value: itin.transportCost > 0
+                      ? '${formatter.format(itin.transportCost)} ${itin.currency}'
+                      : '\u0110ang c\u1eadp nh\u1eadt',
+                  icon: Icons.two_wheeler_rounded,
+                  color: const Color(0xFF2563EB),
+                  fullWidth: true,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Stack(
-              children: [
-                Container(
-                  height: 12,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOut,
-                      height: 12,
-                      width: constraints.maxWidth * spentProgress,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF59E0B),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${costSnapshot.visitedCount}/${costSnapshot.totalVisitCount} \u0111\u1ecba \u0111i\u1ec3m \u0111\u00e3 ghi nh\u1eadn chi ph\u00ed',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ] else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.all_inclusive_rounded,
-                    size: 18,
-                    color: Color(0xFF2563EB),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Ch\u01b0a c\u00f3 d\u1eef li\u1ec7u chi ph\u00ed \u01b0\u1edbc t\u00ednh cho l\u1ecbch tr\u00ecnh n\u00e0y',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
+                if (itin.rideHailingTransportCost > 0) ...[
+                  const SizedBox(height: 12),
+                  _BudgetMetric(
+                    label: 'Be/Grab tham kh\u1ea3o',
+                    value:
+                        '${formatter.format(itin.rideHailingTransportCost)} ${itin.currency}',
+                    icon: Icons.local_taxi_rounded,
+                    color: const Color(0xFF7C3AED),
+                    fullWidth: true,
                   ),
                 ],
-              ),
-            ),
-        ],
-      ),
-    ),
-  ],
-);
+              ],
+              const SizedBox(height: 18),
+              if (estimatedCost > 0) ...[
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Chi ph\u00ed \u0111\u00e3 chi',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Text(
+                        spentLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFB45309),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Stack(
+                  children: [
+                    Container(
+                      height: 12,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOut,
+                          height: 12,
+                          width: constraints.maxWidth * spentProgress,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${costSnapshot.visitedCount}/${costSnapshot.totalVisitCount} \u0111\u1ecba \u0111i\u1ec3m \u0111\u00e3 ghi nh\u1eadn chi ph\u00ed',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ] else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.all_inclusive_rounded,
+                        size: 18,
+                        color: Color(0xFF2563EB),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Ch\u01b0a c\u00f3 d\u1eef li\u1ec7u chi ph\u00ed \u01b0\u1edbc t\u00ednh cho l\u1ecbch tr\u00ecnh n\u00e0y',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildViewAllDaysButton(
@@ -1431,46 +1801,46 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ...notes.map(
-            (note) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFF1F5F9)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Icon(
-                      Icons.check_circle_outline,
-                      size: 14,
-                      color: Color(0xFF3B82F6),
-                    ),
+                (note) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      note,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF475569),
-                        height: 1.5,
-                        fontWeight: FontWeight.w500,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Icon(
+                          Icons.check_circle_outline,
+                          size: 14,
+                          color: Color(0xFF3B82F6),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          note,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF475569),
+                            height: 1.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    ),
-  ],
-);
+        ),
+      ],
+    );
   }
 
   Widget _buildCulinarySection(ItineraryDetailEntity itin) {

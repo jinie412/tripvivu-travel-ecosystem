@@ -8,6 +8,7 @@ class NotificationCubit extends Cubit<NotificationState> {
   final GetNotificationDetailUseCase _getNotificationDetail;
   final MarkAllNotificationsAsReadUseCase _markAllAsRead;
   final MarkNotificationAsReadUseCase _markAsRead;
+  final RespondToItineraryShareUseCase _respondToItineraryShare;
   final Set<String> _locallyReadIds = <String>{};
 
   NotificationCubit({
@@ -15,10 +16,12 @@ class NotificationCubit extends Cubit<NotificationState> {
     required GetNotificationDetailUseCase getNotificationDetail,
     required MarkAllNotificationsAsReadUseCase markAllAsRead,
     required MarkNotificationAsReadUseCase markAsRead,
+    required RespondToItineraryShareUseCase respondToItineraryShare,
   }) : _getNotifications = getNotifications,
        _getNotificationDetail = getNotificationDetail,
        _markAllAsRead = markAllAsRead,
        _markAsRead = markAsRead,
+       _respondToItineraryShare = respondToItineraryShare,
        super(const NotificationInitial());
 
   Future<void> loadNotifications({bool silent = false}) async {
@@ -102,6 +105,19 @@ class NotificationCubit extends Cubit<NotificationState> {
       emit(NotificationError(e.toString()));
       await loadNotifications();
     }
+  }
+
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  }) async {
+    await _respondToItineraryShare(
+      notificationId: notificationId,
+      itineraryId: itineraryId,
+      accept: accept,
+    );
+    await loadNotificationDetail(notificationId);
   }
 
   List<NotificationEntity> _applyLocalReadState(

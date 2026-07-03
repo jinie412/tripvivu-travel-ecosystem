@@ -141,6 +141,54 @@ class NotificationDetailScreen extends StatelessWidget {
                     ),
                   ],
 
+                  if (_canRespondToItineraryShare(notification)) ...[
+                    const SizedBox(height: AppSizes.s24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _respondToItineraryShare(
+                              context,
+                              notification,
+                              accept: false,
+                            ),
+                            icon: const Icon(Icons.close_rounded),
+                            label: const Text('Từ chối'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFDC2626),
+                              side: const BorderSide(color: Color(0xFFFCA5A5)),
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.s12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _respondToItineraryShare(
+                              context,
+                              notification,
+                              accept: true,
+                            ),
+                            icon: const Icon(Icons.check_rounded),
+                            label: const Text('Xác nhận'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   if (_canOpenReview(notification)) ...[
                     const SizedBox(height: AppSizes.s24),
                     ElevatedButton.icon(
@@ -248,6 +296,48 @@ class NotificationDetailScreen extends StatelessWidget {
   bool _canOpenReview(NotificationEntity notification) {
     return _canOpenPlaceReview(notification) ||
         _canOpenItineraryReview(notification);
+  }
+
+  bool _canRespondToItineraryShare(NotificationEntity notification) {
+    return notification.actionType == 'respond_itinerary_share' &&
+        notification.itineraryId?.isNotEmpty == true;
+  }
+
+  Future<void> _respondToItineraryShare(
+    BuildContext context,
+    NotificationEntity notification, {
+    required bool accept,
+  }) async {
+    final itineraryId = notification.itineraryId;
+    if (itineraryId == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<NotificationCubit>().respondToItineraryShare(
+        notificationId: notification.id,
+        itineraryId: itineraryId,
+        accept: accept,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            accept
+                ? 'Đã xác nhận lời mời chia sẻ lịch trình'
+                : 'Đã từ chối lời mời chia sẻ lịch trình',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Không thể phản hồi lời mời: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   bool _hasWrittenReview(NotificationEntity notification) {

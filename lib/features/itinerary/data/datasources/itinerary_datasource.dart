@@ -13,11 +13,20 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_a
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/core/error/conflict_exception.dart';
 
+typedef ItineraryShareLinkData = ({
+  String token,
+  String deepLink,
+  String message,
+  String? playStoreUrl,
+});
+
 abstract class ItineraryDataSource {
   Future<List<ItineraryModel>> getItineraries({String? query});
   Future<ItineraryDetailModel> getItineraryDetail(String id);
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
+  Future<void> shareItinerary(String id, String recipient);
+  Future<ItineraryShareLinkData> createShareLink(String id);
   Future<void> updateItineraryTitle(String id, String title);
   Future<void> updateActivity(
     String itineraryId,
@@ -56,10 +65,8 @@ abstract class ItineraryDataSource {
     bool? extendTime,
   });
 
-  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})> optimizeDay(
-    String itineraryId,
-    Map<String, dynamic> payload,
-  );
+  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})>
+  optimizeDay(String itineraryId, Map<String, dynamic> payload);
 }
 
 class RemoteItineraryDataSource implements ItineraryDataSource {
@@ -127,6 +134,62 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (res.statusCode != 200) {
       throw Exception('Failed to toggle visibility: ${res.statusCode}');
     }
+  }
+
+  @override
+  Future<void> shareItinerary(String id, String recipient) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary/$id/share'),
+      headers: headers,
+      body: jsonEncode({'senderUserId': userId, 'recipient': recipient.trim()}),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return;
+    }
+
+    var message = 'Không thể chia sẻ lịch trình';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw = data['message'];
+      message = raw is List ? raw.join('\n') : raw?.toString() ?? message;
+    } catch (_) {
+      message = '$message: ${res.statusCode}';
+    }
+    throw Exception(message);
+  }
+
+  @override
+  Future<ItineraryShareLinkData> createShareLink(String id) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary/$id/share-link'),
+      headers: headers,
+      body: jsonEncode({'senderUserId': userId}),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      return (
+        token: (data['token'] ?? '').toString(),
+        deepLink: (data['deepLink'] ?? '').toString(),
+        message: (data['message'] ?? data['deepLink'] ?? '').toString(),
+        playStoreUrl: data['playStoreUrl']?.toString(),
+      );
+    }
+
+    var message = 'Không thể tạo link chia sẻ';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw = data['message'];
+      message = raw is List ? raw.join('\n') : raw?.toString() ?? message;
+    } catch (_) {
+      message = '$message: ${res.statusCode}';
+    }
+    throw Exception(message);
   }
 
   @override
@@ -361,7 +424,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     };
 
     final res = await http.patch(
-      Uri.parse('$baseUrl/itinerary/$itineraryId/activities/$activityId/replace'),
+      Uri.parse(
+        '$baseUrl/itinerary/$itineraryId/activities/$activityId/replace',
+      ),
       headers: headers,
       body: jsonEncode(body),
     );
@@ -374,7 +439,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       throw ConflictException.fromJson(data);
     }
-    throw Exception('Failed to replace activity: ${res.statusCode}\n${res.body}');
+    throw Exception(
+      'Failed to replace activity: ${res.statusCode}\n${res.body}',
+    );
   }
 
   ItineraryDetailModel _parseItineraryDetail(Map<String, dynamic> data) {
@@ -505,10 +572,8 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})> optimizeDay(
-    String itineraryId,
-    Map<String, dynamic> payload,
-  ) async {
+  Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})>
+  optimizeDay(String itineraryId, Map<String, dynamic> payload) async {
     final headers = await _authHeaders();
     final res = await http.post(
       Uri.parse('$baseUrl/itinerary/optimize-day'),
@@ -519,7 +584,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     if (res.statusCode == 200 || res.statusCode == 201) {
       final data = jsonDecode(res.body);
       final optimized = data['optimized'] as List;
-      final reorderNotes = (data['reorderNotes'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      final reorderNotes =
+          (data['reorderNotes'] as List?)?.map((e) => e.toString()).toList() ??
+          [];
       return (
         optimized: optimized
             .map((json) => ItineraryActivityModel.fromJson(json))
@@ -531,11 +598,13 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       throw ConflictException.fromJson(data);
     }
-    
+
     try {
       final data = jsonDecode(res.body);
       if (data['message'] == 'SCHEDULE_FULL') {
-        throw Exception('Lịch trình đã quá kín, không thể giảm thêm thời gian.');
+        throw Exception(
+          'Lịch trình đã quá kín, không thể giảm thêm thời gian.',
+        );
       }
       if (data['message'] != null) {
         throw Exception(data['message']);
@@ -543,7 +612,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     } on FormatException catch (_) {
       // Bỏ qua lỗi parse JSON để ném lỗi mặc định bên dưới
     }
-    
+
     throw Exception('Failed to optimize day: ${res.statusCode}');
   }
 }

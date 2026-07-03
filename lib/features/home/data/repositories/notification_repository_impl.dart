@@ -27,4 +27,17 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   @override
   Future<void> markAllAsRead() => _dataSource.markAllAsRead();
+
+  @override
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  }) {
+    return _dataSource.respondToItineraryShare(
+      notificationId: notificationId,
+      itineraryId: itineraryId,
+      accept: accept,
+    );
+  }
 }

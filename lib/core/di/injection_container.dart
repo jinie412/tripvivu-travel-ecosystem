@@ -156,12 +156,14 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetNotificationDetailUseCase(sl()));
   sl.registerLazySingleton(() => MarkAllNotificationsAsReadUseCase(sl()));
   sl.registerLazySingleton(() => MarkNotificationAsReadUseCase(sl()));
+  sl.registerLazySingleton(() => RespondToItineraryShareUseCase(sl()));
   sl.registerFactory(
     () => NotificationCubit(
       getNotifications: sl(),
       getNotificationDetail: sl(),
       markAllAsRead: sl(),
       markAsRead: sl(),
+      respondToItineraryShare: sl(),
     ),
   );
 
@@ -179,6 +181,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetItineraryDetailUseCase(sl()));
   sl.registerLazySingleton(() => UpdateItineraryActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => ToggleVisibilityUseCase(sl()));
+  sl.registerLazySingleton(() => ShareItineraryUseCase(sl()));
+  sl.registerLazySingleton(() => CreateItineraryShareLinkUseCase(sl()));
   sl.registerLazySingleton(() => UpdateItineraryTitleUseCase(sl()));
   sl.registerLazySingleton(() => UpdateActivityUseCase(sl()));
   sl.registerLazySingleton(() => DeleteActivityUseCase(sl()));
@@ -194,6 +198,8 @@ Future<void> initDependencies() async {
       updateActivities: sl(),
       updateTitle: sl(),
       toggleVisibility: sl(),
+      shareItinerary: sl(),
+      createShareLink: sl(),
       deleteActivity: sl(),
       optimizeDayUseCase: sl(),
     ),
