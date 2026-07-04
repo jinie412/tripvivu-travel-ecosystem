@@ -13,29 +13,55 @@ class CityDetailCubit extends Cubit<CityDetailState> {
 
   /// Tải dữ liệu tổng quan của thành phố.
   /// Sau khi load xong, khởi tạo filteredList = danh sách gốc (chưa filter).
-Future<void> loadCityDetail(String cityId, String cityName) async {
-  emit(const CityDetailState.loading());
-  try {
-    currentCityName = cityName;
-    final overview = await _getCityOverview(cityId);
-    emit(
-      CityDetailState.loaded(
-        overview,
-        0,
-        filteredActivities: overview.activities,
-        filteredRestaurants: overview.restaurants,
-        filteredHotels: overview.hotels,
-        itineraries: overview.itineraries,
-      ),
-    );
-  } catch (e) {
-    emit(CityDetailState.error(e.toString()));
+  Future<void> loadCityDetail(String cityId, String cityName) async {
+    emit(const CityDetailState.loading());
+    try {
+      currentCityName = cityName;
+      final overview = await _getCityOverview(cityId);
+      emit(
+        CityDetailState.loaded(
+          overview,
+          0,
+          filteredActivities: overview.activities,
+          filteredRestaurants: overview.restaurants,
+          filteredHotels: overview.hotels,
+          itineraries: overview.itineraries,
+        ),
+      );
+    } catch (e) {
+      emit(CityDetailState.error(e.toString()));
+    }
   }
-}
 
   /// Chuyển tab
   void changeTab(int index) {
     state.mapOrNull(loaded: (s) => emit(s.copyWith(activeTab: index)));
+  }
+
+  /// Sắp xếp chung cho cả 3 tab. Sort ổn định nhờ tie-break:
+  /// rating hòa thì xét reviewCount và ngược lại.
+  void _sortInPlace<T>(
+    List<T> items,
+    SortOption option, {
+    required double Function(T) ratingOf,
+    required int Function(T) reviewCountOf,
+  }) {
+    switch (option) {
+      case SortOption.highestRated:
+        items.sort((a, b) {
+          final cmp = ratingOf(b).compareTo(ratingOf(a));
+          return cmp != 0 ? cmp : reviewCountOf(b).compareTo(reviewCountOf(a));
+        });
+        break;
+      case SortOption.mostReviewed:
+        items.sort((a, b) {
+          final cmp = reviewCountOf(b).compareTo(reviewCountOf(a));
+          return cmp != 0 ? cmp : ratingOf(b).compareTo(ratingOf(a));
+        });
+        break;
+      case SortOption.none:
+        break;
+    }
   }
 
   // ============================================================
@@ -43,41 +69,40 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
   // ============================================================
 
   /// Cập nhật bộ lọc cho tab "Hoạt động tham quan" và áp dụng lọc.
+  /// Chỉ lọc theo các field có DỮ LIỆU THẬT từ backend overview:
+  /// category, rating, status (giờ mở cửa), reviewCount.
   void updateActivityFilter(ActivityFilter filter) {
     state.mapOrNull(
       loaded: (s) {
         var result = s.overview.activities.toList();
 
-        // 1. Lọc theo loại hình (chọn nhiều, rỗng = tất cả)
+        // 1. Lọc theo loại hình (chọn nhiều, rỗng = tất cả).
+        // enum.name khớp đúng giá trị backend trả về (attractions,
+        // culturalHistory, entertainment, nature).
         if (filter.categories.isNotEmpty) {
           result = result.where((a) {
             return filter.categories.any((c) => c.name == a.category);
           }).toList();
         }
 
-        // 2. Lọc theo khoảng giá (chọn 1)
-        if (filter.priceType != ActivityPriceType.all) {
-          result = result
-              .where((a) => a.priceType == filter.priceType.name)
-              .toList();
+        // 2. Lọc theo đánh giá tối thiểu
+        if (filter.minRating != MinRating.all) {
+          result =
+              result.where((a) => a.rating >= filter.minRating.value).toList();
         }
 
-        // 3. Lọc theo khu vực
-        if (filter.district != null && filter.district!.isNotEmpty) {
-          result = result.where((a) => a.district == filter.district).toList();
+        // 3. Chỉ hiện địa điểm đang mở cửa
+        if (filter.openNowOnly) {
+          result = result.where((a) => a.status.contains('Đang mở')).toList();
         }
 
-        // 5. Sắp xếp
-        switch (filter.sortOption) {
-          case SortOption.mostPopular:
-            result.sort((a, b) => b.reviewCount.compareTo(a.reviewCount));
-            break;
-          case SortOption.highestRated:
-            result.sort((a, b) => b.rating.compareTo(a.rating));
-            break;
-          default:
-            break;
-        }
+        // 4. Sắp xếp
+        _sortInPlace(
+          result,
+          filter.sortOption,
+          ratingOf: (a) => a.rating,
+          reviewCountOf: (a) => a.reviewCount,
+        );
 
         emit(s.copyWith(activityFilter: filter, filteredActivities: result));
       },
@@ -99,47 +124,24 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
       loaded: (s) {
         var result = s.overview.restaurants.toList();
 
-        // 1. Lọc theo danh mục (chọn nhiều)
-        if (filter.cuisines.isNotEmpty) {
-          result = result.where((r) {
-            return filter.cuisines.any((c) => c.name == r.cuisine);
-          }).toList();
+        // 1. Lọc theo đánh giá tối thiểu
+        if (filter.minRating != MinRating.all) {
+          result =
+              result.where((r) => r.rating >= filter.minRating.value).toList();
         }
 
-        // 2. Lọc theo mức giá (chọn 1)
-        if (filter.priceLevel != RestaurantPriceLevel.all) {
-          final priceLevelStr =
-              filter.priceLevel == RestaurantPriceLevel.midRange
-              ? 'mid_range'
-              : filter.priceLevel.name;
-          result = result.where((r) => r.priceLevel == priceLevelStr).toList();
+        // 2. Chỉ hiện nhà hàng đang mở cửa
+        if (filter.openNowOnly) {
+          result = result.where((r) => r.status.contains('Đang mở')).toList();
         }
 
-        // 3. Lọc theo tiện ích (phải có TẤT CẢ tiện ích đã chọn)
-        if (filter.amenities.isNotEmpty) {
-          result = result.where((r) {
-            return filter.amenities.every(
-              (amenity) => r.amenities.contains(amenity.name),
-            );
-          }).toList();
-        }
-
-        // 5. Sắp xếp
-        switch (filter.sortOption) {
-          case SortOption.highestRated:
-            result.sort((a, b) => b.rating.compareTo(a.rating));
-            break;
-          case SortOption.cheapest:
-            // Sort theo thứ tự: budget < mid_range < premium
-            result.sort(
-              (a, b) => _priceLevelOrder(
-                a.priceLevel,
-              ).compareTo(_priceLevelOrder(b.priceLevel)),
-            );
-            break;
-          default:
-            break;
-        }
+        // 3. Sắp xếp
+        _sortInPlace(
+          result,
+          filter.sortOption,
+          ratingOf: (r) => r.rating,
+          reviewCountOf: (r) => r.reviewCount,
+        );
 
         emit(s.copyWith(restaurantFilter: filter, filteredRestaurants: result));
       },
@@ -149,20 +151,6 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
   /// Đặt lại filter cho tab Nhà hàng về mặc định
   void resetRestaurantFilter() {
     updateRestaurantFilter(const RestaurantFilter());
-  }
-
-  /// Helper: Chuyển priceLevel string thành số thứ tự để so sánh
-  int _priceLevelOrder(String priceLevel) {
-    switch (priceLevel) {
-      case 'budget':
-        return 0;
-      case 'mid_range':
-        return 1;
-      case 'premium':
-        return 2;
-      default:
-        return 1;
-    }
   }
 
   // ============================================================
@@ -175,45 +163,19 @@ Future<void> loadCityDetail(String cityId, String cityName) async {
       loaded: (s) {
         var result = s.overview.hotels.toList();
 
-        // 2. Lọc theo khoảng giá (RangeSlider)
-        if (filter.minPrice > 0 || filter.maxPrice > 0) {
-          result = result.where((h) {
-            final aboveMin = h.priceValue >= filter.minPrice;
-            final belowMax =
-                filter.maxPrice <= 0 || h.priceValue <= filter.maxPrice;
-            return aboveMin && belowMax;
-          }).toList();
+        // 1. Lọc theo đánh giá tối thiểu
+        if (filter.minRating != MinRating.all) {
+          result =
+              result.where((h) => h.rating >= filter.minRating.value).toList();
         }
 
-        // 3. Lọc theo loại hình lưu trú (chọn nhiều)
-        if (filter.accommodationTypes.isNotEmpty) {
-          result = result.where((h) {
-            return filter.accommodationTypes.any(
-              (t) => t.name == h.accommodationType,
-            );
-          }).toList();
-        }
-
-        // 4. Lọc theo tiện nghi (phải có TẤT CẢ tiện nghi đã chọn)
-        if (filter.amenities.isNotEmpty) {
-          result = result.where((h) {
-            return filter.amenities.every(
-              (amenity) => h.amenities.contains(amenity.name),
-            );
-          }).toList();
-        }
-
-        // 5. Sắp xếp
-        switch (filter.sortOption) {
-          case SortOption.highestRated:
-            result.sort((a, b) => b.rating.compareTo(a.rating));
-            break;
-          case SortOption.cheapest:
-            result.sort((a, b) => a.priceValue.compareTo(b.priceValue));
-            break;
-          default:
-            break;
-        }
+        // 2. Sắp xếp
+        _sortInPlace(
+          result,
+          filter.sortOption,
+          ratingOf: (h) => h.rating,
+          reviewCountOf: (h) => h.reviewCount,
+        );
 
         emit(s.copyWith(hotelFilter: filter, filteredHotels: result));
       },

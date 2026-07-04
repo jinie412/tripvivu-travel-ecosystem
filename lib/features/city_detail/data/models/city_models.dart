@@ -121,6 +121,7 @@ class CityHotelModel with _$CityHotelModel {
     @Default(0.0) double rating,
     @Default(0) int reviewCount,
     @Default('') String address,
+    @Default('') String status,
     @Default('') String price,
     @Default(false) bool isFavorite,
 
@@ -145,6 +146,7 @@ extension CityHotelModelX on CityHotelModel {
       rating: rating,
       reviewCount: reviewCount,
       address: address,
+      status: status,
       price: price,
       isFavorite: isFavorite,
       starRating: starRating,

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/filter_enums.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/itinerary_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/activity_vertical_card.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/widgets/restaurant_vertical_card.dart';
@@ -81,9 +82,26 @@ class _SearchAllViewState extends State<_SearchAllView> {
         typeFilter: typeFilter,
         cityFilter: cityFilter,
         cities: cities,
-        onApply: (type, city) {
-          cubit.applyTypeFilter(type);
-          cubit.applyCityFilter(city);
+        minRating: cubit.minRating,
+        openNowOnly: cubit.openNowOnly,
+        priceRangeIndex: cubit.priceRangeIndex,
+        sortOption: cubit.sortOption,
+        onApply: (
+          type,
+          city,
+          minRating,
+          openNowOnly,
+          priceRangeIndex,
+          sortOption,
+        ) {
+          cubit.applyFilters(
+            type: type,
+            city: city,
+            minRating: minRating,
+            openNowOnly: openNowOnly,
+            priceRangeIndex: priceRangeIndex,
+            sortOption: sortOption,
+          );
         },
       ),
     );
@@ -120,8 +138,11 @@ class _SearchAllViewState extends State<_SearchAllView> {
           BlocBuilder<SearchAllCubit, SearchAllState>(
             builder: (context, state) {
               final loaded = state.mapOrNull(loaded: (s) => s);
+              final cubit = context.read<SearchAllCubit>();
               final hasFilter = loaded != null &&
-                  (loaded.typeFilter != null || loaded.cityFilter != null);
+                  (loaded.typeFilter != null ||
+                      loaded.cityFilter != null ||
+                      cubit.hasAdvancedFilter);
               return Stack(
                 alignment: Alignment.center,
                 children: [
@@ -240,12 +261,27 @@ class _FilterSheet extends StatefulWidget {
   final SearchType? typeFilter;
   final String? cityFilter;
   final List<String> cities;
-  final void Function(SearchType? type, String? city) onApply;
+  final MinRating minRating;
+  final bool openNowOnly;
+  final int priceRangeIndex;
+  final SearchResultSort sortOption;
+  final void Function(
+    SearchType? type,
+    String? city,
+    MinRating minRating,
+    bool openNowOnly,
+    int priceRangeIndex,
+    SearchResultSort sortOption,
+  ) onApply;
 
   const _FilterSheet({
     required this.typeFilter,
     required this.cityFilter,
     required this.cities,
+    required this.minRating,
+    required this.openNowOnly,
+    required this.priceRangeIndex,
+    required this.sortOption,
     required this.onApply,
   });
 
@@ -256,6 +292,10 @@ class _FilterSheet extends StatefulWidget {
 class _FilterSheetState extends State<_FilterSheet> {
   SearchType? _selectedType;
   String? _selectedCity;
+  MinRating _minRating = MinRating.all;
+  bool _openNowOnly = false;
+  int _priceRangeIndex = -1;
+  SearchResultSort _sortOption = SearchResultSort.defaultOrder;
 
   static const _typeOptions = [
     (null, 'Tất cả'),
@@ -270,9 +310,19 @@ class _FilterSheetState extends State<_FilterSheet> {
     super.initState();
     _selectedType = widget.typeFilter;
     _selectedCity = widget.cityFilter;
+    _minRating = widget.minRating;
+    _openNowOnly = widget.openNowOnly;
+    _priceRangeIndex = widget.priceRangeIndex;
+    _sortOption = widget.sortOption;
   }
 
-  bool get _hasFilter => _selectedType != null || _selectedCity != null;
+  bool get _hasFilter =>
+      _selectedType != null ||
+      _selectedCity != null ||
+      _minRating != MinRating.all ||
+      _openNowOnly ||
+      _priceRangeIndex >= 0 ||
+      _sortOption != SearchResultSort.defaultOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -280,9 +330,10 @@ class _FilterSheetState extends State<_FilterSheet> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           const SizedBox(height: 12),
           Container(
             width: 40,
@@ -311,6 +362,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                     onTap: () => setState(() {
                       _selectedType = null;
                       _selectedCity = null;
+                      _minRating = MinRating.all;
+                      _openNowOnly = false;
+                      _priceRangeIndex = -1;
+                      _sortOption = SearchResultSort.defaultOrder;
                     }),
                     child: const Text(
                       'Đặt lại',
@@ -375,6 +430,95 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ],
                   onChanged: (v) => setState(() => _selectedCity = v),
                 ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Đánh giá tối thiểu',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _ChoiceWrap<MinRating>(
+                  options: MinRating.values,
+                  selected: _minRating,
+                  labelOf: (item) => item.label,
+                  onSelected: (item) => setState(() => _minRating = item),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile.adaptive(
+                  value: _openNowOnly,
+                  onChanged: (value) => setState(() => _openNowOnly = value),
+                  activeColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: const Text(
+                    'Chỉ hiện đang mở cửa',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Giá khách sạn',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(SearchHotelPriceRange.values.length, (index) {
+                    final range = SearchHotelPriceRange.values[index];
+                    final selected = _priceRangeIndex == index;
+                    return ChoiceChip(
+                      label: Text(range.label),
+                      selected: selected,
+                      selectedColor: AppColors.primary.withValues(alpha: 0.14),
+                      labelStyle: TextStyle(
+                        color: selected ? AppColors.primary : AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      side: BorderSide(
+                        color: selected ? AppColors.primary : Colors.grey.shade300,
+                      ),
+                      onSelected: (value) {
+                        setState(() => _priceRangeIndex = value ? index : -1);
+                      },
+                    );
+                  }),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Sắp xếp theo',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _DropdownField<SearchResultSort>(
+                  value: _sortOption,
+                  hint: 'Mặc định',
+                  items: SearchResultSort.values
+                      .map((o) => DropdownMenuItem<SearchResultSort>(
+                            value: o,
+                            child: Text(o.label),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(
+                    () => _sortOption = v ?? SearchResultSort.defaultOrder,
+                  ),
+                ),
               ],
             ),
           ),
@@ -394,7 +538,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  widget.onApply(_selectedType, _selectedCity);
+                  widget.onApply(
+                    _selectedType,
+                    _selectedCity,
+                    _minRating,
+                    _openNowOnly,
+                    _priceRangeIndex,
+                    _sortOption,
+                  );
                   Navigator.pop(context);
                 },
                 child: const Text(
@@ -407,7 +558,8 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -451,6 +603,45 @@ class _DropdownField<T> extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ChoiceWrap<T> extends StatelessWidget {
+  final List<T> options;
+  final T selected;
+  final String Function(T item) labelOf;
+  final ValueChanged<T> onSelected;
+
+  const _ChoiceWrap({
+    required this.options,
+    required this.selected,
+    required this.labelOf,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((item) {
+        final isSelected = item == selected;
+        return ChoiceChip(
+          label: Text(labelOf(item)),
+          selected: isSelected,
+          selectedColor: AppColors.primary.withValues(alpha: 0.14),
+          labelStyle: TextStyle(
+            color: isSelected ? AppColors.primary : AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          side: BorderSide(
+            color: isSelected ? AppColors.primary : Colors.grey.shade300,
+          ),
+          onSelected: (_) => onSelected(item),
+        );
+      }).toList(),
     );
   }
 }

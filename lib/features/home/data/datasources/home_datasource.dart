@@ -448,6 +448,10 @@ class RemoteHomeDataSource implements HomeDataSource {
         return rawPrice;
       }(),
       address: (json['city'] ?? json['province'] ?? json['location'] ?? '').toString(),
+      status: () {
+        final s = (json['status'] ?? '').toString().trim();
+        return s == 'Chưa có giờ mở cửa' ? '' : s;
+      }(),
       isFavorite: json['is_favorite'] == true || json['isFavorite'] == true,
     );
   }
@@ -588,7 +592,12 @@ class RemoteHomeDataSource implements HomeDataSource {
       rating: ((item['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (item['review_count'] as num?)?.toInt() ?? 0,
       address: (item['city'] ?? '').toString(),
-      status: (item['status'] ?? 'Chưa có giờ mở cửa').toString(),
+      // Backend trả "Chưa có giờ mở cửa" khi địa điểm thiếu dữ liệu giờ —
+      // coi như không có status để card ẩn dòng này thay vì hiển thị.
+      status: () {
+        final s = (item['status'] ?? '').toString().trim();
+        return s == 'Chưa có giờ mở cửa' ? '' : s;
+      }(),
       cuisine: 'vietnamese',
       priceLevel: 'mid_range',
       amenities: const <String>[],

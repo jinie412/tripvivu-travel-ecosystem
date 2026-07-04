@@ -122,6 +122,20 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                         rating: widget.item.rating,
                         reviewCount: widget.item.reviewCount,
                       ),
+                      // Luôn hiển thị dòng giá (trên phần địa chỉ): có giá thật
+                      // thì "Từ ...", chưa có data giá thì "Liên hệ giá".
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.item.price.trim().isNotEmpty &&
+                                widget.item.price != 'Liên hệ'
+                            ? 'Từ ${widget.item.price}'
+                            : 'Liên hệ giá',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
                       if (widget.item.address.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Row(
@@ -141,18 +155,6 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                      if (widget.item.price.isNotEmpty &&
-                          widget.item.price != 'Liên hệ') ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Từ ${widget.item.price}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
-                          ),
                         ),
                       ],
                     ],

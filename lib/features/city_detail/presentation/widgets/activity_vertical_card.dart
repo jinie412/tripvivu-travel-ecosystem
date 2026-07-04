@@ -196,28 +196,21 @@ class _ActivityRatingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // Pill style đồng bộ với RestaurantVerticalCard / HotelVerticalCard.
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Icon(Icons.star, color: Colors.amber, size: 14),
-        const SizedBox(width: 4),
-        Text(
-          item.rating.toStringAsFixed(1),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
+        _StatPill(
+          icon: Icons.star_rounded,
+          iconColor: Colors.amber,
+          label: item.rating.toStringAsFixed(1),
         ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            '(${_formatCount(item.reviewCount)})',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 13,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        _StatPill(
+          icon: Icons.rate_review_outlined,
+          iconColor: const Color(0xFF2563EB),
+          label: '${_formatCount(item.reviewCount)} đánh giá',
         ),
       ],
     );

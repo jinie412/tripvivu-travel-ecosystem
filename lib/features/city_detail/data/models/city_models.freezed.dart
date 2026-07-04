@@ -1155,6 +1155,7 @@ mixin _$CityHotelModel {
   double get rating => throw _privateConstructorUsedError;
   int get reviewCount => throw _privateConstructorUsedError;
   String get address => throw _privateConstructorUsedError;
+  String get status => throw _privateConstructorUsedError;
   String get price => throw _privateConstructorUsedError;
   bool get isFavorite =>
       throw _privateConstructorUsedError; // === Filter fields ===
@@ -1187,6 +1188,7 @@ abstract class $CityHotelModelCopyWith<$Res> {
     double rating,
     int reviewCount,
     String address,
+    String status,
     String price,
     bool isFavorite,
     int starRating,
@@ -1217,6 +1219,7 @@ class _$CityHotelModelCopyWithImpl<$Res, $Val extends CityHotelModel>
     Object? rating = null,
     Object? reviewCount = null,
     Object? address = null,
+    Object? status = null,
     Object? price = null,
     Object? isFavorite = null,
     Object? starRating = null,
@@ -1249,6 +1252,10 @@ class _$CityHotelModelCopyWithImpl<$Res, $Val extends CityHotelModel>
             address: null == address
                 ? _value.address
                 : address // ignore: cast_nullable_to_non_nullable
+                      as String,
+            status: null == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
                       as String,
             price: null == price
                 ? _value.price
@@ -1296,6 +1303,7 @@ abstract class _$$CityHotelModelImplCopyWith<$Res>
     double rating,
     int reviewCount,
     String address,
+    String status,
     String price,
     bool isFavorite,
     int starRating,
@@ -1325,6 +1333,7 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
     Object? rating = null,
     Object? reviewCount = null,
     Object? address = null,
+    Object? status = null,
     Object? price = null,
     Object? isFavorite = null,
     Object? starRating = null,
@@ -1357,6 +1366,10 @@ class __$$CityHotelModelImplCopyWithImpl<$Res>
         address: null == address
             ? _value.address
             : address // ignore: cast_nullable_to_non_nullable
+                  as String,
+        status: null == status
+            ? _value.status
+            : status // ignore: cast_nullable_to_non_nullable
                   as String,
         price: null == price
             ? _value.price
@@ -1397,6 +1410,7 @@ class _$CityHotelModelImpl implements _CityHotelModel {
     this.rating = 0.0,
     this.reviewCount = 0,
     this.address = '',
+    this.status = '',
     this.price = '',
     this.isFavorite = false,
     this.starRating = 0,
@@ -1428,6 +1442,9 @@ class _$CityHotelModelImpl implements _CityHotelModel {
   final String address;
   @override
   @JsonKey()
+  final String status;
+  @override
+  @JsonKey()
   final String price;
   @override
   @JsonKey()
@@ -1453,7 +1470,7 @@ class _$CityHotelModelImpl implements _CityHotelModel {
 
   @override
   String toString() {
-    return 'CityHotelModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, price: $price, isFavorite: $isFavorite, starRating: $starRating, priceValue: $priceValue, accommodationType: $accommodationType, amenities: $amenities)';
+    return 'CityHotelModel(id: $id, name: $name, imageUrl: $imageUrl, rating: $rating, reviewCount: $reviewCount, address: $address, status: $status, price: $price, isFavorite: $isFavorite, starRating: $starRating, priceValue: $priceValue, accommodationType: $accommodationType, amenities: $amenities)';
   }
 
   @override
@@ -1469,6 +1486,7 @@ class _$CityHotelModelImpl implements _CityHotelModel {
             (identical(other.reviewCount, reviewCount) ||
                 other.reviewCount == reviewCount) &&
             (identical(other.address, address) || other.address == address) &&
+            (identical(other.status, status) || other.status == status) &&
             (identical(other.price, price) || other.price == price) &&
             (identical(other.isFavorite, isFavorite) ||
                 other.isFavorite == isFavorite) &&
@@ -1494,6 +1512,7 @@ class _$CityHotelModelImpl implements _CityHotelModel {
     rating,
     reviewCount,
     address,
+    status,
     price,
     isFavorite,
     starRating,
@@ -1527,6 +1546,7 @@ abstract class _CityHotelModel implements CityHotelModel {
     final double rating,
     final int reviewCount,
     final String address,
+    final String status,
     final String price,
     final bool isFavorite,
     final int starRating,
@@ -1550,6 +1570,8 @@ abstract class _CityHotelModel implements CityHotelModel {
   int get reviewCount;
   @override
   String get address;
+  @override
+  String get status;
   @override
   String get price;
   @override

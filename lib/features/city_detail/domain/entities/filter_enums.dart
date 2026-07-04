@@ -4,93 +4,45 @@ part 'filter_enums.freezed.dart';
 
 // ============================================================
 // ENUM — Các giá trị filter cho từng tab
+//
+// Chỉ giữ những filter mà backend /explore/cities/:id/overview có DỮ LIỆU
+// THẬT: category của activity, status giờ mở cửa, rating, reviewCount.
+// Các filter mock cũ (khoảng giá, quận/huyện mẫu, món ăn, tiện ích, loại
+// lưu trú...) được backup tại docs/deprecated/city_detail_filter_mock/ —
+// khôi phục lại khi backend có data tương ứng.
 // ============================================================
 
-/// Loại hình hoạt động tham quan
+/// Loại hình hoạt động tham quan — khớp đúng field `category` backend trả về
+/// (explore.service.ts → mapActivityEntityCategory):
+/// attractions | culturalHistory | entertainment | nature
 enum ActivityCategory {
-  culturalHistory('Văn hóa/Lịch sử'),
-  nature('Thiên nhiên'),
-  entertainment('Giải trí'),
-  restaurant('Nhà hàng'),
-  attractions('Điểm tham quan'),
-  cafe('Quán cà phê'),
-  photoSpot('Điểm chụp ảnh'),
-  museum('Bảo tàng');
+  attractions('Tham quan & Khám phá'),
+  culturalHistory('Văn hóa & Di sản'),
+  entertainment('Giải trí & Vui chơi'),
+  nature('Thư giãn & Thể thao');
 
   final String label;
   const ActivityCategory(this.label);
 }
 
-/// Khoảng giá hoạt động tham quan
-enum ActivityPriceType {
-  all('Tất cả'),
-  free('Miễn phí'),
-  paid('Trả phí');
+/// Mức đánh giá tối thiểu (dùng chung cho cả 3 tab)
+enum MinRating {
+  all(0, 'Tất cả'),
+  threePlus(3.0, 'Từ 3.0 ★'),
+  threeHalfPlus(3.5, 'Từ 3.5 ★'),
+  fourPlus(4.0, 'Từ 4.0 ★'),
+  fourHalfPlus(4.5, 'Từ 4.5 ★');
 
+  final double value;
   final String label;
-  const ActivityPriceType(this.label);
-}
-
-/// Danh mục nhà hàng
-enum RestaurantCuisine {
-  vietnamese('Món Việt'),
-  foreign('Món ngoại'),
-  vegetarian('Đồ chay');
-
-  final String label;
-  const RestaurantCuisine(this.label);
-}
-
-/// Mức giá nhà hàng
-enum RestaurantPriceLevel {
-  all('Tất cả'),
-  budget('Bình dân'),
-  midRange('Trung cấp'),
-  premium('Sang trọng');
-
-  final String label;
-  const RestaurantPriceLevel(this.label);
-}
-
-/// Tiện ích nhà hàng
-enum RestaurantAmenity {
-  parking('Có chỗ đậu xe'),
-  airCon('Có điều hòa'),
-  kidFriendly('Phù hợp cho trẻ em');
-
-  final String label;
-  const RestaurantAmenity(this.label);
-}
-
-/// Loại hình lưu trú khách sạn
-enum AccommodationType {
-  hotel('Khách sạn'),
-  homestay('Homestay'),
-  resort('Resort'),
-  apartment('Căn hộ'),
-  guesthouse('Nhà nghỉ');
-
-  final String label;
-  const AccommodationType(this.label);
-}
-
-/// Tiện nghi khách sạn
-enum HotelAmenity {
-  pool('Hồ bơi'),
-  freeWifi('Wifi miễn phí'),
-  breakfast('Có bữa sáng'),
-  gym('Phòng gym');
-
-  final String label;
-  const HotelAmenity(this.label);
+  const MinRating(this.value, this.label);
 }
 
 /// Tùy chọn sắp xếp (dùng chung cho tất cả tab)
 enum SortOption {
   none('Mặc định'),
-  mostPopular('Phổ biến nhất'),
   highestRated('Đánh giá cao nhất'),
-  cheapest('Giá rẻ nhất');
+  mostReviewed('Nhiều đánh giá nhất');
 
   final String label;
   const SortOption(this.label);
@@ -107,11 +59,11 @@ class ActivityFilter with _$ActivityFilter {
     /// Các loại hình đã chọn (chọn nhiều). Rỗng = tất cả.
     @Default({}) Set<ActivityCategory> categories,
 
-    /// Khoảng giá đã chọn (chọn 1)
-    @Default(ActivityPriceType.all) ActivityPriceType priceType,
+    /// Đánh giá tối thiểu
+    @Default(MinRating.all) MinRating minRating,
 
-    /// Quận/Huyện đã chọn. null = tất cả.
-    @Default(null) String? district,
+    /// Chỉ hiện địa điểm đang mở cửa
+    @Default(false) bool openNowOnly,
 
     /// Tùy chọn sắp xếp
     @Default(SortOption.none) SortOption sortOption,
@@ -122,14 +74,11 @@ class ActivityFilter with _$ActivityFilter {
 @freezed
 class RestaurantFilter with _$RestaurantFilter {
   const factory RestaurantFilter({
-    /// Danh mục đã chọn (chọn nhiều). Rỗng = tất cả.
-    @Default({}) Set<RestaurantCuisine> cuisines,
+    /// Đánh giá tối thiểu
+    @Default(MinRating.all) MinRating minRating,
 
-    /// Mức giá đã chọn (chọn 1)
-    @Default(RestaurantPriceLevel.all) RestaurantPriceLevel priceLevel,
-
-    /// Tiện ích đã chọn (chọn nhiều)
-    @Default({}) Set<RestaurantAmenity> amenities,
+    /// Chỉ hiện nhà hàng đang mở cửa
+    @Default(false) bool openNowOnly,
 
     /// Tùy chọn sắp xếp
     @Default(SortOption.none) SortOption sortOption,
@@ -140,17 +89,8 @@ class RestaurantFilter with _$RestaurantFilter {
 @freezed
 class HotelFilter with _$HotelFilter {
   const factory HotelFilter({
-    /// Giá tối thiểu (VNĐ). 0 = không giới hạn dưới.
-    @Default(0) double minPrice,
-
-    /// Giá tối đa (VNĐ). 0 = không giới hạn trên.
-    @Default(0) double maxPrice,
-
-    /// Loại hình lưu trú đã chọn (chọn nhiều). Rỗng = tất cả.
-    @Default({}) Set<AccommodationType> accommodationTypes,
-
-    /// Tiện nghi đã chọn (chọn nhiều)
-    @Default({}) Set<HotelAmenity> amenities,
+    /// Đánh giá tối thiểu
+    @Default(MinRating.all) MinRating minRating,
 
     /// Tùy chọn sắp xếp
     @Default(SortOption.none) SortOption sortOption,
