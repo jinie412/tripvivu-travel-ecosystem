@@ -25,9 +25,13 @@ import * as XLSX from 'xlsx';
 import defaultServiceIcon from '@/assets/images/service_icon_default.jpg';
 
 type CityOption = { id: string; name: string };
-type BusinessTypeOption = { id: string; name: string };
+type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
 type AmenityDraft = { id: string; name: string; description: string; icon: React.ReactNode };
-type MenuDraft = { id: string; name: string; description: string; price: string; img: string; imageFile?: File | null; previewUrl?: string };
+type MenuDraft = { id: string; name: string; description: string; price: string; quantity?: string; img: string; imageFile?: File | null; previewUrl?: string };
+type WeekdayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+type DayHours = { enabled: boolean; openTime: string; closeTime: string };
+type WeeklyHours = Record<WeekdayKey, DayHours>;
+type OpeningHourGroup = { id: string; days: WeekdayKey[]; openTime: string; closeTime: string };
 type AddLocationFormData = {
   name: string;
   address: string;
@@ -40,9 +44,133 @@ type AddLocationFormData = {
   typeId: string;
   openTime: string;
   closeTime: string;
+  weeklyHours: WeeklyHours;
+  openingHourGroups: OpeningHourGroup[];
   description: string;
+  estimatedPreparationTime: string;
   amenities: AmenityDraft[];
   menu: MenuDraft[];
+};
+
+const WEEKDAY_OPTIONS: Array<{ key: WeekdayKey; label: string }> = [
+  { key: 'Monday', label: 'Thứ 2' },
+  { key: 'Tuesday', label: 'Thứ 3' },
+  { key: 'Wednesday', label: 'Thứ 4' },
+  { key: 'Thursday', label: 'Thứ 5' },
+  { key: 'Friday', label: 'Thứ 6' },
+  { key: 'Saturday', label: 'Thứ 7' },
+  { key: 'Sunday', label: 'Chủ nhật' },
+];
+
+const createDefaultWeeklyHours = (openTime = '08:00', closeTime = '22:00'): WeeklyHours => ({
+  Monday: { enabled: true, openTime, closeTime },
+  Tuesday: { enabled: true, openTime, closeTime },
+  Wednesday: { enabled: true, openTime, closeTime },
+  Thursday: { enabled: true, openTime, closeTime },
+  Friday: { enabled: true, openTime, closeTime },
+  Saturday: { enabled: true, openTime, closeTime },
+  Sunday: { enabled: true, openTime, closeTime },
+});
+
+const createDefaultOpeningHourGroups = (openTime = '08:00', closeTime = '22:00'): OpeningHourGroup[] => ([
+  {
+    id: 'default',
+    days: WEEKDAY_OPTIONS.map((day) => day.key),
+    openTime,
+    closeTime,
+  },
+]);
+
+const buildWeeklyHoursFromGroups = (groups: OpeningHourGroup[]): WeeklyHours => {
+  const weeklyHours = WEEKDAY_OPTIONS.reduce((result, day) => {
+    result[day.key] = { enabled: false, openTime: '08:00', closeTime: '22:00' };
+    return result;
+  }, {} as WeeklyHours);
+
+  groups.forEach((group) => {
+    group.days.forEach((day) => {
+      weeklyHours[day] = {
+        enabled: true,
+        openTime: group.openTime,
+        closeTime: group.closeTime,
+      };
+    });
+  });
+
+  return weeklyHours;
+};
+
+const buildOpeningHourGroupsFromWeeklyHours = (weeklyHours: WeeklyHours): OpeningHourGroup[] => {
+  const grouped = new Map<string, OpeningHourGroup>();
+
+  WEEKDAY_OPTIONS.forEach((day) => {
+    const item = weeklyHours[day.key];
+    if (!item.enabled) return;
+
+    const groupKey = `${item.openTime}|${item.closeTime}`;
+    const existing = grouped.get(groupKey);
+    if (existing) {
+      existing.days.push(day.key);
+      return;
+    }
+
+    grouped.set(groupKey, {
+      id: groupKey,
+      days: [day.key],
+      openTime: item.openTime,
+      closeTime: item.closeTime,
+    });
+  });
+
+  const groups = Array.from(grouped.values());
+  return groups.length > 0 ? groups : createDefaultOpeningHourGroups();
+};
+
+const normalizeTimeForCompressedHours = (value: string): string => {
+  if (!value) return '';
+  return value.length === 5 ? `${value}:00` : value;
+};
+
+const buildOpenHourCompressed = (weeklyHours: WeeklyHours): Record<WeekdayKey, [string, string][]> => {
+  return WEEKDAY_OPTIONS.reduce((result, day) => {
+    const item = weeklyHours[day.key];
+    result[day.key] = item.enabled && item.openTime && item.closeTime
+      ? [[normalizeTimeForCompressedHours(item.openTime), normalizeTimeForCompressedHours(item.closeTime)]]
+      : [];
+    return result;
+  }, {} as Record<WeekdayKey, [string, string][]>);
+};
+
+const getPrimaryOpenCloseTime = (weeklyHours: WeeklyHours): { openTime: string; closeTime: string } => {
+  const firstOpenDay = WEEKDAY_OPTIONS
+    .map((day) => weeklyHours[day.key])
+    .find((item) => item.enabled && item.openTime && item.closeTime);
+
+  return {
+    openTime: firstOpenDay?.openTime || '08:00',
+    closeTime: firstOpenDay?.closeTime || '22:00',
+  };
+};
+
+const isFoodCategory = (categoryName?: string | null): boolean => {
+  const lower = (categoryName ?? '').toLowerCase();
+  return lower.includes('ẩm thực') || lower.includes('nhà hàng') || lower.includes('ăn uống');
+};
+
+const isAccommodationCategory = (...values: Array<string | null | undefined>): boolean => {
+  const normalized = values
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  return normalized.includes('luu tru')
+    || normalized.includes('khach san')
+    || normalized.includes('hotel')
+    || normalized.includes('homestay')
+    || normalized.includes('resort')
+    || normalized.includes('accommodation');
 };
 type AddLocationDraft = {
   step: number;
@@ -67,20 +195,40 @@ const DEFAULT_ADD_LOCATION_FORM_DATA: AddLocationFormData = {
   typeId: '',
   openTime: '08:00',
   closeTime: '22:00',
+  weeklyHours: createDefaultWeeklyHours(),
+  openingHourGroups: createDefaultOpeningHourGroups(),
   description: '',
+  estimatedPreparationTime: '',
   amenities: [],
   menu: [],
 };
 
 const isBrowser = () => typeof window !== 'undefined';
 
+const shouldRestoreAddLocationDraft = () => {
+  if (!isBrowser()) return false;
+  return new URLSearchParams(window.location.search).get('resumeDraft') === '1';
+};
+
 const restoreAddLocationDraft = (): AddLocationDraft | null => {
   if (!isBrowser()) return null;
+  if (!shouldRestoreAddLocationDraft()) {
+    window.localStorage.removeItem(ADD_LOCATION_DRAFT_KEY);
+    return null;
+  }
+
   try {
     const raw = window.localStorage.getItem(ADD_LOCATION_DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<AddLocationDraft>;
     if (!parsed.formData || typeof parsed.formData !== 'object') return null;
+    const restoredWeeklyHours = parsed.formData.weeklyHours ?? createDefaultWeeklyHours(
+      String(parsed.formData.openTime ?? DEFAULT_ADD_LOCATION_FORM_DATA.openTime),
+      String(parsed.formData.closeTime ?? DEFAULT_ADD_LOCATION_FORM_DATA.closeTime),
+    );
+    const restoredOpeningHourGroups = Array.isArray(parsed.formData.openingHourGroups)
+      ? parsed.formData.openingHourGroups
+      : buildOpeningHourGroupsFromWeeklyHours(restoredWeeklyHours);
 
     return {
       step: typeof parsed.step === 'number' ? Math.min(Math.max(parsed.step, 1), 3) : 1,
@@ -92,6 +240,8 @@ const restoreAddLocationDraft = (): AddLocationDraft | null => {
         phone: String(parsed.formData.phone ?? '').replace(/\D/g, '').slice(0, 10),
         latitude: Number(parsed.formData.latitude) || DEFAULT_ADD_LOCATION_FORM_DATA.latitude,
         longitude: Number(parsed.formData.longitude) || DEFAULT_ADD_LOCATION_FORM_DATA.longitude,
+        weeklyHours: buildWeeklyHoursFromGroups(restoredOpeningHourGroups),
+        openingHourGroups: restoredOpeningHourGroups,
         amenities: Array.isArray(parsed.formData.amenities) ? parsed.formData.amenities : [],
         menu: Array.isArray(parsed.formData.menu) ? parsed.formData.menu : [],
       },
@@ -114,6 +264,7 @@ const buildRestoredFormData = (draft: AddLocationDraft | null): AddLocationFormD
     name: item.name || '',
     description: item.description || '',
     price: item.price || '',
+    quantity: item.quantity || '1',
     img: item.img || '',
     imageFile: null,
     previewUrl: '',
@@ -123,7 +274,7 @@ const buildRestoredFormData = (draft: AddLocationDraft | null): AddLocationFormD
 const buildPersistableFormData = (formData: AddLocationFormData): AddLocationDraft['formData'] => ({
   ...formData,
   amenities: formData.amenities.map(({ id, name, description }) => ({ id, name, description })),
-  menu: formData.menu.map(({ id, name, description, price, img }) => ({ id, name, description, price, img })),
+  menu: formData.menu.map(({ id, name, description, price, quantity, img }) => ({ id, name, description, price, quantity, img })),
 });
 
 const PRESET_FREE_SERVICES = [
@@ -185,7 +336,7 @@ const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_S
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        src: `https://${'abcd'[(wrappedX + y) % 4]}.basemaps.cartocdn.com/rastertiles/voyager/${tileZoom}/${wrappedX}/${y}.png`,
         left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
         top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
         size: MAP_TILE_SIZE * overzoomScale,
@@ -320,10 +471,11 @@ const AddLocationPage: React.FC = () => {
     name: string;
     description: string;
     price: string;
+    quantity: string;
     img: string;
     imageFile: File | null;
     previewUrl: string;
-  }>({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+  }>({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
 
   // Excel preview state
@@ -432,6 +584,7 @@ const AddLocationPage: React.FC = () => {
           .map((item: any) => ({
             id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? item.type_name ?? ''),
             name: String(item.name ?? item.type_name ?? ''),
+            category_name: item.category_name ?? null,
           }))
           .filter((item) => item.id && item.name)
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -481,6 +634,12 @@ const AddLocationPage: React.FC = () => {
     && !phoneError
     && formData.email
     && !emailError,
+  );
+  const selectedBusinessType = businessTypes.find((type) => type.id === formData.typeId);
+  const isAccommodation = isAccommodationCategory(
+    selectedBusinessType?.category_name,
+    selectedBusinessType?.name,
+    formData.type,
   );
 
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -563,6 +722,22 @@ const AddLocationPage: React.FC = () => {
       return false;
     }
 
+    const openDays = WEEKDAY_OPTIONS
+      .map((day) => formData.weeklyHours[day.key])
+      .filter((item) => item.enabled);
+
+    if (openDays.length === 0) {
+      alert('Vui lòng chọn ít nhất một ngày mở cửa.');
+      setStep(1);
+      return false;
+    }
+
+    if (openDays.some((item) => !item.openTime || !item.closeTime || item.openTime >= item.closeTime)) {
+      alert('Giờ mở cửa theo ngày chưa hợp lệ. Giờ đóng cửa phải sau giờ mở cửa.');
+      setStep(1);
+      return false;
+    }
+
     if (loadingCities) {
       alert('Danh sách tỉnh/thành đang tải. Vui lòng chờ trong giây lát.');
       setStep(1);
@@ -633,13 +808,19 @@ const AddLocationPage: React.FC = () => {
 
   const handleAddMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      alert('Vui lòng nhập tên và giá của món ăn');
+      alert(isAccommodation ? 'Vui long nhap ten phong va gia phong' : 'Vui long nhap ten va gia cua mon an');
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      alert('Gia dich vu co phi phai lon hon 0');
+      return;
+    }
+
+    const quantity = parseInt(menuInput.quantity || '1', 10);
+    if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
+      alert('Suc chua phong phai lon hon 0');
       return;
     }
 
@@ -648,6 +829,7 @@ const AddLocationPage: React.FC = () => {
       name: menuInput.name,
       description: menuInput.description,
       price: menuInput.price,
+      quantity: String(quantity),
       img: menuInput.img || '',
       imageFile: menuInput.imageFile,
       previewUrl: menuInput.previewUrl,
@@ -658,7 +840,7 @@ const AddLocationPage: React.FC = () => {
       menu: [...prev.menu, newMenuItem]
     }));
 
-    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
   };
 
   const handleEditMenuItem = (id: string) => {
@@ -669,6 +851,7 @@ const AddLocationPage: React.FC = () => {
       name: item.name,
       description: item.description,
       price: item.price,
+      quantity: item.quantity || '1',
       img: item.img || '',
       imageFile: item.imageFile ?? null,
       previewUrl: item.previewUrl || '',
@@ -677,13 +860,19 @@ const AddLocationPage: React.FC = () => {
 
   const handleUpdateMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      alert('Vui lòng nhập tên và giá của món ăn');
+      alert(isAccommodation ? 'Vui long nhap ten phong va gia phong' : 'Vui long nhap ten va gia cua mon an');
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      alert('Gia dich vu co phi phai lon hon 0');
+      return;
+    }
+
+    const quantity = parseInt(menuInput.quantity || '1', 10);
+    if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
+      alert('Suc chua phong phai lon hon 0');
       return;
     }
 
@@ -691,20 +880,19 @@ const AddLocationPage: React.FC = () => {
       ...prev,
       menu: prev.menu.map(m =>
         m.id === editingMenuId
-          ? { ...m, name: menuInput.name, description: menuInput.description, price: menuInput.price, img: menuInput.img, imageFile: menuInput.imageFile, previewUrl: menuInput.previewUrl }
+          ? { ...m, name: menuInput.name, description: menuInput.description, price: menuInput.price, quantity: String(quantity), img: menuInput.img, imageFile: menuInput.imageFile, previewUrl: menuInput.previewUrl }
           : m
       ),
     }));
 
     setEditingMenuId(null);
-    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
   };
 
   const handleCancelEdit = () => {
     setEditingMenuId(null);
-    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
   };
-
   const handleRemoveMenuItem = (id: string) => {
     setFormData(prev => ({
       ...prev,
@@ -880,10 +1068,17 @@ const AddLocationPage: React.FC = () => {
             name: item.name,
             description: item.description || '',
             price: parseFloat(item.price) || 0,
+            quantity: parseInt(item.quantity || '1', 10) || 1,
             image_url: imageUrl || undefined,
           };
         }),
       );
+      const roomPayload = menuWithUploadedImages.map((item) => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      }));
+      const primaryOpenCloseTime = getPrimaryOpenCloseTime(formData.weeklyHours);
 
       const payload = {
         p_name: formData.name,
@@ -897,9 +1092,13 @@ const AddLocationPage: React.FC = () => {
         p_type_id: formData.typeId,
         p_type_name: formData.type,
         p_categories: formData.type ? [formData.type] : [],
-        p_open_time: formData.openTime, // Thêm trường này
-        p_close_time: formData.closeTime, // Thêm trường này
+        p_open_time: primaryOpenCloseTime.openTime,
+        p_close_time: primaryOpenCloseTime.closeTime,
+        p_open_hour_compressed: buildOpenHourCompressed(formData.weeklyHours),
         p_description: formData.description,
+        p_estimated_preparation_time: isFoodCategory(selectedBusinessType?.category_name) && formData.estimatedPreparationTime
+          ? Number(formData.estimatedPreparationTime)
+          : null,
         p_services: formData.amenities.map(a => {
           const existing = dbServices.find(s => s.name.toLowerCase().trim() === a.name.toLowerCase().trim());
           return {
@@ -908,7 +1107,8 @@ const AddLocationPage: React.FC = () => {
             ...(existing ? { service_id: existing.id } : {}),
           };
         }),
-        p_menu: menuWithUploadedImages,
+        p_menu: isAccommodation ? [] : menuWithUploadedImages,
+        p_rooms: isAccommodation ? roomPayload : [],
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
 
@@ -968,6 +1168,63 @@ const AddLocationPage: React.FC = () => {
     } else if (step > 1) {
       setStep((prev) => prev - 1);
     }
+  };
+
+  const updateOpeningHourGroups = (updater: (current: OpeningHourGroup[]) => OpeningHourGroup[]) => {
+    setFormData((current) => {
+      const openingHourGroups = updater(current.openingHourGroups);
+      const weeklyHours = buildWeeklyHoursFromGroups(openingHourGroups);
+      const primaryOpenCloseTime = getPrimaryOpenCloseTime(weeklyHours);
+
+      return {
+        ...current,
+        openingHourGroups,
+        weeklyHours,
+        openTime: primaryOpenCloseTime.openTime,
+        closeTime: primaryOpenCloseTime.closeTime,
+      };
+    });
+  };
+
+  const handleGroupTimeChange = (groupId: string, field: 'openTime' | 'closeTime', value: string) => {
+    updateOpeningHourGroups((current) =>
+      current.map((group) => group.id === groupId ? { ...group, [field]: value } : group),
+    );
+  };
+
+  const handleToggleGroupDay = (groupId: string, day: WeekdayKey) => {
+    updateOpeningHourGroups((current) => {
+      const targetGroup = current.find((group) => group.id === groupId);
+      const shouldSelect = !targetGroup?.days.includes(day);
+
+      return current.map((group) => {
+        const daysWithoutCurrent = group.days.filter((item) => item !== day);
+        if (group.id !== groupId) {
+          return { ...group, days: daysWithoutCurrent };
+        }
+
+        return {
+          ...group,
+          days: shouldSelect ? [...daysWithoutCurrent, day] : daysWithoutCurrent,
+        };
+      });
+    });
+  };
+
+  const handleAddOpeningHourGroup = () => {
+    updateOpeningHourGroups((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${current.length}`,
+        days: [],
+        openTime: '08:00',
+        closeTime: '22:00',
+      },
+    ]);
+  };
+
+  const handleRemoveOpeningHourGroup = (groupId: string) => {
+    updateOpeningHourGroups((current) => current.filter((group) => group.id !== groupId));
   };
 
   const mapTiles = getMapTiles(formData.latitude, formData.longitude, mapSize.width, mapSize.height, mapZoom);
@@ -1116,6 +1373,7 @@ const AddLocationPage: React.FC = () => {
                 ...formData,
                 typeId: selectedType?.id || '',
                 type: selectedType?.name || '',
+                estimatedPreparationTime: isFoodCategory(selectedType?.category_name) ? formData.estimatedPreparationTime : '',
               });
             }}
             disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}>
@@ -1163,27 +1421,161 @@ const AddLocationPage: React.FC = () => {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <div style={{ flex: 1 }}>
-            <Input
-              label="Giờ mở cửa"
-              type="time"
-              value={formData.openTime}
-              onChange={(e) => setFormData({ ...formData, openTime: e.target.value })}
-              icon={<Clock size={18} />}
-              style={{ marginBottom: 0 }}
+        {isFoodCategory(businessTypes.find((t) => t.id === formData.typeId)?.category_name) && (
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+              Thời gian hoàn thành đơn (phút)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={480}
+              placeholder="Ví dụ: 30"
+              value={formData.estimatedPreparationTime}
+              onChange={(e) => setFormData({ ...formData, estimatedPreparationTime: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                background: '#fcfcfc',
+                outline: 'none',
+                fontSize: '15px',
+                color: '#1e293b',
+                boxSizing: 'border-box',
+              }}
             />
+            <p style={{ marginTop: '6px', fontSize: '12px', color: '#94a3b8' }}>
+              Thời gian dự kiến từ lúc khách đặt đến khi hoàn thành phục vụ
+            </p>
           </div>
-          <div style={{ flex: 1 }}>
-            <Input
-              label="Giờ đóng cửa"
-              type="time"
-              value={formData.closeTime}
-              onChange={(e) => setFormData({ ...formData, closeTime: e.target.value })}
-              icon={<Clock size={18} />}
-              style={{ marginBottom: 0 }}
-            />
+        )}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={18} />
+              Lịch mở cửa
+            </label>
           </div>
+          <div style={{ display: 'grid', gap: '14px' }}>
+            {formData.openingHourGroups.map((group) => {
+              return (
+                <div
+                  key={group.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    padding: '14px',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {WEEKDAY_OPTIONS.map((day) => {
+                        const selected = group.days.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => handleToggleGroupDay(group.id, day.key)}
+                            style={{
+                              border: `1px solid ${selected ? '#2563eb' : '#CBD5E1'}`,
+                              background: selected ? '#EFF6FF' : '#fff',
+                              color: selected ? '#2563eb' : '#475569',
+                              borderRadius: '999px',
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formData.openingHourGroups.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOpeningHourGroup(group.id)}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Xóa
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
+                    <input
+                      type="time"
+                      value={group.openTime}
+                      onChange={(e) => handleGroupTimeChange(group.id, 'openTime', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color)',
+                        background: '#fcfcfc',
+                        color: '#1e293b',
+                        outline: 'none',
+                      }}
+                    />
+                    <span style={{ color: '#64748b', fontSize: '13px', fontWeight: 700 }}>đến</span>
+                    <input
+                      type="time"
+                      value={group.closeTime}
+                      onChange={(e) => handleGroupTimeChange(group.id, 'closeTime', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color)',
+                        background: '#fcfcfc',
+                        color: '#1e293b',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {group.days.length === 0 && (
+                    <p style={{ margin: 0, color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
+                      Chọn ít nhất một ngày cho khung giờ này hoặc xóa dòng.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={handleAddOpeningHourGroup}
+            style={{
+              marginTop: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+              color: '#2563eb',
+              borderRadius: '10px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+            }}
+          >
+            <Plus size={16} />
+            Thêm khung giờ mới
+          </button>
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1483,30 +1875,7 @@ const AddLocationPage: React.FC = () => {
       <div style={{ display: serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Thực đơn món ăn (Nhà hàng)</h4>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#3b82f6' }}>Đăng ký thực đơn</span>
-            <div
-              style={{
-                width: '44px',
-                height: '24px',
-                background: '#3b82f6',
-                borderRadius: '12px',
-                position: 'relative',
-                cursor: 'pointer',
-              }}>
-              <div
-                style={{
-                  position: 'absolute',
-                  right: '4px',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  background: 'white',
-                  borderRadius: '50%',
-                }}></div>
-            </div>
+            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Danh sách sản phẩm</h4>
           </div>
         </div>
 
@@ -1555,7 +1924,7 @@ const AddLocationPage: React.FC = () => {
           </div>
           <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Tên món ăn</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sản phẩm</label>
               <input
                 placeholder="VD: Cơm Gà Hải Nam"
                 value={menuInput.name}
@@ -1595,6 +1964,27 @@ const AddLocationPage: React.FC = () => {
                 <span style={{ position: 'absolute', right: '14px', color: 'var(--text-secondary)', fontSize: '15px' }}>đ</span>
               </div>
             </div>
+            {isAccommodation && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sức chứa</label>
+                <input
+                  placeholder="2"
+                  value={menuInput.quantity}
+                  onChange={(e) => setMenuInput({ ...menuInput, quantity: e.target.value })}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    padding: '0 16px',
+                    borderRadius: '12px',
+                    border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
+                    background: '#fcfcfc',
+                    fontSize: '15px',
+                    outline: 'none',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+            )}
             <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Mô tả chi tiết</label>
               <textarea

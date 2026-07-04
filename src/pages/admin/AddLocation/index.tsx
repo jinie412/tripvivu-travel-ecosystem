@@ -185,7 +185,7 @@ const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_S
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        src: `https://${'abcd'[(wrappedX + y) % 4]}.basemaps.cartocdn.com/rastertiles/voyager/${tileZoom}/${wrappedX}/${y}.png`,
         left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
         top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
         size: MAP_TILE_SIZE * overzoomScale,

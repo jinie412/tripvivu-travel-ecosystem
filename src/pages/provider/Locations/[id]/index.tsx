@@ -42,7 +42,12 @@ import { markLocationPendingApproval } from '../../../../utils/locationApprovalO
 
 // ─── Map utilities (same as AddLocation) ─────────────────────────────────────
 type CityOption = { id: string; name: string };
-type BusinessTypeOption = { id: string; name: string };
+type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
+
+const isFoodCategory = (categoryName?: string | null): boolean => {
+  const lower = (categoryName ?? '').toLowerCase();
+  return lower.includes('ẩm thực') || lower.includes('nhà hàng') || lower.includes('ăn uống');
+};
 
 const VIETNAM_BOUNDS = { minLat: 8.18, maxLat: 23.39, minLng: 102.14, maxLng: 109.47 };
 const MAP_TILE_SIZE = 256;
@@ -88,7 +93,7 @@ const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_S
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        src: `https://${'abcd'[(wrappedX + y) % 4]}.basemaps.cartocdn.com/rastertiles/voyager/${tileZoom}/${wrappedX}/${y}.png`,
         left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
         top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
         size: MAP_TILE_SIZE * overzoomScale,
@@ -223,6 +228,7 @@ interface PlaceDraft {
   description: string;
   latitude: string;
   longitude: string;
+  estimatedPreparationTime: string;
 }
 
 interface PlaceServiceItem {
@@ -270,6 +276,7 @@ const defaultDraft: PlaceDraft = {
   description: '',
   latitude: '',
   longitude: '',
+  estimatedPreparationTime: '',
 };
 
 const getText = (value: unknown, fallback = ''): string => {
@@ -375,6 +382,7 @@ const normalizePlaceDetail = (raw: unknown): { summary: PlaceSummary; draft: Pla
       description: getText(data.description ?? data.place_description, ''),
       latitude: getText(data.latitude ?? data.lat ?? data.p_lat, ''),
       longitude: getText(data.longitude ?? data.lng ?? data.p_lng, ''),
+      estimatedPreparationTime: data.estimated_preparation_time != null ? String(data.estimated_preparation_time) : '',
     },
   };
 };
@@ -527,6 +535,7 @@ const LocationEditPage: React.FC = () => {
             .map((item: any) => ({
               id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? ''),
               name: String(item.name ?? item.type_name ?? ''),
+              category_name: item.category_name ?? null,
             }))
             .filter((item) => item.id && item.name)
             .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -767,6 +776,9 @@ const LocationEditPage: React.FC = () => {
         description: draft.description,
         imageUrls,
         isActive,
+        estimated_preparation_time: isFoodCategory(businessTypes.find((t) => t.id === draft.typeId)?.category_name) && draft.estimatedPreparationTime
+          ? Number(draft.estimatedPreparationTime)
+          : null,
         status: 'pending',
         placeStatus: 'pending',
         approvalStatus: 'pending',
@@ -975,7 +987,12 @@ const LocationEditPage: React.FC = () => {
               value={draft.typeId}
               onChange={(e) => {
                 const selectedType = businessTypes.find((t) => t.id === e.target.value);
-                setDraft((current) => ({ ...current, typeId: selectedType?.id || '', type: selectedType?.name || '' }));
+                setDraft((current) => ({
+                  ...current,
+                  typeId: selectedType?.id || '',
+                  type: selectedType?.name || '',
+                  estimatedPreparationTime: isFoodCategory(selectedType?.category_name) ? current.estimatedPreparationTime : '',
+                }));
               }}
               disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}
             >
@@ -1003,6 +1020,37 @@ const LocationEditPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Estimated preparation time — only for food category */}
+          {isFoodCategory(businessTypes.find((t) => t.id === draft.typeId)?.category_name) && (
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                Thời gian hoàn thành đơn (phút)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={480}
+                placeholder="Ví dụ: 30"
+                value={draft.estimatedPreparationTime}
+                onChange={(e) => setDraft((current) => ({ ...current, estimatedPreparationTime: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-color)',
+                  background: '#fcfcfc',
+                  outline: 'none',
+                  fontSize: '15px',
+                  color: '#1e293b',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <p style={{ marginTop: '6px', fontSize: '12px', color: '#94a3b8' }}>
+                Thời gian dự kiến từ lúc khách đặt đến khi hoàn thành phục vụ
+              </p>
+            </div>
+          )}
 
           {/* Open/Close time */}
           <div style={{ display: 'flex', gap: '16px' }}>

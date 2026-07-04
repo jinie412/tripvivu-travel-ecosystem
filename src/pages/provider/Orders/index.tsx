@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getOrdersByPlace, normalizeOrderStatus } from '@/services/order.service';
+import { formatVietnamDateTime, getOrdersByPlace, normalizeOrderStatus } from '@/services/order.service';
 import { Order } from '@/types/order.types';
 import { getCurrentUser } from '@/utils/auth';
 import { businessLocationAPI } from '@/services/businessLocationAPI';
@@ -217,7 +217,7 @@ const OrdersPage: React.FC = () => {
                   </td>
 
                   <td style={{ padding: '24px', color: '#64748b' }}>
-                    {order.ordered_time ? new Date(order.ordered_time).toLocaleString('vi-VN') : '-'}
+                    {formatVietnamDateTime(order.ordered_time)}
                   </td>
 
                   <td style={{ padding: '24px' }}>
