@@ -473,6 +473,7 @@ class _ExploreViewState extends State<_ExploreView> {
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadDestinationsPage(page: page, limit: limit),
+          ratingExtractor: (item) => item.averageRating,
           sortOptions: [
             SortOption<Destination>(
               label: 'Rating giảm dần',
@@ -547,6 +548,8 @@ class _ExploreViewState extends State<_ExploreView> {
               .loadRestaurantsPage(page: page, limit: limit),
           cityExtractor: (item) =>
               item.address.trim().isEmpty ? null : item.address.trim(),
+          ratingExtractor: (item) => item.rating,
+          statusExtractor: (item) => item.status,
           sortOptions: [
             SortOption<CityRestaurant>(
               label: 'Tên A–Z',
@@ -603,6 +606,9 @@ class _ExploreViewState extends State<_ExploreView> {
               .loadHotelsPage(page: page, limit: limit),
           cityExtractor: (item) =>
               item.address.trim().isEmpty ? null : item.address.trim(),
+          ratingExtractor: (item) => item.rating,
+          statusExtractor: (item) => item.status,
+          priceExtractor: (item) => item.priceValue,
           sortOptions: [
             SortOption<CityHotel>(
               label: 'Tên A–Z',

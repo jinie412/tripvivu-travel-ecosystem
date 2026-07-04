@@ -174,16 +174,87 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
 
   List<CityActivity> _parseActivities(List<dynamic> raw) => raw
       .whereType<Map<String, dynamic>>()
-      .map((item) => CityActivityModel.fromJson(item).toEntity())
+      .map((item) => CityActivityModel.fromJson(_normalizeActivity(item)).toEntity())
       .toList();
 
   List<CityRestaurant> _parseRestaurants(List<dynamic> raw) => raw
       .whereType<Map<String, dynamic>>()
-      .map((item) => CityRestaurantModel.fromJson(item).toEntity())
+      .map((item) => CityRestaurantModel.fromJson(_normalizeRestaurant(item)).toEntity())
       .toList();
 
   List<CityHotel> _parseHotels(List<dynamic> raw) => raw
       .whereType<Map<String, dynamic>>()
-      .map((item) => CityHotelModel.fromJson(item).toEntity())
+      .map((item) => CityHotelModel.fromJson(_normalizeHotel(item)).toEntity())
       .toList();
+
+  Map<String, dynamic> _normalizeActivity(Map<String, dynamic> item) => {
+        'id': _readString(item['id']),
+        'name': _readString(item['name'] ?? item['title']),
+        'imageUrl': _readString(item['imageUrl'] ?? item['image_url'] ?? item['image']),
+        'rating': _readDouble(item['rating'] ?? item['average_rating']),
+        'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+        'address': _readString(item['address'] ?? item['city'] ?? item['location']),
+        'status': _readStatus(item['status']),
+        'isFavorite': item['isFavorite'] == true || item['is_favorite'] == true,
+        'category': _readString(item['category']),
+        'priceType': _readString(item['priceType'] ?? item['price_type']),
+        'district': _readString(item['district']),
+      };
+
+  Map<String, dynamic> _normalizeRestaurant(Map<String, dynamic> item) => {
+        'id': _readString(item['id']),
+        'name': _readString(item['name']),
+        'imageUrl': _readString(item['imageUrl'] ?? item['image_url'] ?? item['image']),
+        'rating': _readDouble(item['rating'] ?? item['average_rating']),
+        'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+        'address': _readString(item['address'] ?? item['city'] ?? item['location']),
+        'status': _readStatus(item['status']),
+        'isFavorite': item['isFavorite'] == true || item['is_favorite'] == true,
+        'cuisine': _readString(item['cuisine']),
+        'priceLevel': _readString(item['priceLevel'] ?? item['price_level']),
+        'amenities': _readStringList(item['amenities']),
+      };
+
+  Map<String, dynamic> _normalizeHotel(Map<String, dynamic> item) => {
+        'id': _readString(item['id']),
+        'name': _readString(item['name']),
+        'imageUrl': _readString(item['imageUrl'] ?? item['image_url'] ?? item['image']),
+        'rating': _readDouble(item['rating'] ?? item['average_rating']),
+        'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+        'address': _readString(item['address'] ?? item['city'] ?? item['location']),
+        'status': _readStatus(item['status']),
+        'price': _readString(item['price']).isNotEmpty
+            ? _readString(item['price'])
+            : 'Liên hệ',
+        'isFavorite': item['isFavorite'] == true || item['is_favorite'] == true,
+        'starRating': _readInt(item['starRating'] ?? item['star_rating']),
+        'priceValue': _readDouble(item['priceValue'] ?? item['price_value'] ?? item['price']),
+        'accommodationType':
+            _readString(item['accommodationType'] ?? item['accommodation_type']),
+        'amenities': _readStringList(item['amenities']),
+      };
+
+  String _readString(dynamic value) => value?.toString().trim() ?? '';
+
+  int _readInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  double _readDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _readStatus(dynamic value) {
+    final status = _readString(value);
+    return status == 'Chưa có giờ mở cửa' ? '' : status;
+  }
+
+  List<String> _readStringList(dynamic value) {
+    if (value is! List) return const <String>[];
+    return value.map((item) => item.toString()).toList();
+  }
 }

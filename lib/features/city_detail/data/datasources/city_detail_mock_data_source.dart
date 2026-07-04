@@ -363,6 +363,41 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
     return value.toString().trim();
   }
 
+  /// Rút gọn địa chỉ hiển thị trong city detail: ưu tiên giữ Phường/Xã/Thị trấn;
+  /// nếu không tách được thì bỏ phần cuối (tên tỉnh/TP — thừa vì đang ở trong
+  /// city detail của tỉnh đó). Địa chỉ chỉ có 1 phần thì giữ nguyên.
+  String _shortAddress(String address) {
+    final parts = address
+        .split(',')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return address.trim();
+    if (parts.length > 1 && parts.last.toLowerCase() == 'việt nam') {
+      parts.removeLast();
+    }
+    for (final part in parts) {
+      final lower = part.toLowerCase();
+      if (lower.startsWith('phường ') ||
+          lower.startsWith('p. ') ||
+          lower.startsWith('xã ') ||
+          lower.startsWith('x. ') ||
+          lower.startsWith('thị trấn ') ||
+          lower.startsWith('tt. ')) {
+        return part;
+      }
+    }
+    if (parts.length > 1) parts.removeLast();
+    return parts.join(', ');
+  }
+
+  /// Backend trả "Chưa có giờ mở cửa" khi địa điểm thiếu dữ liệu giờ —
+  /// coi như không có status để card ẩn dòng này thay vì hiển thị.
+  String _readStatus(dynamic value) {
+    final status = _readString(value);
+    return status == 'Chưa có giờ mở cửa' ? '' : status;
+  }
+
   double _readDouble(dynamic value) {
     if (value == null) {
       return 0;
@@ -419,8 +454,8 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
       'imageUrl': _readImageUrl(item),
       'rating': _readDouble(item['rating'] ?? item['average_rating']),
       'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
-      'address': _readString(item['address']),
-      'status': _readString(item['status']),
+      'address': _shortAddress(_readString(item['address'])),
+      'status': _readStatus(item['status']),
       'isFavorite': item['isFavorite'] == true,
       'category': _readString(item['category']),
       'priceType': _readString(item['priceType'] ?? item['price_type']),
@@ -435,8 +470,8 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
       'imageUrl': _readImageUrl(item),
       'rating': _readDouble(item['rating'] ?? item['average_rating']),
       'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
-      'address': _readString(item['address']),
-      'status': _readString(item['status']),
+      'address': _shortAddress(_readString(item['address'])),
+      'status': _readStatus(item['status']),
       'isFavorite': item['isFavorite'] == true,
       'cuisine': _readString(item['cuisine']),
       'priceLevel': _readString(item['priceLevel'] ?? item['price_level']),
@@ -457,7 +492,7 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
       'imageUrl': _readImageUrl(item),
       'rating': _readDouble(item['rating'] ?? item['average_rating']),
       'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
-      'address': normalizedAddress,
+      'address': _shortAddress(normalizedAddress),
       'price': _readString(item['price']).isNotEmpty
           ? _readString(item['price'])
           : 'Liên hệ',

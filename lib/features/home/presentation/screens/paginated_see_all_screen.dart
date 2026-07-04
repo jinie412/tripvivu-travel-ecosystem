@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/filter_enums.dart'
+    show MinRating;
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
 class SortOption<T> {
@@ -11,6 +13,21 @@ class SortOption<T> {
 
   const SortOption({required this.label, required this.compare});
 }
+
+class PriceRangeOption {
+  final String label;
+  final double min;
+  final double max;
+
+  const PriceRangeOption(this.label, this.min, this.max);
+}
+
+const kHotelPriceRanges = <PriceRangeOption>[
+  PriceRangeOption('Dưới 500K', 0, 500000),
+  PriceRangeOption('500K - 1 triệu', 500000, 1000000),
+  PriceRangeOption('1 - 2 triệu', 1000000, 2000000),
+  PriceRangeOption('Trên 2 triệu', 2000000, 0),
+];
 
 class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final String title;
@@ -21,10 +38,12 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final List<T> initialItems;
   final Stream<FavoriteChangedEvent>? favoriteChanges;
   final T Function(T item, FavoriteChangedEvent event)? favoriteMapper;
-  // filter / sort
   final String? Function(T item)? cityExtractor;
   final String? Function(T item)? travelTypeExtractor;
   final List<SortOption<T>>? sortOptions;
+  final double Function(T item)? ratingExtractor;
+  final String Function(T item)? statusExtractor;
+  final double Function(T item)? priceExtractor;
   final double separatorHeight;
 
   const PaginatedSeeAllScreen({
@@ -40,6 +59,9 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
     this.cityExtractor,
     this.travelTypeExtractor,
     this.sortOptions,
+    this.ratingExtractor,
+    this.statusExtractor,
+    this.priceExtractor,
     this.separatorHeight = 20,
   });
 
@@ -48,8 +70,7 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
       _PaginatedSeeAllScreenState<T>();
 }
 
-class _PaginatedSeeAllScreenState<T>
-    extends State<PaginatedSeeAllScreen<T>> {
+class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   final ScrollController _scrollController = ScrollController();
   final List<T> _allItems = [];
   StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
@@ -60,10 +81,12 @@ class _PaginatedSeeAllScreenState<T>
   String? _errorMessage;
   int _currentPage = 1;
 
-  // active filters / sort
   String? _selectedCity;
   String? _selectedTravelType;
   int _selectedSortIndex = -1;
+  MinRating _minRating = MinRating.all;
+  bool _openNowOnly = false;
+  int _priceRangeIndex = -1;
 
   List<String> get _availableCities {
     final extractor = widget.cityExtractor;
@@ -71,8 +94,10 @@ class _PaginatedSeeAllScreenState<T>
     final seen = <String>{};
     final result = <String>[];
     for (final item in _allItems) {
-      final v = extractor(item);
-      if (v != null && v.isNotEmpty && seen.add(v)) result.add(v);
+      final value = extractor(item)?.trim();
+      if (value != null && value.isNotEmpty && seen.add(value)) {
+        result.add(value);
+      }
     }
     result.sort();
     return result;
@@ -84,8 +109,10 @@ class _PaginatedSeeAllScreenState<T>
     final seen = <String>{};
     final result = <String>[];
     for (final item in _allItems) {
-      final v = extractor(item);
-      if (v != null && v.isNotEmpty && seen.add(v)) result.add(v);
+      final value = extractor(item)?.trim();
+      if (value != null && value.isNotEmpty && seen.add(value)) {
+        result.add(value);
+      }
     }
     result.sort();
     return result;
@@ -95,12 +122,37 @@ class _PaginatedSeeAllScreenState<T>
     var items = List<T>.from(_allItems);
     final cityExt = widget.cityExtractor;
     if (cityExt != null && _selectedCity != null) {
-      items = items.where((i) => cityExt(i) == _selectedCity).toList();
+      items = items.where((i) => cityExt(i)?.trim() == _selectedCity).toList();
     }
     final typeExt = widget.travelTypeExtractor;
     if (typeExt != null && _selectedTravelType != null) {
-      items =
-          items.where((i) => typeExt(i) == _selectedTravelType).toList();
+      items = items
+          .where((i) => typeExt(i)?.trim() == _selectedTravelType)
+          .toList();
+    }
+    final ratingExt = widget.ratingExtractor;
+    if (ratingExt != null && _minRating != MinRating.all) {
+      items = items.where((i) => ratingExt(i) >= _minRating.value).toList();
+    }
+    final statusExt = widget.statusExtractor;
+    if (statusExt != null && _openNowOnly) {
+      items = items.where((i) {
+        final status = statusExt(i).toLowerCase();
+        return status.contains('đang mở');
+      }).toList();
+    }
+    final priceExt = widget.priceExtractor;
+    if (priceExt != null &&
+        _priceRangeIndex >= 0 &&
+        _priceRangeIndex < kHotelPriceRanges.length) {
+      final range = kHotelPriceRanges[_priceRangeIndex];
+      items = items.where((i) {
+        final price = priceExt(i);
+        if (price <= 0) return false;
+        final aboveMin = price >= range.min;
+        final belowMax = range.max <= 0 || price <= range.max;
+        return aboveMin && belowMax;
+      }).toList();
     }
     final sorts = widget.sortOptions;
     if (sorts != null &&
@@ -114,14 +166,16 @@ class _PaginatedSeeAllScreenState<T>
   bool get _hasActiveFilter =>
       _selectedCity != null ||
       _selectedTravelType != null ||
-      _selectedSortIndex >= 0;
+      _selectedSortIndex >= 0 ||
+      _minRating != MinRating.all ||
+      _openNowOnly ||
+      _priceRangeIndex >= 0;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _favoriteSubscription =
-        widget.favoriteChanges?.listen(_onFavoriteChanged);
+    _favoriteSubscription = widget.favoriteChanges?.listen(_onFavoriteChanged);
     if (widget.initialItems.isNotEmpty) {
       _allItems.addAll(widget.initialItems);
       _isInitialLoading = false;
@@ -178,8 +232,7 @@ class _PaginatedSeeAllScreenState<T>
         _isInitialLoading) {
       return;
     }
-    final threshold =
-        _scrollController.position.maxScrollExtent - 180;
+    final threshold = _scrollController.position.maxScrollExtent - 180;
     if (_scrollController.position.pixels >= threshold) {
       _loadNextPage();
     }
@@ -232,10 +285,6 @@ class _PaginatedSeeAllScreenState<T>
   }
 
   void _openFilterSheet() {
-    final cities = _availableCities;
-    final travelTypes = _availableTravelTypes;
-    final sorts = widget.sortOptions;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -244,17 +293,26 @@ class _PaginatedSeeAllScreenState<T>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _FilterSortSheet<T>(
-        cities: cities,
-        travelTypes: travelTypes,
-        sortOptions: sorts,
+        cities: _availableCities,
+        travelTypes: _availableTravelTypes,
+        sortOptions: widget.sortOptions,
+        showRating: widget.ratingExtractor != null,
+        showOpenNow: widget.statusExtractor != null,
+        showPrice: widget.priceExtractor != null,
         selectedCity: _selectedCity,
         selectedTravelType: _selectedTravelType,
         selectedSortIndex: _selectedSortIndex,
-        onApply: (city, travelType, sortIndex) {
+        minRating: _minRating,
+        openNowOnly: _openNowOnly,
+        priceRangeIndex: _priceRangeIndex,
+        onApply: (value) {
           setState(() {
-            _selectedCity = city;
-            _selectedTravelType = travelType;
-            _selectedSortIndex = sortIndex;
+            _selectedCity = value.city;
+            _selectedTravelType = value.travelType;
+            _selectedSortIndex = value.sortIndex;
+            _minRating = value.minRating;
+            _openNowOnly = value.openNowOnly;
+            _priceRangeIndex = value.priceRangeIndex;
           });
         },
       ),
@@ -266,13 +324,15 @@ class _PaginatedSeeAllScreenState<T>
     final display = _displayItems;
     final hasFilterOrSort = widget.cityExtractor != null ||
         widget.travelTypeExtractor != null ||
+        widget.ratingExtractor != null ||
+        widget.statusExtractor != null ||
+        widget.priceExtractor != null ||
         (widget.sortOptions?.isNotEmpty ?? false);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // ── Header ──────────────────────────────────────────────────
           Container(
             color: AppColors.primary,
             padding: EdgeInsets.only(
@@ -308,6 +368,8 @@ class _PaginatedSeeAllScreenState<T>
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (hasFilterOrSort)
@@ -326,9 +388,8 @@ class _PaginatedSeeAllScreenState<T>
                         child: IconButton(
                           icon: Icon(
                             Icons.tune_rounded,
-                            color: _hasActiveFilter
-                                ? AppColors.primary
-                                : Colors.white,
+                            color:
+                                _hasActiveFilter ? AppColors.primary : Colors.white,
                             size: 22,
                           ),
                           onPressed: _openFilterSheet,
@@ -352,8 +413,6 @@ class _PaginatedSeeAllScreenState<T>
               ],
             ),
           ),
-
-          // ── List ────────────────────────────────────────────────────
           Expanded(
             child: Builder(builder: (context) {
               if (_isInitialLoading) {
@@ -362,16 +421,14 @@ class _PaginatedSeeAllScreenState<T>
               if (_errorMessage != null && _allItems.isEmpty) {
                 return Center(
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style:
-                              const TextStyle(color: Colors.redAccent),
+                          style: const TextStyle(color: Colors.redAccent),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
@@ -390,13 +447,14 @@ class _PaginatedSeeAllScreenState<T>
                         ? 'Không có kết quả phù hợp với bộ lọc'
                         : widget.emptyMessage,
                     style: TextStyle(color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
                   ),
                 );
               }
               return ListView.separated(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 itemCount: display.length + (_isLoadingMore ? 1 : 0),
                 separatorBuilder: (_, index) =>
                     index == display.length - 1 && _isLoadingMore
@@ -420,24 +478,52 @@ class _PaginatedSeeAllScreenState<T>
   }
 }
 
-// ── Filter + Sort bottom sheet ─────────────────────────────────────────────
+class _FilterValue {
+  final String? city;
+  final String? travelType;
+  final int sortIndex;
+  final MinRating minRating;
+  final bool openNowOnly;
+  final int priceRangeIndex;
+
+  const _FilterValue({
+    required this.city,
+    required this.travelType,
+    required this.sortIndex,
+    required this.minRating,
+    required this.openNowOnly,
+    required this.priceRangeIndex,
+  });
+}
 
 class _FilterSortSheet<T> extends StatefulWidget {
   final List<String> cities;
   final List<String> travelTypes;
   final List<SortOption<T>>? sortOptions;
+  final bool showRating;
+  final bool showOpenNow;
+  final bool showPrice;
   final String? selectedCity;
   final String? selectedTravelType;
   final int selectedSortIndex;
-  final void Function(String? city, String? travelType, int sortIndex) onApply;
+  final MinRating minRating;
+  final bool openNowOnly;
+  final int priceRangeIndex;
+  final void Function(_FilterValue value) onApply;
 
   const _FilterSortSheet({
     required this.cities,
     required this.travelTypes,
     required this.sortOptions,
+    required this.showRating,
+    required this.showOpenNow,
+    required this.showPrice,
     required this.selectedCity,
     required this.selectedTravelType,
     required this.selectedSortIndex,
+    required this.minRating,
+    required this.openNowOnly,
+    required this.priceRangeIndex,
     required this.onApply,
   });
 
@@ -449,6 +535,9 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
   String? _city;
   String? _travelType;
   int _sortIndex = -1;
+  MinRating _minRating = MinRating.all;
+  bool _openNowOnly = false;
+  int _priceRangeIndex = -1;
 
   @override
   void initState() {
@@ -456,16 +545,27 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
     _city = widget.selectedCity;
     _travelType = widget.selectedTravelType;
     _sortIndex = widget.selectedSortIndex;
+    _minRating = widget.minRating;
+    _openNowOnly = widget.openNowOnly;
+    _priceRangeIndex = widget.priceRangeIndex;
   }
 
   bool get _hasFilter =>
-      _city != null || _travelType != null || _sortIndex >= 0;
+      _city != null ||
+      _travelType != null ||
+      _sortIndex >= 0 ||
+      _minRating != MinRating.all ||
+      _openNowOnly ||
+      _priceRangeIndex >= 0;
 
   void _reset() {
     setState(() {
       _city = null;
       _travelType = null;
       _sortIndex = -1;
+      _minRating = MinRating.all;
+      _openNowOnly = false;
+      _priceRangeIndex = -1;
     });
   }
 
@@ -526,7 +626,6 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // City filter
                   if (widget.cities.isNotEmpty) ...[
                     _sectionLabel('Tỉnh / Thành phố'),
                     const SizedBox(height: 8),
@@ -534,17 +633,21 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
                       value: _city,
                       hint: 'Tất cả',
                       items: [
-                        const DropdownMenuItem(
-                            value: null, child: Text('Tất cả')),
-                        ...widget.cities.map((c) =>
-                            DropdownMenuItem(value: c, child: Text(c))),
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Tất cả'),
+                        ),
+                        ...widget.cities.map(
+                          (c) => DropdownMenuItem<String?>(
+                            value: c,
+                            child: Text(c),
+                          ),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _city = v),
                     ),
                     const SizedBox(height: 20),
                   ],
-
-                  // Travel type filter (itineraries)
                   if (widget.travelTypes.isNotEmpty) ...[
                     _sectionLabel('Loại hình du lịch'),
                     const SizedBox(height: 8),
@@ -552,17 +655,52 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
                       value: _travelType,
                       hint: 'Tất cả',
                       items: [
-                        const DropdownMenuItem(
-                            value: null, child: Text('Tất cả')),
-                        ...widget.travelTypes.map((t) =>
-                            DropdownMenuItem(value: t, child: Text(t))),
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Tất cả'),
+                        ),
+                        ...widget.travelTypes.map(
+                          (t) => DropdownMenuItem<String?>(
+                            value: t,
+                            child: Text(t),
+                          ),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _travelType = v),
                     ),
                     const SizedBox(height: 20),
                   ],
-
-                  // Sort
+                  if (widget.showRating) ...[
+                    _sectionLabel('Đánh giá tối thiểu'),
+                    const SizedBox(height: 8),
+                    _ratingChips(),
+                    const SizedBox(height: 20),
+                  ],
+                  if (widget.showOpenNow) ...[
+                    SwitchListTile.adaptive(
+                      value: _openNowOnly,
+                      onChanged: (value) =>
+                          setState(() => _openNowOnly = value),
+                      activeColor: AppColors.primary,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text(
+                        'Chỉ hiện đang mở cửa',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (widget.showPrice) ...[
+                    _sectionLabel('Giá mỗi đêm'),
+                    const SizedBox(height: 8),
+                    _priceChips(),
+                    const SizedBox(height: 20),
+                  ],
                   if (widget.sortOptions != null &&
                       widget.sortOptions!.isNotEmpty) ...[
                     _sectionLabel('Sắp xếp theo'),
@@ -571,35 +709,42 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
                       value: _sortIndex,
                       hint: 'Mặc định',
                       items: [
-                        const DropdownMenuItem(
-                            value: -1, child: Text('Mặc định')),
+                        const DropdownMenuItem<int>(
+                          value: -1,
+                          child: Text('Mặc định'),
+                        ),
                         ...List.generate(
                           widget.sortOptions!.length,
-                          (i) => DropdownMenuItem(
+                          (i) => DropdownMenuItem<int>(
                             value: i,
                             child: Text(widget.sortOptions![i].label),
                           ),
                         ),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _sortIndex = v ?? -1),
+                      onChanged: (v) => setState(() => _sortIndex = v ?? -1),
                     ),
                     const SizedBox(height: 20),
                   ],
                 ],
               ),
             ),
-
-            // Apply button
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () {
-                    widget.onApply(_city, _travelType, _sortIndex);
+                    widget.onApply(
+                      _FilterValue(
+                        city: _city,
+                        travelType: _travelType,
+                        sortIndex: _sortIndex,
+                        minRating: _minRating,
+                        openNowOnly: _openNowOnly,
+                        priceRangeIndex: _priceRangeIndex,
+                      ),
+                    );
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
@@ -623,6 +768,63 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _ratingChips() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: MinRating.values.map((option) {
+        return ChoiceChip(
+          label: Text(option.label),
+          selected: _minRating == option,
+          selectedColor: AppColors.primary.withValues(alpha: 0.14),
+          labelStyle: TextStyle(
+            color: _minRating == option
+                ? AppColors.primary
+                : AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          side: BorderSide(
+            color: _minRating == option
+                ? AppColors.primary
+                : Colors.grey.shade300,
+          ),
+          onSelected: (_) => setState(() => _minRating = option),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _priceChips() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(kHotelPriceRanges.length, (index) {
+        final option = kHotelPriceRanges[index];
+        return ChoiceChip(
+          label: Text(option.label),
+          selected: _priceRangeIndex == index,
+          selectedColor: AppColors.primary.withValues(alpha: 0.14),
+          labelStyle: TextStyle(
+            color: _priceRangeIndex == index
+                ? AppColors.primary
+                : AppColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          side: BorderSide(
+            color: _priceRangeIndex == index
+                ? AppColors.primary
+                : Colors.grey.shade300,
+          ),
+          onSelected: (selected) {
+            setState(() => _priceRangeIndex = selected ? index : -1);
+          },
+        );
+      }),
     );
   }
 
@@ -651,15 +853,18 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<V>(
           value: value,
-          hint: Text(hint,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+          hint: Text(
+            hint,
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+          ),
           isExpanded: true,
           items: items,
           onChanged: onChanged,
-          style: const TextStyle(
-              color: AppColors.textPrimary, fontSize: 14),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Colors.grey),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.grey,
+          ),
         ),
       ),
     );

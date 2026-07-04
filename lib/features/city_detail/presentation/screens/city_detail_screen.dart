@@ -582,8 +582,8 @@ class _ActivityTabContent extends StatelessWidget {
 
   bool get _hasActiveFilter =>
       filter.categories.isNotEmpty ||
-      filter.priceType != ActivityPriceType.all ||
-      filter.district != null ||
+      filter.minRating != MinRating.all ||
+      filter.openNowOnly ||
       filter.sortOption != SortOption.none;
 
   @override
@@ -650,9 +650,8 @@ class _RestaurantTabContent extends StatelessWidget {
   const _RestaurantTabContent({required this.restaurants, required this.filter});
 
   bool get _hasActiveFilter =>
-      filter.cuisines.isNotEmpty ||
-      filter.priceLevel != RestaurantPriceLevel.all ||
-      filter.amenities.isNotEmpty ||
+      filter.minRating != MinRating.all ||
+      filter.openNowOnly ||
       filter.sortOption != SortOption.none;
 
   @override
@@ -719,10 +718,7 @@ class _HotelTabContent extends StatelessWidget {
   const _HotelTabContent({required this.hotels, required this.filter});
 
   bool get _hasActiveFilter =>
-      filter.minPrice > 0 ||
-      filter.maxPrice > 0 ||
-      filter.accommodationTypes.isNotEmpty ||
-      filter.amenities.isNotEmpty ||
+      filter.minRating != MinRating.all ||
       filter.sortOption != SortOption.none;
 
   @override

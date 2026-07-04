@@ -145,15 +145,17 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.item.status,
-                        style: TextStyle(
-                          color: isOpenStatus ? Colors.grey[700] : Colors.red[400],
-                          fontSize: 12,
-                          fontWeight: isOpenStatus ? FontWeight.normal : FontWeight.w500,
+                      if (widget.item.status.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.item.status,
+                          style: TextStyle(
+                            color: isOpenStatus ? Colors.grey[700] : Colors.red[400],
+                            fontSize: 12,
+                            fontWeight: isOpenStatus ? FontWeight.normal : FontWeight.w500,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
