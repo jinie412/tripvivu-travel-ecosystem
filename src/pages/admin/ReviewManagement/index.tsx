@@ -9,7 +9,6 @@ import {
 import { ReviewStats } from './components/ReviewStats';
 import { ReviewFilter } from './components/ReviewFilter';
 import { ReviewTable } from './components/ReviewTable';
-import { Bell } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './ReviewManagement.css';
@@ -211,7 +210,6 @@ export const ReviewManagement: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn"><Bell size={20} /></button>
           <AdminHeaderProfile />
         </div>
       </header>

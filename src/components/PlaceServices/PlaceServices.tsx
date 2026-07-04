@@ -7,6 +7,7 @@ interface Service {
   name: string;
   description: string;
   price: number | null;
+  quantity?: number | null;
 }
 
 interface PlaceServicesProps {
@@ -26,12 +27,14 @@ const toService = (item: PlaceServiceItemResponse): Service => {
     name: item.name ?? item.service_name ?? item.title ?? 'Dịch vụ',
     description: item.description ?? item.service_description ?? '',
     price: Number.isFinite(numericPrice as number) ? (numericPrice as number) : null,
+    quantity: item.quantity == null ? null : Number(item.quantity),
   };
 };
 
 export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
   const [freeServices, setFreeServices] = useState<Service[]>([]);
   const [paidServices, setPaidServices] = useState<Service[]>([]);
+  const [rooms, setRooms] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,8 +46,10 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
         const data = await getPlaceServicesByType(placeId);
         const freeList = data.freeServices || data.data?.freeServices || [];
         const paidList = data.paidServices || data.data?.paidServices || [];
+        const roomList = data.rooms || data.data?.rooms || [];
         setFreeServices(freeList.map(toService));
         setPaidServices(paidList.map(toService));
+        setRooms(roomList.map(toService));
       } catch (err) {
         console.error('Error loading services:', err);
         setError('Không thể tải dữ liệu dịch vụ');
@@ -132,6 +137,40 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
         </div>
       )}
 
+      {rooms.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h6 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>
+            <CircleDollarSign size={18} /> Phong luu tru ({rooms.length})
+          </h6>
+          <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #F1F5F9', padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {rooms.map((room) => (
+              <div
+                key={room.id}
+                style={{
+                  padding: '16px',
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', flex: 1 }}>{room.name}</span>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#2563eb', whiteSpace: 'nowrap' }}>
+                    {typeof room.price === 'number' ? room.price.toLocaleString('vi-VN') : '0'}d
+                  </span>
+                </div>
+                <p style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: '500', marginBottom: '0' }}>
+                  Suc chua: {room.quantity || 1} khach
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Paid Services Section */}
       {paidServices.length > 0 && (
         <div>
@@ -186,7 +225,7 @@ export const PlaceServices: React.FC<PlaceServicesProps> = ({ placeId }) => {
         </div>
       )}
 
-      {freeServices.length === 0 && paidServices.length === 0 && (
+      {freeServices.length === 0 && paidServices.length === 0 && rooms.length === 0 && (
         <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #F1F5F9', padding: '48px 24px', textAlign: 'center' }}>
           <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>Chưa có dịch vụ nào</p>
           <button

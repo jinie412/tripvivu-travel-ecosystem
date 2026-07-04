@@ -215,7 +215,7 @@ const LocationsPage: React.FC = () => {
       <div style={{ padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Danh sách địa điểm quản lý</h2>
-          <Button onClick={() => navigate('/add-location')} style={{ gap: '8px', padding: '10px 24px', borderRadius: '12px' }}>
+          <Button onClick={() => { window.localStorage.removeItem('provider:add-location:draft:v1'); navigate('/add-location'); }} style={{ gap: '8px', padding: '10px 24px', borderRadius: '12px' }}>
             <Plus size={18} /> Thêm địa điểm
           </Button>
         </div>
@@ -442,3 +442,4 @@ const LocationsPage: React.FC = () => {
 };
 
 export default LocationsPage;
+

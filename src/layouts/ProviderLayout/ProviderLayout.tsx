@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ProviderLayout.css';
-import { LayoutDashboard, Building2, ShoppingBag, LogOut, Bell, HelpCircle, Search } from 'lucide-react';
+import { LayoutDashboard, Building2, ShoppingBag, LogOut, HelpCircle, Search } from 'lucide-react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -155,9 +155,6 @@ const ProviderLayout: React.FC = () => {
 
           {/* Icon actions */}
           <div className="provider-topbar-actions">
-            <button className="provider-topbar-icon-btn">
-              <Bell size={20} />
-            </button>
             <button className="provider-topbar-icon-btn">
               <HelpCircle size={20} />
             </button>

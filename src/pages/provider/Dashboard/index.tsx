@@ -407,7 +407,7 @@ const getFallbackDashboardData = async (
     ratedLocations.length > 0
       ? ratedLocations.reduce((total, location) => total + (location.rating || 0), 0) / ratedLocations.length
       : 0;
-  const pendingOrders = ordersInPeriod.filter(isPendingOrder).length;
+  const pendingOrders = orders.filter(isPendingOrder).length;
 
   return {
     stats: {

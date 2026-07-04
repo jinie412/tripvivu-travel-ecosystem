@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail, Phone, User, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getOrderDetail } from '@/services/order.service';
+import { addMinutesToDateTime, formatVietnamDateTime, getOrderDetail } from '@/services/order.service';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; description: string }> = {
    pending:    { label: 'Chờ xác nhận', color: '#92400e', bg: '#FEF9C3', dot: '#f59e0b', description: 'Đơn hàng đang chờ nhà hàng xác nhận qua email.' },
@@ -42,8 +42,8 @@ const OrderDetailPage: React.FC = () => {
                   email: data.email
                },
                timeInfo: {
-                  ordered: new Date(data.ordered_time).toLocaleString('vi-VN'),
-                  expected: new Date(new Date(data.ordered_time).getTime() + 30 * 60000).toLocaleString('vi-VN') // +30 minutes as estimate
+                  ordered: formatVietnamDateTime(data.ordered_time),
+                  expected: formatVietnamDateTime(addMinutesToDateTime(data.ordered_time, 30)) // +30 minutes as estimate
                },
                items: data.foods.map((food: any) => ({
                   name: food.food_name,

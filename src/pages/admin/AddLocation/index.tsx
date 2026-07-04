@@ -24,6 +24,7 @@ import { uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service
 import { locationAPI, type AdminVendorOption } from '@/services/locationAPI';
 import { apiClient, extractResponseData } from '@/services/apiClient';
 import * as XLSX from 'xlsx';
+import defaultServiceIcon from '@/assets/images/service_icon_default.jpg';
 
 type CityOption = { id: string; name: string };
 type BusinessTypeOption = { id: string; name: string };
@@ -184,7 +185,7 @@ const getMapTiles = (centerLat: number, centerLng: number, width = DEFAULT_MAP_S
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        src: `https://tile.openstreetmap.org/${tileZoom}/${wrappedX}/${y}.png`,
+        src: `https://${'abcd'[(wrappedX + y) % 4]}.basemaps.cartocdn.com/rastertiles/voyager/${tileZoom}/${wrappedX}/${y}.png`,
         left: (x * MAP_TILE_SIZE - startX) * overzoomScale,
         top: (y * MAP_TILE_SIZE - startY) * overzoomScale,
         size: MAP_TILE_SIZE * overzoomScale,
@@ -1712,7 +1713,7 @@ export const AddLocation: React.FC = () => {
                   borderRadius: '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                 }}>
-                <img src={item.previewUrl || item.img || 'https://via.placeholder.com/56x56'} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
+                <img src={item.previewUrl || item.img || defaultServiceIcon} alt={item.name} style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px' }}>{item.name}</span>
                   {item.description && (

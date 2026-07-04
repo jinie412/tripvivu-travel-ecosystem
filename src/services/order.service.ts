@@ -58,6 +58,7 @@ export interface PlaceServiceItemResponse {
   price?: number | string | null;
   service_price?: number | string | null;
   amount?: number | string | null;
+  quantity?: number | string | null;
   is_active?: boolean | number | string;
   active?: boolean | number | string;
   status?: boolean | number | string;
@@ -75,11 +76,13 @@ export interface PlaceServicesResponse {
   freeServices?: PlaceServiceItemResponse[];
   paidServices?: PlaceServiceItemResponse[];
   menuItems?: PlaceServiceItemResponse[];
+  rooms?: PlaceServiceItemResponse[];
   total?: number;
   data?: {
     freeServices?: PlaceServiceItemResponse[];
     paidServices?: PlaceServiceItemResponse[];
     menuItems?: PlaceServiceItemResponse[];
+    rooms?: PlaceServiceItemResponse[];
     total?: number;
   };
 }
@@ -95,6 +98,50 @@ const textFrom = (...values: unknown[]): string => {
     }
   }
   return '';
+};
+
+const hasExplicitTimezone = (value: string): boolean => {
+  return /(?:z|[+-]\d{2}:?\d{2})$/i.test(value.trim());
+};
+
+const normalizeDateTimeInput = (value: string): string => {
+  return hasExplicitTimezone(value) ? value : `${value}Z`;
+};
+
+export const formatVietnamDateTime = (value: unknown, fallback = '-'): string => {
+  const rawValue = textFrom(value);
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const date = new Date(normalizeDateTimeInput(rawValue));
+  if (Number.isNaN(date.getTime())) {
+    return rawValue;
+  }
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+};
+
+export const addMinutesToDateTime = (value: unknown, minutes: number): string => {
+  const rawValue = textFrom(value);
+  if (!rawValue) {
+    return '';
+  }
+
+  const date = new Date(normalizeDateTimeInput(rawValue));
+  if (Number.isNaN(date.getTime())) {
+    return rawValue;
+  }
+
+  return new Date(date.getTime() + minutes * 60000).toISOString();
 };
 
 export const normalizeOrderStatus = (orderOrStatus: unknown): string => {
@@ -334,9 +381,11 @@ export const addNewPlace = async (payload: {
   p_categories: string[];
   p_open_time?: string;
   p_close_time?: string;
+  p_open_hour_compressed?: Record<string, [string, string][]>;
   p_description?: string;
   p_services: Array<{ name: string; description: string; service_id?: string }>;
   p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
+  p_rooms?: Array<{ name: string; price: number; quantity: number }>;
   p_images?: string[];
 }): Promise<any> => {
   try {
@@ -394,6 +443,8 @@ export const updatePlaceDetail = async (payload: {
   p_phone?: string;
   latitude?: number | string;
   longitude?: number | string;
+  estimated_preparation_time?: number | string | null;
+  p_estimated_preparation_time?: number | string | null;
   openTime?: string;
   closeTime?: string;
   description?: string;
