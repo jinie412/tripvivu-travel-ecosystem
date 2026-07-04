@@ -20,6 +20,7 @@ class ItineraryCard extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool>? onStartToggle;
   final Widget? bottomChild;
+  final bool showPerPersonCost;
 
   const ItineraryCard({
     super.key,
@@ -29,6 +30,7 @@ class ItineraryCard extends StatelessWidget {
     this.onTap,
     this.onStartToggle,
     this.bottomChild,
+    this.showPerPersonCost = false,
   });
 
   @override
@@ -239,7 +241,9 @@ class ItineraryCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _formatCost(item.estimatedCost, item.currency),
+                            showPerPersonCost
+                                ? '${_formatCost(item.estimatedCost / item.participantCount.clamp(1, 999), item.currency)} / người'
+                                : '${_formatCost(item.estimatedCost, item.currency)} / tổng ${item.participantCount.clamp(1, 999)} người',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,

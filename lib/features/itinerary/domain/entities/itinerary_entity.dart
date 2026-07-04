@@ -30,6 +30,9 @@ class ItineraryEntity with _$ItineraryEntity {
     /// Tổng chi phí dự kiến (VNĐ). VD: 5200000
     @Default(0) double estimatedCost,
 
+    /// Tổng số người của chuyến đi. Chi phí mặc định là tổng cho nhóm này.
+    @Default(1) int participantCount,
+
     /// Đơn vị tiền tệ. VD: "VNĐ"
     @Default('VNĐ') String currency,
 

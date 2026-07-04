@@ -28,6 +28,8 @@ class TimelineActivityCard extends StatelessWidget {
   final bool isEditMode;
   final bool isOpeningReview;
   final String? nextTransportInfo;
+  final int participantCount;
+  final bool showPerPersonCost;
 
   /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
   final TrackingPlaceStatus? trackingStatus;
@@ -65,6 +67,8 @@ class TimelineActivityCard extends StatelessWidget {
     this.isEditMode = false,
     this.isOpeningReview = false,
     this.nextTransportInfo,
+    this.participantCount = 1,
+    this.showPerPersonCost = false,
     this.trackingStatus,
     this.onCheckIn,
     this.isCheckingIn = false,
@@ -91,28 +95,54 @@ class TimelineActivityCard extends StatelessWidget {
     return '${price.toInt()}₫';
   }
 
+  String _priceWithScope() {
+    final people = participantCount.clamp(1, 999);
+    final displayedPrice = showPerPersonCost
+        ? activity.price / people
+        : activity.price;
+    final scope = showPerPersonCost ? '/người' : '/tổng $people người';
+    return '${_formatPrice(displayedPrice)} $scope';
+  }
+
   String _durationLabel() {
     if (_isAccommodationStart) return 'Nơi ở & điểm xuất phát';
+    final category = (activity.category ?? '').toLowerCase();
+    final activityLabel = category.contains('restaurant')
+        ? 'Bữa ăn'
+        : category.contains('cafe')
+        ? 'Nghỉ ngơi & đồ uống'
+        : category.contains('entertainment')
+        ? 'Vui chơi & giải trí'
+        : 'Tham quan';
     List<int> parts(String t) => t.split(':').map(int.parse).toList();
     try {
       final s = parts(activity.startTime);
       final e = parts(activity.endTime);
       final mins = (e[0] * 60 + e[1]) - (s[0] * 60 + s[1]);
-      if (mins <= 0) return 'Tham quan';
-      if (mins < 60) return 'Tham quan trong $mins phút';
+      if (mins <= 0) return activityLabel;
+      if (mins < 60) return '$activityLabel trong $mins phút';
       final h = mins ~/ 60;
       final m = mins % 60;
-      if (m == 0) return 'Tham quan trong $h giờ';
-      return 'Tham quan trong $h giờ $m phút';
+      if (m == 0) return '$activityLabel trong $h giờ';
+      return '$activityLabel trong $h giờ $m phút';
     } catch (_) {
-      return 'Tham quan';
+      return activityLabel;
     }
+  }
+
+  IconData get _activityIcon {
+    if (_isAccommodationStart) return Icons.hotel_rounded;
+    final category = (activity.category ?? '').toLowerCase();
+    if (category.contains('restaurant')) return Icons.restaurant_rounded;
+    if (category.contains('cafe')) return Icons.local_cafe_rounded;
+    if (category.contains('entertainment')) {
+      return Icons.local_activity_rounded;
+    }
+    return Icons.location_on;
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAccommodationStart = _isAccommodationStart;
-
     return Column(
       children: [
         // 1. Activity Item
@@ -120,7 +150,7 @@ class TimelineActivityCard extends StatelessWidget {
           context,
           time: activity.startTime,
           label: _durationLabel(),
-          icon: isAccommodationStart ? Icons.hotel_rounded : Icons.location_on,
+          icon: _activityIcon,
           content: _buildActivityCard(context),
           showLine: true,
           isCompleted:
@@ -187,7 +217,7 @@ class TimelineActivityCard extends StatelessWidget {
       }
       return t;
     }
-    
+
     final formattedTime = _formatTime(time);
     final isStartTime = label.contains('Tham quan');
     final isAccommodationStart = _isAccommodationStart;
@@ -446,7 +476,7 @@ class TimelineActivityCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                _formatPrice(activity.price),
+                                _priceWithScope(),
                                 style: AppTextStylesExt.bodySmall.copyWith(
                                   color: const Color(0xFF6366F1),
                                   fontWeight: FontWeight.w600,
@@ -504,15 +534,15 @@ class TimelineActivityCard extends StatelessWidget {
             icon: backendReviewed
                 ? Icons.visibility_rounded
                 : (showAsReviewed
-                    ? Icons.star_rounded
-                    : Icons.rate_review_rounded),
+                      ? Icons.star_rounded
+                      : Icons.rate_review_rounded),
             label: backendReviewed
                 ? 'Xem \u0111\u00e1nh gi\u00e1'
                 : (showAsReviewed
-                    ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
-                    : isOpeningReview
-                    ? '\u0110ang m\u1edf'
-                    : '\u0110\u00e1nh gi\u00e1'),
+                      ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
+                      : isOpeningReview
+                      ? '\u0110ang m\u1edf'
+                      : '\u0110\u00e1nh gi\u00e1'),
             color: const Color(0xFF10B981),
             onTap: isOpeningReview ? null : onRateTap,
             isLoading: isOpeningReview,

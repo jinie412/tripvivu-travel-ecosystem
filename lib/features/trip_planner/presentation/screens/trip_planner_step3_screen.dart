@@ -243,7 +243,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                         const SizedBox(height: 36),
                         // Phần ngân sách (giữ nguyên như cũ)
                         const Text(
-                          'Ngân sách',
+                          'Tổng chi phí chuyến đi',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -252,7 +252,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Thiết lập ngân sách cho chuyến đi của bạn.',
+                          'Nhập tổng số tiền có thể chi trả cho tất cả thành viên.',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,

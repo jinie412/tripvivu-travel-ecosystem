@@ -19,6 +19,7 @@ class ItineraryDetailModel {
   final int hotelsCount;
   final int transportTurns;
   final double estimatedBudget;
+  final int participantCount;
   final double spentBudget;
   final double placeCost;
   final double hotelCost;
@@ -51,6 +52,7 @@ class ItineraryDetailModel {
     required this.hotelsCount,
     required this.transportTurns,
     required this.estimatedBudget,
+    this.participantCount = 1,
     required this.spentBudget,
     this.placeCost = 0,
     this.hotelCost = 0,
@@ -125,6 +127,10 @@ class ItineraryDetailModel {
                   json['totalBudget'] ??
                   0.0)
               .toDouble(),
+      participantCount:
+          (json['participantCount'] ?? json['participant_count'] as num?)
+              ?.toInt() ??
+          1,
       spentBudget: (json['spentBudget'] ?? json['spent_budget'] ?? 0.0)
           .toDouble(),
       placeCost: (json['placeCost'] ?? json['place_cost'] ?? 0.0).toDouble(),
@@ -185,6 +191,7 @@ class ItineraryDetailModel {
       hotelsCount: hotelsCount,
       transportTurns: transportTurns,
       estimatedBudget: estimatedBudget,
+      participantCount: participantCount,
       spentBudget: spentBudget,
       placeCost: placeCost,
       hotelCost: hotelCost,

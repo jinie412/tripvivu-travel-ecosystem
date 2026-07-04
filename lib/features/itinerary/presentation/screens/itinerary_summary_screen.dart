@@ -105,6 +105,7 @@ class _ItinerarySummaryView extends StatefulWidget {
 
 class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   bool _didAutoOpenDetail = false;
+  bool _showPerPersonCost = false;
 
   @override
   Widget build(BuildContext context) {
@@ -455,6 +456,24 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         ),
       );
     }
+  }
+
+  void _showShareSheet(BuildContext context, ItineraryDetailEntity itin) {
+    final cubit = context.read<ItineraryCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      enableDrag: false,
+      builder: (_) => _ItineraryShareSheet(
+        itinerary: itin,
+        cubit: cubit,
+        messenger: messenger,
+      ),
+    );
   }
 
   Future<void> _confirmVisibilityChange(
@@ -883,24 +902,6 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     );
   }
 
-  void _showShareSheet(BuildContext context, ItineraryDetailEntity itin) {
-    final cubit = context.read<ItineraryCubit>();
-    final messenger = ScaffoldMessenger.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
-      enableDrag: false,
-      builder: (_) => _ItineraryShareSheet(
-        itinerary: itin,
-        cubit: cubit,
-        messenger: messenger,
-      ),
-    );
-  }
-
   Widget _buildDetailErrorScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBFDFF),
@@ -1062,7 +1063,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             const SizedBox(width: 16),
             Expanded(
               child: _StatCardV2(
-                label: 'Be/Grab/tự túc',
+                label: 'Di chuyển',
                 value: itin.transportTurns > 0
                     ? '${itin.transportTurns} chặng'
                     : 'Theo lộ trình',
@@ -1081,10 +1082,14 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     _CostSnapshot costSnapshot,
   ) {
     final formatter = NumberFormat('#,###', 'vi_VN');
-    final estimatedCost = itin.estimatedBudget > 0
+    final groupEstimatedCost = itin.estimatedBudget > 0
         ? itin.estimatedBudget
         : costSnapshot.estimatedCost;
-    final spentCost = costSnapshot.spentCost;
+    final costDivisor = _showPerPersonCost
+        ? itin.participantCount.clamp(1, 999)
+        : 1;
+    final estimatedCost = groupEstimatedCost / costDivisor;
+    final spentCost = costSnapshot.spentCost / costDivisor;
     final spentProgress = estimatedCost > 0
         ? (spentCost / estimatedCost).clamp(0.0, 1.0)
         : 0.0;
@@ -1118,7 +1123,22 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SectionHeader(title: 'Chi phí dự kiến'),
+        Row(
+          children: [
+            const Expanded(child: SectionHeader(title: 'Chi phí dự kiến')),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Tổng nhóm')),
+                ButtonSegment(value: true, label: Text('1 người')),
+              ],
+              selected: {_showPerPersonCost},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                setState(() => _showPerPersonCost = selection.first);
+              },
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(20),
@@ -1138,8 +1158,9 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _BudgetMetric(
-                label:
-                    'Chi ph\u00ed \u01b0\u1edbc t\u00ednh to\u00e0n l\u1ecbch tr\u00ecnh',
+                label: _showPerPersonCost
+                    ? 'Chi phí ước tính bình quân mỗi người'
+                    : 'Tổng chi phí ước tính cho ${itin.participantCount.clamp(1, 999)} người',
                 value: estimatedLabel,
                 icon: Icons.receipt_long_rounded,
                 color: const Color(0xFF10B981),
@@ -1148,11 +1169,11 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
               if (itin.hotelCost > 0 || itin.transportCost > 0) ...[
                 const SizedBox(height: 12),
                 _BudgetMetric(
-                  label: itin.durationDays > 0
-                      ? 'L\u01b0u tr\u00fa (${formatter.format(itin.hotelCost / itin.durationDays)} ${itin.currency}/ng\u00e0y)'
+                  label: itin.durationDays > 1
+                      ? 'L\u01b0u tr\u00fa (${formatter.format(itin.hotelCost / itin.participantCount.clamp(1, 999) / (itin.durationDays - 1))} ${itin.currency}/ng\u01b0\u1eddi/\u0111\u00eam)'
                       : 'L\u01b0u tr\u00fa',
                   value: itin.hotelCost > 0
-                      ? '${formatter.format(itin.hotelCost)} ${itin.currency}'
+                      ? '${formatter.format(itin.hotelCost / (_showPerPersonCost ? itin.participantCount.clamp(1, 999) : 1))} ${itin.currency}'
                       : '\u0110ang c\u1eadp nh\u1eadt',
                   icon: Icons.hotel_rounded,
                   color: const Color(0xFF0F766E),
@@ -1162,23 +1183,12 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                 _BudgetMetric(
                   label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
                   value: itin.transportCost > 0
-                      ? '${formatter.format(itin.transportCost)} ${itin.currency}'
+                      ? '${formatter.format(itin.transportCost / (_showPerPersonCost ? itin.participantCount.clamp(1, 999) : 1))} ${itin.currency}'
                       : '\u0110ang c\u1eadp nh\u1eadt',
                   icon: Icons.two_wheeler_rounded,
                   color: const Color(0xFF2563EB),
                   fullWidth: true,
                 ),
-                if (itin.rideHailingTransportCost > 0) ...[
-                  const SizedBox(height: 12),
-                  _BudgetMetric(
-                    label: 'Be/Grab tham kh\u1ea3o',
-                    value:
-                        '${formatter.format(itin.rideHailingTransportCost)} ${itin.currency}',
-                    icon: Icons.local_taxi_rounded,
-                    color: const Color(0xFF7C3AED),
-                    fullWidth: true,
-                  ),
-                ],
               ],
               const SizedBox(height: 18),
               if (estimatedCost > 0) ...[
@@ -2087,7 +2097,6 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
     );
   }
 }
-
 
 class _ItineraryShareSheet extends StatefulWidget {
   final ItineraryDetailEntity itinerary;

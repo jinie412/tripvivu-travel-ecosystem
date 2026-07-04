@@ -1088,7 +1088,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       centerCoordinate: [10.7769, 106.7009],
       notes: [
         'Mang theo áo mưa — tháng 5 là đầu mùa mưa ở Sài Gòn.',
-        'Nên đặt Grab thay vì xe ôm truyền thống để tránh bị chặt chém.',
         'Chợ Bến Thành đông nhất buổi chiều, nên mặc cả khi mua hàng.',
         'Dinh Độc Lập đóng cửa thứ Hai, kiểm tra lại lịch mở cửa.',
       ],

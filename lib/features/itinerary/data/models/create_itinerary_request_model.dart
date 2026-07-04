@@ -31,7 +31,7 @@ class CreateItineraryRequestModel {
     required this.childCount,
     required this.budget,
     required this.foodPreferences,
-    this.description, // optional
+    this.description,
   });
 
   static const _foodPrefMap = {
@@ -43,24 +43,24 @@ class CreateItineraryRequestModel {
   };
 
   Map<String, dynamic> toJson() => {
-        'userId': userId,
-        'tripType': tripType,
-        'departureLocationId': departureLocationId,
-        'destinationLocationId': destinationLocationId,
-        'transportMode': transportMode,
-        'startDate': startDate,
-        'endDate': endDate,
-        'dailyStartTime': dailyStartTime,
-        'dailyEndTime': dailyEndTime,
-        'tripIntent': tripIntent,
-        'adultCount': adultCount,
-        'childCount': childCount,
-        'budget': budget,
-        'foodPreferences': foodPreferences
-            .map((p) => _foodPrefMap[p] ?? p)
-            .toList(),
-        // [TRIP_NAME_INPUT] Chỉ gửi khi user đã nhập tên
-        if (description != null && description!.isNotEmpty)
-          'description': description,
-      };
+    'userId': userId,
+    'tripType': tripType,
+    'departureLocationId': departureLocationId,
+    'destinationLocationId': destinationLocationId,
+    'transportMode': transportMode,
+    'startDate': startDate,
+    'endDate': endDate,
+    'dailyStartTime': dailyStartTime,
+    'dailyEndTime': dailyEndTime,
+    'tripIntent': tripIntent,
+    'adultCount': adultCount,
+    'childCount': childCount,
+    'budget': budget,
+    'foodPreferences': foodPreferences
+        .map((p) => _foodPrefMap[p] ?? p)
+        .toList(),
+    // [TRIP_NAME_INPUT] Chỉ gửi khi user đã nhập tên
+    if (description != null && description!.isNotEmpty)
+      'description': description,
+  };
 }

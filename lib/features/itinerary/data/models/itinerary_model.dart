@@ -11,6 +11,7 @@ class ItineraryModel {
   final int progress;
   final bool trackingActive;
   final double estimatedCost;
+  final int participantCount;
   final int totalLocations;
   final int visitedLocations;
   final List<String> placeImages;
@@ -27,6 +28,7 @@ class ItineraryModel {
   required this.progress,
   this.trackingActive = false,
   this.estimatedCost = 0,
+  this.participantCount = 1,
   this.totalLocations = 0,
   this.visitedLocations = 0,
   this.placeImages = const [],
@@ -45,6 +47,10 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
     progress: json['progress'] ?? 0,
     trackingActive: json['tracking_active'] == true,
     estimatedCost: (json['estimated_cost'] as num?)?.toDouble() ?? 0,
+    participantCount:
+        (json['participantCount'] ?? json['participant_count'] as num?)
+            ?.toInt() ??
+        1,
     totalLocations: (json['total_locations'] as num?)?.toInt() ?? 0,
     visitedLocations: (json['visited_locations'] as num?)?.toInt() ?? 0,
     placeImages: (json['place_images'] as List<dynamic>?)
@@ -72,6 +78,7 @@ ItineraryEntity toEntity() {
     endDate: DateTime.tryParse(endDate),
 
     estimatedCost: estimatedCost,
+    participantCount: participantCount,
 
     currency: 'VNĐ',
 

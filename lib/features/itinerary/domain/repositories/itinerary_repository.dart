@@ -53,8 +53,8 @@ abstract class ItineraryRepository {
     List<ItineraryDayEntity> days,
   );
 
-  /// Tạo lịch trình mới qua AI pipeline, trả về itineraryId.
-  Future<String> createItinerary(CreateItineraryParams params);
+  /// Tạo lịch trình mới qua AI pipeline.
+  Future<CreateItineraryResult> createItinerary(CreateItineraryParams params);
 
   Future<CustomizeActivityResponseModel> addActivityToItinerary(
     String itineraryId,

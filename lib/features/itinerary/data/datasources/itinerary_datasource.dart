@@ -12,6 +12,7 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_m
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/core/error/conflict_exception.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 
 typedef ItineraryShareLinkData = ({
   String token,
@@ -52,8 +53,8 @@ abstract class ItineraryDataSource {
   });
   Future<void> deleteActivity(String itineraryId, String activityId);
 
-  /// Gọi POST /itinerary/plan → trả về itineraryId.
-  Future<String> createItinerary(CreateItineraryRequestModel request);
+  /// Gọi POST /itinerary/plan → trả về CreateItineraryResult (có gaItineraryId khi compare).
+  Future<CreateItineraryResult> createItinerary(CreateItineraryRequestModel request);
   Future<void> updateItineraryActivities(
     String id,
     List<ItineraryDayEntity> days,
@@ -384,7 +385,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<String> createItinerary(CreateItineraryRequestModel request) async {
+  Future<CreateItineraryResult> createItinerary(
+    CreateItineraryRequestModel request,
+  ) async {
     final token = await AuthStorage.read('access_token');
 
     final res = await http.post(
@@ -401,16 +404,20 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final executionTimeSeconds = data['executionTimeSeconds'];
       final warning = data['warning'];
       if (executionTimeSeconds != null) {
-        debugPrint(
-          'Itinerary generation completed in ${executionTimeSeconds}s',
-        );
+        debugPrint('Itinerary generation completed in ${executionTimeSeconds}s');
       }
       if (warning is String && warning.isNotEmpty) {
         debugPrint('Itinerary generation warning: $warning');
       }
       final id = data['id'] ?? data['itineraryId'] ?? data['itinerary_id'];
-      if (id is String && id.isNotEmpty) return id;
-      throw Exception('Response tạo lịch trình không có id hợp lệ');
+      if (id is! String || id.isEmpty) {
+        throw Exception('Response tạo lịch trình không có id hợp lệ');
+      }
+      final gaId = data['gaItineraryId'] as String?;
+      return CreateItineraryResult(
+        itineraryId: id,
+        gaItineraryId: (gaId != null && gaId.isNotEmpty) ? gaId : null,
+      );
     }
     String errMsg = 'Tạo lịch trình thất bại: ${res.statusCode}';
     try {
@@ -529,6 +536,10 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       transportTurns: _asInt(data['transportTurns'], 0),
       estimatedBudget: _asDouble(
         data['totalBudget'] ?? data['estimatedBudget'],
+      ),
+      participantCount: _asInt(
+        data['participantCount'] ?? data['participant_count'],
+        1,
       ),
       spentBudget: _asDouble(data['spentBudget'] ?? data['spent_budget']),
       placeCost: _asDouble(data['placeCost'] ?? data['place_cost']),

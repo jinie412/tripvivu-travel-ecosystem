@@ -9,6 +9,9 @@ import 'trip_planner_state.dart';
 class TripPlannerCubit extends Cubit<TripPlannerState> {
   final CreateItineraryUseCase _createItinerary;
 
+  /// Giữ gaItineraryId ngoài state (tránh tái gen Freezed) — chỉ có giá trị khi compare.
+  String? lastGaItineraryId;
+
   TripPlannerCubit({required CreateItineraryUseCase createItinerary})
     : _createItinerary = createItinerary,
       super(
@@ -88,13 +91,12 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   void updateStartDate(DateTime date) {
     state.maybeWhen(
       loaded: (form) => emit(
-        TripPlannerState.loaded(
-          tripForm: form.copyWith(startDate: date),
-        ),
+        TripPlannerState.loaded(tripForm: form.copyWith(startDate: date)),
       ),
       orElse: () {},
     );
   }
+
   void updateEndDate(DateTime date) {
     state.maybeWhen(
       loaded: (form) =>
@@ -215,7 +217,8 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   String resolveOrGenerateTripName() {
     final form = state.whenOrNull(loaded: (f) => f);
     if (form == null) return '';
-    if (form.tripName != null && form.tripName!.isNotEmpty) return form.tripName!;
+    if (form.tripName != null && form.tripName!.isNotEmpty)
+      return form.tripName!;
     final generated = _generateTripName(form);
     emit(TripPlannerState.loaded(tripForm: form.copyWith(tripName: generated)));
     return generated;
@@ -259,7 +262,8 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     if (form.departureLocationId == null || form.departureLocationId!.isEmpty) {
       return 'Vui lòng chọn điểm khởi hành';
     }
-    if (form.destinationLocationId == null || form.destinationLocationId!.isEmpty) {
+    if (form.destinationLocationId == null ||
+        form.destinationLocationId!.isEmpty) {
       return 'Vui lòng chọn điểm đến';
     }
     return null;
@@ -387,7 +391,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     try {
       final userId = await AuthUtils.requireCurrentUserId();
 
-      final id = await _createItinerary(
+      final result = await _createItinerary(
         CreateItineraryParams(
           userId: userId,
           tripType: _tripTypeToApi(form.tripType),
@@ -405,14 +409,14 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           childCount: form.childCount,
           budget: form.budget,
           foodPreferences: form.foodPreferences,
-          // [TRIP_NAME_INPUT] Dùng tên user đã nhập, fallback sang tên tự sinh
           tripName: (form.tripName != null && form.tripName!.isNotEmpty)
               ? form.tripName
               : _generateTripName(form),
         ),
       );
 
-      emit(TripPlannerState.success(itineraryId: id));
+      lastGaItineraryId = result.gaItineraryId;
+      emit(TripPlannerState.success(itineraryId: result.itineraryId));
     } catch (e) {
       emit(TripPlannerState.error(e.toString()));
       emit(TripPlannerState.loaded(tripForm: form));
@@ -485,13 +489,13 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   List<String> _normalizeTripIntents(List<String> intents) {
     if (intents.isEmpty) return const [];
     final seen = <String>{};
-    final valid = intents
-        .where(kTripIntents.contains)
-        .where(seen.add)
-        .toList();
+    final valid = intents.where(kTripIntents.contains).where(seen.add).toList();
     // Safety net: nếu general trộn với specific, bỏ general
     if (valid.length > 1 && valid.contains(kGeneralTripIntent)) {
-      return valid.where((v) => v != kGeneralTripIntent).take(kMaxTripIntents).toList();
+      return valid
+          .where((v) => v != kGeneralTripIntent)
+          .take(kMaxTripIntents)
+          .toList();
     }
     return valid.take(kMaxTripIntents).toList();
   }

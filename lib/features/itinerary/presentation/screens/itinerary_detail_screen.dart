@@ -67,6 +67,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   bool _isPublic = true;
   bool _isEditMode = false;
   bool _isMapLoaded = false;
+  bool _showPerPersonCost = false;
   ItineraryDetailEntity? _editSnapshot;
   MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
@@ -1686,6 +1687,203 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     );
   }
 
+  void _showShareSheet() {
+    final invitedUsers = <String>{};
+    final searchController = TextEditingController();
+    var searchQuery = '';
+    final users = <({String id, String name, String email, String avatar})>[
+      (
+        id: 'a',
+        name: 'Nguyễn Văn A',
+        email: 'anv@example.com',
+        avatar: 'https://i.pravatar.cc/150?u=a',
+      ),
+      (
+        id: 'b',
+        name: 'Trần Thị B',
+        email: 'btt@example.com',
+        avatar: 'https://i.pravatar.cc/150?u=b',
+      ),
+      (
+        id: 'c',
+        name: 'Lê Văn C',
+        email: 'clv@example.com',
+        avatar: 'https://i.pravatar.cc/150?u=c',
+      ),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final normalizedQuery = searchQuery.trim().toLowerCase();
+          final filteredUsers = normalizedQuery.isEmpty
+              ? users
+              : users.where((user) {
+                  return user.name.toLowerCase().contains(normalizedQuery) ||
+                      user.email.toLowerCase().contains(normalizedQuery);
+                }).toList();
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppSizes.r32),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.s24,
+              vertical: AppSizes.s16,
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColorsExt.divider,
+                    borderRadius: BorderRadius.circular(AppSizes.s2),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s24),
+                Text('Chia sẻ lịch trình', style: AppTextStyles.heading2),
+                const SizedBox(height: AppSizes.s8),
+                Text(
+                  'Mời bạn bè cùng tham gia và chỉnh sửa lịch trình chung cho chuyến đi này.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s24),
+                TextField(
+                  controller: searchController,
+                  onChanged: (value) =>
+                      setModalState(() => searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm qua tên hoặc email...',
+                    prefixIcon: const Icon(Icons.search, size: AppSizes.iconMd),
+                    suffixIcon: searchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              searchController.clear();
+                              setModalState(() => searchQuery = '');
+                            },
+                          ),
+                    filled: true,
+                    fillColor: AppColorsExt.searchBarBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.r16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.s16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s24),
+                Expanded(
+                  child: filteredUsers.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Không tìm thấy người dùng phù hợp',
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        )
+                      : ListView(
+                          children: filteredUsers
+                              .map(
+                                (user) => _shareUserItem(
+                                  user.name,
+                                  user.email,
+                                  user.avatar,
+                                  invitedUsers.contains(user.id),
+                                  () => setModalState(
+                                    () => invitedUsers.add(user.id),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ).whenComplete(searchController.dispose);
+  }
+
+  Widget _shareUserItem(
+    String name,
+    String email,
+    String avatar,
+    bool isInvited,
+    VoidCallback onInvite,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundImage: NetworkImage(avatar),
+            radius: AppSizes.iconMd,
+          ),
+          const SizedBox(width: AppSizes.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  email,
+                  style: AppTextStylesExt.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: isInvited ? null : onInvite,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isInvited
+                  ? AppColorsExt.divider
+                  : AppColors.primary,
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.r12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+            ),
+            child: Text(
+              isInvited ? 'Đã gửi' : 'Gửi lời mời',
+              style: AppTextStylesExt.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -2060,6 +2258,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             reviewIsVisitedById: _isVisitedFromBackendById,
             onEditTime: _onEditTime,
             onDirectionTap: _launchDirections,
+            onShareTap: _showShareSheet,
             onFavoriteTap: _toggleItineraryFavorite,
             onMarkerTap: (id) => _scrollToActivity(id),
             highlightedActivityId: _highlightedActivityId,
@@ -2068,6 +2267,10 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             onDiscardTap: _onDiscardChanges,
             isRefreshing: _isRefreshing,
             onRefreshTap: _onRefresh,
+            showPerPersonCost: _showPerPersonCost,
+            onCostScopeChanged: (value) {
+              setState(() => _showPerPersonCost = value);
+            },
           ),
         ),
       ),
@@ -2127,12 +2330,18 @@ class _DayCostSummaryCard extends StatelessWidget {
   final List<ItineraryActivityEntity> visitActivities;
   final bool Function(ItineraryActivityEntity activity) isHotelStart;
   final Map<String, bool> visitedByBackend;
+  final int participantCount;
+  final bool showPerPersonCost;
+  final ValueChanged<bool> onCostScopeChanged;
 
   const _DayCostSummaryCard({
     required this.day,
     required this.visitActivities,
     required this.isHotelStart,
     this.visitedByBackend = const {},
+    required this.participantCount,
+    required this.showPerPersonCost,
+    required this.onCostScopeChanged,
   });
 
   @override
@@ -2158,7 +2367,11 @@ class _DayCostSummaryCard extends StatelessWidget {
         .length;
     final totalCost = placeCost + hotelCost + selfDriveCost;
 
-    String money(double value) => '${formatter.format(value)} ${day.currency}';
+    final people = participantCount.clamp(1, 999);
+    double displayCost(double value) =>
+        showPerPersonCost ? value / people : value;
+    String money(double value) =>
+        '${formatter.format(displayCost(value))} ${day.currency}';
 
     return Container(
       width: double.infinity,
@@ -2180,10 +2393,12 @@ class _DayCostSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Chi ph\u00ed trong ng\u00e0y',
-                  style: TextStyle(
+                  showPerPersonCost
+                      ? 'Chi ph\u00ed trong ng\u00e0y / 1 ng\u01b0\u1eddi'
+                      : 'T\u1ed5ng chi ph\u00ed trong ng\u00e0y / $people ng\u01b0\u1eddi',
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF0F172A),
@@ -2199,6 +2414,18 @@ class _DayCostSummaryCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('T\u1ed5ng nh\u00f3m')),
+              ButtonSegment(value: true, label: Text('1 ng\u01b0\u1eddi')),
+            ],
+            selected: {showPerPersonCost},
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) {
+              onCostScopeChanged(selection.first);
+            },
           ),
           const SizedBox(height: 12),
           _DayCostRow(
@@ -2491,6 +2718,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity, bool, bool) onEditTime;
   final Function(ItineraryActivityEntity, ItineraryActivityEntity)
   onDirectionTap;
+  final VoidCallback onShareTap;
   final VoidCallback onFavoriteTap;
   final Function(String) onMarkerTap;
   final String? highlightedActivityId;
@@ -2499,6 +2727,8 @@ class _ItineraryDetailView extends StatelessWidget {
   final VoidCallback onDiscardTap;
   final bool isRefreshing;
   final VoidCallback onRefreshTap;
+  final bool showPerPersonCost;
+  final ValueChanged<bool> onCostScopeChanged;
 
   const _ItineraryDetailView({
     required this.selectedDay,
@@ -2523,6 +2753,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.reviewIsVisitedById,
     required this.onEditTime,
     required this.onDirectionTap,
+    required this.onShareTap,
     required this.onFavoriteTap,
     required this.onMarkerTap,
     this.highlightedActivityId,
@@ -2531,6 +2762,8 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onDiscardTap,
     required this.isRefreshing,
     required this.onRefreshTap,
+    required this.showPerPersonCost,
+    required this.onCostScopeChanged,
   });
 
   @override
@@ -2809,6 +3042,12 @@ class _ItineraryDetailView extends StatelessWidget {
                                         : Colors.white,
                                   ),
                                 ],
+                                if (isFuture || itin.isPublic)
+                                  const SizedBox(width: AppSizes.s12),
+                                _floatingCircleButton(
+                                  Icons.share_outlined,
+                                  onShareTap,
+                                ),
                               ],
                             ],
                           ),
@@ -2987,6 +3226,9 @@ class _ItineraryDetailView extends StatelessWidget {
             visitActivities: _visitActivities(currentDayData),
             isHotelStart: _isHotelStart,
             visitedByBackend: reviewIsVisitedById,
+            participantCount: itin.participantCount,
+            showPerPersonCost: showPerPersonCost,
+            onCostScopeChanged: onCostScopeChanged,
           ),
           const SizedBox(height: AppSizes.s16),
           TrackingSection(
@@ -3050,6 +3292,8 @@ class _ItineraryDetailView extends StatelessWidget {
                     isFirst: index == 0,
                     isLast: index == activities.length - 1,
                     nextTransportInfo: nextTransport,
+                    participantCount: itin.participantCount,
+                    showPerPersonCost: showPerPersonCost,
                     onAddTap: onAddPlaceTap,
                     onEditTap: () => onEditActivity(activity),
                     onReplaceTap: () => onReplaceActivity(activity),
@@ -3107,7 +3351,7 @@ class _ItineraryDetailView extends StatelessWidget {
   }
 
   List<ItineraryActivityEntity> _timelineActivities(ItineraryDayEntity day) {
-    return _visitActivities(day);
+    return day.activities;
   }
 
   bool _isHotelStart(ItineraryActivityEntity activity) {

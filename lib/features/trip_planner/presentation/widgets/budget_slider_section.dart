@@ -24,7 +24,7 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
   late final FocusNode _focusNode;
   late bool _unlimited;
 
-  /// Các mức ngân sách gợi ý (đơn vị: VND/người)
+  /// Các mức tổng ngân sách gợi ý cho cả nhóm.
   static const List<_BudgetPreset> _presets = [
     _BudgetPreset(label: '5tr', value: 5000000),
     _BudgetPreset(label: '10tr', value: 10000000),
@@ -143,7 +143,7 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
             CurrencyInputFormatter(),
           ],
           decoration: InputDecoration(
-            labelText: 'Ngân sách dự kiến / người',
+            labelText: 'Tổng chi phí dự kiến cho cả nhóm',
             hintText: _unlimited ? 'Bấm để nhập ngân sách...' : 'Nhập số tiền',
             suffixText: 'VND',
             filled: true,
@@ -225,7 +225,7 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
         Text(
           _unlimited
               ? 'Hệ thống sẽ không giới hạn lịch trình theo ngân sách.'
-              : 'Đang đặt giới hạn: ${formatter.format(widget.currentBudget)} / người',
+              : 'Tổng giới hạn cho cả nhóm: ${formatter.format(widget.currentBudget)}',
           style: const TextStyle(
             fontSize: 12,
             color: AppColors.textSecondary,

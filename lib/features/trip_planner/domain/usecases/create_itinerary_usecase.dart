@@ -1,5 +1,12 @@
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 
+class CreateItineraryResult {
+  final String itineraryId;
+  final String? gaItineraryId;
+  const CreateItineraryResult({required this.itineraryId, this.gaItineraryId});
+  bool get isCompare => gaItineraryId != null && gaItineraryId!.isNotEmpty;
+}
+
 class CreateItineraryParams {
   final String userId;
   final String tripType;
@@ -33,7 +40,7 @@ class CreateItineraryParams {
     required this.childCount,
     required this.budget,
     required this.foodPreferences,
-    this.tripName, // optional
+    this.tripName,
   });
 }
 
@@ -41,6 +48,6 @@ class CreateItineraryUseCase {
   final ItineraryRepository _repository;
   CreateItineraryUseCase(this._repository);
 
-  Future<String> call(CreateItineraryParams params) =>
+  Future<CreateItineraryResult> call(CreateItineraryParams params) =>
       _repository.createItinerary(params);
 }

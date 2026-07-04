@@ -42,6 +42,7 @@ class ItineraryDetailEntity {
   final int transportTurns;
 
   final double estimatedBudget;
+  final int participantCount;
   final double spentBudget;
   final double placeCost;
   final double hotelCost;
@@ -76,6 +77,7 @@ class ItineraryDetailEntity {
     required this.hotelsCount,
     required this.transportTurns,
     required this.estimatedBudget,
+    this.participantCount = 1,
     required this.spentBudget,
     this.placeCost = 0,
     this.hotelCost = 0,
@@ -108,6 +110,7 @@ class ItineraryDetailEntity {
     int? hotelsCount,
     int? transportTurns,
     double? estimatedBudget,
+    int? participantCount,
     double? spentBudget,
     double? placeCost,
     double? hotelCost,
@@ -139,6 +142,7 @@ class ItineraryDetailEntity {
       hotelsCount: hotelsCount ?? this.hotelsCount,
       transportTurns: transportTurns ?? this.transportTurns,
       estimatedBudget: estimatedBudget ?? this.estimatedBudget,
+      participantCount: participantCount ?? this.participantCount,
       spentBudget: spentBudget ?? this.spentBudget,
       placeCost: placeCost ?? this.placeCost,
       hotelCost: hotelCost ?? this.hotelCost,
