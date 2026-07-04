@@ -16,8 +16,16 @@ import 'package:travel_advisor_mobile/core/error/conflict_exception.dart';
 typedef ItineraryShareLinkData = ({
   String token,
   String deepLink,
+  String shareUrl,
   String message,
   String? playStoreUrl,
+});
+
+typedef ItineraryShareRecipientData = ({
+  String id,
+  String fullName,
+  String email,
+  String? phoneNumber,
 });
 
 abstract class ItineraryDataSource {
@@ -26,6 +34,9 @@ abstract class ItineraryDataSource {
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
   Future<void> shareItinerary(String id, String recipient);
+  Future<List<ItineraryShareRecipientData>> searchShareRecipients(
+    String query,
+  );
   Future<ItineraryShareLinkData> createShareLink(String id);
   Future<void> updateItineraryTitle(String id, String title);
   Future<void> updateActivity(
@@ -162,6 +173,49 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
+  Future<List<ItineraryShareRecipientData>> searchShareRecipients(
+    String query,
+  ) async {
+    final trimmed = query.trim();
+    if (trimmed.length < 2) return const [];
+
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.get(
+      Uri.parse('$baseUrl/itinerary/share/recipients').replace(
+        queryParameters: {
+          'q': trimmed,
+          'senderUserId': userId,
+        },
+      ),
+      headers: headers,
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final users = (data['users'] as List?) ?? const [];
+      return users.whereType<Map<String, dynamic>>().map((item) {
+        return (
+          id: (item['id'] ?? '').toString(),
+          fullName: (item['fullName'] ?? '').toString(),
+          email: (item['email'] ?? '').toString(),
+          phoneNumber: item['phoneNumber']?.toString(),
+        );
+      }).where((item) => item.id.isNotEmpty).toList();
+    }
+
+    var message = 'KhÃ´ng thá»ƒ tÃ¬m ngÆ°á»i dÃ¹ng';
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw = data['message'];
+      message = raw is List ? raw.join('\n') : raw?.toString() ?? message;
+    } catch (_) {
+      message = '$message: ${res.statusCode}';
+    }
+    throw Exception(message);
+  }
+
+  @override
   Future<ItineraryShareLinkData> createShareLink(String id) async {
     final headers = await _authHeaders();
     final userId = await AuthUtils.requireCurrentUserId();
@@ -176,6 +230,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       return (
         token: (data['token'] ?? '').toString(),
         deepLink: (data['deepLink'] ?? '').toString(),
+        shareUrl: (data['shareUrl'] ?? data['deepLink'] ?? '').toString(),
         message: (data['message'] ?? data['deepLink'] ?? '').toString(),
         playStoreUrl: data['playStoreUrl']?.toString(),
       );

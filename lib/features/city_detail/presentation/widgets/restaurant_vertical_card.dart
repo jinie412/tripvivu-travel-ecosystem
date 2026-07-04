@@ -54,6 +54,10 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isOpenStatus =
+        widget.item.status.contains('Đang mở') ||
+        widget.item.status.toLowerCase().contains('dang mo');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -119,30 +123,9 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.item.rating.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              '(${widget.item.reviewCount ~/ 1000 >= 1 ? "${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k" : widget.item.reviewCount})',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      _RatingReviewRow(
+                        rating: widget.item.rating,
+                        reviewCount: widget.item.reviewCount,
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -166,9 +149,9 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
                       Text(
                         widget.item.status,
                         style: TextStyle(
-                          color: widget.item.status.contains('Đang mở') ? Colors.grey[700] : Colors.red[400],
+                          color: isOpenStatus ? Colors.grey[700] : Colors.red[400],
                           fontSize: 12,
-                          fontWeight: widget.item.status.contains('Đang mở') ? FontWeight.normal : FontWeight.w500,
+                          fontWeight: isOpenStatus ? FontWeight.normal : FontWeight.w500,
                         ),
                       ),
                     ],
@@ -181,4 +164,85 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
       ),
     );
   }
+}
+
+class _RatingReviewRow extends StatelessWidget {
+  final double rating;
+  final int reviewCount;
+
+  const _RatingReviewRow({
+    required this.rating,
+    required this.reviewCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _InfoPill(
+          icon: Icons.star_rounded,
+          iconColor: Colors.amber,
+          label: rating.toStringAsFixed(1),
+        ),
+        _InfoPill(
+          icon: Icons.rate_review_outlined,
+          iconColor: const Color(0xFF2563EB),
+          label: '${_formatReviewCount(reviewCount)} đánh giá',
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+
+  const _InfoPill({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF334155),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatReviewCount(int value) {
+  if (value >= 1000000) {
+    return '${(value / 1000000).toStringAsFixed(1)}tr';
+  }
+  if (value >= 1000) {
+    return '${(value / 1000).toStringAsFixed(1)}k';
+  }
+  return value.toString();
 }

@@ -112,12 +112,49 @@ class NotificationCubit extends Cubit<NotificationState> {
     required String itineraryId,
     required bool accept,
   }) async {
-    await _respondToItineraryShare(
-      notificationId: notificationId,
-      itineraryId: itineraryId,
-      accept: accept,
-    );
-    await loadNotificationDetail(notificationId);
+    final previousState = state;
+    final optimisticActionType = accept
+        ? 'itinerary_share_accepted'
+        : 'itinerary_share_rejected';
+    NotificationEntity? optimisticNotification;
+
+    if (previousState is NotificationDetailLoaded &&
+        previousState.notification.id == notificationId) {
+      optimisticNotification = previousState.notification.copyWith(
+        actionType: optimisticActionType,
+        isUnread: false,
+      );
+      emit(
+        NotificationDetailLoaded(optimisticNotification),
+      );
+    }
+
+    try {
+      await _respondToItineraryShare(
+        notificationId: notificationId,
+        itineraryId: itineraryId,
+        accept: accept,
+      );
+      final syncedNotification = await _getNotificationDetail(notificationId);
+      final syncedActionType = syncedNotification.actionType;
+      final shouldKeepOptimisticStatus =
+          syncedActionType == null ||
+          syncedActionType == 'respond_itinerary_share';
+      emit(
+        NotificationDetailLoaded(
+          shouldKeepOptimisticStatus
+              ? (optimisticNotification ??
+                    syncedNotification.copyWith(
+                      actionType: optimisticActionType,
+                      isUnread: false,
+                    ))
+              : syncedNotification,
+        ),
+      );
+    } catch (_) {
+      emit(previousState);
+      rethrow;
+    }
   }
 
   List<NotificationEntity> _applyLocalReadState(

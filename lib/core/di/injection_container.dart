@@ -182,6 +182,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => UpdateItineraryActivitiesUseCase(sl()));
   sl.registerLazySingleton(() => ToggleVisibilityUseCase(sl()));
   sl.registerLazySingleton(() => ShareItineraryUseCase(sl()));
+  sl.registerLazySingleton(() => SearchItineraryShareRecipientsUseCase(sl()));
   sl.registerLazySingleton(() => CreateItineraryShareLinkUseCase(sl()));
   sl.registerLazySingleton(() => UpdateItineraryTitleUseCase(sl()));
   sl.registerLazySingleton(() => UpdateActivityUseCase(sl()));
@@ -199,6 +200,7 @@ Future<void> initDependencies() async {
       updateTitle: sl(),
       toggleVisibility: sl(),
       shareItinerary: sl(),
+      searchShareRecipients: sl(),
       createShareLink: sl(),
       deleteActivity: sl(),
       optimizeDayUseCase: sl(),

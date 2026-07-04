@@ -22,6 +22,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final UpdateItineraryTitleUseCase _updateTitle;
   final ToggleVisibilityUseCase _toggleVisibility;
   final ShareItineraryUseCase _shareItinerary;
+  final SearchItineraryShareRecipientsUseCase _searchShareRecipients;
   final CreateItineraryShareLinkUseCase _createShareLink;
   final DeleteActivityUseCase _deleteActivity;
   final OptimizeDayUseCase? optimizeDayUseCase;
@@ -45,6 +46,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required UpdateItineraryTitleUseCase updateTitle,
     required ToggleVisibilityUseCase toggleVisibility,
     required ShareItineraryUseCase shareItinerary,
+    required SearchItineraryShareRecipientsUseCase searchShareRecipients,
     required CreateItineraryShareLinkUseCase createShareLink,
     required DeleteActivityUseCase deleteActivity,
     this.optimizeDayUseCase,
@@ -56,6 +58,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
        _updateTitle = updateTitle,
        _toggleVisibility = toggleVisibility,
        _shareItinerary = shareItinerary,
+       _searchShareRecipients = searchShareRecipients,
        _createShareLink = createShareLink,
        _deleteActivity = deleteActivity,
        super(const ItineraryInitial());
@@ -88,6 +91,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   Future<void> shareItinerary(String id, String recipient) {
     return _shareItinerary(id, recipient);
+  }
+
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query) {
+    return _searchShareRecipients(query);
   }
 
   Future<ItineraryShareLink> createShareLink(String id) {

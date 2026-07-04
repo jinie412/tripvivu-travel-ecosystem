@@ -77,6 +77,15 @@ class ShareItineraryUseCase {
 }
 
 /// UseCase: Tạo link chia sẻ lịch trình để gửi qua mạng xã hội.
+class SearchItineraryShareRecipientsUseCase {
+  final ItineraryRepository _repository;
+  SearchItineraryShareRecipientsUseCase(this._repository);
+
+  Future<List<ItineraryShareRecipient>> call(String query) {
+    return _repository.searchShareRecipients(query);
+  }
+}
+
 class CreateItineraryShareLinkUseCase {
   final ItineraryRepository _repository;
   CreateItineraryShareLinkUseCase(this._repository);

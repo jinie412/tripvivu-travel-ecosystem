@@ -82,6 +82,11 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query) {
+    return _dataSource.searchShareRecipients(query);
+  }
+
+  @override
   Future<ItineraryShareLink> createShareLink(String id) {
     return _dataSource.createShareLink(id);
   }

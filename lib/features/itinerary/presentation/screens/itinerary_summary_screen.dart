@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
@@ -883,360 +884,19 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   }
 
   void _showShareSheet(BuildContext context, ItineraryDetailEntity itin) {
-    final controller = TextEditingController();
     final cubit = context.read<ItineraryCubit>();
     final messenger = ScaffoldMessenger.of(context);
-    var isSubmitting = false;
-    var isCreatingLink = false;
-    String? errorText;
-    ItineraryShareLink? shareLink;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setModalState) {
-          Future<ItineraryShareLink?> ensureShareLink() async {
-            if (shareLink != null) return shareLink;
-            setModalState(() => isCreatingLink = true);
-            try {
-              final created = await cubit.createShareLink(itin.id);
-              setModalState(() {
-                shareLink = created;
-                isCreatingLink = false;
-              });
-              return created;
-            } catch (e) {
-              if (sheetContext.mounted) {
-                setModalState(() => isCreatingLink = false);
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Không thể tạo link chia sẻ: ${e.toString().replaceFirst('Exception: ', '')}',
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-              return null;
-            }
-          }
-
-          Future<void> copyShareLink() async {
-            final link = await ensureShareLink();
-            if (link == null) return;
-            await Clipboard.setData(ClipboardData(text: link.message));
-            messenger
-              ..clearSnackBars()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text('Đã sao chép link mời tham gia lịch trình'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-          }
-
-          Future<void> openSocialShare(String channel) async {
-            final link = await ensureShareLink();
-            if (link == null) return;
-            await Clipboard.setData(ClipboardData(text: link.message));
-
-            Uri? uri;
-            if (channel == 'facebook') {
-              uri = Uri.parse(
-                'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(link.deepLink)}',
-              );
-            } else if (channel == 'zalo') {
-              uri = Uri.parse(
-                'https://zalo.me/share?u=${Uri.encodeComponent(link.deepLink)}',
-              );
-            } else if (channel == 'tiktok') {
-              uri = Uri.parse('tiktok://');
-            }
-
-            if (uri != null && await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else {
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Đã sao chép link. Bạn có thể dán vào ứng dụng muốn chia sẻ.',
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          }
-
-          Future<void> submit() async {
-            final recipient = controller.text.trim();
-            if (recipient.isEmpty) {
-              setModalState(
-                () => errorText = 'Vui lòng nhập email hoặc số điện thoại',
-              );
-              return;
-            }
-
-            setModalState(() {
-              isSubmitting = true;
-              errorText = null;
-            });
-
-            try {
-              await cubit.shareItinerary(itin.id, recipient);
-              if (!sheetContext.mounted) return;
-              Navigator.pop(sheetContext);
-              messenger.clearSnackBars();
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Đã gửi lời mời chia sẻ lịch trình'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            } catch (e) {
-              if (!sheetContext.mounted) return;
-              final message = e.toString().replaceFirst('Exception: ', '');
-              setModalState(() {
-                isSubmitting = false;
-                errorText = message.isEmpty
-                    ? 'Người dùng không tồn tại, vui lòng kiểm tra lại'
-                    : message;
-              });
-            }
-          }
-
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: const [
-                      Icon(Icons.ios_share_rounded, color: Color(0xFF2563EB)),
-                      SizedBox(width: 10),
-                      Text(
-                        'Chia sẻ lịch trình',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    itin.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Mời trực tiếp',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.send,
-                    enabled: !isSubmitting,
-                    onSubmitted: (_) => submit(),
-                    onChanged: (_) {
-                      if (errorText != null) {
-                        setModalState(() => errorText = null);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Nhập email hoặc số điện thoại',
-                      prefixIcon: const Icon(Icons.person_add_alt_1_rounded),
-                      errorText: errorText,
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF2563EB),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: isSubmitting ? null : submit,
-                      icon: isSubmitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.send_rounded),
-                      label: Text(isSubmitting ? 'Đang gửi...' : 'Chia sẻ'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFF93C5FD),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  const Divider(height: 1),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Chia sẻ link qua mạng xã hội',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF0F172A),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      if (isCreatingLink)
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _shareChannelButton(
-                        icon: Icons.link_rounded,
-                        label: 'Copy',
-                        color: const Color(0xFF475569),
-                        onTap: isCreatingLink ? null : copyShareLink,
-                      ),
-                      _shareChannelButton(
-                        icon: Icons.facebook_rounded,
-                        label: 'Facebook',
-                        color: const Color(0xFF1877F2),
-                        onTap: isCreatingLink
-                            ? null
-                            : () => openSocialShare('facebook'),
-                      ),
-                      _shareChannelButton(
-                        icon: Icons.chat_bubble_rounded,
-                        label: 'Zalo',
-                        color: const Color(0xFF0068FF),
-                        onTap: isCreatingLink
-                            ? null
-                            : () => openSocialShare('zalo'),
-                      ),
-                      _shareChannelButton(
-                        icon: Icons.music_note_rounded,
-                        label: 'TikTok',
-                        color: const Color(0xFF111827),
-                        onTap: isCreatingLink
-                            ? null
-                            : () => openSocialShare('tiktok'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Người nhận bấm link sẽ mở app nếu đã cài. Fallback CH Play sẽ cấu hình sau khi app được phát hành.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    ).whenComplete(controller.dispose);
-  }
-
-  Widget _shareChannelButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: onTap == null ? 0.06 : 0.10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.18)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: color.withValues(alpha: 0.9)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
+      useSafeArea: true,
+      enableDrag: false,
+      builder: (_) => _ItineraryShareSheet(
+        itinerary: itin,
+        cubit: cubit,
+        messenger: messenger,
       ),
     );
   }
@@ -2424,6 +2084,508 @@ class _CulinaryExpandableItemState extends State<_CulinaryExpandableItem> {
           child: Divider(height: 1, color: Color(0xFFF1F5F9)),
         ),
       ],
+    );
+  }
+}
+
+
+class _ItineraryShareSheet extends StatefulWidget {
+  final ItineraryDetailEntity itinerary;
+  final ItineraryCubit cubit;
+  final ScaffoldMessengerState messenger;
+
+  const _ItineraryShareSheet({
+    required this.itinerary,
+    required this.cubit,
+    required this.messenger,
+  });
+
+  @override
+  State<_ItineraryShareSheet> createState() => _ItineraryShareSheetState();
+}
+
+class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
+  final TextEditingController _controller = TextEditingController();
+  Timer? _recipientSearchDebounce;
+  int _recipientSearchGeneration = 0;
+  bool _isSubmitting = false;
+  bool _isCreatingLink = false;
+  bool _isSearchingRecipients = false;
+  String _query = '';
+  String? _errorText;
+  ItineraryShareLink? _shareLink;
+  List<ItineraryShareRecipient> _recipientResults = const [];
+  ItineraryShareRecipient? _selectedRecipient;
+
+  @override
+  void dispose() {
+    _recipientSearchDebounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<ItineraryShareLink?> _ensureShareLink() async {
+    if (_shareLink != null) return _shareLink;
+    setState(() => _isCreatingLink = true);
+    try {
+      final created = await widget.cubit.createShareLink(widget.itinerary.id);
+      if (!mounted) return null;
+      setState(() {
+        _shareLink = created;
+        _isCreatingLink = false;
+      });
+      return created;
+    } catch (e) {
+      if (!mounted) return null;
+      setState(() => _isCreatingLink = false);
+      widget.messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Không thể tạo link chia sẻ: ${e.toString().replaceFirst('Exception: ', '')}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return null;
+    }
+  }
+
+  Future<void> _copyShareLink() async {
+    final link = await _ensureShareLink();
+    if (link == null) return;
+    await Clipboard.setData(ClipboardData(text: link.message));
+    widget.messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Đã sao chép link mời tham gia lịch trình'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  Future<void> _nativeShare() async {
+    final link = await _ensureShareLink();
+    if (link == null) return;
+    await Share.share(link.message);
+  }
+
+  void _searchRecipients(String value) {
+    final query = value.trim();
+    _recipientSearchDebounce?.cancel();
+    _recipientSearchGeneration++;
+
+    setState(() {
+      _query = query;
+      _selectedRecipient = null;
+      _errorText = null;
+      if (query.length < 2) {
+        _recipientResults = const [];
+        _isSearchingRecipients = false;
+      } else {
+        _isSearchingRecipients = true;
+      }
+    });
+
+    if (query.length < 2) return;
+
+    final generation = _recipientSearchGeneration;
+    _recipientSearchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      try {
+        final users = await widget.cubit.searchShareRecipients(query);
+        if (!mounted || generation != _recipientSearchGeneration) return;
+        setState(() {
+          _recipientResults = users;
+          _isSearchingRecipients = false;
+        });
+      } catch (e) {
+        if (!mounted || generation != _recipientSearchGeneration) return;
+        setState(() {
+          _recipientResults = const [];
+          _isSearchingRecipients = false;
+          _errorText = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    });
+  }
+
+  Future<void> _submit() async {
+    final recipient = _selectedRecipient;
+    if (recipient == null) {
+      setState(() => _errorText = 'Vui lòng chọn người nhận trong danh sách');
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    try {
+      await widget.cubit.shareItinerary(widget.itinerary.id, recipient.email);
+      if (!mounted) return;
+      Navigator.pop(context);
+      widget.messenger.clearSnackBars();
+      widget.messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã gửi lời mời chia sẻ lịch trình'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _isSubmitting = false;
+        _errorText = message.isEmpty
+            ? 'Không thể gửi lời mời, vui lòng thử lại'
+            : message;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final keyboardBottom = media.viewInsets.bottom;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: keyboardBottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: media.size.height - media.padding.top - keyboardBottom - 12,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(24, 12, 24, 24 + media.padding.bottom),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Row(
+                  children: [
+                    Icon(Icons.ios_share_rounded, color: Color(0xFF2563EB)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Chia sẻ lịch trình',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  widget.itinerary.title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Mời trực tiếp',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _controller,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.search,
+                  enabled: !_isSubmitting,
+                  onSubmitted: _searchRecipients,
+                  onChanged: _searchRecipients,
+                  decoration: InputDecoration(
+                    hintText: 'Nhập email, số điện thoại hoặc tên',
+                    prefixIcon: const Icon(Icons.person_add_alt_1_rounded),
+                    suffixIcon: _isSearchingRecipients
+                        ? const Padding(
+                            padding: EdgeInsets.all(14),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : null,
+                    errorText: _errorText,
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                    ),
+                  ),
+                ),
+                if (_query.length >= 2) ...[
+                  const SizedBox(height: 10),
+                  if (_recipientResults.isEmpty && !_isSearchingRecipients)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Text(
+                        'Mình chưa thấy tài khoản phù hợp. Bạn thử nhập email, số điện thoại hoặc tên khác nhé.',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else
+                    ..._recipientResults.map(
+                      (user) => _ShareRecipientTile(
+                        user: user,
+                        selected: _selectedRecipient?.id == user.id,
+                        onTap: () {
+                          _recipientSearchDebounce?.cancel();
+                          _recipientSearchGeneration++;
+                          setState(() {
+                            _selectedRecipient = user;
+                            _query = user.fullName.isNotEmpty ? user.fullName : user.email;
+                            _controller.text = _query;
+                            _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+                            _errorText = null;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSubmitting || _selectedRecipient == null ? null : _submit,
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: Text(_isSubmitting ? 'Đang gửi...' : 'Chia sẻ'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFF93C5FD),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Divider(height: 1),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Chia sẻ link qua mạng xã hội',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF0F172A),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (_isCreatingLink)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _ShareChannelButton(
+                      icon: Icons.link_rounded,
+                      label: 'Copy',
+                      color: const Color(0xFF475569),
+                      onTap: _isCreatingLink ? null : _copyShareLink,
+                    ),
+                    _ShareChannelButton(
+                      icon: Icons.ios_share_rounded,
+                      label: 'Share',
+                      color: const Color(0xFF0F766E),
+                      onTap: _isCreatingLink ? null : _nativeShare,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareRecipientTile extends StatelessWidget {
+  final ItineraryShareRecipient user;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ShareRecipientTile({
+    required this.user,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = user.fullName.trim().isNotEmpty ? user.fullName.trim() : user.email.trim();
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final phone = user.phoneNumber?.trim();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: selected ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: selected ? const Color(0xFF2563EB) : const Color(0xFFE0F2FE),
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      color: selected ? Colors.white : const Color(0xFF0369A1),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        phone == null || phone.isEmpty ? user.email : '${user.email} - $phone',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: selected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareChannelButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _ShareChannelButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: onTap == null ? 0.06 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color.withValues(alpha: 0.9)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

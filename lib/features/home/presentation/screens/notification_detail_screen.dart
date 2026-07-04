@@ -71,6 +71,9 @@ class NotificationDetailScreen extends StatelessWidget {
             }
 
             final isViolation = _isViolation(notification);
+            final isResponding = state is NotificationLoading;
+            final itineraryShareResponseLabel =
+                _itineraryShareResponseLabel(notification);
 
             return RefreshIndicator(
               onRefresh: () => context
@@ -141,17 +144,27 @@ class NotificationDetailScreen extends StatelessWidget {
                     ),
                   ],
 
-                  if (_canRespondToItineraryShare(notification)) ...[
+                  if (itineraryShareResponseLabel != null) ...[
+                    const SizedBox(height: AppSizes.s24),
+                    _ShareResponseStatus(
+                      accepted:
+                          notification.actionType == 'itinerary_share_accepted',
+                      label: itineraryShareResponseLabel,
+                    ),
+                  ] else if (_canRespondToItineraryShare(notification) &&
+                      !isResponding) ...[
                     const SizedBox(height: AppSizes.s24),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () => _respondToItineraryShare(
+                            onPressed: isResponding
+                                ? null
+                                : () => _respondToItineraryShare(
                               context,
                               notification,
                               accept: false,
-                            ),
+                                    ),
                             icon: const Icon(Icons.close_rounded),
                             label: const Text('Từ chối'),
                             style: OutlinedButton.styleFrom(
@@ -167,11 +180,13 @@ class NotificationDetailScreen extends StatelessWidget {
                         const SizedBox(width: AppSizes.s12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _respondToItineraryShare(
+                            onPressed: isResponding
+                                ? null
+                                : () => _respondToItineraryShare(
                               context,
                               notification,
                               accept: true,
-                            ),
+                                    ),
                             icon: const Icon(Icons.check_rounded),
                             label: const Text('Xác nhận'),
                             style: ElevatedButton.styleFrom(
@@ -301,6 +316,16 @@ class NotificationDetailScreen extends StatelessWidget {
   bool _canRespondToItineraryShare(NotificationEntity notification) {
     return notification.actionType == 'respond_itinerary_share' &&
         notification.itineraryId?.isNotEmpty == true;
+  }
+
+  String? _itineraryShareResponseLabel(NotificationEntity notification) {
+    if (notification.actionType == 'itinerary_share_accepted') {
+      return 'Đã chấp nhận lời mời chia sẻ lịch trình';
+    }
+    if (notification.actionType == 'itinerary_share_rejected') {
+      return 'Đã từ chối lời mời chia sẻ lịch trình';
+    }
+    return null;
   }
 
   Future<void> _respondToItineraryShare(
@@ -464,6 +489,56 @@ class _DetailMessage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ShareResponseStatus extends StatelessWidget {
+  final bool accepted;
+  final String label;
+
+  const _ShareResponseStatus({
+    required this.accepted,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accepted ? const Color(0xFF14804A) : const Color(0xFFB91C1C);
+    final background =
+        accepted ? const Color(0xFFE9F7EF) : const Color(0xFFFFF1F2);
+    final border =
+        accepted ? const Color(0xFFB7E4C7) : const Color(0xFFFECACA);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            accepted
+                ? Icons.check_circle_outline_rounded
+                : Icons.cancel_outlined,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -58,6 +58,15 @@ class _ItineraryViewState extends State<_ItineraryView> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _openTripPlanner(ItineraryCubit cubit) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const TripPlannerScreen(),
+      ),
+    );
+    if (mounted) cubit.loadData();
+  }
+
   Future<void> _confirmAndDelete(
     BuildContext context,
     ItineraryCubit cubit,
@@ -206,7 +215,7 @@ class _ItineraryViewState extends State<_ItineraryView> {
               hasScrollBody: false,
               child: _FilterEmptyView(
                 activeFilter: state.activeFilter,
-                onCreateTap: () {},
+                onCreateTap: () => _openTripPlanner(cubit),
               ),
             )
           else if (state.itineraries.isEmpty)
@@ -214,17 +223,7 @@ class _ItineraryViewState extends State<_ItineraryView> {
             SliverFillRemaining(
               hasScrollBody: false,
               child: ItineraryEmptyView(
-                onCreateTap: () {
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (context) => const TripPlannerScreen(),
-                        ),
-                      )
-                      .then((_) {
-                        if (context.mounted) cubit.loadData();
-                      });
-                },
+                onCreateTap: () => _openTripPlanner(cubit),
               ),
             )
           else

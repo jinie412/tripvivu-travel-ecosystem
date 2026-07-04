@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 import 'package:travel_advisor_mobile/features/search/domain/entities/search_results.dart';
 import 'package:travel_advisor_mobile/features/search/domain/usecases/search_all_usecase.dart';
 import 'search_all_state.dart';
@@ -55,13 +56,55 @@ class SearchAllCubit extends Cubit<SearchAllState> {
         ..sort();
 
       emit(SearchAllState.loaded(
-        allItems: items,
+        allItems: _sortByRank(items),
         cities: cities,
         query: query,
       ));
     } catch (_) {
       emit(const SearchAllState.error('Tải kết quả thất bại'));
     }
+  }
+
+  // ── Sort mặc định: rating cao + nhiều review lên đầu ──────────────────────
+  // Bayesian weighted rating, đồng bộ công thức với backend
+  // (SearchService.weightedRank): tránh 5.0★/1 review xếp trên 4.7★/500 review.
+  static const double _rankMinReviews = 10; // m
+  static const double _rankPriorRating = 3.0; // C
+
+  static double _weightedRank(double rating, int reviewCount) {
+    final v = reviewCount < 0 ? 0.0 : reviewCount.toDouble();
+    final r = rating < 0 ? 0.0 : rating;
+    if (v == 0 && r == 0) return 0;
+    return (v / (v + _rankMinReviews)) * r +
+        (_rankMinReviews / (v + _rankMinReviews)) * _rankPriorRating;
+  }
+
+  // Itinerary không có rating → xếp sau các địa điểm (rank -1),
+  // giữ nguyên thứ tự backend trả về (mới nhất trước).
+  static double _rankOf(FlatSearchItem item) {
+    final data = item.data;
+    if (data is CityActivity) {
+      return _weightedRank(data.rating, data.reviewCount);
+    }
+    if (data is CityRestaurant) {
+      return _weightedRank(data.rating, data.reviewCount);
+    }
+    if (data is CityHotel) {
+      return _weightedRank(data.rating, data.reviewCount);
+    }
+    return -1;
+  }
+
+  // List.sort của Dart KHÔNG ổn định → tie-break bằng index gốc
+  // để kết quả không nhảy thứ tự giữa các lần build.
+  static List<FlatSearchItem> _sortByRank(List<FlatSearchItem> items) {
+    final indexed = List.generate(items.length, (i) => i);
+    final ranks = items.map(_rankOf).toList(growable: false);
+    indexed.sort((a, b) {
+      final cmp = ranks[b].compareTo(ranks[a]);
+      return cmp != 0 ? cmp : a.compareTo(b);
+    });
+    return indexed.map((i) => items[i]).toList(growable: false);
   }
 
   void loadMore() {

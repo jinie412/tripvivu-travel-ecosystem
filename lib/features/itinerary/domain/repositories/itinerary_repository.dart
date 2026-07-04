@@ -9,8 +9,16 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 typedef ItineraryShareLink = ({
   String token,
   String deepLink,
+  String shareUrl,
   String message,
   String? playStoreUrl,
+});
+
+typedef ItineraryShareRecipient = ({
+  String id,
+  String fullName,
+  String email,
+  String? phoneNumber,
 });
 
 abstract class ItineraryRepository {
@@ -23,6 +31,7 @@ abstract class ItineraryRepository {
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
   Future<void> shareItinerary(String id, String recipient);
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query);
   Future<ItineraryShareLink> createShareLink(String id);
   Future<void> updateItineraryTitle(String id, String title);
   Future<void> updateActivity(
