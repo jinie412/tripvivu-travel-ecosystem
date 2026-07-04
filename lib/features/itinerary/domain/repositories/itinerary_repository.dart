@@ -6,6 +6,21 @@ import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/crea
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 
+typedef ItineraryShareLink = ({
+  String token,
+  String deepLink,
+  String shareUrl,
+  String message,
+  String? playStoreUrl,
+});
+
+typedef ItineraryShareRecipient = ({
+  String id,
+  String fullName,
+  String email,
+  String? phoneNumber,
+});
+
 abstract class ItineraryRepository {
   Future<List<ItineraryEntity>> getItineraries({
     ItineraryStatus? status,
@@ -15,6 +30,9 @@ abstract class ItineraryRepository {
   Future<ItineraryDetailEntity> getItineraryDetail(String id);
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
+  Future<void> shareItinerary(String id, String recipient);
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query);
+  Future<ItineraryShareLink> createShareLink(String id);
   Future<void> updateItineraryTitle(String id, String title);
   Future<void> updateActivity(
     String itineraryId,
@@ -57,8 +75,6 @@ abstract class ItineraryRepository {
     bool? extendTime,
   });
 
-  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
-    String itineraryId,
-    Map<String, dynamic> payload,
-  );
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
+  optimizeDay(String itineraryId, Map<String, dynamic> payload);
 }

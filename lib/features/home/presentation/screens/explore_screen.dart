@@ -512,6 +512,7 @@ class _ExploreViewState extends State<_ExploreView> {
             child: ActivityVerticalCard(
               showFavorite: false,
               showLocationIcon: false,
+              showDestinationStats: true,
               item: CityActivity(
                 id: item.id,
                 name: item.name,

@@ -22,11 +22,7 @@ class SearchResultWidget extends StatelessWidget {
 
   static const _maxVisible = 10;
 
-  const SearchResultWidget({
-    super.key,
-    required this.results,
-    this.onViewAll,
-  });
+  const SearchResultWidget({super.key, required this.results, this.onViewAll});
 
   @override
   Widget build(BuildContext context) {
@@ -113,10 +109,8 @@ class SearchResultWidget extends StatelessWidget {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CityDetailScreen(
-            cityName: location.name,
-            cityId: location.id,
-          ),
+          builder: (_) =>
+              CityDetailScreen(cityName: location.name, cityId: location.id),
         ),
       );
     }
@@ -143,7 +137,7 @@ class _ResultItem extends StatelessWidget {
         subtitle = 'Lịch trình';
       default:
         fallbackIcon = Icons.location_city_rounded;
-        subtitle = 'Thành phố';
+        subtitle = 'Tỉnh/Thành phố';
     }
 
     return Padding(

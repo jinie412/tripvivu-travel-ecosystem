@@ -44,12 +44,14 @@ void main() async {
     await AndroidAlarmManager.initialize();
   }
   await initDependencies();
-  
+
   // ✅ KHỞI TẠO MAPBOX SDK
   // Lưu ý: Mapbox v2 bắt buộc dùng Mapbox Public Token (pk...) để khởi động engine.
   // Goong Key sẽ được dùng riêng trong Style URL ở các Widget.
   if (!kIsWeb) {
-    String mapboxPublicToken = dotenv.env['MAPBOX_PUBLIC_TOKEN'] ?? 'pk.eyJ1IjoibWFwdHJhdmVsNjgiLCJhIjoiY21vbmpkdXh4MDF0YTJxczlhMzQ3ZzF1cSJ9.gC1J7jzlMnFD_yHe-4JgqQ';
+    String mapboxPublicToken =
+        dotenv.env['MAPBOX_PUBLIC_TOKEN'] ??
+        'pk.eyJ1IjoibWFwdHJhdmVsNjgiLCJhIjoiY21vbmpkdXh4MDF0YTJxczlhMzQ3ZzF1cSJ9.gC1J7jzlMnFD_yHe-4JgqQ';
     MapboxOptions.setAccessToken(mapboxPublicToken);
   }
 
@@ -92,6 +94,13 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
   /// Xử lý deeplink từ email Supabase reset-password.
   /// URL sẽ có dạng: gptraveladvisor://reset-password?access_token=xxx&...
   void _handleDeepLink(Uri uri) {
+    if (uri.host == 'itinerary-share') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationNavigationService.handleItineraryShareLink(uri);
+      });
+      return;
+    }
+
     if (uri.host == 'reset-password') {
       // Lấy access_token từ query params hoặc fragment (#access_token=...)
       String? accessToken = uri.queryParameters['access_token'];
@@ -127,10 +136,7 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('vi'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('vi'), Locale('en')],
       home: kSkipLogin ? const MainShell() : const AuthGateScreen(),
       routes: {
         '/home': (context) => const MainShell(),

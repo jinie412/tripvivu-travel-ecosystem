@@ -245,11 +245,9 @@ class ActivityCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text(
-                '(${item.reviewCount} đánh giá)',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: _ReviewCountLabel(
+                count: item.reviewCount,
+                compact: true,
               ),
             ),
           ],
@@ -346,11 +344,9 @@ class RestaurantCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text(
-                '(${item.reviewCount} đánh giá)',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: _ReviewCountLabel(
+                count: item.reviewCount,
+                compact: true,
               ),
             ),
           ],
@@ -446,35 +442,42 @@ class HotelCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text(
-                '(${item.reviewCount} đánh giá)',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: _ReviewCountLabel(
+                count: item.reviewCount,
+                compact: true,
               ),
             ),
           ],
         ),
         const SizedBox(height: 1),
-        RichText(
-          text: TextSpan(
-            style: const TextStyle(color: Colors.black, fontSize: 13),
-            children: [
-              const TextSpan(
-                text: 'Từ ',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+        item.price.trim().isNotEmpty && item.price != 'Liên hệ'
+            ? RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.black, fontSize: 13),
+                  children: [
+                    const TextSpan(
+                      text: 'Từ ',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    TextSpan(
+                      text: item.price,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                    const TextSpan(
+                      text: '/đêm',
+                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ],
+                ),
+              )
+            : const Text(
+                'Liên hệ giá',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              TextSpan(
-                text: item.price,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-              ),
-              const TextSpan(
-                text: '/đêm',
-                style: TextStyle(color: Colors.grey, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 3),
         Row(
           children: [
@@ -493,6 +496,53 @@ class HotelCard extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ReviewCountLabel extends StatelessWidget {
+  final int count;
+  final bool compact;
+
+  const _ReviewCountLabel({
+    required this.count,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.rate_review_outlined,
+          size: compact ? 12 : 14,
+          color: const Color(0xFF64748B),
+        ),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            '${_formatReviewCount(count)} đánh giá',
+            style: TextStyle(
+              fontSize: compact ? 11 : 12,
+              color: const Color(0xFF64748B),
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _formatReviewCount(int value) {
+  if (value >= 1000000) {
+    return '${(value / 1000000).toStringAsFixed(1)}tr';
+  }
+  if (value >= 1000) {
+    return '${(value / 1000).toStringAsFixed(1)}k';
+  }
+  return value.toString();
 }
 
 class Position extends StatelessWidget {

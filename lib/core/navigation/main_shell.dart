@@ -21,6 +21,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/it
 import 'package:travel_advisor_mobile/features/profile/presentation/screens/profile_screen.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/widgets/profile_drawer.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/cubit/saved_cubit.dart';
 import 'package:travel_advisor_mobile/features/saved/presentation/screens/saved_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
@@ -139,7 +140,9 @@ class _MainShellState extends State<MainShell> {
               try {
                 final notificationResponse = await Supabase.instance.client
                     .from('notifications')
-                    .select('title, content, type, action_type, target_type, metadata')
+                    .select(
+                      'title, content, type, action_type, target_type, metadata',
+                    )
                     .eq('id', newRow['notification_id'])
                     .single();
                 final metadata = notificationResponse['metadata'];
@@ -261,6 +264,8 @@ class _TrackingRestorer extends StatefulWidget {
 }
 
 class _TrackingRestorerState extends State<_TrackingRestorer> {
+  String? _syncedActiveItineraryId;
+
   @override
   void initState() {
     super.initState();
@@ -270,7 +275,21 @@ class _TrackingRestorerState extends State<_TrackingRestorer> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    return BlocListener<TrackingCubit, TrackingState>(
+      listenWhen: (previous, current) =>
+          current.isActive &&
+          current.itineraryId != null &&
+          current.itineraryId != _syncedActiveItineraryId,
+      listener: (context, state) {
+        final itineraryId = state.itineraryId;
+        if (itineraryId == null || itineraryId.isEmpty) return;
+        _syncedActiveItineraryId = itineraryId;
+        context.read<ItineraryCubit>().toggleItineraryStatus(itineraryId, true);
+      },
+      child: widget.child,
+    );
+  }
 }
 
 // ─── Notch Painter ────────────────────────────────────────────────────────────

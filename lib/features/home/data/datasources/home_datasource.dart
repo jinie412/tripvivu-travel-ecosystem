@@ -438,11 +438,14 @@ class RemoteHomeDataSource implements HomeDataSource {
       imageUrl: (json['image'] ?? '').toString(),
       rating: ((json['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
-      // Try to read a numeric or formatted price from payload. Fall back to 0đ
       price: () {
         final rawPrice = (json['price'] ?? json['min_price'] ?? '').toString().trim();
-        final priceValue = rawPrice.isNotEmpty ? rawPrice : '0đ';
-        return priceValue;
+        if (rawPrice.isEmpty ||
+            rawPrice == '0' ||
+            rawPrice == '0đ') {
+          return 'Liên hệ';
+        }
+        return rawPrice;
       }(),
       address: (json['city'] ?? json['province'] ?? json['location'] ?? '').toString(),
       isFavorite: json['is_favorite'] == true || json['isFavorite'] == true,
@@ -585,7 +588,7 @@ class RemoteHomeDataSource implements HomeDataSource {
       rating: ((item['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (item['review_count'] as num?)?.toInt() ?? 0,
       address: (item['city'] ?? '').toString(),
-      status: 'Đang mở cửa',
+      status: (item['status'] ?? 'Chưa có giờ mở cửa').toString(),
       cuisine: 'vietnamese',
       priceLevel: 'mid_range',
       amenities: const <String>[],

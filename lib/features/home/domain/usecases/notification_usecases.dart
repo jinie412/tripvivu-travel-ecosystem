@@ -33,3 +33,21 @@ class MarkNotificationAsReadUseCase {
 
   Future<NotificationEntity> call(String id) => _repository.markAsRead(id);
 }
+
+class RespondToItineraryShareUseCase {
+  final NotificationRepository _repository;
+
+  RespondToItineraryShareUseCase(this._repository);
+
+  Future<void> call({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  }) {
+    return _repository.respondToItineraryShare(
+      notificationId: notificationId,
+      itineraryId: itineraryId,
+      accept: accept,
+    );
+  }
+}

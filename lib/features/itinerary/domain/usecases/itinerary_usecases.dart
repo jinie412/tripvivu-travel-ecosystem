@@ -66,6 +66,35 @@ class ToggleVisibilityUseCase {
   }
 }
 
+/// UseCase: Gửi lời mời chia sẻ lịch trình bằng email hoặc số điện thoại.
+class ShareItineraryUseCase {
+  final ItineraryRepository _repository;
+  ShareItineraryUseCase(this._repository);
+
+  Future<void> call(String id, String recipient) {
+    return _repository.shareItinerary(id, recipient);
+  }
+}
+
+/// UseCase: Tạo link chia sẻ lịch trình để gửi qua mạng xã hội.
+class SearchItineraryShareRecipientsUseCase {
+  final ItineraryRepository _repository;
+  SearchItineraryShareRecipientsUseCase(this._repository);
+
+  Future<List<ItineraryShareRecipient>> call(String query) {
+    return _repository.searchShareRecipients(query);
+  }
+}
+
+class CreateItineraryShareLinkUseCase {
+  final ItineraryRepository _repository;
+  CreateItineraryShareLinkUseCase(this._repository);
+
+  Future<ItineraryShareLink> call(String id) {
+    return _repository.createShareLink(id);
+  }
+}
+
 /// UseCase: Cập nhật tiêu đề/tên lịch trình.
 class UpdateItineraryTitleUseCase {
   final ItineraryRepository _repository;
@@ -143,7 +172,8 @@ class OptimizeDayUseCase {
   final ItineraryRepository _repository;
   OptimizeDayUseCase(this._repository);
 
-  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> call(String itineraryId, Map<String, dynamic> payload) {
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
+  call(String itineraryId, Map<String, dynamic> payload) {
     return _repository.optimizeDay(itineraryId, payload);
   }
 }

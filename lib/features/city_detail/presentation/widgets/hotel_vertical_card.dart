@@ -52,10 +52,6 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
 
   @override
   Widget build(BuildContext context) {
-    final reviewLabel = widget.item.reviewCount >= 1000
-        ? '(${(widget.item.reviewCount / 1000).toStringAsFixed(1)}k)'
-        : '(${widget.item.reviewCount})';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -122,30 +118,9 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            widget.item.rating.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              reviewLabel,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      _HotelRatingReviewRow(
+                        rating: widget.item.rating,
+                        reviewCount: widget.item.reviewCount,
                       ),
                       if (widget.item.address.isNotEmpty) ...[
                         const SizedBox(height: 4),
@@ -190,4 +165,85 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
       ),
     );
   }
+}
+
+class _HotelRatingReviewRow extends StatelessWidget {
+  final double rating;
+  final int reviewCount;
+
+  const _HotelRatingReviewRow({
+    required this.rating,
+    required this.reviewCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _HotelInfoPill(
+          icon: Icons.star_rounded,
+          iconColor: Colors.amber,
+          label: rating.toStringAsFixed(1),
+        ),
+        _HotelInfoPill(
+          icon: Icons.rate_review_outlined,
+          iconColor: const Color(0xFF2563EB),
+          label: '${_formatHotelReviewCount(reviewCount)} đánh giá',
+        ),
+      ],
+    );
+  }
+}
+
+class _HotelInfoPill extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+
+  const _HotelInfoPill({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF334155),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatHotelReviewCount(int value) {
+  if (value >= 1000000) {
+    return '${(value / 1000000).toStringAsFixed(1)}tr';
+  }
+  if (value >= 1000) {
+    return '${(value / 1000).toStringAsFixed(1)}k';
+  }
+  return value.toString();
 }

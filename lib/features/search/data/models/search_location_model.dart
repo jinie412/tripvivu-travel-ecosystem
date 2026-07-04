@@ -15,9 +15,12 @@ class SearchLocationModel {
     this.type = 'city',
   });
 
-  /// Lấy id, name, type và ảnh từ API. Backend trả `image` (fallback `image_url`).
+  /// Lấy id, name, type và ảnh từ API. Backend trả `image`
+  /// (fallback `image_url`/`url_image` cho city).
   factory SearchLocationModel.fromJson(Map<String, dynamic> json) {
-    final image = (json['image'] ?? json['image_url'] ?? '').toString();
+    final image =
+        (json['image'] ?? json['image_url'] ?? json['url_image'] ?? '')
+            .toString();
     return SearchLocationModel(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? '',
@@ -39,11 +42,6 @@ class SearchLocationModel {
   }
 
   SearchLocation toEntity() {
-    return SearchLocation(
-      id: id,
-      name: name,
-      imageUrl: imageUrl,
-      type: type,
-    );
+    return SearchLocation(id: id, name: name, imageUrl: imageUrl, type: type);
   }
 }

@@ -77,6 +77,21 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
+  Future<void> shareItinerary(String id, String recipient) {
+    return _dataSource.shareItinerary(id, recipient);
+  }
+
+  @override
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query) {
+    return _dataSource.searchShareRecipients(query);
+  }
+
+  @override
+  Future<ItineraryShareLink> createShareLink(String id) {
+    return _dataSource.createShareLink(id);
+  }
+
+  @override
   Future<void> updateItineraryTitle(String id, String title) {
     return _dataSource.updateItineraryTitle(id, title);
   }
@@ -175,10 +190,8 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
-  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
-    String itineraryId,
-    Map<String, dynamic> payload,
-  ) async {
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
+  optimizeDay(String itineraryId, Map<String, dynamic> payload) async {
     final result = await _dataSource.optimizeDay(itineraryId, payload);
     return (
       optimized: result.optimized.map((m) => m.toEntity()).toList(),

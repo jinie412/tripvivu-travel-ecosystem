@@ -67,14 +67,51 @@ class NotificationModel {
     final normalizedJson = Map<String, dynamic>.from(json);
     final metadata = json['metadata'];
 
-    if (metadata is Map<String, dynamic>) {
-      normalizedJson['action_label'] ??= metadata['action_label'];
-      normalizedJson['place_id'] ??= metadata['place_id'];
-      normalizedJson['itinerary_id'] ??= metadata['itinerary_id'];
-      normalizedJson['itinerary_detail_id'] ??= metadata['itinerary_detail_id'];
-      normalizedJson['has_place_review'] ??= metadata['has_place_review'];
+    normalizedJson['id'] = (normalizedJson['id'] ?? '').toString();
+    normalizedJson['title'] = (normalizedJson['title'] ?? 'Thông báo')
+        .toString();
+    normalizedJson['content'] = (normalizedJson['content'] ?? '').toString();
+    normalizedJson['notification_type'] =
+        (normalizedJson['notification_type'] ?? 'system').toString();
+    normalizedJson['status'] = (normalizedJson['status'] ?? 'unread')
+        .toString();
+    normalizedJson['is_global'] = normalizedJson['is_global'] == true;
+    normalizedJson['sent_at'] =
+        (normalizedJson['sent_at'] ?? DateTime.now().toIso8601String())
+            .toString();
+    normalizedJson['time_label'] = (normalizedJson['time_label'] ?? 'Vừa xong')
+        .toString();
+    normalizedJson['icon_key'] = (normalizedJson['icon_key'] ?? 'info')
+        .toString();
+
+    if (metadata is Map) {
+      final metadataJson = Map<String, dynamic>.from(metadata);
+      normalizedJson['action_label'] ??= metadataJson['action_label'];
+      normalizedJson['place_id'] ??= metadataJson['place_id'];
+      normalizedJson['itinerary_id'] ??= metadataJson['itinerary_id'];
+      normalizedJson['itinerary_detail_id'] ??=
+          metadataJson['itinerary_detail_id'];
+      normalizedJson['has_place_review'] ??= metadataJson['has_place_review'];
       normalizedJson['has_itinerary_review'] ??=
-          metadata['has_itinerary_review'];
+          metadataJson['has_itinerary_review'];
+      final shareStatus = metadataJson['share_status'];
+      if (shareStatus == 'accepted') {
+        normalizedJson['action_type'] = 'itinerary_share_accepted';
+      } else if (shareStatus == 'rejected') {
+        normalizedJson['action_type'] = 'itinerary_share_rejected';
+      }
+    }
+    for (final key in [
+      'read_at',
+      'action_type',
+      'action_label',
+      'target_type',
+      'place_id',
+      'itinerary_id',
+      'itinerary_detail_id',
+    ]) {
+      final value = normalizedJson[key];
+      if (value != null) normalizedJson[key] = value.toString();
     }
     normalizedJson['has_place_review'] =
         normalizedJson['has_place_review'] == true;

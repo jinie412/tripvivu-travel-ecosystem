@@ -5,4 +5,9 @@ abstract class NotificationRepository {
   Future<NotificationEntity> getNotificationDetail(String id);
   Future<NotificationEntity> markAsRead(String id);
   Future<void> markAllAsRead();
+  Future<void> respondToItineraryShare({
+    required String notificationId,
+    required String itineraryId,
+    required bool accept,
+  });
 }
