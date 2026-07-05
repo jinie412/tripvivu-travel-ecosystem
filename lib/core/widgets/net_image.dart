@@ -39,37 +39,33 @@ class NetImage extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: LayoutBuilder(
-        builder: (context, constraints) => CachedNetworkImage(
-          imageUrl: rawUrl,
-          cacheManager: AppImageCacheManager(),
-          fit: fit,
-          width: width ?? double.infinity,
-          height: height ?? double.infinity,
-          // Giải mã ảnh đúng kích thước hiển thị thay vì full resolution —
-          // ảnh 4000px hiển thị trong card 160px vẫn chiếm hàng chục MB RAM
-          // nếu không giới hạn; RAM cao là lý do Android kill app khi chạy nền.
-          memCacheWidth: _decodeWidth(context, constraints),
-          fadeInDuration: const Duration(milliseconds: 200),
-          fadeOutDuration: const Duration(milliseconds: 100),
-          placeholder: (context, url) => placeholder,
-          errorWidget: (context, url, error) => placeholder,
-        ),
+      child: CachedNetworkImage(
+        imageUrl: rawUrl,
+        cacheManager: AppImageCacheManager(),
+        fit: fit,
+        width: width ?? double.infinity,
+        height: height ?? double.infinity,
+        // Giải mã ảnh đúng kích thước hiển thị thay vì full resolution —
+        // ảnh 4000px hiển thị trong card 160px vẫn chiếm hàng chục MB RAM
+        // nếu không giới hạn; RAM cao là lý do Android kill app khi chạy nền.
+        // KHÔNG dùng LayoutBuilder để đo khung: nó crash khi NetImage nằm
+        // trong IntrinsicHeight (vd timeline_activity_card).
+        memCacheWidth: _decodeWidth(context),
+        fadeInDuration: const Duration(milliseconds: 200),
+        fadeOutDuration: const Duration(milliseconds: 100),
+        placeholder: (context, url) => placeholder,
+        errorWidget: (context, url, error) => placeholder,
       ),
     );
   }
 
-  /// Bề rộng (pixel vật lý) cần giải mã: lấy cạnh lớn nhất của khung hiển thị
-  /// × devicePixelRatio (cạnh lớn nhất để ảnh BoxFit.cover trong khung cao/hẹp
-  /// không bị vỡ nét), chặn trần 1440px cho ảnh mở toàn màn hình.
-  int _decodeWidth(BuildContext context, BoxConstraints constraints) {
+  /// Bề rộng (pixel vật lý) cần giải mã: lấy cạnh lớn nhất trong width/height
+  /// được truyền vào (cạnh lớn nhất để ảnh BoxFit.cover trong khung cao/hẹp
+  /// không bị vỡ nét); không có thì coi như ảnh lớn → bề rộng màn hình.
+  /// Chặn trần 1440px cho ảnh mở toàn màn hình.
+  int _decodeWidth(BuildContext context) {
     double logical = 0;
-    for (final candidate in [
-      width,
-      height,
-      constraints.maxWidth,
-      constraints.maxHeight,
-    ]) {
+    for (final candidate in [width, height]) {
       if (candidate != null && candidate.isFinite && candidate > logical) {
         logical = candidate;
       }

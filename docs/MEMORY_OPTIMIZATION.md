@@ -60,19 +60,27 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
 
 ### 2.2. `NetImage` giải mã đúng kích thước hiển thị — `lib/core/widgets/net_image.dart`
 
-`NetImage` là widget ảnh dùng chung (~19 file). Bọc `CachedNetworkImage` trong
-`LayoutBuilder` và đặt `memCacheWidth = _decodeWidth(...)`:
+`NetImage` là widget ảnh dùng chung (~19 file). Đặt
+`memCacheWidth = _decodeWidth(context)`:
 
 ```
-_decodeWidth = max(width, height, constraints.maxWidth, constraints.maxHeight
-                   — chỉ lấy giá trị hữu hạn)
+_decodeWidth = max(width, height — chỉ lấy giá trị hữu hạn được truyền vào;
+                   không có thì lấy bề rộng màn hình)
                × devicePixelRatio, clamp [64, 1440]
 ```
 
-- Lấy **cạnh lớn nhất** của khung để ảnh `BoxFit.cover` trong khung cao/hẹp
-  không bị vỡ nét.
+- Lấy **cạnh lớn nhất** để ảnh `BoxFit.cover` trong khung cao/hẹp không bị
+  vỡ nét.
 - Trần 1440px vật lý đủ cho ảnh mở toàn màn hình.
 - Kết quả: ảnh card 160dp chiếm ~1MB thay vì hàng chục MB.
+
+> ⚠️ **KHÔNG dùng `LayoutBuilder` để đo khung hiển thị trong `NetImage`.**
+> Bản đầu của tối ưu này từng làm vậy và khiến màn chi tiết lịch trình
+> không render được: `NetImage` nằm trong `IntrinsicHeight`
+> (`timeline_activity_card.dart`), mà `LayoutBuilder` ném exception
+> "LayoutBuilder does not support returning intrinsic dimensions" khi
+> ancestor đo kích thước nội tại. Vì vậy chỉ tính từ `width`/`height`
+> truyền vào hoặc bề rộng màn hình.
 
 ### 2.3. Thêm `memCacheWidth`/`cacheWidth` cho 21 chỗ dùng ảnh trực tiếp
 
