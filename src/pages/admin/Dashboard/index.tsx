@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Bell, TrendingUp, TrendingDown, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Bell, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
 import { locationAPI } from '../../../services/locationAPI';
@@ -71,17 +71,42 @@ export const AdminDashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedWeek, setSelectedWeek] = useState<number | ''>('');
   const [popularMode, setPopularMode] = useState<'top' | 'flop'>('top');
+  const [popularCategory, setPopularCategory] = useState<string>('');
   const [showAllLocs, setShowAllLocs] = useState<boolean>(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState<boolean>(false);
   const [weekDropdownOpen, setWeekDropdownOpen] = useState<boolean>(false);
+  const [refreshNonce, setRefreshNonce] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const queryClient = useQueryClient();
+
+  // ---------------------------------------------------------
+  // Làm mới toàn bộ dữ liệu dashboard ngay lập tức: xóa cache phía backend
+  // (RAM, TTL tới 1 giờ) rồi đổi refreshNonce để bust luôn cache HTTP của
+  // trình duyệt (query param mới → URL mới) và ép các useQuery gọi lại.
+  // ---------------------------------------------------------
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      await apiClient.post('/admin/dashboard/refresh-cache');
+    } catch {
+      // Vẫn tiếp tục bust cache phía client kể cả khi lời gọi này lỗi
+    } finally {
+      setRefreshNonce((n) => n + 1);
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-chart'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-popular-places'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-interactions'] });
+      setIsRefreshing(false);
+    }
+  };
 
   // ---------------------------------------------------------
   // Fix 1+2: Stats dùng useQuery — cache 5 phút, giữ data 30 phút sau unmount
   // ---------------------------------------------------------
   const { data: stats = EMPTY_STATS, isLoading: loadingStats } = useQuery<DashStats>({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', refreshNonce],
     queryFn: async () => {
-      const res = await apiClient.get('/admin/dashboard/stats');
+      const res = await apiClient.get('/admin/dashboard/stats', { params: { _r: refreshNonce || undefined } });
       return res.data?.data ?? EMPTY_STATS;
     },
     staleTime: 0,
@@ -92,10 +117,11 @@ export const AdminDashboard: React.FC = () => {
   // Fix 2+3: Chart — giữ data cũ khi đổi tháng/tuần (keepPreviousData), gcTime dài
   // ---------------------------------------------------------
   const { data: activityData = [], isLoading: loadingChart } = useQuery({
-    queryKey: ['dashboard-chart', selectedMonth, selectedWeek],
+    queryKey: ['dashboard-chart', selectedMonth, selectedWeek, refreshNonce],
     queryFn: async ({ signal }) => {
       const params: Record<string, number> = { month: selectedMonth };
       if (selectedWeek !== '') params.week = selectedWeek as number;
+      if (refreshNonce) params._r = refreshNonce;
       const res = await apiClient.get('/admin/dashboard/chart', { params, signal });
       return (res.data?.data ?? []) as ActivityPoint[];
     },
@@ -115,13 +141,31 @@ export const AdminDashboard: React.FC = () => {
   });
 
   // ---------------------------------------------------------
+  // Danh mục địa điểm — dùng chung API với trang quản lý địa điểm
+  // ---------------------------------------------------------
+  const { data: categoryOptions = [] } = useQuery({
+    queryKey: ['location-categories'],
+    queryFn: async () => {
+      const res = await locationAPI.getLocationCategories();
+      return res.categories;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  // ---------------------------------------------------------
   // Fix 2: Popular places — tăng gcTime lên 2 giờ
   // ---------------------------------------------------------
   const { data: topLocations = [], isLoading: loadingLocs } = useQuery({
-    queryKey: ['dashboard-popular-places', popularMode],
+    queryKey: ['dashboard-popular-places', popularMode, popularCategory, refreshNonce],
     queryFn: async () => {
       const response = await apiClient.get('/admin/dashboard/popular-places', {
-        params: { limit: 20, mode: popularMode },
+        params: {
+          limit: 20,
+          mode: popularMode,
+          categoryName: popularCategory || undefined,
+          _r: refreshNonce || undefined,
+        },
       });
       const rawData = response.data?.data || [];
       return rawData.map((loc: any) => ({
@@ -143,9 +187,9 @@ export const AdminDashboard: React.FC = () => {
   // ---------------------------------------------------------
   const { data: interaction = { noInteraction: 0, createdTrip: 0, completedTrip: 0 }, isLoading: loadingInteraction } =
     useQuery<DashInteraction>({
-      queryKey: ['dashboard-interactions'],
+      queryKey: ['dashboard-interactions', refreshNonce],
       queryFn: async () => {
-        const res = await apiClient.get('/admin/dashboard/interactions');
+        const res = await apiClient.get('/admin/dashboard/interactions', { params: { _r: refreshNonce || undefined } });
         return res.data?.data ?? { noInteraction: 0, createdTrip: 0, completedTrip: 0 };
       },
       staleTime: 0,
@@ -172,6 +216,13 @@ export const AdminDashboard: React.FC = () => {
           <h1 className="page-title">Dashboard</h1>
         </div>
         <div className="header-actions">
+          <button
+            className="icon-btn"
+            onClick={handleRefreshData}
+            disabled={isRefreshing}
+            title="Làm mới toàn bộ dữ liệu dashboard (xóa cache, lấy dữ liệu mới nhất)">
+            <RefreshCw size={18} className={isRefreshing ? 'dash-refresh-spin' : ''} />
+          </button>
           <button className="icon-btn">
             <Bell size={20} />
           </button>
@@ -394,6 +445,18 @@ export const AdminDashboard: React.FC = () => {
                 {popularMode === 'top' ? 'Top 20 địa điểm được ghé thăm nhiều nhất' : '20 địa điểm ít khách ghé thăm nhất'}
               </h3>
               <div className="dash-mode-toggle">
+                <select
+                  className="dash-category-select"
+                  value={popularCategory}
+                  onChange={(e) => setPopularCategory(e.target.value)}
+                  title="Lọc theo danh mục địa điểm">
+                  <option value="">Tất cả danh mục</option>
+                  {categoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 <button
                   className={`dash-toggle-btn ${popularMode === 'top' ? 'active' : ''}`}
                   onClick={() => {

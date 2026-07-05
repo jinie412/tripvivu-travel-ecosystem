@@ -159,8 +159,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 6px;
+  padding: 5px 10px;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -189,6 +189,43 @@
 .dash-mode-toggle {
   display: flex;
   gap: 6px;
+}
+
+.dash-category-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 5px 26px 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background-color: var(--bg-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.dash-category-select:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.dash-refresh-spin {
+  animation: dash-spin 0.8s linear infinite;
+}
+
+@keyframes dash-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dash-mode-toggle .dash-toggle-btn {
