@@ -11,16 +11,23 @@ class CitySearchBottomSheet extends StatefulWidget {
   final SearchCitiesUseCase searchCitiesUseCase;
   final String title;
 
+  /// Khi true: chỉ cho chọn trong danh sách tỉnh/thành app đang hỗ trợ lên
+  /// lịch trình (dùng cho ô "điểm đến"). Khi false: tìm kiếm tự do trên toàn
+  /// bộ tỉnh/thành (dùng cho ô "điểm khởi hành").
+  final bool destinationOnly;
+
   const CitySearchBottomSheet({
     super.key,
     required this.searchCitiesUseCase,
     required this.title,
+    this.destinationOnly = false,
   });
 
   static Future<CityEntity?> show(
     BuildContext context, {
     required SearchCitiesUseCase searchCitiesUseCase,
     required String title,
+    bool destinationOnly = false,
   }) {
     return showModalBottomSheet<CityEntity>(
       context: context,
@@ -29,6 +36,7 @@ class CitySearchBottomSheet extends StatefulWidget {
       builder: (_) => CitySearchBottomSheet(
         searchCitiesUseCase: searchCitiesUseCase,
         title: title,
+        destinationOnly: destinationOnly,
       ),
     );
   }
@@ -72,7 +80,10 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
       _error = null;
     });
     try {
-      final results = await widget.searchCitiesUseCase(query);
+      final results = await widget.searchCitiesUseCase(
+        query,
+        destinationOnly: widget.destinationOnly,
+      );
       if (mounted) setState(() => _results = results);
     } catch (e) {
       if (mounted) setState(() => _error = 'Không thể tải danh sách thành phố');
@@ -119,6 +130,35 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
           ),
           const SizedBox(height: 16),
 
+          if (widget.destinationOnly) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'App hiện chỉ hỗ trợ lên lịch trình cho các tỉnh/thành phổ biến dưới đây. '
+                        'Các điểm đến khác sẽ sớm được bổ sung.',
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Search field
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -127,7 +167,7 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
               focusNode: _focusNode,
               onChanged: _onChanged,
               decoration: InputDecoration(
-                hintText: 'Tìm thành phố...',
+                hintText: widget.destinationOnly ? 'Tìm trong các tỉnh/thành hỗ trợ...' : 'Tìm thành phố...',
                 hintStyle: const TextStyle(color: AppColors.textSecondary),
                 prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
                 suffixIcon: _controller.text.isNotEmpty
@@ -173,8 +213,17 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
       );
     }
     if (_results.isEmpty) {
-      return const Center(
-        child: Text('Không tìm thấy thành phố', style: TextStyle(color: AppColors.textSecondary)),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            widget.destinationOnly
+                ? 'Không tìm thấy tỉnh/thành phù hợp trong danh sách app đang hỗ trợ'
+                : 'Không tìm thấy thành phố',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
       );
     }
 

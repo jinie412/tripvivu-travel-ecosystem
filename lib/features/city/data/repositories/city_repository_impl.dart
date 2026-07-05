@@ -7,6 +7,6 @@ class CityRepositoryImpl implements CityRepository {
   CityRepositoryImpl(this._dataSource);
 
   @override
-  Future<List<CityEntity>> searchCities(String query) =>
-      _dataSource.searchCities(query);
+  Future<List<CityEntity>> searchCities(String query, {bool destinationOnly = false}) =>
+      _dataSource.searchCities(query, destinationOnly: destinationOnly);
 }

@@ -35,6 +35,7 @@ class _TripPlannerView extends StatelessWidget {
       context,
       searchCitiesUseCase: sl<SearchCitiesUseCase>(),
       title: isDeparture ? 'Chọn điểm khởi hành' : 'Chọn điểm đến',
+      destinationOnly: !isDeparture,
     );
     if (city == null || !context.mounted) return;
 

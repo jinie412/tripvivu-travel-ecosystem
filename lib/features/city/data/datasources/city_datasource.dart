@@ -2,7 +2,7 @@ import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/features/city/domain/entities/city_entity.dart';
 
 abstract class CityDataSource {
-  Future<List<CityEntity>> searchCities(String query);
+  Future<List<CityEntity>> searchCities(String query, {bool destinationOnly = false});
 }
 
 class RemoteCityDataSource implements CityDataSource {
@@ -10,8 +10,11 @@ class RemoteCityDataSource implements CityDataSource {
   RemoteCityDataSource(this._client);
 
   @override
-  Future<List<CityEntity>> searchCities(String query) async {
-    final params = query.trim().isEmpty ? <String, dynamic>{} : {'search': query.trim()};
+  Future<List<CityEntity>> searchCities(String query, {bool destinationOnly = false}) async {
+    final params = <String, dynamic>{
+      if (query.trim().isNotEmpty) 'search': query.trim(),
+      if (destinationOnly) 'destinationOnly': true,
+    };
     final res = await _client.dio.get('/cities', queryParameters: params);
 
     final List<dynamic> list = res.data as List<dynamic>;

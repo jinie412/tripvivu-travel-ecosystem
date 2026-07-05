@@ -5,5 +5,6 @@ class SearchCitiesUseCase {
   final CityRepository _repository;
   SearchCitiesUseCase(this._repository);
 
-  Future<List<CityEntity>> call(String query) => _repository.searchCities(query);
+  Future<List<CityEntity>> call(String query, {bool destinationOnly = false}) =>
+      _repository.searchCities(query, destinationOnly: destinationOnly);
 }
