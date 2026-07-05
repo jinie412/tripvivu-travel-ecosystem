@@ -60,7 +60,7 @@ const OrdersPage: React.FC = () => {
         const [ordersData, locationsData] = await Promise.all([
           getOrdersByPlace(providerIds[0]),
           businessLocationAPI.getLocations(
-            { vendorId: providerIds[0], status: 'all', sort: 'newest' },
+            { vendorId: providerIds[0], status: 'all', sort: 'newest', fields: 'basic' },
             { page: 1, limit: 500 },
           ),
         ]);

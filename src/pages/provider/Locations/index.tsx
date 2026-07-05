@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Button from '../../../components/UI/Button';
 import { Search, ChevronLeft, ChevronRight, Edit3, Trash2, Plus, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import defaultLocationImage from '../../../assets/images/location-default.svg';
 import Swal from 'sweetalert2';
 
@@ -41,6 +41,8 @@ interface LocationsPageState {
 }
 const LocationsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
   const [currentPage, setCurrentPage] = useState(1);
   const currentUser = useMemo(
     () =>
@@ -69,13 +71,27 @@ const LocationsPage: React.FC = () => {
     loading: true,
     error: null,
     totalItems: 0,
-    search: '',
+    search: initialSearch,
     statusFilter: '',
     sortOrder: 'newest'
   });
 
+  // Debounce the search box so typing doesn't fire a network request (with a
+  // heavy limit=500 fetch, see below) on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(state.search), 350);
+    return () => clearTimeout(timer);
+  }, [state.search]);
+
+  // Ignore responses from requests that are no longer the latest one, so a
+  // slow earlier request can't clobber a faster, more recent result.
+  const latestRequestId = useRef(0);
+
   // Fetch locations on mount and when filters change
   useEffect(() => {
+    const requestId = ++latestRequestId.current;
+
     const fetchLocations = async () => {
       try {
         if (!vendorId) {
@@ -91,7 +107,7 @@ const LocationsPage: React.FC = () => {
 
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        const searchKeyword = state.search.trim();
+        const searchKeyword = debouncedSearch.trim();
         const shouldUseAccentInsensitiveSearch = searchKeyword.length > 0;
 
         const response = await businessLocationAPI.getLocations({
@@ -103,6 +119,10 @@ const LocationsPage: React.FC = () => {
           page: shouldUseAccentInsensitiveSearch ? 1 : currentPage,
           limit: shouldUseAccentInsensitiveSearch ? 500 : 10
         });
+
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
 
         let nextLocations = response.locations;
         let nextTotal = response.total;
@@ -118,7 +138,7 @@ const LocationsPage: React.FC = () => {
           nextLocations = filteredLocations.slice(offset, offset + 10);
           nextTotal = filteredLocations.length;
         }
-        
+
         setState(prev => ({
           ...prev,
           locations: nextLocations,
@@ -126,6 +146,9 @@ const LocationsPage: React.FC = () => {
           loading: false
         }));
       } catch (error) {
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
         setState(prev => ({
           ...prev,
           error: error instanceof Error ? error.message : 'Failed to fetch locations',
@@ -135,7 +158,7 @@ const LocationsPage: React.FC = () => {
     };
 
     fetchLocations();
-  }, [currentPage, state.search, state.statusFilter, state.sortOrder, vendorId]);
+  }, [currentPage, debouncedSearch, state.statusFilter, state.sortOrder, vendorId]);
 
   const getStatusColor = (status: string): string => {
     const statusColors: { [key: string]: string } = {
