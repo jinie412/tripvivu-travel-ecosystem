@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -39,6 +39,7 @@ import 'package:travel_advisor_mobile/core/widgets/visible_place_tracker.dart';
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/stop_tracking_dialog.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/destination_card.dart';
@@ -113,72 +114,84 @@ class _ExploreViewState extends State<_ExploreView> {
       if (endDate == null) return ItineraryStatus.uncompleted;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final endPlusOne = DateTime(endDate.year, endDate.month, endDate.day)
-          .add(const Duration(days: 1));
+      final endPlusOne = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+      ).add(const Duration(days: 1));
       return !today.isBefore(endPlusOne)
           ? ItineraryStatus.completed
           : ItineraryStatus.uncompleted;
     }
 
     if (!value) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Dừng theo dõi?'),
-          content: const Text(
-            'Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huỷ'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Dừng'),
-            ),
-          ],
-        ),
-      );
-      if (ok != true || !mounted) return;
-      await trackingCubit.stop();
+      final ok = await showStopTrackingDialog(context);
+      if (!ok || !mounted) return;
+
+      final messenger = ScaffoldMessenger.of(context);
+      // Truyền itineraryId để backend luôn được báo dừng, kể cả khi
+      // TrackingCubit đã mất state (app khởi động lại, cache không còn).
+      final backendUpdated = await trackingCubit.stop(itineraryId: itineraryId);
       if (!mounted) return;
+
+      if (!backendUpdated) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Chưa thể dừng lịch trình, vui lòng kiểm tra kết nối mạng và thử lại.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       final stoppedStatus = statusAfterStop();
       itineraryCubit.toggleItineraryStatus(
         itineraryId,
         false,
         stoppedStatus: stoppedStatus,
       );
-      context
-          .read<ExploreCubit>()
-          .updateCurrentItineraryStatus(itineraryId, stoppedStatus);
+      context.read<ExploreCubit>().updateCurrentItineraryStatus(
+        itineraryId,
+        stoppedStatus,
+      );
       _orderPlaces = const [];
       _currentOrderPlaceIndex = 0;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Đã dừng chuyến đi. Hẹn gặp lại bạn ở hành trình tiếp theo! 👋',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
       return;
     }
 
     final perm = await TrackingPermissions.ensure();
     if (!mounted) return;
     if (perm != TrackingPermResult.granted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(TrackingPermissions.messageFor(perm)),
-        action: perm == TrackingPermResult.deniedBackground
-            ? SnackBarAction(label: 'Mở Cài đặt', onPressed: openAppSettings)
-            : null,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(TrackingPermissions.messageFor(perm)),
+          action: perm == TrackingPermResult.deniedBackground
+              ? SnackBarAction(label: 'Mở Cài đặt', onPressed: openAppSettings)
+              : null,
+        ),
+      );
       return;
     }
 
-    await trackingCubit.start(
-      itineraryId: itineraryId,
-      date: DateTime.now(),
-    );
+    await trackingCubit.start(itineraryId: itineraryId, date: DateTime.now());
     if (!mounted || !trackingCubit.state.isActive) return;
 
     itineraryCubit.toggleItineraryStatus(itineraryId, true);
-    context
-        .read<ExploreCubit>()
-        .updateCurrentItineraryStatus(itineraryId, ItineraryStatus.ongoing);
+    context.read<ExploreCubit>().updateCurrentItineraryStatus(
+      itineraryId,
+      ItineraryStatus.ongoing,
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -674,8 +687,11 @@ class _ExploreViewState extends State<_ExploreView> {
           Navigator.push(
             ctx,
             MaterialPageRoute(
-              builder: (_) =>
-                  FoodMenuScreen(placeId: placeId, restaurantName: name, itineraryDetailId: detailId),
+              builder: (_) => FoodMenuScreen(
+                placeId: placeId,
+                restaurantName: name,
+                itineraryDetailId: detailId,
+              ),
             ),
           );
         },
@@ -697,32 +713,32 @@ class _ExploreViewState extends State<_ExploreView> {
           c.nearbyRestaurantName != p.nearbyRestaurantName,
       listener: (ctx, state) => _showFoodProximityPopupFromTracking(ctx, state),
       child: BlocBuilder<ExploreCubit, ExploreState>(
-      builder: (context, state) {
-        if (state is ExploreLoading || state is ExploreInitial) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state is ExploreError) {
-          return ErrorView(
-            error: state.message,
-            onRetry: () => context.read<ExploreCubit>().loadData(),
-          );
-        }
-        if (state is ExploreLoaded) {
-          return Column(
-            children: [
-              const ExploreHeader(),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () =>
-                      context.read<ExploreCubit>().loadData(refresh: true),
-                  child: _buildContent(context, state),
+        builder: (context, state) {
+          if (state is ExploreLoading || state is ExploreInitial) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is ExploreError) {
+            return ErrorView(
+              error: state.message,
+              onRetry: () => context.read<ExploreCubit>().loadData(),
+            );
+          }
+          if (state is ExploreLoaded) {
+            return Column(
+              children: [
+                const ExploreHeader(),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<ExploreCubit>().loadData(refresh: true),
+                    child: _buildContent(context, state),
+                  ),
                 ),
-              ),
-            ],
-          );
-        }
-        return const SizedBox.shrink();
-      },
+              ],
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -753,13 +769,13 @@ class _ExploreViewState extends State<_ExploreView> {
                         p.itineraryId != c.itineraryId,
                     builder: (context, trackingState) {
                       final currentId = state.currentItinerary?.id ?? '';
-                      final isStarted = trackingState.isActive &&
+                      final isStarted =
+                          trackingState.isActive &&
                           trackingState.itineraryId == currentId;
                       return CurrentItineraryCard(
                         item: state.currentItinerary,
                         isStarted: isStarted,
-                        onToggle: (v) =>
-                            _onToggleItinerary(v, currentId),
+                        onToggle: (v) => _onToggleItinerary(v, currentId),
                       );
                     },
                   ),
@@ -783,41 +799,41 @@ class _ExploreViewState extends State<_ExploreView> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: SizedBox(
-                  height: suggestionCardH,
-                  child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.88),
-                    padEnds: false,
-                    clipBehavior: Clip.none,
-                    itemCount: state.suggestions.take(5).length,
-                    onPageChanged: (i) => setState(() => _suggestionPage = i),
-                    itemBuilder: (_, i) {
-                      final item = state.suggestions[i];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider<ItineraryCubit>(
-                                  create: (_) =>
-                                      sl<ItineraryCubit>()..loadData(),
-                                  child: ItinerarySummaryScreen(
-                                    itineraryId: item.id,
+                    height: suggestionCardH,
+                    child: PageView.builder(
+                      controller: PageController(viewportFraction: 0.88),
+                      padEnds: false,
+                      clipBehavior: Clip.none,
+                      itemCount: state.suggestions.take(5).length,
+                      onPageChanged: (i) => setState(() => _suggestionPage = i),
+                      itemBuilder: (_, i) {
+                        final item = state.suggestions[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider<ItineraryCubit>(
+                                    create: (_) =>
+                                        sl<ItineraryCubit>()..loadData(),
+                                    child: ItinerarySummaryScreen(
+                                      itineraryId: item.id,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                          child: HomeItineraryCard(
-                            item: item,
-                            onFavoriteChanged: (value) =>
-                                _setItineraryFavorite(item.id, value),
+                              );
+                            },
+                            child: HomeItineraryCard(
+                              item: item,
+                              onFavoriteChanged: (value) =>
+                                  _setItineraryFavorite(item.id, value),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 PageDots(
@@ -843,36 +859,36 @@ class _ExploreViewState extends State<_ExploreView> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: SizedBox(
-                  height: destinationCardH,
-                  child: PageView.builder(
-                    controller: PageController(viewportFraction: 0.35),
-                    padEnds: false,
-                    clipBehavior: Clip.none,
-                    itemCount: state.destinations.take(5).length,
-                    onPageChanged: (i) => setState(() => _activityPage = i),
-                    itemBuilder: (_, i) {
-                      final item = state.destinations[i];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CityDetailScreen(
-                                  cityId: item.id,
-                                  cityName: item.name,
+                    height: destinationCardH,
+                    child: PageView.builder(
+                      controller: PageController(viewportFraction: 0.35),
+                      padEnds: false,
+                      clipBehavior: Clip.none,
+                      itemCount: state.destinations.take(5).length,
+                      onPageChanged: (i) => setState(() => _activityPage = i),
+                      itemBuilder: (_, i) {
+                        final item = state.destinations[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CityDetailScreen(
+                                    cityId: item.id,
+                                    cityName: item.name,
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                          child: AbsorbPointer(
-                            child: DestinationCard(item: item),
+                              );
+                            },
+                            child: AbsorbPointer(
+                              child: DestinationCard(item: item),
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                   ),
                 ),
                 PageDots(
@@ -919,7 +935,9 @@ class _ExploreViewState extends State<_ExploreView> {
                                   MaterialPageRoute(
                                     builder: (_) => BlocProvider(
                                       create: (_) => sl<PlaceDetailCubit>(),
-                                      child: PlaceDetailScreen(placeId: item.id),
+                                      child: PlaceDetailScreen(
+                                        placeId: item.id,
+                                      ),
                                     ),
                                   ),
                                 );

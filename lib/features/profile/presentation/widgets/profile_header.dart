@@ -29,7 +29,11 @@ class ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 30,
             backgroundColor: Colors.grey.shade200,
-            backgroundImage: CachedNetworkImageProvider(profile.avatarUrl),
+            // Avatar 60dp — giới hạn kích thước giải mã để tiết kiệm RAM
+            backgroundImage: CachedNetworkImageProvider(
+              profile.avatarUrl,
+              maxWidth: 180,
+            ),
           ),
           const SizedBox(width: 16),
           Column(

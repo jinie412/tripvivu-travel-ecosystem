@@ -228,6 +228,7 @@ class _LocationMediaThumb extends StatelessWidget {
                       ? Image.network(
                           item.remoteUrl!,
                           fit: BoxFit.cover,
+                          cacheWidth: 156, // thumbnail 52dp — không giải mã full-res
                           errorBuilder: (context, error, stack) => const Icon(
                             Icons.broken_image_outlined,
                             size: 24,

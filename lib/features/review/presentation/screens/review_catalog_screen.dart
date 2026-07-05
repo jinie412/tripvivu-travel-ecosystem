@@ -942,6 +942,7 @@ class _CorsFriendlyImage extends StatelessWidget {
       width: double.infinity,
       height: double.infinity,
       fit: fit,
+      cacheWidth: 1080, // không giải mã full-res — tiết kiệm RAM
       webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       loadingBuilder: (context, child, progress) => progress == null
           ? child

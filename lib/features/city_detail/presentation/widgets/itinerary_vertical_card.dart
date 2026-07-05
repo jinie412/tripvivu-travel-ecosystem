@@ -37,6 +37,7 @@ class ItineraryVerticalCard extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: item.imageUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 300, // thumbnail 100dp — không giải mã full-res
                   placeholder: (context, url) => Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) =>
                       Container(color: Colors.grey[200], child: const Icon(Icons.map_outlined, color: Colors.grey)),

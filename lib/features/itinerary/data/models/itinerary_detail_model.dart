@@ -12,6 +12,9 @@ class ItineraryDetailModel {
   final String status;
   final bool isPublic;
   final bool isFavorite;
+  final String? creatorId;
+  final bool isOwner;
+  final List<ItineraryMemberModel> members;
   final int durationDays;
   final int activitiesCount;
   final int totalLocations;
@@ -45,6 +48,9 @@ class ItineraryDetailModel {
     required this.status,
     this.isPublic = true,
     this.isFavorite = false,
+    this.creatorId,
+    this.isOwner = true,
+    this.members = const [],
     required this.durationDays,
     required this.activitiesCount,
     this.totalLocations = 0,
@@ -102,6 +108,14 @@ class ItineraryDetailModel {
       status: json['status'] ?? '',
       isPublic: json['isPublic'] ?? json['is_public'] ?? true,
       isFavorite: json['isFavorite'] == true || json['is_favorite'] == true,
+      creatorId: (json['creatorId'] ?? json['creator_id'])?.toString(),
+      isOwner: json['isOwner'] ?? json['is_owner'] ?? true,
+      members:
+          (json['members'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ItineraryMemberModel.fromJson)
+              .toList() ??
+          const [],
       durationDays:
           json['durationDays'] ??
           json['duration_days'] ??
@@ -166,10 +180,14 @@ class ItineraryDetailModel {
               )
               .toList() ??
           const [],
-      trackingActive: json['trackingActive'] == true ||
-          json['tracking_active'] == true,
-      dailyStartTime: json['dailyStartTime']?.toString() ?? json['daily_start_time']?.toString(),
-      dailyEndTime: json['dailyEndTime']?.toString() ?? json['daily_end_time']?.toString(),
+      trackingActive:
+          json['trackingActive'] == true || json['tracking_active'] == true,
+      dailyStartTime:
+          json['dailyStartTime']?.toString() ??
+          json['daily_start_time']?.toString(),
+      dailyEndTime:
+          json['dailyEndTime']?.toString() ??
+          json['daily_end_time']?.toString(),
     );
   }
 
@@ -184,6 +202,9 @@ class ItineraryDetailModel {
       status: status,
       isPublic: isPublic,
       isFavorite: isFavorite,
+      creatorId: creatorId,
+      isOwner: isOwner,
+      members: members.map((e) => e.toEntity()).toList(),
       durationDays: durationDays,
       activitiesCount: activitiesCount,
       totalLocations: totalLocations,
@@ -207,6 +228,36 @@ class ItineraryDetailModel {
       dailyEndTime: dailyEndTime,
     );
   }
+}
+
+class ItineraryMemberModel {
+  final String id;
+  final String fullName;
+  final String avatarUrl;
+  final bool isOwner;
+
+  const ItineraryMemberModel({
+    required this.id,
+    required this.fullName,
+    this.avatarUrl = '',
+    this.isOwner = false,
+  });
+
+  factory ItineraryMemberModel.fromJson(Map<String, dynamic> json) {
+    return ItineraryMemberModel(
+      id: (json['id'] ?? '').toString(),
+      fullName: (json['fullName'] ?? json['full_name'] ?? '').toString(),
+      avatarUrl: (json['avatarUrl'] ?? json['avatar_url'] ?? '').toString(),
+      isOwner: json['isOwner'] == true || json['is_owner'] == true,
+    );
+  }
+
+  ItineraryMemberEntity toEntity() => ItineraryMemberEntity(
+    id: id,
+    fullName: fullName,
+    avatarUrl: avatarUrl,
+    isOwner: isOwner,
+  );
 }
 
 class VisitedRestaurantModel {
@@ -258,9 +309,6 @@ class VisitedDishModel {
     );
   }
 
-  VisitedDish toEntity() => VisitedDish(
-        name: name,
-        price: price,
-        quantity: quantity,
-      );
+  VisitedDish toEntity() =>
+      VisitedDish(name: name, price: price, quantity: quantity);
 }

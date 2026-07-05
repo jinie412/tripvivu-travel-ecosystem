@@ -231,6 +231,7 @@ class ItineraryCompletedCard extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: item.imageUrl!,
       fit: BoxFit.cover,
+      memCacheWidth: 1080, // ảnh card — không giải mã full-res
       placeholder: (context, url) =>
           Container(color: Color(item.placeholderColor)),
       errorWidget: (context, url, error) => assetPlaceholder,

@@ -20,6 +20,9 @@ class DefaultAvatar extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: url,
         cacheManager: AppImageCacheManager(),
+        // Avatar nhỏ — giải mã đúng kích thước hiển thị để tiết kiệm RAM
+        memCacheWidth:
+            (radius * 2 * MediaQuery.devicePixelRatioOf(context)).ceil(),
         fadeInDuration: const Duration(milliseconds: 150),
         imageBuilder: (context, imageProvider) => CircleAvatar(
           radius: radius,

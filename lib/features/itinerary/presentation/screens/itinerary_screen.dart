@@ -8,6 +8,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itin
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_card.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/stop_tracking_dialog.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_permissions.dart';
 
 import 'itinerary_summary_screen.dart';
@@ -128,159 +129,161 @@ class _ItineraryViewState extends State<_ItineraryView> {
     return RefreshIndicator(
       onRefresh: () => cubit.loadData(),
       child: CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 24,
-              right: 24,
-            ),
-            child: Row(
-              children: [
-                _iconButton(Icons.menu, () {
-                  Scaffold.of(context).openDrawer();
-                }),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Lịch trình của tôi',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 16,
+                left: 24,
+                right: 24,
+              ),
+              child: Row(
+                children: [
+                  _iconButton(Icons.menu, () {
+                    Scaffold.of(context).openDrawer();
+                  }),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Lịch trình của tôi',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
                     ),
                   ),
-                ),
-                if (hasAnyItineraries)
-                  _iconButton(Icons.search, () {
-                    setState(() => _isSearchOpen = true);
-                    _searchFocusNode.requestFocus();
-                  }),
-              ],
-            ),
-          ),
-        ),
-
-        if (hasSearch)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: _buildSearchField(context, state),
-            ),
-          ),
-
-        if (hasAnyItineraries)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: ItineraryFilterChips(
-                activeFilter: state.activeFilter,
-                activeSubFilter: state.activeCompletedFilter,
-                onChanged: (status) => cubit.filterBy(status),
-                onSubFilterChanged: (filter) => cubit.filterByCompleted(filter),
+                  if (hasAnyItineraries)
+                    _iconButton(Icons.search, () {
+                      setState(() => _isSearchOpen = true);
+                      _searchFocusNode.requestFocus();
+                    }),
+                ],
               ),
             ),
           ),
 
-        if (hasAnyItineraries)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Tổng nhóm')),
-                  ButtonSegment(value: true, label: Text('Bình quân/người')),
-                ],
-                selected: {_showPerPersonCost},
-                onSelectionChanged: (selection) {
-                  setState(() => _showPerPersonCost = selection.first);
+          if (hasSearch)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: _buildSearchField(context, state),
+              ),
+            ),
+
+          if (hasAnyItineraries)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: ItineraryFilterChips(
+                  activeFilter: state.activeFilter,
+                  activeSubFilter: state.activeCompletedFilter,
+                  onChanged: (status) => cubit.filterBy(status),
+                  onSubFilterChanged: (filter) =>
+                      cubit.filterByCompleted(filter),
+                ),
+              ),
+            ),
+
+          if (hasAnyItineraries)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Tổng nhóm')),
+                    ButtonSegment(value: true, label: Text('Bình quân/người')),
+                  ],
+                  selected: {_showPerPersonCost},
+                  onSelectionChanged: (selection) {
+                    setState(() => _showPerPersonCost = selection.first);
+                  },
+                ),
+              ),
+            ),
+
+          // Summary grid chỉ hiện ở tab "Tất cả", không tìm kiếm, có kết quả.
+          if (hasAnyItineraries &&
+              state.activeFilter == null &&
+              !hasSearch &&
+              state.itineraries.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: ItinerarySummaryGrid(summary: state.summary),
+              ),
+            ),
+
+          if (state.itineraries.isEmpty && hasSearch)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _SearchEmptyView(query: state.searchQuery),
+            )
+          else if (state.itineraries.isEmpty && hasAnyItineraries)
+            // User có lịch trình nhưng filter không có kết quả
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _FilterEmptyView(
+                activeFilter: state.activeFilter,
+                onCreateTap: () {},
+              ),
+            )
+          else if (state.itineraries.isEmpty)
+            // User chưa có lịch trình nào
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: ItineraryEmptyView(
+                onCreateTap: () {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (context) => const TripPlannerScreen(),
+                        ),
+                      )
+                      .then((_) {
+                        if (context.mounted) cubit.loadData();
+                      });
                 },
               ),
-            ),
-          ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                if (index == 0) return const SizedBox(height: 16);
+                if (index == state.itineraries.length + 1) {
+                  return const SizedBox(height: 100);
+                }
 
-        // Summary grid chỉ hiện ở tab "Tất cả", không tìm kiếm, có kết quả.
-        if (hasAnyItineraries &&
-            state.activeFilter == null &&
-            !hasSearch &&
-            state.itineraries.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: ItinerarySummaryGrid(summary: state.summary),
-            ),
-          ),
-
-        if (state.itineraries.isEmpty && hasSearch)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _SearchEmptyView(query: state.searchQuery),
-          )
-        else if (state.itineraries.isEmpty && hasAnyItineraries)
-          // User có lịch trình nhưng filter không có kết quả
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _FilterEmptyView(
-              activeFilter: state.activeFilter,
-              onCreateTap: () {},
-            ),
-          )
-        else if (state.itineraries.isEmpty)
-          // User chưa có lịch trình nào
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: ItineraryEmptyView(
-              onCreateTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const TripPlannerScreen(),
-                  ),
-                ).then((_) {
-                  if (context.mounted) cubit.loadData();
-                });
-              },
-            ),
-          )
-        else
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              if (index == 0) return const SizedBox(height: 16);
-              if (index == state.itineraries.length + 1) {
-                return const SizedBox(height: 100);
-              }
-
-              final item = state.itineraries[index - 1];
-              void onCardTap() async {
-                cubit.selectItinerary(item.id);
-                final trackingCubit = context.read<TrackingCubit>();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MultiBlocProvider(
-                      providers: [
-                        BlocProvider.value(value: cubit),
-                        BlocProvider.value(value: trackingCubit),
-                      ],
-                      child: ItinerarySummaryScreen(itineraryId: item.id),
+                final item = state.itineraries[index - 1];
+                void onCardTap() async {
+                  cubit.selectItinerary(item.id);
+                  final trackingCubit = context.read<TrackingCubit>();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: cubit),
+                          BlocProvider.value(value: trackingCubit),
+                        ],
+                        child: ItinerarySummaryScreen(itineraryId: item.id),
+                      ),
                     ),
-                  ),
-                ).then((_) {
-                  if (context.mounted) cubit.loadData();
-                });
-              }
+                  ).then((_) {
+                    if (context.mounted) cubit.loadData();
+                  });
+                }
 
-              return _ItineraryCardWithStart(
-                item: item,
-                showPerPersonCost: _showPerPersonCost,
-                onCardTap: onCardTap,
-                onDelete: () => _confirmAndDelete(context, cubit, item.id, item.title),
-              );
-            },
-            childCount: state.itineraries.length + 2,
-          ),
-        ),
-      ],
+                return _ItineraryCardWithStart(
+                  item: item,
+                  showPerPersonCost: _showPerPersonCost,
+                  onCardTap: onCardTap,
+                  onDelete: () =>
+                      _confirmAndDelete(context, cubit, item.id, item.title),
+                );
+              }, childCount: state.itineraries.length + 2),
+            ),
+        ],
       ),
     );
   }
@@ -373,7 +376,6 @@ class _ItineraryViewState extends State<_ItineraryView> {
       ),
     );
   }
-
 }
 
 /// Card lịch trình + nút "BẮT ĐẦU / ĐANG DIỄN RA" nhúng vào cuối card.
@@ -445,7 +447,8 @@ class _StartButtonState extends State<_StartButton> {
 
   bool _isOngoing(TrackingState trackingState) {
     if (widget.item.trackingActive) return true;
-    return trackingState.isActive && trackingState.itineraryId == widget.item.id;
+    return trackingState.isActive &&
+        trackingState.itineraryId == widget.item.id;
   }
 
   ItineraryStatus _statusAfterStop() {
@@ -453,8 +456,11 @@ class _StartButtonState extends State<_StartButton> {
     if (endDate == null) return ItineraryStatus.uncompleted;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final endPlusOne = DateTime(endDate.year, endDate.month, endDate.day)
-        .add(const Duration(days: 1));
+    final endPlusOne = DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+    ).add(const Duration(days: 1));
     return !today.isBefore(endPlusOne)
         ? ItineraryStatus.completed
         : ItineraryStatus.uncompleted;
@@ -468,17 +474,22 @@ class _StartButtonState extends State<_StartButton> {
 
     if (!_isTodayStartDate()) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Lịch trình chỉ có thể bắt đầu vào ngày ${_formatStartDate()}.'),
-          duration: const Duration(seconds: 3),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Lịch trình chỉ có thể bắt đầu vào ngày ${_formatStartDate()}.',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
       return;
     }
 
     final cubit = context.read<TrackingCubit>();
     final itinState = context.read<ItineraryCubit>().state;
-    final hasConflict = (cubit.state.isActive && cubit.state.itineraryId != widget.item.id) ||
+    final hasConflict =
+        (cubit.state.isActive && cubit.state.itineraryId != widget.item.id) ||
         (itinState is ItineraryLoaded &&
             itinState.itineraries.any(
               (i) => i.id != widget.item.id && i.trackingActive,
@@ -494,12 +505,17 @@ class _StartButtonState extends State<_StartButton> {
       if (!mounted) return;
 
       if (perm != TrackingPermResult.granted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(TrackingPermissions.messageFor(perm)),
-          action: perm == TrackingPermResult.deniedBackground
-              ? SnackBarAction(label: 'Mở Cài đặt', onPressed: openAppSettings)
-              : null,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(TrackingPermissions.messageFor(perm)),
+            action: perm == TrackingPermResult.deniedBackground
+                ? SnackBarAction(
+                    label: 'Mở Cài đặt',
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
         return;
       }
 
@@ -508,32 +524,53 @@ class _StartButtonState extends State<_StartButton> {
         date: DateTime.now(),
       );
       if (!mounted) return;
-      context.read<ItineraryCubit>().toggleItineraryStatus(widget.item.id, true);
+      context.read<ItineraryCubit>().toggleItineraryStatus(
+        widget.item.id,
+        true,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _confirmStop() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Dừng theo dõi?'),
-        content: const Text('Geofence sẽ được gỡ và không tự đánh dấu địa điểm nữa.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Dừng')),
-        ],
+    final ok = await showStopTrackingDialog(context);
+    if (!ok || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    // Truyền itineraryId để backend luôn được báo dừng, kể cả khi
+    // TrackingCubit đã mất state (app khởi động lại, cache không còn).
+    final backendUpdated = await context.read<TrackingCubit>().stop(
+      itineraryId: widget.item.id,
+    );
+    if (!mounted) return;
+
+    if (!backendUpdated) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Chưa thể dừng lịch trình, vui lòng kiểm tra kết nối mạng và thử lại.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    context.read<ItineraryCubit>().toggleItineraryStatus(
+      widget.item.id,
+      false,
+      stoppedStatus: _statusAfterStop(),
+    );
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Đã dừng chuyến đi. Hẹn gặp lại bạn ở hành trình tiếp theo! 👋',
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
       ),
     );
-    if (ok != true || !mounted) return;
-    await context.read<TrackingCubit>().stop();
-    if (!mounted) return;
-    context.read<ItineraryCubit>().toggleItineraryStatus(
-          widget.item.id,
-          false,
-          stoppedStatus: _statusAfterStop(),
-        );
   }
 
   void _showConflictDialog() {
@@ -550,18 +587,37 @@ class _StartButtonState extends State<_StartButton> {
               Container(
                 width: 64,
                 height: 64,
-                decoration: const BoxDecoration(color: Color(0xFFFEF2F2), shape: BoxShape.circle),
-                child: const Center(child: Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 32)),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF2F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 32,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
-              const Text('Đang có chuyến đi khác!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1C1C1E))),
+              const Text(
+                'Đang có chuyến đi khác!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1C1C1E),
+                ),
+              ),
               const SizedBox(height: 8),
               const Text(
                 'Bạn đang có một lịch trình đang diễn ra.\nVui lòng hoàn thành chuyến đi hiện tại để bắt đầu lịch trình mới.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -571,11 +627,19 @@ class _StartButtonState extends State<_StartButton> {
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
-                  child: const Text('Đã hiểu',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                  child: const Text(
+                    'Đã hiểu',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -588,20 +652,21 @@ class _StartButtonState extends State<_StartButton> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<TrackingCubit, TrackingState>(
-      buildWhen: (p, c) => p.isActive != c.isActive || p.itineraryId != c.itineraryId,
+      buildWhen: (p, c) =>
+          p.isActive != c.isActive || p.itineraryId != c.itineraryId,
       builder: (context, trackingState) {
         final isOngoing = _isOngoing(trackingState);
         final isLocked = !isOngoing && !_isTodayStartDate();
         final color = isOngoing
             ? const Color(0xFF2563EB)
             : isLocked
-                ? const Color(0xFF9CA3AF)
-                : const Color(0xFF0E9E87);
+            ? const Color(0xFF9CA3AF)
+            : const Color(0xFF0E9E87);
         final bgColor = isOngoing
             ? const Color(0xFFEFF6FF)
             : isLocked
-                ? const Color(0xFFF3F4F6)
-                : const Color(0xFFE8FDF8);
+            ? const Color(0xFFF3F4F6)
+            : const Color(0xFFE8FDF8);
 
         return GestureDetector(
           onTap: _loading ? null : () => _onTap(isOngoing),
@@ -612,16 +677,20 @@ class _StartButtonState extends State<_StartButton> {
               children: [
                 if (_loading)
                   SizedBox(
-                    width: 16, height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
                   )
                 else
                   Icon(
                     isOngoing
                         ? Icons.location_searching
                         : isLocked
-                            ? Icons.calendar_today_outlined
-                            : Icons.play_circle_outline_rounded,
+                        ? Icons.calendar_today_outlined
+                        : Icons.play_circle_outline_rounded,
                     size: 16,
                     color: color,
                   ),
@@ -631,17 +700,22 @@ class _StartButtonState extends State<_StartButton> {
                     isOngoing
                         ? 'ĐANG DIỄN RA'
                         : isLocked
-                            ? 'BẮT ĐẦU NGÀY ${_formatStartDate()}'
-                            : 'BẮT ĐẦU LỊCH TRÌNH',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color, letterSpacing: 0.5),
+                        ? 'BẮT ĐẦU NGÀY ${_formatStartDate()}'
+                        : 'BẮT ĐẦU LỊCH TRÌNH',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
                 Icon(
                   isOngoing
                       ? Icons.stop_circle_outlined
                       : isLocked
-                          ? Icons.lock_outline_rounded
-                          : Icons.arrow_forward_ios_rounded,
+                      ? Icons.lock_outline_rounded
+                      : Icons.arrow_forward_ios_rounded,
                   size: 14,
                   color: color,
                 ),
@@ -653,8 +727,6 @@ class _StartButtonState extends State<_StartButton> {
     );
   }
 }
-
-
 
 class _FilterEmptyView extends StatelessWidget {
   final ItineraryStatus? activeFilter;

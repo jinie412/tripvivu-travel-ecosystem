@@ -30,6 +30,7 @@ class TimelineActivityCard extends StatelessWidget {
   final String? nextTransportInfo;
   final int participantCount;
   final bool showPerPersonCost;
+  final bool canReview;
 
   /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
   final TrackingPlaceStatus? trackingStatus;
@@ -69,6 +70,7 @@ class TimelineActivityCard extends StatelessWidget {
     this.nextTransportInfo,
     this.participantCount = 1,
     this.showPerPersonCost = false,
+    this.canReview = true,
     this.trackingStatus,
     this.onCheckIn,
     this.isCheckingIn = false,
@@ -529,7 +531,7 @@ class TimelineActivityCard extends StatelessWidget {
           onTap: onViewDetailTap ?? onCardLongPress,
         ),
         // Hi\u1ec7n n\u00fat khi \u0111\u00e3 gh\u00e9 th\u0103m ho\u1eb7c \u0111\u00e3 c\u00f3 review t\u1eeb backend
-        if (_isVisited || backendReviewed)
+        if (canReview && (_isVisited || backendReviewed))
           _cardActionButton(
             icon: backendReviewed
                 ? Icons.visibility_rounded
@@ -603,7 +605,10 @@ class TimelineActivityCard extends StatelessWidget {
 
   Widget _buildTrackingRow() {
     final status = trackingStatus!.status;
-    if (status == VisitStatus.visited) {
+    // Đã ghé theo BẤT KỲ nguồn nào (tracking state, backend geofence_visits,
+    // activity.status sau refresh) → hiện badge "Đã đến nơi", không hiện lại
+    // nút check-in "Tôi đã đến".
+    if (_isVisited) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [

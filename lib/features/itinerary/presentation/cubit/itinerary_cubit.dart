@@ -156,6 +156,11 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         }
       }
 
+      // Tab "Tất cả": lịch trình đang diễn ra luôn nằm trên đầu danh sách.
+      if (_currentFilter == null) {
+        itineraries = _ongoingFirst(itineraries);
+      }
+
       emit(
         ItineraryLoaded(
           itineraries: itineraries,
@@ -229,6 +234,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         emit(ItineraryError(e.toString()));
       }
     }
+  }
+
+  /// Đưa các lịch trình đang diễn ra lên đầu, giữ nguyên thứ tự còn lại.
+  List<ItineraryEntity> _ongoingFirst(List<ItineraryEntity> items) {
+    if (items.length < 2) return items;
+    final ongoing = items
+        .where((i) => i.status == ItineraryStatus.ongoing)
+        .toList();
+    if (ongoing.isEmpty) return items;
+    return [
+      ...ongoing,
+      ...items.where((i) => i.status != ItineraryStatus.ongoing),
+    ];
   }
 
   Future<void> filterBy(ItineraryStatus? status) async {
@@ -1180,6 +1198,11 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         return itinerary;
       }).toList();
 
+      // Giữ quy tắc tab "Tất cả": lịch trình đang diễn ra nằm trên đầu.
+      final orderedList = currentState.activeFilter == null
+          ? _ongoingFirst(updatedList)
+          : updatedList;
+
       final selected = currentState.selectedItinerary;
       final updatedSelected = selected?.id == id
           ? selected!.copyWith(
@@ -1194,7 +1217,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
       emit(
         ItineraryLoaded(
-          itineraries: updatedList,
+          itineraries: orderedList,
           summary: currentState.summary,
           activeFilter: currentState.activeFilter,
           activeCompletedFilter: currentState.activeCompletedFilter,

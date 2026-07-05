@@ -193,6 +193,7 @@ class _Thumbnail extends StatelessWidget {
         width: 56,
         height: 56,
         fit: BoxFit.cover,
+        memCacheWidth: 168, // thumbnail 56dp — không giải mã full-res
         placeholder: (_, _) => const _ShimmerThumb(),
         errorWidget: (_, _, _) => _FallbackThumb(icon: fallbackIcon),
       ),

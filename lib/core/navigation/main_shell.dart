@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:travel_advisor_mobile/core/services/notification_navigation_service.dart';
 import 'package:travel_advisor_mobile/core/services/notification_service.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
@@ -52,7 +53,11 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _initNotifications();
+      if (!mounted) return;
+      _initNotifications();
+      // Người dùng bấm link chia sẻ lịch trình khi chưa đăng nhập:
+      // đăng nhập xong (vào MainShell) mới hiện lời mời tham gia.
+      NotificationNavigationService.processPendingItineraryShareLink();
     });
   }
 
@@ -412,9 +417,8 @@ class SharedBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FAB centre is exactly at bar's top edge.
-    // FAB protrudes by _fabRadius above the bar.
-    final double totalHeight = _barHeight + _fabRadius; // 64 + 28 = 92
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
+    final double totalHeight = _barHeight + bottomInset;
 
     return SizedBox(
       height: totalHeight,
@@ -427,74 +431,75 @@ class SharedBottomNav extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            height: _barHeight,
+            height: totalHeight,
             child: CustomPaint(
               painter: const _NotchPainter(
                 color: Colors.white,
                 notchRadius: _notchRadius,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // ── Left 2 nav items ───────────────────────────────
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.explore_outlined,
-                      activeIcon: Icons.explore,
-                      label: 'Khám phá',
-                      index: 0,
-                      current: currentIndex,
-                      onTap: onTap,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // ── Left 2 nav items ───────────────────────────────
+                    Expanded(
+                      child: _NavItem(
+                        icon: Icons.explore_outlined,
+                        activeIcon: Icons.explore,
+                        label: 'Khám phá',
+                        index: 0,
+                        current: currentIndex,
+                        onTap: onTap,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.map_outlined,
-                      activeIcon: Icons.map,
-                      label: 'Lịch trình',
-                      index: 1,
-                      current: currentIndex,
-                      onTap: onTap,
+                    Expanded(
+                      child: _NavItem(
+                        icon: Icons.map_outlined,
+                        activeIcon: Icons.map,
+                        label: 'Lịch trình',
+                        index: 1,
+                        current: currentIndex,
+                        onTap: onTap,
+                      ),
                     ),
-                  ),
 
-                  // ── Centre gap: notch + label ──────────────────────
-                  SizedBox(
-                    width: _centerColWidth,
-                    child: _CenterNavLabel(onTap: () => onTap(2)),
-                  ),
+                    // ── Centre gap: notch + label ──────────────────────
+                    SizedBox(
+                      width: _centerColWidth,
+                      child: _CenterNavLabel(onTap: () => onTap(2)),
+                    ),
 
-                  // ── Right 2 nav items ──────────────────────────────
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.favorite_outline,
-                      activeIcon: Icons.favorite,
-                      label: 'Đã lưu',
-                      index: 3,
-                      current: currentIndex,
-                      onTap: onTap,
+                    // ── Right 2 nav items ──────────────────────────────
+                    Expanded(
+                      child: _NavItem(
+                        icon: Icons.favorite_outline,
+                        activeIcon: Icons.favorite,
+                        label: 'Đã lưu',
+                        index: 3,
+                        current: currentIndex,
+                        onTap: onTap,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.person_outline,
-                      activeIcon: Icons.person,
-                      label: 'Cá nhân',
-                      index: 4,
-                      current: currentIndex,
-                      onTap: onTap,
+                    Expanded(
+                      child: _NavItem(
+                        icon: Icons.person_outline,
+                        activeIcon: Icons.person,
+                        label: 'Cá nhân',
+                        index: 4,
+                        current: currentIndex,
+                        onTap: onTap,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
 
           // ── Floating centre FAB ─────────────────────────────────────
-          // Positioned(top: 0): FAB top at widget y=0.
-          // FAB centre at y = _fabRadius = bar top → sits in the notch.
           Positioned(
-            top: 0,
+            top: -_fabRadius,
             child: GestureDetector(
               onTap: () => onTap(2),
               child: Container(

@@ -70,6 +70,11 @@ class NotificationNavigationService {
     }
   }
 
+  /// Deep link chia sẻ lịch trình đang chờ xử lý khi người dùng
+  /// bấm link mà chưa đăng nhập. Sau khi đăng nhập xong,
+  /// [processPendingItineraryShareLink] sẽ xử lý tiếp link này.
+  static Uri? _pendingItineraryShareUri;
+
   static Future<void> handleItineraryShareLink(Uri uri) async {
     final token = uri.queryParameters['token'];
     if (token == null || token.isEmpty) return;
@@ -78,18 +83,70 @@ class NotificationNavigationService {
     final context = navigator?.context;
     if (navigator == null || context == null) return;
 
+    // Ràng buộc đăng nhập: chưa đăng nhập thì chưa hiện lời mời.
+    // Giữ link lại, nhắc người dùng đăng nhập; đăng nhập xong
+    // MainShell sẽ gọi processPendingItineraryShareLink để hiện lời mời.
+    final currentUserId = await AuthUtils.getCurrentUserId();
+    if (currentUserId == null || currentUserId.isEmpty) {
+      _pendingItineraryShareUri = uri;
+      if (context.mounted) {
+        _showMessage(
+          context,
+          'Vui lòng đăng nhập để mở lời mời tham gia lịch trình. '
+          'Lời mời sẽ hiển thị ngay sau khi bạn đăng nhập.',
+        );
+      }
+      return;
+    }
+
     try {
       final dio = sl<DioClient>().dio;
-      final previewResponse = await dio.get('/itinerary/share-link/$token');
+      final previewResponse = await dio.get(
+        '/itinerary/share-link/$token',
+        queryParameters: {'userId': currentUserId},
+      );
       final data = Map<String, dynamic>.from(previewResponse.data as Map);
       final itineraryId = (data['itineraryId'] ?? '').toString();
       final itineraryTitle = (data['itineraryTitle'] ?? 'lịch trình')
           .toString();
       final ownerName = (data['ownerName'] ?? 'Chủ lịch trình').toString();
+      final isOwner = data['isOwner'] == true;
+      final alreadyMember = data['alreadyMember'] == true;
 
       if (!context.mounted) return;
       if (itineraryId.isEmpty) {
         _showMessage(context, 'Link chia sẻ lịch trình không hợp lệ.');
+        return;
+      }
+
+      void openItinerarySummary() {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => MultiBlocProvider(
+              providers: [
+                BlocProvider(create: (_) => sl<ItineraryCubit>()),
+                BlocProvider(create: (_) => sl<TrackingCubit>()),
+              ],
+              child: ItinerarySummaryScreen(itineraryId: itineraryId),
+            ),
+          ),
+        );
+      }
+
+      // Load đúng trạng thái tham gia trước khi hiện dialog mời:
+      // chủ lịch trình hoặc người đã là thành viên (dù tham gia bằng
+      // deep link hay lời mời trực tiếp) thì không hiện lại lời mời.
+      if (isOwner) {
+        _showMessage(
+          context,
+          'Bạn là chủ lịch trình này nên không cần tham gia bằng link mời.',
+        );
+        openItinerarySummary();
+        return;
+      }
+      if (alreadyMember) {
+        _showMessage(context, 'Bạn đã tham gia lịch trình này rồi.');
+        openItinerarySummary();
         return;
       }
 
@@ -118,36 +175,31 @@ class NotificationNavigationService {
       );
 
       if (accepted == null || !context.mounted) return;
-      final userId = await AuthUtils.requireCurrentUserId();
-      await dio.post(
+      final respondResponse = await dio.post(
         '/itinerary/share-link/respond',
         data: {
-          'userId': userId,
+          'userId': currentUserId,
           'token': token,
           'action': accepted ? 'accept' : 'reject',
         },
       );
 
       if (!context.mounted) return;
+      final respondData = respondResponse.data is Map
+          ? Map<String, dynamic>.from(respondResponse.data as Map)
+          : const <String, dynamic>{};
+      final respondMessage = (respondData['message'] ?? '').toString();
       _showMessage(
         context,
-        accepted
+        respondMessage.isNotEmpty
+            ? respondMessage
+            : accepted
             ? 'Đã tham gia lịch trình được chia sẻ.'
             : 'Đã từ chối lời mời tham gia lịch trình.',
       );
 
       if (accepted) {
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => MultiBlocProvider(
-              providers: [
-                BlocProvider(create: (_) => sl<ItineraryCubit>()),
-                BlocProvider(create: (_) => sl<TrackingCubit>()),
-              ],
-              child: ItinerarySummaryScreen(itineraryId: itineraryId),
-            ),
-          ),
-        );
+        openItinerarySummary();
       }
     } catch (e) {
       if (context.mounted) {
@@ -157,6 +209,21 @@ class NotificationNavigationService {
         );
       }
     }
+  }
+
+  /// Xử lý lời mời chia sẻ đã bấm trước khi đăng nhập.
+  /// Được gọi khi MainShell mount (mọi luồng đăng nhập thành công
+  /// đều đi qua MainShell). Không có link chờ hoặc vẫn chưa đăng nhập
+  /// thì bỏ qua.
+  static Future<void> processPendingItineraryShareLink() async {
+    final pending = _pendingItineraryShareUri;
+    if (pending == null) return;
+
+    final currentUserId = await AuthUtils.getCurrentUserId();
+    if (currentUserId == null || currentUserId.isEmpty) return;
+
+    _pendingItineraryShareUri = null;
+    await handleItineraryShareLink(pending);
   }
 
   static void _showMessage(BuildContext context, String message) {

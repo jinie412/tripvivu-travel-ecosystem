@@ -84,6 +84,7 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
                 child: CachedNetworkImage(
                   imageUrl: widget.item.imageUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 300, // thumbnail 100dp — không giải mã full-res
                   placeholder: (context, url) => Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) => const Icon(Icons.error),
                 ),

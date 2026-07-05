@@ -27,6 +27,13 @@ const bool kSkipLogin = AppConfig.kSkipLogin;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Giới hạn cache ảnh giải mã trong RAM (mặc định Flutter là 100MB/1000 ảnh).
+  // App nhiều ảnh + Mapbox → RAM cao khiến Android ưu tiên kill khi chạy nền;
+  // hạ trần xuống 48MB để process nhẹ hơn khi người dùng đa nhiệm.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 48 << 20; // 48MB
+  PaintingBinding.instance.imageCache.maximumSize = 300;
+
   await dotenv.load(fileName: ".env");
   if (!kIsWeb) {
     await Firebase.initializeApp();
@@ -65,14 +72,33 @@ class TravelAdvisorApp extends StatefulWidget {
   State<TravelAdvisorApp> createState() => _TravelAdvisorAppState();
 }
 
-class _TravelAdvisorAppState extends State<TravelAdvisorApp> {
+class _TravelAdvisorAppState extends State<TravelAdvisorApp>
+    with WidgetsBindingObserver {
   final _navigatorKey = NotificationNavigationService.navigatorKey;
   late final AppLinks _appLinks;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDeepLinks();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Khi app vào nền: xả cache ảnh đã giải mã để giảm RAM chiếm giữ →
+    // Android ít kill process hơn khi người dùng đa nhiệm. Ảnh đang hiển thị
+    // không bị ảnh hưởng (widget còn giữ tham chiếu); khi quay lại app các
+    // ảnh khác được nạp lại từ disk cache nên rất nhanh.
+    if (state == AppLifecycleState.paused) {
+      PaintingBinding.instance.imageCache.clear();
+    }
   }
 
   void _initDeepLinks() {

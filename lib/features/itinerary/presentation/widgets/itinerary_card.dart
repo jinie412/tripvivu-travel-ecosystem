@@ -432,6 +432,7 @@ class _PlaceImageSlideshowState extends State<_PlaceImageSlideshow> {
       return CachedNetworkImage(
         imageUrl: images[0],
         fit: BoxFit.cover,
+        memCacheWidth: 1080, // ảnh card — không giải mã full-res
         placeholder: (_, _) => colorPlaceholder,
         errorWidget: (_, _, _) => assetPlaceholder,
       );
@@ -447,6 +448,7 @@ class _PlaceImageSlideshowState extends State<_PlaceImageSlideshow> {
           itemBuilder: (_, i) => CachedNetworkImage(
             imageUrl: images[i],
             fit: BoxFit.cover,
+            memCacheWidth: 1080, // ảnh card — không giải mã full-res
             placeholder: (_, _) => colorPlaceholder,
             errorWidget: (_, _, _) => assetPlaceholder,
           ),

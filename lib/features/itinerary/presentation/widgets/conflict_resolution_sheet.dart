@@ -202,6 +202,7 @@ class ConflictResolutionSheet extends StatelessWidget {
                   width: 60,
                   height: 60,
                   fit: BoxFit.cover,
+                  cacheWidth: 180, // thumbnail 60dp — không giải mã full-res
                 ),
               ),
           ],

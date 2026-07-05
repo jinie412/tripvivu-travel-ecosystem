@@ -24,6 +24,20 @@ class VisitedRestaurant {
   });
 }
 
+class ItineraryMemberEntity {
+  final String id;
+  final String fullName;
+  final String avatarUrl;
+  final bool isOwner;
+
+  const ItineraryMemberEntity({
+    required this.id,
+    required this.fullName,
+    this.avatarUrl = '',
+    this.isOwner = false,
+  });
+}
+
 class ItineraryDetailEntity {
   final String id;
   final String title;
@@ -34,6 +48,9 @@ class ItineraryDetailEntity {
   final String status;
   final bool isPublic;
   final bool isFavorite;
+  final String? creatorId;
+  final bool isOwner;
+  final List<ItineraryMemberEntity> members;
   final int durationDays;
   final int activitiesCount;
   final int totalLocations;
@@ -70,6 +87,9 @@ class ItineraryDetailEntity {
     required this.status,
     this.isPublic = true,
     this.isFavorite = false,
+    this.creatorId,
+    this.isOwner = true,
+    this.members = const [],
     required this.durationDays,
     required this.activitiesCount,
     this.totalLocations = 0,
@@ -103,6 +123,9 @@ class ItineraryDetailEntity {
     String? status,
     bool? isPublic,
     bool? isFavorite,
+    String? creatorId,
+    bool? isOwner,
+    List<ItineraryMemberEntity>? members,
     int? durationDays,
     int? activitiesCount,
     int? totalLocations,
@@ -135,6 +158,9 @@ class ItineraryDetailEntity {
       status: status ?? this.status,
       isPublic: isPublic ?? this.isPublic,
       isFavorite: isFavorite ?? this.isFavorite,
+      creatorId: creatorId ?? this.creatorId,
+      isOwner: isOwner ?? this.isOwner,
+      members: members ?? this.members,
       durationDays: durationDays ?? this.durationDays,
       activitiesCount: activitiesCount ?? this.activitiesCount,
       totalLocations: totalLocations ?? this.totalLocations,

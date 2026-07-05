@@ -287,6 +287,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   imageUrl:
                       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
                   fit: BoxFit.cover,
+                  memCacheWidth: 1080, // ảnh nền header — không giải mã full-res
                 ),
               ),
 

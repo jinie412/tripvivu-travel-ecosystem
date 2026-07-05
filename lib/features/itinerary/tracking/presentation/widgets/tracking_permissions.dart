@@ -1,7 +1,12 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-enum TrackingPermResult { granted, serviceOff, deniedForeground, deniedBackground }
+enum TrackingPermResult {
+  granted,
+  serviceOff,
+  deniedForeground,
+  deniedBackground,
+}
 
 /// Xin quyền theo đúng luồng use case (bước 2): vị trí + **Always Allow /
 /// Background Location**, kèm quyền thông báo (Android 13+).
@@ -31,6 +36,9 @@ class TrackingPermissions {
       await Permission.notification.request();
     }
 
+    // Không xin miễn tối ưu hoá pin: tắt Doze cho app là nguồn hao pin lớn.
+    // Chống kill khi đa nhiệm đã có foreground service của location stream
+    // (chỉ chạy trong lúc theo dõi) + native geofence lo phần nền.
     return TrackingPermResult.granted;
   }
 

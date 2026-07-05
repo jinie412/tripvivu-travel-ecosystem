@@ -150,6 +150,26 @@ accuracy:       highAccuracy ? high   : medium
 distanceFilter: highAccuracy ? 10m    : 100m
 ```
 
+### Foreground service — chống bị kill khi đa nhiệm, không tốn thêm pin
+
+Trên Android, stream dùng `AndroidSettings` với `ForegroundNotificationConfig`
+(`_locationSettings`): trong lúc theo dõi, geolocator chạy một **foreground
+service** kèm notification "Đang theo dõi lịch trình" (`setOngoing`). Hệ điều
+hành coi app đang làm việc thực sự nên **không kill process khi người dùng
+đa nhiệm/chạy nền** — phát hiện geofence chủ động + gợi ý quán ăn vẫn chạy.
+Notification tự biến mất khi stream hủy (Dừng theo dõi / hết ngày).
+
+Cân bằng pin — các lựa chọn cố tình KHÔNG dùng:
+
+- **Không `enableWakeLock` / `enableWifiLock`**: giữ CPU + WiFi thức liên tục
+  mới là thứ hao pin; bản thân foreground service thì không. Mức tiêu thụ do
+  GPS quyết định và đã được tối ưu bằng accuracy/distanceFilter thích ứng
+  (mục trên) + dwell timer chỉ chạy khi ở trong vùng (mục 6).
+- **Không xin `ignoreBatteryOptimizations`**: tắt Doze cho app là nguồn hao
+  pin lớn. Trường hợp app bị kill dù có foreground service (một số máy OEM
+  siết mạnh) thì native geofence + AlarmManager vẫn lo phần nền, và
+  `restoreIfActive`/refresh sẽ khôi phục phiên khi mở lại app.
+
 ### `_maybeSwitchAccuracy(pos)` — đổi chế độ theo khoảng cách
 
 ```
@@ -266,6 +286,83 @@ TrackingContextStore.clear()          → xoá cache SharedPreferences
 
 > Việc gỡ geofence khỏi Android OS rất quan trọng: nếu không, callback nền vẫn có
 > thể fire khi người dùng đi ngang khu vực đã từng theo dõi → ghi nhận giả.
+
+### Cập nhật trạng thái trên DB khi Dừng
+
+`stop({String? itineraryId, DateTime? date})` gọi
+`POST /itinerary/tracking/end-day` với `markPendingAsSkipped = false`
+(explicit stop) → backend cập nhật `travel.itineraries`:
+`tracking_active = false` + `status = completed/uncompleted`
+(tùy đã qua `end_date` hay chưa, theo `statusAfterManualStop`).
+
+- **Fallback itineraryId/date**: trước đây `stop()` chỉ gọi backend khi cubit
+  còn `state.itineraryId` — nếu app khởi động lại mà cache mất thì DB **không
+  bao giờ được cập nhật** (bug "dừng mà không dừng"). Giờ UI truyền
+  `itineraryId` của thẻ đang bấm vào `stop(itineraryId: ...)`, date thiếu thì
+  dùng `DateTime.now()`.
+- **Trả về `bool`**: `true` khi backend xác nhận dừng; `false` khi gọi backend
+  thất bại (mất mạng...). UI chỉ đổi trạng thái local + hiện snackbar thành
+  công khi `true`; khi `false` hiện lỗi "Chưa thể dừng lịch trình..." và giữ
+  nguyên trạng thái ongoing để người dùng bấm dừng lại.
+- **Dialog xác nhận thân thiện** dùng chung ở thẻ lịch trình trang Khám phá và
+  danh sách Lịch trình của tôi: `stop_tracking_dialog.dart`
+  ("Dừng chuyến đi này?" + nút "Tiếp tục đi" / "Dừng chuyến đi"); dừng xong
+  hiện snackbar "Đã dừng chuyến đi. Hẹn gặp lại bạn ở hành trình tiếp theo! 👋".
+
+### Qua ngày mới khi app vẫn đang mở (`rolloverDayIfNeeded`)
+
+Trước đây `_rolloverStaleContext` (kết thúc ngày cũ → bật tracking ngày kế)
+chỉ chạy trong `restoreIfActive()` lúc app khởi động lại → app mở qua đêm thì
+tracking ngày mới **không** tự bật, phải thoát app vào lại.
+
+Giờ `refreshStatus()` kiểm tra `_hasReachedTrackingDayEnd(state.date)` trước
+khi tải status: nếu ngày đang theo dõi đã kết thúc (qua ngày mới hoặc quá
+23:00) → gọi `rolloverDayIfNeeded()`:
+
+```
+1. Cancel timer/geofence-timer/location-stream của ngày cũ
+2. Load TrackingContext (thiếu thì build từ state hiện tại)
+3. _rolloverStaleContext(ctx, ngàyCũ)
+   → endDay ngày cũ (mark skipped) → bật tracking ngày kế
+     (register geofence, lưu context, emit active, timer/stream mới)
+   → hết ngày cuối thì hoàn thành lịch trình + dọn sạch
+```
+
+Vì `refreshStatus` được gọi từ **timer 30s**, **khi app resume** và **khi
+refresh thủ công**, tracking ngày mới tự cập nhật ngay trong app.
+Cờ `_isRollingOver` chống chạy chồng khi nhiều đường gọi cùng lúc.
+
+### Đồng bộ khi Refresh màn chi tiết lịch trình
+
+Nút refresh (`_onRefresh` trong `itinerary_detail_screen.dart`) không chỉ tải
+lại chi tiết lịch trình mà còn đồng bộ tracking theo dữ liệu DB vừa tải:
+
+```
+1. ItineraryCubit.refreshDetail()        → tải chi tiết mới (kèm tracking_active)
+2. So khớp DB ↔ TrackingCubit:
+   • DB active + cubit mất phiên   → restoreIfActive()  (khôi phục thanh
+     tracking + geofence sau khi app khởi động lại / đổi thiết bị)
+   • DB không còn active           → notifyDbState(id, false) → clearStaleCache()
+     (thanh "Đang theo dõi" không hiển thị sai khi đã kết thúc ngày /
+     dừng từ màn khác)
+3. Nếu đang theo dõi đúng lịch trình này → TrackingCubit.refreshStatus()
+   → "Đã đi X/Y" + marker cập nhật ngay, không chờ chu kỳ 30s
+4. Tải lại review statuses (điểm đã ghé từ backend)
+```
+
+`TrackingSection` cũng tự dọn phiên stale: khi `dbTrackingActive` đổi từ
+`true → false` (qua `didUpdateWidget`) nó gọi `notifyDbState(id, false)`.
+Thanh "Đã đi X/Y địa điểm" cũ đã bỏ hẳn — tiến độ ngày hiển thị ở card
+"Tiến độ tham quan" (`_DayVisitProgressCard`) dưới box chi phí, gộp trạng thái
+từ 3 nguồn (activity.status, geofence_visits, tracking state) nên refresh là
+đúng ngay. Muốn dừng theo dõi dùng thẻ lịch trình ở trang Khám phá /
+Lịch trình của tôi (dialog thân thiện `stop_tracking_dialog.dart`).
+
+### Sắp xếp tab "Tất cả"
+
+`ItineraryCubit` đưa các lịch trình `ongoing` lên đầu danh sách ở tab
+"Tất cả" (`_ongoingFirst`, áp dụng cả khi load lẫn khi toggle trạng thái
+start/stop tại chỗ).
 
 ---
 

@@ -248,6 +248,7 @@ class _ProfileDrawerAvatar extends StatelessWidget {
           : CachedNetworkImage(
               imageUrl: normalizedUrl,
               fit: BoxFit.cover,
+              memCacheWidth: 150, // avatar 50dp — không giải mã full-res
               fadeInDuration: const Duration(milliseconds: 120),
               placeholder: (context, imageUrl) =>
                   const _ProfileAvatarFallback(),

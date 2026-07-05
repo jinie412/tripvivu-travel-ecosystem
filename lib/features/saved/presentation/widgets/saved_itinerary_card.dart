@@ -126,6 +126,7 @@ class SavedItineraryCard extends StatelessWidget {
       height: height,
       width: double.infinity,
       fit: BoxFit.cover,
+      memCacheWidth: 1080, // ảnh card — không giải mã full-res
       placeholder: (context, url) => Container(color: Colors.grey[200]),
       errorWidget: (context, url, error) =>
           Container(color: Colors.grey[300], child: const Icon(Icons.broken_image)),

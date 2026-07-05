@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -219,6 +218,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     final totalVisitCount = costSnapshot.totalVisitCount;
     final visitedVisitCount = costSnapshot.visitedCount;
     final canReview = _canReviewItinerary(itin, now);
+    final canShare = _canShareItinerary(itin);
 
     return BlocListener<TrackingCubit, TrackingState>(
       listenWhen: (p, c) =>
@@ -264,16 +264,17 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           ),
           centerTitle: true,
           actions: [
-            Container(
-              margin: EdgeInsets.only(
-                right: itin.isPublic || canReview ? 8 : 16,
+            if (canShare)
+              Container(
+                margin: EdgeInsets.only(
+                  right: itin.isPublic || canReview ? 8 : 16,
+                ),
+                alignment: Alignment.center,
+                child: _floatingCircleButton(
+                  Icons.share_outlined,
+                  () => _showShareSheet(context, itin),
+                ),
               ),
-              alignment: Alignment.center,
-              child: _floatingCircleButton(
-                Icons.share_outlined,
-                () => _showShareSheet(context, itin),
-              ),
-            ),
             if (itin.isPublic)
               Container(
                 margin: EdgeInsets.only(right: canReview ? 8 : 16),
@@ -598,14 +599,15 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                           ),
                         ),
                       ),
-                      PublicVisibilitySwitch(
-                        value: itin.isPublic,
-                        dark: true,
-                        borderless: true,
-                        compact: true,
-                        onChanged: (value) =>
-                            _confirmVisibilityChange(context, itin, value),
-                      ),
+                      if (itin.isOwner)
+                        PublicVisibilitySwitch(
+                          value: itin.isPublic,
+                          dark: true,
+                          borderless: true,
+                          compact: true,
+                          onChanged: (value) =>
+                              _confirmVisibilityChange(context, itin, value),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -622,7 +624,9 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   ),
                   const SizedBox(height: 12),
                   InkWell(
-                    onTap: () => _showEditTitleDialog(context, itin),
+                    onTap: itin.isOwner
+                        ? () => _showEditTitleDialog(context, itin)
+                        : null,
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -642,12 +646,14 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.edit_rounded,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
+                          if (itin.isOwner) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.edit_rounded,
+                              size: 16,
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -672,11 +678,130 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                         ),
                     ],
                   ),
+                  if (itin.members.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _buildMembersRow(itin),
+                  ],
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Dãy avatar xếp chồng của tất cả thành viên (chủ lịch trình đứng đầu).
+  Widget _buildMembersRow(ItineraryDetailEntity itin) {
+    const double avatarSize = 32;
+    const double overlapStep = 22;
+    const int maxVisible = 5;
+
+    final members = itin.members;
+    final visible = members.take(maxVisible).toList();
+    final extraCount = members.length - visible.length;
+    final circleCount = visible.length + (extraCount > 0 ? 1 : 0);
+    final stackWidth = avatarSize + overlapStep * (circleCount - 1);
+
+    return Row(
+      children: [
+        SizedBox(
+          width: stackWidth,
+          height: avatarSize,
+          child: Stack(
+            children: [
+              for (var i = 0; i < visible.length; i++)
+                Positioned(
+                  left: overlapStep * i,
+                  child: _memberAvatar(visible[i], avatarSize),
+                ),
+              if (extraCount > 0)
+                Positioned(
+                  left: overlapStep * visible.length,
+                  child: Container(
+                    width: avatarSize,
+                    height: avatarSize,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.55),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text(
+                      '+$extraCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            members.length == 1
+                ? '1 thành viên'
+                : '${members.length} thành viên đồng hành',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _memberAvatar(ItineraryMemberEntity member, double size) {
+    final name = member.fullName.trim();
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final fallback = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      color: member.isOwner ? const Color(0xFF2563EB) : const Color(0xFF0F766E),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.9),
+          width: 1.5,
+        ),
+      ),
+      child: ClipOval(
+        child: member.avatarUrl.isNotEmpty
+            ? Image.network(
+                member.avatarUrl,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                // Avatar nhỏ — giải mã đúng kích thước hiển thị
+                cacheWidth: (size * 3).ceil(),
+                errorBuilder: (_, _, _) => fallback,
+              )
+            : fallback,
       ),
     );
   }
@@ -751,7 +876,16 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     );
   }
 
+  /// Chỉ chủ lịch trình mới được chia sẻ và chỉ khi lịch trình
+  /// đang ở trạng thái PENDING hoặc ONGOING.
+  bool _canShareItinerary(ItineraryDetailEntity itin) {
+    if (!itin.isOwner) return false;
+    final status = itin.status.toUpperCase();
+    return status == 'PENDING' || status == 'ONGOING';
+  }
+
   bool _canReviewItinerary(ItineraryDetailEntity itin, DateTime now) {
+    if (!itin.isOwner) return false;
     final today = DateUtils.dateOnly(now);
     final endDate = DateUtils.dateOnly(itin.endDate);
     final status = itin.status.toUpperCase();
@@ -2115,12 +2249,11 @@ class _ItineraryShareSheet extends StatefulWidget {
 
 class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
   final TextEditingController _controller = TextEditingController();
-  Timer? _recipientSearchDebounce;
   int _recipientSearchGeneration = 0;
   bool _isSubmitting = false;
   bool _isCreatingLink = false;
   bool _isSearchingRecipients = false;
-  String _query = '';
+  bool _hasSearched = false;
   String? _errorText;
   ItineraryShareLink? _shareLink;
   List<ItineraryShareRecipient> _recipientResults = const [];
@@ -2128,7 +2261,6 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
 
   @override
   void dispose() {
-    _recipientSearchDebounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -2179,42 +2311,66 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
     await Share.share(link.message);
   }
 
-  void _searchRecipients(String value) {
-    final query = value.trim();
-    _recipientSearchDebounce?.cancel();
+  /// Người dùng nhập xong rồi bấm nút tìm kiếm mới gọi API,
+  /// không tự tìm khi đang gõ.
+  Future<void> _performRecipientSearch() async {
+    FocusScope.of(context).unfocus();
+    final query = _controller.text.trim();
     _recipientSearchGeneration++;
 
-    setState(() {
-      _query = query;
-      _selectedRecipient = null;
-      _errorText = null;
-      if (query.length < 2) {
+    if (query.length < 2) {
+      setState(() {
+        _hasSearched = false;
+        _selectedRecipient = null;
         _recipientResults = const [];
         _isSearchingRecipients = false;
-      } else {
-        _isSearchingRecipients = true;
-      }
+        _errorText = 'Vui lòng nhập ít nhất 2 ký tự để tìm kiếm';
+      });
+      return;
+    }
+
+    setState(() {
+      _selectedRecipient = null;
+      _errorText = null;
+      _isSearchingRecipients = true;
     });
 
-    if (query.length < 2) return;
-
     final generation = _recipientSearchGeneration;
-    _recipientSearchDebounce = Timer(const Duration(milliseconds: 350), () async {
-      try {
-        final users = await widget.cubit.searchShareRecipients(query);
-        if (!mounted || generation != _recipientSearchGeneration) return;
-        setState(() {
-          _recipientResults = users;
-          _isSearchingRecipients = false;
-        });
-      } catch (e) {
-        if (!mounted || generation != _recipientSearchGeneration) return;
-        setState(() {
-          _recipientResults = const [];
-          _isSearchingRecipients = false;
-          _errorText = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
+    try {
+      final users = await widget.cubit.searchShareRecipients(query);
+      if (!mounted || generation != _recipientSearchGeneration) return;
+      setState(() {
+        _recipientResults = users;
+        _hasSearched = true;
+        _isSearchingRecipients = false;
+      });
+    } catch (e) {
+      if (!mounted || generation != _recipientSearchGeneration) return;
+      setState(() {
+        _recipientResults = const [];
+        _hasSearched = false;
+        _isSearchingRecipients = false;
+        _errorText = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  /// Khi sửa nội dung ô nhập thì bỏ kết quả/lựa chọn cũ,
+  /// chờ người dùng bấm tìm kiếm lại.
+  void _onQueryChanged(String value) {
+    if (_selectedRecipient == null &&
+        !_hasSearched &&
+        _recipientResults.isEmpty &&
+        _errorText == null) {
+      return;
+    }
+    _recipientSearchGeneration++;
+    setState(() {
+      _selectedRecipient = null;
+      _recipientResults = const [];
+      _hasSearched = false;
+      _isSearchingRecipients = false;
+      _errorText = null;
     });
   }
 
@@ -2264,7 +2420,8 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
       padding: EdgeInsets.only(bottom: keyboardBottom),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: media.size.height - media.padding.top - keyboardBottom - 12,
+          maxHeight:
+              media.size.height - media.padding.top - keyboardBottom - 12,
         ),
         child: Container(
           decoration: const BoxDecoration(
@@ -2324,50 +2481,87 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: _controller,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.search,
-                  enabled: !_isSubmitting,
-                  onSubmitted: _searchRecipients,
-                  onChanged: _searchRecipients,
-                  decoration: InputDecoration(
-                    hintText: 'Nhập email, số điện thoại hoặc tên',
-                    prefixIcon: const Icon(Icons.person_add_alt_1_rounded),
-                    suffixIcon: _isSearchingRecipients
-                        ? const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.search,
+                        enabled: !_isSubmitting,
+                        onSubmitted: (_) => _performRecipientSearch(),
+                        onChanged: _onQueryChanged,
+                        decoration: InputDecoration(
+                          hintText: 'Nhập email, số điện thoại hoặc họ tên',
+                          prefixIcon: const Icon(
+                            Icons.person_add_alt_1_rounded,
+                          ),
+                          errorText: _errorText,
+                          errorMaxLines: 2,
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
                             ),
-                          )
-                        : null,
-                    errorText: _errorText,
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF2563EB),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting || _isSearchingRecipients
+                            ? null
+                            : _performRecipientSearch,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFF93C5FD),
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: _isSearchingRecipients
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.search_rounded, size: 24),
+                      ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
-                    ),
-                  ),
+                  ],
                 ),
-                if (_query.length >= 2) ...[
+                if (_hasSearched) ...[
                   const SizedBox(height: 10),
-                  if (_recipientResults.isEmpty && !_isSearchingRecipients)
+                  if (_recipientResults.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 6),
                       child: Text(
-                        'Mình chưa thấy tài khoản phù hợp. Bạn thử nhập email, số điện thoại hoặc tên khác nhé.',
+                        'Mình chưa thấy tài khoản phù hợp. Bạn thử nhập email, số điện thoại hoặc họ tên khác nhé.',
                         style: TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 13,
@@ -2381,13 +2575,8 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                         user: user,
                         selected: _selectedRecipient?.id == user.id,
                         onTap: () {
-                          _recipientSearchDebounce?.cancel();
-                          _recipientSearchGeneration++;
                           setState(() {
                             _selectedRecipient = user;
-                            _query = user.fullName.isNotEmpty ? user.fullName : user.email;
-                            _controller.text = _query;
-                            _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
                             _errorText = null;
                           });
                         },
@@ -2399,12 +2588,17 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: _isSubmitting || _selectedRecipient == null ? null : _submit,
+                    onPressed: _isSubmitting || _selectedRecipient == null
+                        ? null
+                        : _submit,
                     icon: _isSubmitting
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.send_rounded),
                     label: Text(_isSubmitting ? 'Đang gửi...' : 'Chia sẻ'),
@@ -2413,7 +2607,9 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: const Color(0xFF93C5FD),
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
@@ -2447,13 +2643,13 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                   children: [
                     _ShareChannelButton(
                       icon: Icons.link_rounded,
-                      label: 'Copy',
+                      label: 'Sao chép',
                       color: const Color(0xFF475569),
                       onTap: _isCreatingLink ? null : _copyShareLink,
                     ),
                     _ShareChannelButton(
                       icon: Icons.ios_share_rounded,
-                      label: 'Share',
+                      label: 'Chia sẻ',
                       color: const Color(0xFF0F766E),
                       onTap: _isCreatingLink ? null : _nativeShare,
                     ),
@@ -2481,9 +2677,11 @@ class _ShareRecipientTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = user.fullName.trim().isNotEmpty ? user.fullName.trim() : user.email.trim();
+    // Kết quả tìm kiếm chỉ hiển thị họ tên, không lộ email/số điện thoại.
+    final displayName = user.fullName.trim().isNotEmpty
+        ? user.fullName.trim()
+        : 'Người dùng ẩn danh';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
-    final phone = user.phoneNumber?.trim();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -2498,7 +2696,9 @@ class _ShareRecipientTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: selected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+                color: selected
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFFE2E8F0),
                 width: selected ? 1.5 : 1,
               ),
             ),
@@ -2506,7 +2706,9 @@ class _ShareRecipientTile extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: selected ? const Color(0xFF2563EB) : const Color(0xFFE0F2FE),
+                  backgroundColor: selected
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFFE0F2FE),
                   child: Text(
                     initial,
                     style: TextStyle(
@@ -2517,33 +2719,25 @@ class _ShareRecipientTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        phone == null || phone.isEmpty ? user.email : '${user.email} - $phone',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  color: selected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF94A3B8),
                 ),
               ],
             ),
@@ -2554,7 +2748,7 @@ class _ShareRecipientTile extends StatelessWidget {
   }
 }
 
-class _ShareChannelButton extends StatelessWidget {
+class _ShareChannelButton extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -2568,31 +2762,66 @@ class _ShareChannelButton extends StatelessWidget {
   });
 
   @override
+  State<_ShareChannelButton> createState() => _ShareChannelButtonState();
+}
+
+class _ShareChannelButtonState extends State<_ShareChannelButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: onTap == null ? 0.06 : 0.10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.18)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: color.withValues(alpha: 0.9)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
+    final color = widget.color;
+    final enabled = widget.onTap != null;
+    final hovered = _hovered && enabled;
+
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withValues(
+              alpha: !enabled
+                  ? 0.06
+                  : hovered
+                  ? 0.20
+                  : 0.10,
             ),
-          ],
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: color.withValues(alpha: hovered ? 0.45 : 0.18),
+            ),
+            boxShadow: hovered
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.22),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 18, color: color.withValues(alpha: 0.9)),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

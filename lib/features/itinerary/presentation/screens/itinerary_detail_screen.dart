@@ -17,7 +17,6 @@ import 'package:travel_advisor_mobile/features/food/presentation/screens/food_me
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
-import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
@@ -81,6 +80,14 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   bool _reviewStatusLoading = false;
   bool _isRefreshing = false;
 
+  ItineraryDetailEntity? get _currentItinerary {
+    final state = context.read<ItineraryCubit>().state;
+    if (state is ItineraryLoaded) return state.selectedItinerary;
+    return widget.initialDetail;
+  }
+
+  bool get _isOwnerViewer => _currentItinerary?.isOwner == true;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +98,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _showAddPlaceScreen() {
+    if (!_isOwnerViewer) return;
+
     final state = context.read<ItineraryCubit>().state;
     double? refLat;
     double? refLng;
@@ -317,6 +326,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onEditModeTap() async {
+    if (!_isOwnerViewer) return;
+
     if (_isEditMode) {
       final bool? confirmSave = await showDialog<bool>(
         context: context,
@@ -432,6 +443,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onDiscardChanges() async {
+    if (!_isOwnerViewer) return;
+
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -560,6 +573,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onEditActivity(ItineraryActivityEntity activity) {
+    if (!_isOwnerViewer) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ActivityEditScreen(activity: activity)),
@@ -619,6 +634,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     bool isStart,
     bool isLastInDay,
   ) async {
+    if (!_isOwnerViewer) return;
+
     final initialTimeStr = isStart ? activity.startTime : activity.endTime;
     final parts = initialTimeStr.split(':');
     final initialTime = TimeOfDay(
@@ -1288,6 +1305,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onReplaceActivity(ItineraryActivityEntity activity) {
+    if (!_isOwnerViewer) return;
+
     List<String> existingIds = [];
     String? destinationCity;
     final state = context.read<ItineraryCubit>().state;
@@ -1463,6 +1482,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   Future<void> _onRateActivity(ItineraryActivityEntity activity) async {
+    if (!_isOwnerViewer) return;
     if (_openingReviewActivityIds.contains(activity.id)) return;
     setState(() => _openingReviewActivityIds.add(activity.id));
 
@@ -1552,6 +1572,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _onDeleteActivity(ItineraryActivityEntity activity) {
+    if (!_isOwnerViewer) return;
+
     showDialog(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -1687,203 +1709,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     );
   }
 
-  void _showShareSheet() {
-    final invitedUsers = <String>{};
-    final searchController = TextEditingController();
-    var searchQuery = '';
-    final users = <({String id, String name, String email, String avatar})>[
-      (
-        id: 'a',
-        name: 'Nguyễn Văn A',
-        email: 'anv@example.com',
-        avatar: 'https://i.pravatar.cc/150?u=a',
-      ),
-      (
-        id: 'b',
-        name: 'Trần Thị B',
-        email: 'btt@example.com',
-        avatar: 'https://i.pravatar.cc/150?u=b',
-      ),
-      (
-        id: 'c',
-        name: 'Lê Văn C',
-        email: 'clv@example.com',
-        avatar: 'https://i.pravatar.cc/150?u=c',
-      ),
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final normalizedQuery = searchQuery.trim().toLowerCase();
-          final filteredUsers = normalizedQuery.isEmpty
-              ? users
-              : users.where((user) {
-                  return user.name.toLowerCase().contains(normalizedQuery) ||
-                      user.email.toLowerCase().contains(normalizedQuery);
-                }).toList();
-
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.6,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSizes.r32),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSizes.s24,
-              vertical: AppSizes.s16,
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColorsExt.divider,
-                    borderRadius: BorderRadius.circular(AppSizes.s2),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.s24),
-                Text('Chia sẻ lịch trình', style: AppTextStyles.heading2),
-                const SizedBox(height: AppSizes.s8),
-                Text(
-                  'Mời bạn bè cùng tham gia và chỉnh sửa lịch trình chung cho chuyến đi này.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.s24),
-                TextField(
-                  controller: searchController,
-                  onChanged: (value) =>
-                      setModalState(() => searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Tìm kiếm qua tên hoặc email...',
-                    prefixIcon: const Icon(Icons.search, size: AppSizes.iconMd),
-                    suffixIcon: searchQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () {
-                              searchController.clear();
-                              setModalState(() => searchQuery = '');
-                            },
-                          ),
-                    filled: true,
-                    fillColor: AppColorsExt.searchBarBg,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.r16),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: AppSizes.s16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSizes.s24),
-                Expanded(
-                  child: filteredUsers.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Không tìm thấy người dùng phù hợp',
-                            style: AppTextStyles.body.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          children: filteredUsers
-                              .map(
-                                (user) => _shareUserItem(
-                                  user.name,
-                                  user.email,
-                                  user.avatar,
-                                  invitedUsers.contains(user.id),
-                                  () => setModalState(
-                                    () => invitedUsers.add(user.id),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    ).whenComplete(searchController.dispose);
-  }
-
-  Widget _shareUserItem(
-    String name,
-    String email,
-    String avatar,
-    bool isInvited,
-    VoidCallback onInvite,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(avatar),
-            radius: AppSizes.iconMd,
-          ),
-          const SizedBox(width: AppSizes.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  email,
-                  style: AppTextStylesExt.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: isInvited ? null : onInvite,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isInvited
-                  ? AppColorsExt.divider
-                  : AppColors.primary,
-              foregroundColor: Colors.white,
-              disabledForegroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.r12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
-            ),
-            child: Text(
-              isInvited ? 'Đã gửi' : 'Gửi lời mời',
-              style: AppTextStylesExt.bodySmall.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -1892,6 +1717,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   Future<void> _loadReviewStatuses() async {
+    if (!_isOwnerViewer) return;
     if (_reviewStatusLoading) return;
     _reviewStatusLoading = true;
     try {
@@ -1918,6 +1744,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 
   void _showReorderSuggestionBanner() {
+    if (!_isOwnerViewer) return;
+
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
         padding: const EdgeInsets.symmetric(
@@ -1971,7 +1799,40 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     if (_isRefreshing) return;
     setState(() => _isRefreshing = true);
     try {
-      await context.read<ItineraryCubit>().refreshDetail(widget.itineraryId);
+      final itineraryCubit = context.read<ItineraryCubit>();
+      final trackingCubit = context.read<TrackingCubit>();
+
+      await itineraryCubit.refreshDetail(widget.itineraryId);
+      if (!mounted) return;
+
+      // Đồng bộ tracking với dữ liệu DB vừa tải:
+      // - DB đang theo dõi nhưng cubit mất phiên (app khởi động lại...) →
+      //   khôi phục để thanh tracking + marker hoạt động trở lại.
+      // - DB đã dừng (kết thúc ngày, dừng từ màn khác...) → dọn phiên stale
+      //   để thanh tracking không hiển thị sai.
+      final itinState = itineraryCubit.state;
+      final freshDetail = itinState is ItineraryLoaded
+          ? itinState.selectedItinerary
+          : null;
+      if (freshDetail != null && freshDetail.id == widget.itineraryId) {
+        if (freshDetail.trackingActive && !trackingCubit.state.isActive) {
+          await trackingCubit.restoreIfActive();
+        } else {
+          await trackingCubit.notifyDbState(
+            widget.itineraryId,
+            freshDetail.trackingActive,
+          );
+        }
+      }
+
+      // Đang theo dõi lịch trình này → tải lại trạng thái đã ghé ngay,
+      // không chờ chu kỳ refresh 30 giây của tracking.
+      if (mounted &&
+          trackingCubit.state.isActive &&
+          trackingCubit.state.itineraryId == widget.itineraryId) {
+        await trackingCubit.refreshStatus();
+      }
+
       if (mounted) await _loadReviewStatuses();
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -2258,7 +2119,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             reviewIsVisitedById: _isVisitedFromBackendById,
             onEditTime: _onEditTime,
             onDirectionTap: _launchDirections,
-            onShareTap: _showShareSheet,
             onFavoriteTap: _toggleItineraryFavorite,
             onMarkerTap: (id) => _scrollToActivity(id),
             highlightedActivityId: _highlightedActivityId,
@@ -2325,11 +2185,151 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   }
 }
 
+/// Card "Tiến độ tham quan" trong ngày — thay cho dòng "x/z đã đi" trong box
+/// chi phí và thanh "Đã đi X/Y địa điểm" cũ.
+///
+/// Trạng thái "đã đi" gộp từ 3 nguồn nên luôn đúng cả khi refresh lẫn khi
+/// tracking cập nhật realtime: `activity.status` (chi tiết lịch trình sau
+/// refresh), `visitedByBackend` (geofence_visits) và tracking state trong RAM
+/// (qua `context.watch<TrackingCubit>`).
+class _DayVisitProgressCard extends StatelessWidget {
+  final List<ItineraryActivityEntity> visitActivities;
+  final Map<String, bool> visitedByBackend;
+
+  const _DayVisitProgressCard({
+    required this.visitActivities,
+    this.visitedByBackend = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tracking = context.watch<TrackingCubit>().state;
+    bool isVisited(ItineraryActivityEntity activity) {
+      if (activity.status == ActivityStatus.daDi) return true;
+      if (visitedByBackend[activity.id] ?? false) return true;
+      return tracking.isActive &&
+          tracking.byDetailId(activity.id)?.status == VisitStatus.visited;
+    }
+
+    final total = visitActivities.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    final visited = visitActivities.where(isVisited).length;
+    final progress = (visited / total).clamp(0.0, 1.0);
+    final isDone = visited >= total;
+    final accent = isDone ? const Color(0xFF10B981) : const Color(0xFF0E9E87);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: AppSizes.s12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  isDone
+                      ? Icons.celebration_rounded
+                      : Icons.where_to_vote_rounded,
+                  size: 18,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tiến độ tham quan',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isDone
+                          ? 'Đã ghé hết địa điểm trong ngày 🎉'
+                          : 'Đã đi $visited/$total địa điểm trong ngày',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$visited/$total',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: accent,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              tween: Tween(begin: 0, end: progress),
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: const Color(0xFFF1F5F9),
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DayCostSummaryCard extends StatelessWidget {
   final ItineraryDayEntity day;
   final List<ItineraryActivityEntity> visitActivities;
   final bool Function(ItineraryActivityEntity activity) isHotelStart;
-  final Map<String, bool> visitedByBackend;
   final int participantCount;
   final bool showPerPersonCost;
   final ValueChanged<bool> onCostScopeChanged;
@@ -2338,7 +2338,6 @@ class _DayCostSummaryCard extends StatelessWidget {
     required this.day,
     required this.visitActivities,
     required this.isHotelStart,
-    this.visitedByBackend = const {},
     required this.participantCount,
     required this.showPerPersonCost,
     required this.onCostScopeChanged,
@@ -2358,13 +2357,6 @@ class _DayCostSummaryCard extends StatelessWidget {
       0,
       (sum, activity) => sum + activity.transportCost,
     );
-    final visitedCount = visitActivities
-        .where(
-          (activity) =>
-              activity.status == ActivityStatus.daDi ||
-              (visitedByBackend[activity.id] ?? false),
-        )
-        .length;
     final totalCost = placeCost + hotelCost + selfDriveCost;
 
     final people = participantCount.clamp(1, 999);
@@ -2391,29 +2383,15 @@ class _DayCostSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  showPerPersonCost
-                      ? 'Chi ph\u00ed trong ng\u00e0y / 1 ng\u01b0\u1eddi'
-                      : 'T\u1ed5ng chi ph\u00ed trong ng\u00e0y / $people ng\u01b0\u1eddi',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              Text(
-                '$visitedCount/${visitActivities.length} \u0111\u00e3 \u0111i',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
+          Text(
+            showPerPersonCost
+                ? 'Chi ph\u00ed trong ng\u00e0y / 1 ng\u01b0\u1eddi'
+                : 'T\u1ed5ng chi ph\u00ed trong ng\u00e0y / $people ng\u01b0\u1eddi',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 10),
           SegmentedButton<bool>(
@@ -2718,7 +2696,6 @@ class _ItineraryDetailView extends StatelessWidget {
   final Function(ItineraryActivityEntity, bool, bool) onEditTime;
   final Function(ItineraryActivityEntity, ItineraryActivityEntity)
   onDirectionTap;
-  final VoidCallback onShareTap;
   final VoidCallback onFavoriteTap;
   final Function(String) onMarkerTap;
   final String? highlightedActivityId;
@@ -2753,7 +2730,6 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.reviewIsVisitedById,
     required this.onEditTime,
     required this.onDirectionTap,
-    required this.onShareTap,
     required this.onFavoriteTap,
     required this.onMarkerTap,
     this.highlightedActivityId,
@@ -3000,18 +2976,24 @@ class _ItineraryDetailView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          PublicVisibilitySwitch(
-                            value: itin.isPublic,
-                            dark: true,
-                            borderless: true,
-                            onChanged: (value) =>
-                                _confirmVisibilityChange(context, itin, value),
-                          ),
-                          const SizedBox(height: 8),
+                          // Member được chia sẻ chỉ có quyền xem: ẩn switch
+                          // công khai, nút chỉnh sửa và nút chia sẻ.
+                          if (itin.isOwner)
+                            PublicVisibilitySwitch(
+                              value: itin.isPublic,
+                              dark: true,
+                              borderless: true,
+                              onChanged: (value) => _confirmVisibilityChange(
+                                context,
+                                itin,
+                                value,
+                              ),
+                            ),
+                          if (itin.isOwner) const SizedBox(height: 8),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (isFuture) ...[
+                              if (isFuture && itin.isOwner) ...[
                                 if (isEditMode) ...[
                                   _floatingCircleButton(
                                     Icons.close_rounded,
@@ -3030,7 +3012,7 @@ class _ItineraryDetailView extends StatelessWidget {
                               ],
                               if (!isEditMode) ...[
                                 if (itin.isPublic) ...[
-                                  if (isFuture)
+                                  if (isFuture && itin.isOwner)
                                     const SizedBox(width: AppSizes.s12),
                                   _floatingCircleButton(
                                     itin.isFavorite
@@ -3042,12 +3024,6 @@ class _ItineraryDetailView extends StatelessWidget {
                                         : Colors.white,
                                   ),
                                 ],
-                                if (isFuture || itin.isPublic)
-                                  const SizedBox(width: AppSizes.s12),
-                                _floatingCircleButton(
-                                  Icons.share_outlined,
-                                  onShareTap,
-                                ),
                               ],
                             ],
                           ),
@@ -3225,36 +3201,25 @@ class _ItineraryDetailView extends StatelessWidget {
             day: currentDayData,
             visitActivities: _visitActivities(currentDayData),
             isHotelStart: _isHotelStart,
-            visitedByBackend: reviewIsVisitedById,
             participantCount: itin.participantCount,
             showPerPersonCost: showPerPersonCost,
             onCostScopeChanged: onCostScopeChanged,
           ),
-          const SizedBox(height: AppSizes.s16),
-          TrackingSection(
-            itineraryId: itin.id,
-            date: currentDayData.date,
-            itineraryStatus: itin.status,
-            activities: currentDayData.activities,
-            showStartButton: false,
-            dbTrackingActive: itin.trackingActive,
-            onStopped: () {
-              final now = DateTime.now();
-              final today = DateTime(now.year, now.month, now.day);
-              final endPlusOne = DateTime(
-                itin.endDate.year,
-                itin.endDate.month,
-                itin.endDate.day,
-              ).add(const Duration(days: 1));
-              context.read<ItineraryCubit>().toggleItineraryStatus(
-                itin.id,
-                false,
-                stoppedStatus: !today.isBefore(endPlusOne)
-                    ? ItineraryStatus.completed
-                    : ItineraryStatus.uncompleted,
-              );
-            },
+          const SizedBox(height: AppSizes.s12),
+          _DayVisitProgressCard(
+            visitActivities: _visitActivities(currentDayData),
+            visitedByBackend: reviewIsVisitedById,
           ),
+          const SizedBox(height: AppSizes.s4),
+          if (itin.isOwner)
+            TrackingSection(
+              itineraryId: itin.id,
+              date: currentDayData.date,
+              itineraryStatus: itin.status,
+              activities: currentDayData.activities,
+              showStartButton: false,
+              dbTrackingActive: itin.trackingActive,
+            ),
           // Dùng Builder để đọc TrackingCubit (được provide ở ItineraryDetailScreen)
           // và truyền trackingStatus cho từng TimelineActivityCard.
           Builder(
@@ -3282,7 +3247,8 @@ class _ItineraryDetailView extends StatelessWidget {
                                 nextActivity.latitude,
                                 nextActivity.longitude,
                               ));
-                  final TrackingPlaceStatus? trackingStatus = tracking.isActive
+                  final TrackingPlaceStatus? trackingStatus =
+                      itin.isOwner && tracking.isActive
                       ? tracking.byDetailId(activity.id)
                       : null;
                   return TimelineActivityCard(
@@ -3294,15 +3260,23 @@ class _ItineraryDetailView extends StatelessWidget {
                     nextTransportInfo: nextTransport,
                     participantCount: itin.participantCount,
                     showPerPersonCost: showPerPersonCost,
-                    onAddTap: onAddPlaceTap,
-                    onEditTap: () => onEditActivity(activity),
-                    onReplaceTap: () => onReplaceActivity(activity),
-                    onDeleteTap: () => onDeleteActivity(activity),
-                    onRateTap: () => onRateActivity(
-                      trackingStatus?.status == VisitStatus.visited
-                          ? activity.copyWith(status: ActivityStatus.daDi)
-                          : activity,
-                    ),
+                    onAddTap: itin.isOwner ? onAddPlaceTap : null,
+                    onEditTap: itin.isOwner
+                        ? () => onEditActivity(activity)
+                        : null,
+                    onReplaceTap: itin.isOwner
+                        ? () => onReplaceActivity(activity)
+                        : null,
+                    onDeleteTap: itin.isOwner
+                        ? () => onDeleteActivity(activity)
+                        : null,
+                    onRateTap: itin.isOwner
+                        ? () => onRateActivity(
+                            trackingStatus?.status == VisitStatus.visited
+                                ? activity.copyWith(status: ActivityStatus.daDi)
+                                : activity,
+                          )
+                        : null,
                     isOpeningReview: openingReviewActivityIds.contains(
                       activity.id,
                     ),
@@ -3320,12 +3294,13 @@ class _ItineraryDetailView extends StatelessWidget {
                       false,
                       index == activities.length - 1,
                     ),
-                    isEditMode: isEditMode,
+                    isEditMode: itin.isOwner && isEditMode,
                     onDirectionTap: nextActivity != null
                         ? () => onDirectionTap(activity, nextActivity)
                         : null,
                     trackingStatus: trackingStatus,
-                    onCheckIn: trackingStatus != null
+                    canReview: itin.isOwner,
+                    onCheckIn: itin.isOwner && trackingStatus != null
                         ? () => context.read<TrackingCubit>().manualCheckIn(
                             activity.id,
                           )

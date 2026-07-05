@@ -94,6 +94,7 @@ class ItineraryCard extends StatelessWidget {
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                memCacheWidth: 1080, // card full-width — không giải mã full-res
                 placeholder: (context, url) => Container(color: Colors.grey[200]),
                 errorWidget: (context, url, error) => _buildImageFallback(),
               ),
@@ -210,6 +211,7 @@ class ActivityCard extends StatelessWidget {
                   imageUrl: item.imageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  memCacheWidth: 720, // card carousel — không giải mã full-res
                   placeholder: (context, url) => Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
@@ -309,6 +311,7 @@ class RestaurantCard extends StatelessWidget {
                   imageUrl: item.imageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  memCacheWidth: 720, // card carousel — không giải mã full-res
                   placeholder: (context, url) => Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
@@ -407,6 +410,7 @@ class HotelCard extends StatelessWidget {
                   imageUrl: item.imageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  memCacheWidth: 720, // card carousel — không giải mã full-res
                   placeholder: (context, url) => Container(color: Colors.grey[200]),
                   errorWidget: (context, url, error) => _buildImageFallback(),
                 ),

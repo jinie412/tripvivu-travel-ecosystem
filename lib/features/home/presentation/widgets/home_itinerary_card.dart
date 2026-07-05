@@ -200,6 +200,7 @@ class HomeItineraryCard extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        memCacheWidth: 1080, // ảnh card — không giải mã full-res
         errorWidget: (context, url, error) => _assetPlaceholder(),
       ),
     );
