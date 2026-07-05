@@ -1373,7 +1373,9 @@ const AddLocationPage: React.FC = () => {
                 ...formData,
                 typeId: selectedType?.id || '',
                 type: selectedType?.name || '',
-                estimatedPreparationTime: isFoodCategory(selectedType?.category_name) ? formData.estimatedPreparationTime : '',
+                estimatedPreparationTime: isFoodCategory(selectedType?.category_name)
+                  ? (formData.estimatedPreparationTime || '15')
+                  : formData.estimatedPreparationTime,
               });
             }}
             disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}>

@@ -33,6 +33,9 @@ export interface BusinessLocationFilterParams {
   search?: string;
   status?: 'all' | 'pending' | 'approved' | 'rejected';
   sort?: 'default' | 'popular' | 'newest';
+  /** Pass 'basic' when only id/name/city are needed (e.g. building a filter
+   * dropdown) to skip the category/rating enrichment on the backend. */
+  fields?: 'full' | 'basic';
 }
 
 const toUiStatus = (status: 'pending' | 'approved' | 'rejected'): Location['status'] => {
@@ -89,6 +92,7 @@ export const businessLocationAPI = {
           search: params.search || undefined,
           status: params.status || 'all',
           sort: params.sort || 'default',
+          fields: params.fields || 'full',
         },
       },
     );

@@ -20,17 +20,21 @@ import {
   Search,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
+import { fetchAllServices, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
 import { locationAPI, type AdminVendorOption } from '@/services/locationAPI';
 import { apiClient, extractResponseData } from '@/services/apiClient';
 import * as XLSX from 'xlsx';
 import defaultServiceIcon from '@/assets/images/service_icon_default.jpg';
 
 type CityOption = { id: string; name: string };
-type BusinessTypeOption = { id: string; name: string };
+type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
 type SourceMode = 'system' | 'vendor';
 type AmenityDraft = { id: string; name: string; description: string; icon: React.ReactNode };
-type MenuDraft = { id: string; name: string; description: string; price: string; img: string; imageFile?: File | null; previewUrl?: string };
+type MenuDraft = { id: string; name: string; description: string; price: string; quantity?: string; img: string; imageFile?: File | null; previewUrl?: string };
+type WeekdayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+type DayHours = { enabled: boolean; openTime: string; closeTime: string };
+type WeeklyHours = Record<WeekdayKey, DayHours>;
+type OpeningHourGroup = { id: string; days: WeekdayKey[]; openTime: string; closeTime: string };
 type AdminAddLocationFormData = {
   name: string;
   address: string;
@@ -43,7 +47,10 @@ type AdminAddLocationFormData = {
   typeId: string;
   openTime: string;
   closeTime: string;
+  weeklyHours: WeeklyHours;
+  openingHourGroups: OpeningHourGroup[];
   description: string;
+  estimatedPreparationTime: string;
   amenities: AmenityDraft[];
   menu: MenuDraft[];
 };
@@ -59,6 +66,134 @@ type AdminAddLocationDraft = {
   };
 };
 
+const WEEKDAY_OPTIONS: Array<{ key: WeekdayKey; label: string }> = [
+  { key: 'Monday', label: 'Thứ 2' },
+  { key: 'Tuesday', label: 'Thứ 3' },
+  { key: 'Wednesday', label: 'Thứ 4' },
+  { key: 'Thursday', label: 'Thứ 5' },
+  { key: 'Friday', label: 'Thứ 6' },
+  { key: 'Saturday', label: 'Thứ 7' },
+  { key: 'Sunday', label: 'Chủ nhật' },
+];
+
+const createDefaultWeeklyHours = (openTime = '08:00', closeTime = '22:00'): WeeklyHours => ({
+  Monday: { enabled: true, openTime, closeTime },
+  Tuesday: { enabled: true, openTime, closeTime },
+  Wednesday: { enabled: true, openTime, closeTime },
+  Thursday: { enabled: true, openTime, closeTime },
+  Friday: { enabled: true, openTime, closeTime },
+  Saturday: { enabled: true, openTime, closeTime },
+  Sunday: { enabled: true, openTime, closeTime },
+});
+
+const createDefaultOpeningHourGroups = (openTime = '08:00', closeTime = '22:00'): OpeningHourGroup[] => ([
+  {
+    id: 'default',
+    days: WEEKDAY_OPTIONS.map((day) => day.key),
+    openTime,
+    closeTime,
+  },
+]);
+
+const buildWeeklyHoursFromGroups = (groups: OpeningHourGroup[]): WeeklyHours => {
+  const weeklyHours = WEEKDAY_OPTIONS.reduce((result, day) => {
+    result[day.key] = { enabled: false, openTime: '08:00', closeTime: '22:00' };
+    return result;
+  }, {} as WeeklyHours);
+
+  groups.forEach((group) => {
+    group.days.forEach((day) => {
+      weeklyHours[day] = {
+        enabled: true,
+        openTime: group.openTime,
+        closeTime: group.closeTime,
+      };
+    });
+  });
+
+  return weeklyHours;
+};
+
+const buildOpeningHourGroupsFromWeeklyHours = (weeklyHours: WeeklyHours): OpeningHourGroup[] => {
+  const grouped = new Map<string, OpeningHourGroup>();
+
+  WEEKDAY_OPTIONS.forEach((day) => {
+    const item = weeklyHours[day.key];
+    if (!item.enabled) return;
+
+    const groupKey = `${item.openTime}|${item.closeTime}`;
+    const existing = grouped.get(groupKey);
+    if (existing) {
+      existing.days.push(day.key);
+      return;
+    }
+
+    grouped.set(groupKey, {
+      id: groupKey,
+      days: [day.key],
+      openTime: item.openTime,
+      closeTime: item.closeTime,
+    });
+  });
+
+  const groups = Array.from(grouped.values());
+  return groups.length > 0 ? groups : createDefaultOpeningHourGroups();
+};
+
+const normalizeTimeForCompressedHours = (value: string): string => {
+  if (!value) return '';
+  return value.length === 5 ? `${value}:00` : value;
+};
+
+const buildOpenHourCompressed = (weeklyHours: WeeklyHours): Record<WeekdayKey, [string, string][]> => {
+  return WEEKDAY_OPTIONS.reduce((result, day) => {
+    const item = weeklyHours[day.key];
+    result[day.key] = item.enabled && item.openTime && item.closeTime
+      ? [[normalizeTimeForCompressedHours(item.openTime), normalizeTimeForCompressedHours(item.closeTime)]]
+      : [];
+    return result;
+  }, {} as Record<WeekdayKey, [string, string][]>);
+};
+
+const getPrimaryOpenCloseTime = (weeklyHours: WeeklyHours): { openTime: string; closeTime: string } => {
+  const firstOpenDay = WEEKDAY_OPTIONS
+    .map((day) => weeklyHours[day.key])
+    .find((item) => item.enabled && item.openTime && item.closeTime);
+
+  return {
+    openTime: firstOpenDay?.openTime || '08:00',
+    closeTime: firstOpenDay?.closeTime || '22:00',
+  };
+};
+
+const isFoodCategory = (categoryName?: string | null): boolean => {
+  const lower = (categoryName ?? '').toLowerCase();
+  return lower.includes('ẩm thực') || lower.includes('nhà hàng') || lower.includes('ăn uống');
+};
+
+const isAccommodationCategory = (...values: Array<string | null | undefined>): boolean => {
+  const normalized = values
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+  return normalized.includes('luu tru')
+    || normalized.includes('khach san')
+    || normalized.includes('hotel')
+    || normalized.includes('homestay')
+    || normalized.includes('resort')
+    || normalized.includes('accommodation');
+};
+
+const PRESET_FREE_SERVICES = [
+  { name: 'Trà đá miễn phí', description: '' },
+  { name: 'Nước lọc miễn phí', description: '' },
+  { name: 'Giữ xe miễn phí', description: '' },
+  { name: 'Wifi miễn phí', description: '' },
+];
+
 const ADMIN_ADD_LOCATION_DRAFT_KEY = 'admin:add-location:draft:v1';
 const DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA: AdminAddLocationFormData = {
   name: '',
@@ -72,20 +207,40 @@ const DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA: AdminAddLocationFormData = {
   typeId: '',
   openTime: '08:00',
   closeTime: '22:00',
+  weeklyHours: createDefaultWeeklyHours(),
+  openingHourGroups: createDefaultOpeningHourGroups(),
   description: '',
+  estimatedPreparationTime: '',
   amenities: [],
   menu: [],
 };
 
 const isBrowser = () => typeof window !== 'undefined';
 
+const shouldRestoreAdminAddLocationDraft = () => {
+  if (!isBrowser()) return false;
+  return new URLSearchParams(window.location.search).get('resumeDraft') === '1';
+};
+
 const restoreAdminAddLocationDraft = (): AdminAddLocationDraft | null => {
   if (!isBrowser()) return null;
+  if (!shouldRestoreAdminAddLocationDraft()) {
+    window.localStorage.removeItem(ADMIN_ADD_LOCATION_DRAFT_KEY);
+    return null;
+  }
+
   try {
     const raw = window.localStorage.getItem(ADMIN_ADD_LOCATION_DRAFT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<AdminAddLocationDraft>;
     if (!parsed.formData || typeof parsed.formData !== 'object') return null;
+    const restoredWeeklyHours = parsed.formData.weeklyHours ?? createDefaultWeeklyHours(
+      String(parsed.formData.openTime ?? DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA.openTime),
+      String(parsed.formData.closeTime ?? DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA.closeTime),
+    );
+    const restoredOpeningHourGroups = Array.isArray(parsed.formData.openingHourGroups)
+      ? parsed.formData.openingHourGroups
+      : buildOpeningHourGroupsFromWeeklyHours(restoredWeeklyHours);
 
     return {
       step: typeof parsed.step === 'number' ? Math.min(Math.max(parsed.step, 1), 3) : 1,
@@ -99,6 +254,8 @@ const restoreAdminAddLocationDraft = (): AdminAddLocationDraft | null => {
         phone: String(parsed.formData.phone ?? '').replace(/\D/g, '').slice(0, 10),
         latitude: Number(parsed.formData.latitude) || DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA.latitude,
         longitude: Number(parsed.formData.longitude) || DEFAULT_ADMIN_ADD_LOCATION_FORM_DATA.longitude,
+        weeklyHours: buildWeeklyHoursFromGroups(restoredOpeningHourGroups),
+        openingHourGroups: restoredOpeningHourGroups,
         amenities: Array.isArray(parsed.formData.amenities) ? parsed.formData.amenities : [],
         menu: Array.isArray(parsed.formData.menu) ? parsed.formData.menu : [],
       },
@@ -121,6 +278,7 @@ const buildRestoredFormData = (draft: AdminAddLocationDraft | null): AdminAddLoc
     name: item.name || '',
     description: item.description || '',
     price: item.price || '',
+    quantity: item.quantity || '1',
     img: item.img || '',
     imageFile: null,
     previewUrl: '',
@@ -130,7 +288,7 @@ const buildRestoredFormData = (draft: AdminAddLocationDraft | null): AdminAddLoc
 const buildPersistableFormData = (formData: AdminAddLocationFormData): AdminAddLocationDraft['formData'] => ({
   ...formData,
   amenities: formData.amenities.map(({ id, name, description }) => ({ id, name, description })),
-  menu: formData.menu.map(({ id, name, description, price, img }) => ({ id, name, description, price, img })),
+  menu: formData.menu.map(({ id, name, description, price, quantity, img }) => ({ id, name, description, price, quantity, img })),
 });
 
 const VIETNAM_BOUNDS = {
@@ -205,7 +363,7 @@ type GeocodeResult = {
 
 const normalizeSearchText = (value: string) => value
   .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[̀-ͯ]/g, '')
   .toLowerCase()
   .replace(/[^a-z0-9]+/g, ' ')
   .trim();
@@ -325,10 +483,23 @@ export const AddLocation: React.FC = () => {
     name: string;
     description: string;
     price: string;
+    quantity: string;
     img: string;
     imageFile: File | null;
     previewUrl: string;
-  }>({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+  }>({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
+
+  // Excel preview state
+  const [excelPreviewItems, setExcelPreviewItems] = useState<{ name: string; price: string; description: string }[]>([]);
+  const [showExcelPreview, setShowExcelPreview] = useState(false);
+
+  // DB services cache for dedup check
+  const [dbServices, setDbServices] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    fetchAllServices().then(setDbServices);
+  }, []);
 
   const [formData, setFormData] = useState<AdminAddLocationFormData>(() => buildRestoredFormData(restoredDraft));
 
@@ -408,6 +579,7 @@ export const AddLocation: React.FC = () => {
           .map((item: any) => ({
             id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? item.type_name ?? ''),
             name: String(item.name ?? item.type_name ?? ''),
+            category_name: item.category_name ?? null,
           }))
           .filter((item) => item.id && item.name)
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -500,6 +672,12 @@ export const AddLocation: React.FC = () => {
     && !emailError
     && (sourceMode === 'system' || Boolean(selectedVendorId)),
   );
+  const selectedBusinessType = businessTypes.find((type) => type.id === formData.typeId);
+  const isAccommodation = isAccommodationCategory(
+    selectedBusinessType?.category_name,
+    selectedBusinessType?.name,
+    formData.type,
+  );
 
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = event.target.value.replace(/\D/g, '').slice(0, 10);
@@ -577,6 +755,22 @@ export const AddLocation: React.FC = () => {
 
     if (emailError) {
       alert('Email liên hệ không đúng định dạng.');
+      setStep(1);
+      return false;
+    }
+
+    const openDays = WEEKDAY_OPTIONS
+      .map((day) => formData.weeklyHours[day.key])
+      .filter((item) => item.enabled);
+
+    if (openDays.length === 0) {
+      alert('Vui lòng chọn ít nhất một ngày mở cửa.');
+      setStep(1);
+      return false;
+    }
+
+    if (openDays.some((item) => !item.openTime || !item.closeTime || item.openTime >= item.closeTime)) {
+      alert('Giờ mở cửa theo ngày chưa hợp lệ. Giờ đóng cửa phải sau giờ mở cửa.');
       setStep(1);
       return false;
     }
@@ -671,7 +865,7 @@ export const AddLocation: React.FC = () => {
 
   const handleAddMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      alert('Vui lòng nhập tên và giá của món ăn');
+      alert(isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn');
       return;
     }
 
@@ -681,11 +875,18 @@ export const AddLocation: React.FC = () => {
       return;
     }
 
+    const quantity = parseInt(menuInput.quantity || '1', 10);
+    if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
+      alert('Sức chứa phòng phải lớn hơn 0');
+      return;
+    }
+
     const newMenuItem = {
       id: Date.now().toString(),
       name: menuInput.name,
       description: menuInput.description,
       price: menuInput.price,
+      quantity: String(quantity),
       img: menuInput.img || '',
       imageFile: menuInput.imageFile,
       previewUrl: menuInput.previewUrl,
@@ -696,7 +897,58 @@ export const AddLocation: React.FC = () => {
       menu: [...prev.menu, newMenuItem]
     }));
 
-    setMenuInput({ name: '', description: '', price: '', img: '', imageFile: null, previewUrl: '' });
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
+  };
+
+  const handleEditMenuItem = (id: string) => {
+    const item = formData.menu.find(m => m.id === id);
+    if (!item) return;
+    setEditingMenuId(id);
+    setMenuInput({
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      quantity: item.quantity || '1',
+      img: item.img || '',
+      imageFile: item.imageFile ?? null,
+      previewUrl: item.previewUrl || '',
+    });
+  };
+
+  const handleUpdateMenuItem = () => {
+    if (!menuInput.name.trim() || !menuInput.price.trim()) {
+      alert(isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn');
+      return;
+    }
+
+    const price = parseFloat(menuInput.price);
+    if (Number.isNaN(price) || price <= 0) {
+      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      return;
+    }
+
+    const quantity = parseInt(menuInput.quantity || '1', 10);
+    if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
+      alert('Sức chứa phòng phải lớn hơn 0');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      menu: prev.menu.map(m =>
+        m.id === editingMenuId
+          ? { ...m, name: menuInput.name, description: menuInput.description, price: menuInput.price, quantity: String(quantity), img: menuInput.img, imageFile: menuInput.imageFile, previewUrl: menuInput.previewUrl }
+          : m
+      ),
+    }));
+
+    setEditingMenuId(null);
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMenuId(null);
+    setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
   };
 
   const handleRemoveMenuItem = (id: string) => {
@@ -744,105 +996,78 @@ export const AddLocation: React.FC = () => {
   };
 
   const handleExcelFileUpload = (file: File) => {
-    try {
-      const reader = new FileReader();
+    const reader = new FileReader();
 
-      reader.onerror = () => {
-        console.error('FileReader error:', reader.error);
-        alert('Lỗi khi đọc file. Vui lòng thử lại.');
-      };
+    reader.onerror = () => alert('Lỗi khi đọc file. Vui lòng thử lại.');
 
-      reader.onload = (e: any) => {
-        try {
-          const data = e.target.result;
-          console.log('📄 File data loaded, size:', data.byteLength, 'bytes');
+    reader.onload = (e: any) => {
+      try {
+        const workbook = XLSX.read(e.target.result, { type: 'array' });
 
-          // Read Excel workbook
-          const workbook = XLSX.read(data, { type: 'array' });
-          console.log('📊 Workbook sheets found:', workbook.SheetNames);
-
-          if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-            alert('File Excel không chứa bảng tính');
-            return;
-          }
-
-          // Get first sheet
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(worksheet);
-          console.log('📋 Raw rows from Excel:', rows);
-
-          if (rows.length === 0) {
-            alert('Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.');
-            return;
-          }
-
-          // Show actual headers for debugging
-          const firstRow = rows[0] as any;
-          const actualHeaders = Object.keys(firstRow);
-          console.log('🔑 Actual column headers in file:', actualHeaders);
-
-          // Find columns by flexible matching
-          const findColumn = (row: any, ...possibleNames: string[]) => {
-            for (const name of possibleNames) {
-              const key = Object.keys(row).find(
-                k => k.toLowerCase().trim() === name.toLowerCase().trim() ||
-                  k.toLowerCase().includes(name.toLowerCase())
-              );
-              if (key) return row[key];
-            }
-            return '';
-          };
-
-          // Parse Excel rows with flexible column matching
-          const newItems = rows.map((row: any) => {
-            const name = findColumn(row, 'Tên món', 'name', 'Tên', 'item', 'product');
-            const priceStr = findColumn(row, 'Giá bán', 'price', 'Giá', 'Cost', 'Value');
-            const description = findColumn(row, 'Mô tả', 'description', 'Description', 'Mô tả');
-
-            return {
-              id: Date.now().toString() + Math.random(),
-              name: String(name).trim(),
-              description: String(description).trim(),
-              price: String(priceStr).trim(),
-              img: ''
-            };
-          }).filter((item: any) => {
-            // Validate: name must exist and price must be a valid number
-            return item.name && !isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0;
-          });
-
-          console.log('✓ Parsed items:', newItems);
-          console.log('📊 Items count:', newItems.length);
-
-          if (newItems.length === 0) {
-            console.warn('⚠️ No valid items found');
-            console.log('Expected columns:', 'Tên món (or name), Giá bán (or price)');
-            console.log('Found columns in file:', actualHeaders);
-            alert(`⚠️ Không tìm thấy dữ liệu hợp lệ.\n\nCác cột trong file của bạn:\n${actualHeaders.join(', ')}\n\nFile cần có cột:\n• "Tên món" hoặc "name"\n• "Giá bán" hoặc "price"`);
-            return;
-          }
-
-          // Merge with existing items
-          setFormData(prev => ({
-            ...prev,
-            menu: [...prev.menu, ...newItems]
-          }));
-
-          console.log('✅ File processed successfully, added', newItems.length, 'items');
-          alert(`✓ Đã thêm ${newItems.length} món ăn từ file!`);
-          setUploadedFile(file);
-          setFileUploaded(true);
-        } catch (parseError) {
-          console.error('❌ Parse error:', parseError);
-          alert(`Lỗi khi xử lý file: ${parseError instanceof Error ? parseError.message : 'Không xác định'}`);
+        if (!workbook.SheetNames?.length) {
+          alert('File Excel không chứa bảng tính');
+          return;
         }
-      };
 
-      reader.readAsArrayBuffer(file);
-    } catch (error) {
-      console.error('❌ Error:', error);
-      alert(`Lỗi: ${error instanceof Error ? error.message : 'Không xác định'}`);
-    }
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(worksheet);
+
+        if (rows.length === 0) {
+          alert('Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.');
+          return;
+        }
+
+        const findCol = (row: any, ...keys: string[]) => {
+          for (const k of keys) {
+            const match = Object.keys(row).find(col => col.toLowerCase().includes(k.toLowerCase()));
+            if (match) return String(row[match] ?? '').trim();
+          }
+          return '';
+        };
+
+        const parsed = rows.map((row: any) => ({
+          name: findCol(row, 'tên món', 'tên', 'name', 'item', 'product'),
+          price: findCol(row, 'giá bán', 'giá', 'price', 'cost', 'value'),
+          description: findCol(row, 'mô tả', 'description', 'ghi chú', 'note'),
+        })).filter(item => item.name && !Number.isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0);
+
+        if (parsed.length === 0) {
+          alert('Không tìm thấy dữ liệu hợp lệ trong file. File cần có cột "Tên món" và "Giá bán".');
+          return;
+        }
+
+        setExcelPreviewItems(parsed);
+        setUploadedFile(file);
+        setShowExcelPreview(true);
+      } catch (err) {
+        alert(`Lỗi khi xử lý file: ${err instanceof Error ? err.message : 'Không xác định'}`);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleConfirmExcelImport = () => {
+    const newItems = excelPreviewItems.map(item => ({
+      id: Date.now().toString() + Math.random(),
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      img: '',
+    }));
+    setFormData(prev => ({ ...prev, menu: [...prev.menu, ...newItems] }));
+    setShowExcelPreview(false);
+    setFileUploaded(true);
+    setShowExcelImport(false);
+    setStep(2);
+  };
+
+  const handleCancelExcelImport = () => {
+    setShowExcelPreview(false);
+    setUploadedFile(null);
+    setExcelPreviewItems([]);
+    setShowExcelImport(false);
+    setStep(2);
   };
 
   const handleSubmitForm = async () => {
@@ -881,10 +1106,17 @@ export const AddLocation: React.FC = () => {
             name: item.name,
             description: item.description || '',
             price: parseFloat(item.price) || 0,
+            quantity: parseInt(item.quantity || '1', 10) || 1,
             image_url: imageUrl || undefined,
           };
         }),
       );
+      const roomPayload = menuWithUploadedImages.map((item) => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      }));
+      const primaryOpenCloseTime = getPrimaryOpenCloseTime(formData.weeklyHours);
 
       const payload = {
         sourceMode,
@@ -899,14 +1131,23 @@ export const AddLocation: React.FC = () => {
         p_type_id: formData.typeId,
         p_type_name: formData.type,
         p_categories: formData.type ? [formData.type] : [],
-        p_open_time: formData.openTime, // Thêm trường này
-        p_close_time: formData.closeTime, // Thêm trường này
+        p_open_time: primaryOpenCloseTime.openTime,
+        p_close_time: primaryOpenCloseTime.closeTime,
+        p_open_hour_compressed: buildOpenHourCompressed(formData.weeklyHours),
         p_description: formData.description,
-        p_services: formData.amenities.map(a => ({
-          name: a.name,
-          description: a.description || ''
-        })),
-        p_menu: menuWithUploadedImages,
+        p_estimated_preparation_time: isFoodCategory(selectedBusinessType?.category_name) && formData.estimatedPreparationTime
+          ? Number(formData.estimatedPreparationTime)
+          : null,
+        p_services: formData.amenities.map(a => {
+          const existing = dbServices.find(s => s.name.toLowerCase().trim() === a.name.toLowerCase().trim());
+          return {
+            name: a.name,
+            description: a.description || '',
+            ...(existing ? { service_id: existing.id } : {}),
+          };
+        }),
+        p_menu: isAccommodation ? [] : menuWithUploadedImages,
+        p_rooms: isAccommodation ? roomPayload : [],
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
 
@@ -965,6 +1206,63 @@ export const AddLocation: React.FC = () => {
     } else if (step > 1) {
       setStep((prev) => prev - 1);
     }
+  };
+
+  const updateOpeningHourGroups = (updater: (current: OpeningHourGroup[]) => OpeningHourGroup[]) => {
+    setFormData((current) => {
+      const openingHourGroups = updater(current.openingHourGroups);
+      const weeklyHours = buildWeeklyHoursFromGroups(openingHourGroups);
+      const primaryOpenCloseTime = getPrimaryOpenCloseTime(weeklyHours);
+
+      return {
+        ...current,
+        openingHourGroups,
+        weeklyHours,
+        openTime: primaryOpenCloseTime.openTime,
+        closeTime: primaryOpenCloseTime.closeTime,
+      };
+    });
+  };
+
+  const handleGroupTimeChange = (groupId: string, field: 'openTime' | 'closeTime', value: string) => {
+    updateOpeningHourGroups((current) =>
+      current.map((group) => group.id === groupId ? { ...group, [field]: value } : group),
+    );
+  };
+
+  const handleToggleGroupDay = (groupId: string, day: WeekdayKey) => {
+    updateOpeningHourGroups((current) => {
+      const targetGroup = current.find((group) => group.id === groupId);
+      const shouldSelect = !targetGroup?.days.includes(day);
+
+      return current.map((group) => {
+        const daysWithoutCurrent = group.days.filter((item) => item !== day);
+        if (group.id !== groupId) {
+          return { ...group, days: daysWithoutCurrent };
+        }
+
+        return {
+          ...group,
+          days: shouldSelect ? [...daysWithoutCurrent, day] : daysWithoutCurrent,
+        };
+      });
+    });
+  };
+
+  const handleAddOpeningHourGroup = () => {
+    updateOpeningHourGroups((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${current.length}`,
+        days: [],
+        openTime: '08:00',
+        closeTime: '22:00',
+      },
+    ]);
+  };
+
+  const handleRemoveOpeningHourGroup = (groupId: string) => {
+    updateOpeningHourGroups((current) => current.filter((group) => group.id !== groupId));
   };
 
   const mapTiles = getMapTiles(formData.latitude, formData.longitude, mapSize.width, mapSize.height, mapZoom);
@@ -1212,6 +1510,9 @@ export const AddLocation: React.FC = () => {
                 ...formData,
                 typeId: selectedType?.id || '',
                 type: selectedType?.name || '',
+                estimatedPreparationTime: isFoodCategory(selectedType?.category_name)
+                  ? (formData.estimatedPreparationTime || '15')
+                  : formData.estimatedPreparationTime,
               });
             }}
             disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}>
@@ -1259,27 +1560,161 @@ export const AddLocation: React.FC = () => {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <div style={{ flex: 1 }}>
-            <Input
-              label="Giờ mở cửa"
-              type="time"
-              value={formData.openTime}
-              onChange={(e) => setFormData({ ...formData, openTime: e.target.value })}
-              icon={<Clock size={18} />}
-              style={{ marginBottom: 0 }}
+        {isFoodCategory(businessTypes.find((t) => t.id === formData.typeId)?.category_name) && (
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+              Thời gian hoàn thành đơn (phút)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={480}
+              placeholder="Ví dụ: 30"
+              value={formData.estimatedPreparationTime}
+              onChange={(e) => setFormData({ ...formData, estimatedPreparationTime: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                background: '#fcfcfc',
+                outline: 'none',
+                fontSize: '15px',
+                color: '#1e293b',
+                boxSizing: 'border-box',
+              }}
             />
+            <p style={{ marginTop: '6px', fontSize: '12px', color: '#94a3b8' }}>
+              Thời gian dự kiến từ lúc khách đặt đến khi hoàn thành phục vụ
+            </p>
           </div>
-          <div style={{ flex: 1 }}>
-            <Input
-              label="Giờ đóng cửa"
-              type="time"
-              value={formData.closeTime}
-              onChange={(e) => setFormData({ ...formData, closeTime: e.target.value })}
-              icon={<Clock size={18} />}
-              style={{ marginBottom: 0 }}
-            />
+        )}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={18} />
+              Lịch mở cửa
+            </label>
           </div>
+          <div style={{ display: 'grid', gap: '14px' }}>
+            {formData.openingHourGroups.map((group) => {
+              return (
+                <div
+                  key={group.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    padding: '14px',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {WEEKDAY_OPTIONS.map((day) => {
+                        const selected = group.days.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => handleToggleGroupDay(group.id, day.key)}
+                            style={{
+                              border: `1px solid ${selected ? '#2563eb' : '#CBD5E1'}`,
+                              background: selected ? '#EFF6FF' : '#fff',
+                              color: selected ? '#2563eb' : '#475569',
+                              borderRadius: '999px',
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {formData.openingHourGroups.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOpeningHourGroup(group.id)}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Xóa
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
+                    <input
+                      type="time"
+                      value={group.openTime}
+                      onChange={(e) => handleGroupTimeChange(group.id, 'openTime', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color)',
+                        background: '#fcfcfc',
+                        color: '#1e293b',
+                        outline: 'none',
+                      }}
+                    />
+                    <span style={{ color: '#64748b', fontSize: '13px', fontWeight: 700 }}>đến</span>
+                    <input
+                      type="time"
+                      value={group.closeTime}
+                      onChange={(e) => handleGroupTimeChange(group.id, 'closeTime', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color)',
+                        background: '#fcfcfc',
+                        color: '#1e293b',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {group.days.length === 0 && (
+                    <p style={{ margin: 0, color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
+                      Chọn ít nhất một ngày cho khung giờ này hoặc xóa dòng.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={handleAddOpeningHourGroup}
+            style={{
+              marginTop: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+              color: '#2563eb',
+              borderRadius: '10px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+            }}
+          >
+            <Plus size={16} />
+            Thêm khung giờ mới
+          </button>
         </div>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1484,6 +1919,59 @@ export const AddLocation: React.FC = () => {
           </div>
         </div>
         <div>
+          {/* Preset chips */}
+          <label style={{ fontSize: '12px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '10px', display: 'block', letterSpacing: '0.5px' }}>
+            Chọn nhanh
+          </label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            {PRESET_FREE_SERVICES.map(preset => {
+              const isSelected = formData.amenities.some(a => a.name === preset.name);
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      const target = formData.amenities.find(a => a.name === preset.name);
+                      if (target) handleRemoveService(target.id);
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        amenities: [...prev.amenities, {
+                          id: Date.now().toString(),
+                          name: preset.name,
+                          description: preset.description,
+                          icon: <Wifi size={18} />,
+                        }],
+                      }));
+                    }
+                  }}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: '20px',
+                    border: `1.5px solid ${isSelected ? '#3b82f6' : '#E2E8F0'}`,
+                    background: isSelected ? '#EFF6FF' : 'white',
+                    color: isSelected ? '#2563eb' : '#64748b',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {isSelected ? (
+                    <CheckCircle size={14} color="#2563eb" />
+                  ) : (
+                    <Plus size={14} />
+                  )}
+                  {preset.name}
+                </button>
+              );
+            })}
+          </div>
+
           <label
             style={{
               fontSize: '12px',
@@ -1526,33 +2014,17 @@ export const AddLocation: React.FC = () => {
       <div style={{ display: serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Thực đơn món ăn (Nhà hàng)</h4>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#3b82f6' }}>Đăng ký thực đơn</span>
-            <div
-              style={{
-                width: '44px',
-                height: '24px',
-                background: '#3b82f6',
-                borderRadius: '12px',
-                position: 'relative',
-                cursor: 'pointer',
-              }}>
-              <div
-                style={{
-                  position: 'absolute',
-                  right: '4px',
-                  top: '4px',
-                  width: '16px',
-                  height: '16px',
-                  background: 'white',
-                  borderRadius: '50%',
-                }}></div>
-            </div>
+            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>
+              {isAccommodation ? 'Danh sách phòng' : 'Danh sách sản phẩm'}
+            </h4>
           </div>
         </div>
 
+        {editingMenuId && (
+          <div style={{ marginBottom: '12px', padding: '10px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', fontSize: '13px', color: '#1D4ED8', fontWeight: 600 }}>
+            Đang chỉnh sửa dịch vụ. Cập nhật thông tin bên dưới rồi nhấn "Cập nhật".
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '32px' }}>
           <input
             id="menuImageInput"
@@ -1568,7 +2040,7 @@ export const AddLocation: React.FC = () => {
               height: '100px',
               background: '#f8fafc',
               borderRadius: '16px',
-              border: '2px dashed #E2E8F0',
+              border: `2px dashed ${editingMenuId ? '#93C5FD' : '#E2E8F0'}`,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -1593,7 +2065,7 @@ export const AddLocation: React.FC = () => {
           </div>
           <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Tên món ăn</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sản phẩm</label>
               <input
                 placeholder="VD: Cơm Gà Hải Nam"
                 value={menuInput.name}
@@ -1603,7 +2075,7 @@ export const AddLocation: React.FC = () => {
                   height: '48px',
                   padding: '0 16px',
                   borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
+                  border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
                   background: '#fcfcfc',
                   fontSize: '15px',
                   outline: 'none',
@@ -1623,7 +2095,7 @@ export const AddLocation: React.FC = () => {
                     height: '48px',
                     padding: '0 40px 0 16px',
                     borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
+                    border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
                     background: '#fcfcfc',
                     fontSize: '15px',
                     outline: 'none',
@@ -1633,6 +2105,27 @@ export const AddLocation: React.FC = () => {
                 <span style={{ position: 'absolute', right: '14px', color: 'var(--text-secondary)', fontSize: '15px' }}>đ</span>
               </div>
             </div>
+            {isAccommodation && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sức chứa</label>
+                <input
+                  placeholder="2"
+                  value={menuInput.quantity}
+                  onChange={(e) => setMenuInput({ ...menuInput, quantity: e.target.value })}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    padding: '0 16px',
+                    borderRadius: '12px',
+                    border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
+                    background: '#fcfcfc',
+                    fontSize: '15px',
+                    outline: 'none',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+            )}
             <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Mô tả chi tiết</label>
               <textarea
@@ -1645,7 +2138,7 @@ export const AddLocation: React.FC = () => {
                   minHeight: '88px',
                   padding: '12px 16px',
                   borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
+                  border: `1px solid ${editingMenuId ? '#93C5FD' : 'var(--border-color)'}`,
                   background: '#fcfcfc',
                   fontSize: '15px',
                   outline: 'none',
@@ -1656,7 +2149,27 @@ export const AddLocation: React.FC = () => {
                 }}
               />
             </div>
-            <div style={{ flex: '1 1 100%', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ flex: '1 1 100%', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              {editingMenuId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  style={{
+                    height: '52px',
+                    padding: '0 24px',
+                    borderRadius: '14px',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    border: '1px solid #E2E8F0',
+                    background: 'white',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Hủy
+                </button>
+              )}
               <Button
                 style={{
                   height: '52px',
@@ -1667,10 +2180,11 @@ export const AddLocation: React.FC = () => {
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
                   boxShadow: '0 10px 18px rgba(37, 99, 235, 0.22)',
+                  ...(editingMenuId ? { background: '#0284c7' } : {}),
                 }}
-                onClick={handleAddMenuItem}
+                onClick={editingMenuId ? handleUpdateMenuItem : handleAddMenuItem}
               >
-                Thêm
+                {editingMenuId ? 'Cập nhật' : 'Thêm'}
               </Button>
             </div>
           </div>
@@ -1687,17 +2201,19 @@ export const AddLocation: React.FC = () => {
                 display: 'block',
                 letterSpacing: '0.5px',
               }}>
-              Danh sách món ăn
+              {isAccommodation ? 'Danh sách phòng' : 'Danh sách món ăn'}
             </label>
-            <Button
-              variant="outline"
-              style={{ padding: '10px 18px', borderRadius: '12px', fontSize: '14px', gap: '8px', color: '#3b82f6', borderColor: '#DBEAFE', background: '#F0F9FF' }}
-              onClick={() => {
-                setShowExcelImport(true);
-                setStep(3);
-              }}>
-              <Plus size={18} /> Thêm từ file
-            </Button>
+            {!isAccommodation && (
+              <Button
+                variant="outline"
+                style={{ padding: '10px 18px', borderRadius: '12px', fontSize: '14px', gap: '8px', color: '#3b82f6', borderColor: '#DBEAFE', background: '#F0F9FF' }}
+                onClick={() => {
+                  setShowExcelImport(true);
+                  setStep(3);
+                }}>
+                <Plus size={18} /> Thêm từ file
+              </Button>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             {formData.menu.map((item) => (
@@ -1708,8 +2224,8 @@ export const AddLocation: React.FC = () => {
                   alignItems: 'center',
                   gap: '16px',
                   padding: '12px',
-                  background: 'white',
-                  border: '1px solid #E2E8F0',
+                  background: editingMenuId === item.id ? '#EFF6FF' : 'white',
+                  border: `1px solid ${editingMenuId === item.id ? '#93C5FD' : '#E2E8F0'}`,
                   borderRadius: '16px',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
                 }}>
@@ -1723,7 +2239,11 @@ export const AddLocation: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '12px', color: '#94a3b8' }}>
                   <Trash2 size={16} style={{ cursor: 'pointer' }} onClick={() => handleRemoveMenuItem(item.id)} />
-                  <Edit2 size={16} style={{ cursor: 'pointer' }} />
+                  <Edit2
+                    size={16}
+                    style={{ cursor: 'pointer', color: editingMenuId === item.id ? '#2563eb' : '#94a3b8' }}
+                    onClick={() => handleEditMenuItem(item.id)}
+                  />
                 </div>
               </div>
             ))}
@@ -1778,45 +2298,118 @@ export const AddLocation: React.FC = () => {
           onChange={(e) => {
             if (e.target.files && e.target.files[0]) {
               handleExcelFileUpload(e.target.files[0]);
+              e.target.value = '';
             }
           }}
         />
 
-        <div onClick={() => document.getElementById('fileInput')?.click()} style={{
-          height: '240px',
-          border: '2px dashed #E2E8F0',
-          borderRadius: '24px',
-          background: '#F8FAFC40',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '16px',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-        }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: '#F0F9FF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#3b82f6',
-            }}>
-            <Upload size={24} />
+        {!showExcelPreview ? (
+          <div onClick={() => document.getElementById('fileInput')?.click()} style={{
+            height: '240px',
+            border: '2px dashed #E2E8F0',
+            borderRadius: '24px',
+            background: '#F8FAFC40',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+              <Upload size={24} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
+              <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
+            </div>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', marginBottom: '4px' }}>Kéo thả file đã nhập liệu vào đây</p>
-            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Hoặc click để chọn tệp từ máy tính</p>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle size={18} color="#22c55e" />
+                <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
+                  {uploadedFile?.name}
+                  <span style={{ color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>— {excelPreviewItems.length} món ăn</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); }}
+                style={{ fontSize: '13px', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+              >
+                Đổi file
+              </button>
+            </div>
+
+            {/* Preview table */}
+            <div style={{ borderRadius: '16px', border: '1px solid #E2E8F0', overflow: 'hidden', maxHeight: '360px', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    {['TÊN MÓN', 'GIÁ BÁN', 'MÔ TẢ'].map((col, i) => (
+                      <th key={col} style={{
+                        padding: '14px 20px',
+                        textAlign: 'left',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        color: '#94a3b8',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        borderBottom: '1px solid #E2E8F0',
+                        width: i === 0 ? '30%' : i === 1 ? '20%' : '50%',
+                      }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {excelPreviewItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx < excelPreviewItems.length - 1 ? '1px solid #F1F5F9' : 'none', background: idx % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>{item.name}</td>
+                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#3b82f6' }}>
+                        {parseFloat(item.price).toLocaleString('vi-VN')}đ
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '13px', color: '#64748b' }}>{item.description || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
+              <button
+                type="button"
+                onClick={handleCancelExcelImport}
+                style={{
+                  padding: '12px 28px',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  background: 'white',
+                  color: '#64748b',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Hủy
+              </button>
+              <Button
+                onClick={handleConfirmExcelImport}
+                style={{ padding: '12px 32px', borderRadius: '12px', gap: '8px' }}
+              >
+                <CheckCircle size={16} /> Xác nhận
+              </Button>
+            </div>
           </div>
-          <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
-        </div>
+        )}
       </div>
 
-      {uploadedFile && (
+      {fileUploaded && !showExcelPreview && uploadedFile && (
         <div style={{ background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '16px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <CheckCircle size={20} color="#22c55e" />
@@ -1825,7 +2418,7 @@ export const AddLocation: React.FC = () => {
               <p style={{ fontSize: '12px', color: '#22c55e' }}>Dữ liệu đã được thêm vào danh sách</p>
             </div>
           </div>
-          <button onClick={() => setUploadedFile(null)} style={{ fontSize: '13px', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Xóa</button>
+          <button onClick={() => { setUploadedFile(null); setFileUploaded(false); }} style={{ fontSize: '13px', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Xóa</button>
         </div>
       )}
     </div>
@@ -1928,7 +2521,7 @@ export const AddLocation: React.FC = () => {
             {step === 3 ? (
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '24px', width: '100%' }}>
                 <button onClick={() => navigate('/admin/locations')} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Hủy</button>
-                {uploadedFile && (
+                {fileUploaded && !showExcelPreview && uploadedFile && (
                   <button onClick={() => {
                     setUploadedFile(null);
                     setFileUploaded(false);

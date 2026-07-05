@@ -52,9 +52,12 @@ export interface AdminCreatePlacePayload {
   p_categories: string[];
   p_open_time?: string;
   p_close_time?: string;
+  p_open_hour_compressed?: Record<string, [string, string][]>;
   p_description?: string;
-  p_services: Array<{ name: string; description: string }>;
-  p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
+  p_estimated_preparation_time?: number | null;
+  p_services: Array<{ name: string; description: string; service_id?: string }>;
+  p_menu: Array<{ name: string; description: string; price: number; quantity?: number; image_url?: string }>;
+  p_rooms?: Array<{ name: string; price: number; quantity: number }>;
   p_images?: string[];
 }
 
