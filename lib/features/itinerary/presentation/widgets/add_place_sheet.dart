@@ -103,7 +103,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     'chợ', 'phố cổ', 'làng', 'market', 'old town', 'village',
   ];
 
-  Future<void> _loadNearbyPlaces({String? q}) async {
+  Future<void> _loadNearbyPlaces({String? q, int retryCount = 0}) async {
     setState(() => _isLoading = true);
     try {
       final lat = widget.referenceLat ?? 16.047079;
@@ -127,6 +127,15 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
         }).toList();
       }
 
+      // If we got empty places on initial load and haven't retried yet, retry once for cold starts
+      if (places.isEmpty && retryCount < 1 && (q == null || q.isEmpty)) {
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          await _loadNearbyPlaces(q: q, retryCount: retryCount + 1);
+        }
+        return;
+      }
+
       if (mounted) {
         places.sort((a, b) {
           if (b.rating != a.rating) {
@@ -140,6 +149,13 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
         });
       }
     } catch (e) {
+      if (retryCount < 1) {
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          await _loadNearbyPlaces(q: q, retryCount: retryCount + 1);
+        }
+        return;
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;

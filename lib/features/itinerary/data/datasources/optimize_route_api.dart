@@ -12,6 +12,7 @@ class OptimizeRouteApi {
     /// ID của activity vừa được thêm mới — optimizer sẽ chèn nó vào vị trí tối ưu
     /// thay vì buộc nó phải đứng sau tất cả activities cũ.
     String? newActivityId,
+    String? editedActivityId,
     /// Ngày tham quan "YYYY-MM-DD" — dùng để parse openHourCompressed đúng ngày
     /// (chợ đêm mở tối, bãi biển mở sáng, v.v.)
     String? visitDate,
@@ -49,8 +50,8 @@ class OptimizeRouteApi {
             'reviewCount':       a.reviewCount,
             // ─── Fields cho TSPTW ──────────────────────
             'durationMinutes':   duration,
-            'isLocked':          false,
-            'lockedArriveTime':  null,
+            'isLocked':          editedActivityId != null && a.id == editedActivityId,
+            'lockedArriveTime':  editedActivityId != null && a.id == editedActivityId ? a.startTime : null,
             'openHourCompressed': a.openHourCompressed,
             // is_new = true → optimizer có thể chèn activity này vào BẤT KỲ vị trí nào,
             // không bị ràng buộc phải đứng sau tất cả activity cũ.

@@ -8,8 +8,20 @@ import 'package:travel_advisor_mobile/features/home/presentation/cubit/notificat
 import 'package:travel_advisor_mobile/features/home/presentation/screens/notification_detail_screen.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/widgets/review_rejected_icon.dart';
 
-class NotificationDrawer extends StatelessWidget {
+class NotificationDrawer extends StatefulWidget {
   const NotificationDrawer({super.key});
+
+  @override
+  State<NotificationDrawer> createState() => _NotificationDrawerState();
+}
+
+class _NotificationDrawerState extends State<NotificationDrawer> {
+  @override
+  void initState() {
+    super.initState();
+    // Silent load when drawer is opened to ensure up-to-date data without spinner
+    context.read<NotificationCubit>().loadNotifications(silent: true);
+  }
 
   @override
   Widget build(BuildContext context) {

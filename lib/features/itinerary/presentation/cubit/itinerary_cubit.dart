@@ -1287,7 +1287,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   // Trả về (lunchWasPinned, lunchActivityTitle) để caller có thể thông báo cho user.
   // Khi protectLunchWindow=false (ví dụ lúc revert) không áp dụng ràng buộc ăn trưa.
-  ({bool lunchWasPinned, String? lunchActivityTitle})
+  ({bool lunchWasPinned, String? lunchActivityTitle, String? lunchActivityId})
   updateActivityTimesWithShift({
     required String activityId,
     required int deltaMinutes,
@@ -1296,11 +1296,11 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     bool protectLunchWindow = true,
   }) {
     if (state is! ItineraryLoaded) {
-      return (lunchWasPinned: false, lunchActivityTitle: null);
+      return (lunchWasPinned: false, lunchActivityTitle: null, lunchActivityId: null);
     }
     final currentState = state as ItineraryLoaded;
     final itin = currentState.selectedItinerary;
-    if (itin == null) return (lunchWasPinned: false, lunchActivityTitle: null);
+    if (itin == null) return (lunchWasPinned: false, lunchActivityTitle: null, lunchActivityId: null);
 
     int toMin(String t) {
       final p = t.split(':');
@@ -1309,52 +1309,96 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
     bool lunchWasPinned = false;
     String? lunchActivityTitle;
+    String? lunchActivityId;
 
     final updatedDays = itin.days.map((day) {
       final hasActivity = day.activities.any((a) => a.id == activityId);
       if (!hasActivity) return day;
 
-      bool foundActivity = false;
-      final updatedActivities = day.activities.map((activity) {
-        if (activity.id == activityId) {
-          foundActivity = true;
+      final acts = day.activities;
+      final editedIdx = acts.indexWhere((a) => a.id == activityId);
+      if (editedIdx < 0) return day;
+
+      // --- Phase 1: xác định xem có activity ăn trưa nào bị ghim không ---
+      int? lunchIdx;
+      if (protectLunchWindow) {
+        for (int i = editedIdx + 1; i < acts.length; i++) {
+          final act = acts[i];
+          if (!_isLunchActivity(act)) continue;
+          final newStartMin = toMin(act.startTime) + deltaMinutes;
+          final newEndMin = toMin(act.endTime) + deltaMinutes;
+          if (newEndMin > _kLunchWindowEndMin || newStartMin < _kLunchWindowStartMin) {
+            lunchIdx = i;
+            lunchWasPinned = true;
+            lunchActivityTitle = act.title;
+            lunchActivityId = act.id;
+            break; // chỉ ghim activity ăn trưa đầu tiên vi phạm
+          }
+        }
+      }
+
+      // --- Phase 2: áp dụng tịnh tiến ---
+      final List<ItineraryActivityEntity> updatedActivities = [];
+      for (int i = 0; i < acts.length; i++) {
+        final activity = acts[i];
+
+        if (i < editedIdx) {
+          // Các activity trước activity đang chỉnh → giữ nguyên
+          updatedActivities.add(activity);
+          continue;
+        }
+
+        if (i == editedIdx) {
+          // Activity đang chỉnh
           if (shiftStartTimeOnly) {
-            // Đang chỉnh startTime → tịnh tiến cả activity hiện tại
-            return activity.copyWith(
+            updatedActivities.add(activity.copyWith(
               startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
               endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-            );
+            ));
           } else {
-            // Đang chỉnh endTime → chỉ cập nhật endTime của activity hiện tại
-            return activity.copyWith(
+            updatedActivities.add(activity.copyWith(
               endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-            );
+            ));
           }
+          continue;
         }
-        // Các activity phía sau → kiểm tra ràng buộc ăn trưa trước khi tịnh tiến
-        if (foundActivity) {
-          // Nếu đã ghim ăn trưa → dừng propagation, giữ nguyên
-          if (lunchWasPinned) return activity;
 
-          if (protectLunchWindow && _isLunchActivity(activity)) {
-            final newStartMin = toMin(activity.startTime) + deltaMinutes;
-            final newEndMin = toMin(activity.endTime) + deltaMinutes;
-            // Nếu tịnh tiến sẽ đẩy ăn trưa ra khỏi khung 11:30–13:30 → ghim lại
-            if (newStartMin > _kLunchWindowEndMin ||
-                newEndMin < _kLunchWindowStartMin) {
-              lunchWasPinned = true;
-              lunchActivityTitle = activity.title;
-              return activity; // không dịch chuyển
-            }
+        // i > editedIdx: các activity phía sau
+        if (lunchIdx != null && i == lunchIdx) {
+          // Activity ăn trưa bị ghim → giữ nguyên
+          updatedActivities.add(activity);
+          continue;
+        }
+
+        if (lunchIdx != null && i < lunchIdx) {
+          // Activity giữa activity được chỉnh và ăn trưa → tịnh tiến, clamp endTime
+          final newEndMin = toMin(activity.endTime) + deltaMinutes;
+          if (newEndMin > _kLunchWindowStartMin) {
+            updatedActivities.add(activity.copyWith(
+              startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+              endTime: _minutesToTimeStr(_kLunchWindowStartMin),
+            ));
+          } else {
+            updatedActivities.add(activity.copyWith(
+              startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+              endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+            ));
           }
-
-          return activity.copyWith(
-            startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
-            endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-          );
+          continue;
         }
-        return activity;
-      }).toList();
+
+        // i > lunchIdx (hoặc không có ăn trưa bị ghim) → tịnh tiến bình thường
+        updatedActivities.add(activity.copyWith(
+          startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+          endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+        ));
+      }
+
+      updatedActivities.sort((a, b) {
+        final aStart = toMin(a.startTime);
+        final bStart = toMin(b.startTime);
+        return aStart.compareTo(bStart);
+      });
 
       return day.copyWith(activities: updatedActivities);
     }).toList();
@@ -1363,6 +1407,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     return (
       lunchWasPinned: lunchWasPinned,
       lunchActivityTitle: lunchActivityTitle,
+      lunchActivityId: lunchActivityId,
     );
   }
 
@@ -1382,10 +1427,18 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
+  String _minutesToTimeStr(int totalMinutes) {
+    final clamped = totalMinutes.clamp(0, 24 * 60 - 1);
+    final h = clamped ~/ 60;
+    final m = clamped % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  }
+
   Future<List<String>> applyOptimizedDay(
     int dayNumber,
     bool allowReduceTime, {
     String? lockedActivityId,
+    String? pinnedLunchActivityId,
   }) async {
     if (state is! ItineraryLoaded || optimizeDayUseCase == null) return [];
     final currentState = state as ItineraryLoaded;
@@ -1423,8 +1476,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
                 'category': a.category,
                 'startTime': a.startTime,
                 'endTime': a.endTime,
-                'isLocked': a.id == lockedActivityId,
-                'lockedArriveTime': a.id == lockedActivityId
+                'isLocked': a.id == lockedActivityId || a.id == pinnedLunchActivityId,
+                'lockedArriveTime': (a.id == lockedActivityId || a.id == pinnedLunchActivityId)
                     ? a.startTime
                     : null,
               },
@@ -2097,6 +2150,40 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     return false;
   }
 
+  Future<String?> optimizeEditedDay({
+    required int dayNumber,
+    required String editedActivityId,
+  }) async {
+    try {
+      final itin = state is ItineraryLoaded ? (state as ItineraryLoaded).selectedItinerary : null;
+      if (itin == null) return 'Không tìm thấy lịch trình.';
+      
+      final dayIndex = itin.days.indexWhere((d) => d.dayNumber == dayNumber);
+      if (dayIndex == -1) return 'Không tìm thấy ngày này.';
+      
+      final day = itin.days[dayIndex];
+      
+      final newDays = await _optimizeSpecificDay(
+        itin.days,
+        dayNumber,
+        editedActivityId: editedActivityId,
+        visitDate: day.date,
+        allowReduceTime: true,
+      );
+      emit((state as ItineraryLoaded).copyWith(
+        selectedItinerary: itin.copyWith(
+          days: newDays,
+        ),
+      ));
+      return null;
+    } catch (e) {
+      if (e.toString().contains('SCHEDULE_FULL')) {
+        return 'Lịch trình quá tải, không thể tự động sắp xếp lại.';
+      }
+      return 'Lỗi khi sắp xếp lại: $e';
+    }
+  }
+
   Future<List<ItineraryDayEntity>> _optimizeSpecificDay(
     List<ItineraryDayEntity> days,
     int dayNumber, {
@@ -2104,6 +2191,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? dailyEndTime,
     bool allowReduceTime = false,
     String? newActivityId,
+    String? editedActivityId,
     DateTime? visitDate,
   }) async {
     String? visitDateStr;
@@ -2121,6 +2209,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           dailyEndTime: dailyEndTime,
           allowReduceTime: allowReduceTime,
           newActivityId: newActivityId,
+          editedActivityId: editedActivityId,
           visitDate: visitDateStr,
         );
         final optimized = result.optimized;

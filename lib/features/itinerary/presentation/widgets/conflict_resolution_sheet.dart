@@ -6,6 +6,7 @@ class ConflictResolutionSheet extends StatelessWidget {
   final bool canExtend;
   final bool canReduce;
   final bool canAddDay;
+  final String? errorMessage;
   final void Function(int) onSelect;
 
   const ConflictResolutionSheet({
@@ -13,6 +14,7 @@ class ConflictResolutionSheet extends StatelessWidget {
     required this.canExtend,
     required this.canReduce,
     required this.canAddDay,
+    this.errorMessage,
     required this.onSelect,
   });
 
@@ -54,17 +56,44 @@ class ConflictResolutionSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              'Lịch trình của bạn đã quá tải.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18, 
-                fontWeight: FontWeight.bold, 
-                height: 1.4,
-                color: Color(0xFF1E293B),
+            if (errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red[700], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Colors.red[800],
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 16),
+            ] else ...[
+              const Text(
+                'Lịch trình của bạn đã quá tải.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.bold, 
+                  height: 1.4,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Text(
               'Thời gian hoạt động trong ngày đã hết. Vui lòng chọn một trong các phương án sau:',
               textAlign: TextAlign.center,

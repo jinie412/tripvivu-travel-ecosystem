@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/notification_entity.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/violation_media_item.dart';
 
 part 'notification_model.g.dart';
 
@@ -39,6 +40,8 @@ class NotificationModel {
   final bool hasPlaceReview;
   @JsonKey(name: 'has_itinerary_review')
   final bool hasItineraryReview;
+  @JsonKey(name: 'violation_media')
+  final List<Map<String, dynamic>>? violationMedia;
 
   const NotificationModel({
     required this.id,
@@ -60,6 +63,7 @@ class NotificationModel {
     this.itineraryDetailId,
     this.hasPlaceReview = false,
     this.hasItineraryReview = false,
+    this.violationMedia,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +98,13 @@ class NotificationModel {
       normalizedJson['has_place_review'] ??= metadataJson['has_place_review'];
       normalizedJson['has_itinerary_review'] ??=
           metadataJson['has_itinerary_review'];
+      final violationMediaRaw = metadataJson['violation_media'];
+      if (violationMediaRaw is List) {
+        normalizedJson['violation_media'] = violationMediaRaw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
       final shareStatus = metadataJson['share_status'];
       if (shareStatus == 'accepted') {
         normalizedJson['action_type'] = 'itinerary_share_accepted';
@@ -145,5 +156,19 @@ class NotificationModel {
     itineraryDetailId: itineraryDetailId,
     hasPlaceReview: hasPlaceReview,
     hasItineraryReview: hasItineraryReview,
+    violationMedia: (violationMedia ?? const [])
+        .map(
+          (m) => ViolationMediaItem(
+            url: (m['url'] ?? '').toString(),
+            mediaType: m['media_type'] == 'video'
+                ? ViolationMediaType.video
+                : ViolationMediaType.image,
+            categories: ((m['categories'] as List?) ?? const [])
+                .map((c) => c.toString())
+                .toList(),
+          ),
+        )
+        .where((item) => item.url.isNotEmpty)
+        .toList(),
   );
 }

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -37,6 +39,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   RealtimeChannel? _notificationChannel;
+  StreamSubscription? _fcmSubscription;
   late final SavedCubit _savedCubit = sl<SavedCubit>();
   late final NotificationCubit _notificationCubit = sl<NotificationCubit>()
     ..loadNotifications();
@@ -140,7 +143,7 @@ class _MainShellState extends State<MainShell> {
 
             if (newRow['notification_id'] != null) {
               if (mounted) {
-                _notificationCubit.loadNotifications();
+                _notificationCubit.loadNotifications(silent: true);
               }
               try {
                 final notificationResponse = await Supabase.instance.client
@@ -180,10 +183,18 @@ class _MainShellState extends State<MainShell> {
           },
         )
         .subscribe();
+
+    // Thêm listener cho FCM để cập nhật tức thì nếu realtime của Supabase bị trễ
+    _fcmSubscription ??= FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (mounted) {
+        _notificationCubit.loadNotifications(silent: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _fcmSubscription?.cancel();
     if (_notificationChannel != null) {
       Supabase.instance.client.removeChannel(_notificationChannel!);
     }

@@ -153,7 +153,7 @@ class _TravelAdvisorAppState extends State<TravelAdvisorApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      title: 'GP Travel Advisor',
+      title: 'Tripvivu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: const Locale('vi'),

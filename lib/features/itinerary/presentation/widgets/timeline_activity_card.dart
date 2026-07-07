@@ -321,11 +321,15 @@ class TimelineActivityCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        label,
-                        style: AppTextStylesExt.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (isEditMode && !isTransition && !isAccommodationStart)
@@ -443,10 +447,8 @@ class TimelineActivityCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSizes.s8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -457,17 +459,21 @@ class TimelineActivityCard extends StatelessWidget {
                               size: 13,
                             ),
                             const SizedBox(width: 3),
-                            Text(
-                              '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
-                              style: AppTextStylesExt.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
+                            Flexible(
+                              child: Text(
+                                '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
+                                style: AppTextStylesExt.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                        if (activity.price > 0)
+                        if (activity.price > 0) ...[
+                          const SizedBox(height: 4),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -477,17 +483,21 @@ class TimelineActivityCard extends StatelessWidget {
                                 color: Color(0xFF6366F1),
                               ),
                               const SizedBox(width: 3),
-                              Text(
-                                _priceWithScope(),
-                                style: AppTextStylesExt.bodySmall.copyWith(
-                                  color: const Color(0xFF6366F1),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11,
+                              Flexible(
+                                child: Text(
+                                  _priceWithScope(),
+                                  style: AppTextStylesExt.bodySmall.copyWith(
+                                    color: const Color(0xFF6366F1),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
-                          )
-                        else if (activity.isFree)
+                          ),
+                        ] else if (activity.isFree) ...[
+                          const SizedBox(height: 4),
                           Text(
                             'Miễn phí',
                             style: AppTextStylesExt.bodySmall.copyWith(
@@ -496,6 +506,7 @@ class TimelineActivityCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
+                        ],
                       ],
                     ),
                     // ── Tracking: badge "Đã ghé" hoặc nút "Tôi đã đến" ──────
@@ -520,18 +531,18 @@ class TimelineActivityCard extends StatelessWidget {
     final bool backendReviewed = hasReview == true;
     final bool showAsReviewed = backendReviewed || hasUserRated;
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _cardActionButton(
           icon: Icons.open_in_new_rounded,
-          label: 'Xem chi ti\u1ebft \u0111\u1ecba \u0111i\u1ec3m',
+          label: 'Xem chi tiết địa điểm',
           color: const Color(0xFF2563EB),
           onTap: onViewDetailTap ?? onCardLongPress,
         ),
-        // Hi\u1ec7n n\u00fat khi \u0111\u00e3 gh\u00e9 th\u0103m ho\u1eb7c \u0111\u00e3 c\u00f3 review t\u1eeb backend
-        if (canReview && (_isVisited || backendReviewed))
+        // Hiện nút khi đã ghé thăm hoặc đã có review từ backend
+        if (canReview && (_isVisited || backendReviewed)) ...[
+          const SizedBox(height: 6),
           _cardActionButton(
             icon: backendReviewed
                 ? Icons.visibility_rounded
@@ -539,16 +550,17 @@ class TimelineActivityCard extends StatelessWidget {
                       ? Icons.star_rounded
                       : Icons.rate_review_rounded),
             label: backendReviewed
-                ? 'Xem \u0111\u00e1nh gi\u00e1'
+                ? 'Xem đánh giá'
                 : (showAsReviewed
-                      ? '\u0110\u00e3 \u0111\u00e1nh gi\u00e1 ${userRating?.toStringAsFixed(1) ?? ''}'
+                      ? 'Đã đánh giá ${userRating?.toStringAsFixed(1) ?? ''}'
                       : isOpeningReview
-                      ? '\u0110ang m\u1edf'
-                      : '\u0110\u00e1nh gi\u00e1'),
+                      ? 'Đang mở'
+                      : 'Đánh giá'),
             color: const Color(0xFF10B981),
             onTap: isOpeningReview ? null : onRateTap,
             isLoading: isOpeningReview,
           ),
+        ],
       ],
     );
   }

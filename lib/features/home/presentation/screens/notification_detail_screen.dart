@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:video_player/video_player.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 import 'package:travel_advisor_mobile/features/home/domain/entities/notification_entity.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/violation_media_item.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
 import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_state.dart';
 import 'package:travel_advisor_mobile/features/review/presentation/cubit/review_cubit.dart';
@@ -75,6 +78,10 @@ class NotificationDetailScreen extends StatelessWidget {
             final itineraryShareResponseLabel =
                 _itineraryShareResponseLabel(notification);
 
+            final violatingMedia = notification.violationMedia
+                .where((m) => m.categories.isNotEmpty)
+                .toList();
+
             return RefreshIndicator(
               onRefresh: () => context
                   .read<NotificationCubit>()
@@ -132,6 +139,10 @@ class NotificationDetailScreen extends StatelessWidget {
                   const SizedBox(height: AppSizes.s12),
 
                   _buildContentText(notification.content, isViolation),
+                  if (violatingMedia.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.s16),
+                    _ViolationMediaSection(items: violatingMedia),
+                  ],
                   if (isViolation) ...[
                     const SizedBox(height: AppSizes.s16),
                     Text(
@@ -489,6 +500,243 @@ class _DetailMessage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ViolationMediaSection extends StatelessWidget {
+  final List<ViolationMediaItem> items;
+
+  const _ViolationMediaSection({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hình ảnh/video vi phạm',
+          style: AppTextStyles.body.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) =>
+                _ViolationMediaThumb(item: items[index]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ViolationMediaThumb extends StatelessWidget {
+  final ViolationMediaItem item;
+
+  const _ViolationMediaThumb({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = item.mediaType == ViolationMediaType.video;
+
+    return GestureDetector(
+      onTap: () => showDialog(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.88),
+        builder: (_) => _ViolationMediaPreviewDialog(item: item),
+      ),
+      child: Container(
+        width: 96,
+        height: 96,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (isVideo)
+              Container(color: const Color(0xFF111827))
+            else
+              NetImage(url: item.url, fit: BoxFit.cover),
+            if (isVideo)
+              Container(color: Colors.black.withValues(alpha: 0.18)),
+            if (isVideo)
+              const Center(
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            if (item.categories.isNotEmpty)
+              Positioned(
+                left: 4,
+                bottom: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Vi phạm: ${item.categories.first}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViolationMediaPreviewDialog extends StatefulWidget {
+  final ViolationMediaItem item;
+
+  const _ViolationMediaPreviewDialog({required this.item});
+
+  @override
+  State<_ViolationMediaPreviewDialog> createState() =>
+      _ViolationMediaPreviewDialogState();
+}
+
+class _ViolationMediaPreviewDialogState
+    extends State<_ViolationMediaPreviewDialog> {
+  VideoPlayerController? _controller;
+
+  bool get _isVideo => widget.item.mediaType == ViolationMediaType.video;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isVideo) {
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.item.url),
+      );
+      _controller = controller;
+      controller.initialize().then((_) {
+        if (mounted) {
+          setState(() {});
+          controller.play();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = widget.item.categories;
+
+    return Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: _isVideo ? _buildVideo() : _buildImage(),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.55),
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Icon(Icons.close, color: Colors.white, size: 26),
+                  ),
+                ),
+              ),
+            ),
+            if (categories.isNotEmpty)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 24,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Vi phạm: ${categories.join(', ')}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    return InteractiveViewer(
+      minScale: 1,
+      maxScale: 4,
+      child: NetImage(
+        url: widget.item.url,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+
+  Widget _buildVideo() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return const CircularProgressIndicator(color: Colors.white);
+    }
+    return GestureDetector(
+      onTap: () => setState(() {
+        controller.value.isPlaying ? controller.pause() : controller.play();
+      }),
+      child: AspectRatio(
+        aspectRatio: controller.value.aspectRatio,
+        child: VideoPlayer(controller),
       ),
     );
   }

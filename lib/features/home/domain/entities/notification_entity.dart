@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'violation_media_item.dart';
+
 part 'notification_entity.freezed.dart';
 
 @freezed
@@ -20,5 +22,6 @@ class NotificationEntity with _$NotificationEntity {
     String? itineraryDetailId,
     @Default(false) bool hasPlaceReview,
     @Default(false) bool hasItineraryReview,
+    @Default(<ViolationMediaItem>[]) List<ViolationMediaItem> violationMedia,
   }) = _NotificationEntity;
 }

@@ -112,7 +112,10 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       destinationCity = itin.destination;
       for (final day in itin.days) {
         for (final act in day.activities) {
-          existingIds.add(act.placeId ?? act.id);
+          final String id = act.placeId ?? act.id;
+          if (id.isNotEmpty) {
+            existingIds.add(id);
+          }
         }
       }
       try {
@@ -916,7 +919,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                 }
 
                 if (hasViolation) {
-                  bool? confirm = await showDialog<bool>(
+                  int? confirm = await showDialog<int>(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text(
@@ -927,34 +930,71 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                         ),
                       ),
                       content: Text(
-                        '$violationMsg\n\nBạn có chắc chắn muốn tiếp tục chỉnh sửa không?',
+                        '$violationMsg\n\nBạn muốn sắp xếp lại lịch trình để không vi phạm không?',
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () => Navigator.pop(context, 0),
                           child: const Text(
                             'Hủy',
                             style: TextStyle(color: Colors.grey),
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () => Navigator.pop(context, 1),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
+                            backgroundColor: AppColors.primary,
                             elevation: 0,
                           ),
                           child: const Text(
-                            'Tiếp tục',
+                            'Sắp xếp lại',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
                     ),
                   );
-                  if (confirm != true) return;
+                  if (confirm == null || confirm == 0) return;
+                  if (confirm == 1) {
+                    if (mounted) {
+                      cubit.updateActivityTimesWithShift(
+                        activityId: activity.id,
+                        deltaMinutes: deltaMin,
+                        shiftStartTimeOnly: isStart,
+                      );
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đang tối ưu lại lịch trình...'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+
+                      final error = await cubit.optimizeEditedDay(
+                        dayNumber: _selectedDay,
+                        editedActivityId: activity.id,
+                      );
+                      
+                      if (error != null && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                        // Revert the time shift locally if it failed
+                        cubit.updateActivityTimesWithShift(
+                          activityId: activity.id,
+                          deltaMinutes: -deltaMin,
+                          shiftStartTimeOnly: isStart,
+                        );
+                      }
+                    }
+                    return;
+                  }
                 }
 
                 final lastActivity = dayData.activities.last;
@@ -988,17 +1028,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                           );
                           if (mounted) {
                             if (pinResult.lunchWasPinned) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Đã cập nhật. Bữa trưa "${pinResult.lunchActivityTitle}" được giữ nguyên trong khung 11:30–13:30.',
-                                  ),
-                                  backgroundColor: const Color(0xFFF59E0B),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
+                              _handleLunchPinnedOptimization(
+                                cubit,
+                                activity.id,
+                                pinResult.lunchActivityId!,
+                                pinResult.lunchActivityTitle ?? 'Ăn trưa',
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1018,7 +1052,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                         } else if (option == 2) {
                           // Giảm thời gian
                           // Áp dụng tịnh tiến cục bộ trước để lấy thông số bị lố
-                          cubit.updateActivityTimesWithShift(
+                          final pinResult = cubit.updateActivityTimesWithShift(
                             activityId: activity.id,
                             deltaMinutes: deltaMin,
                             shiftStartTimeOnly: isStart,
@@ -1035,6 +1069,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                               _selectedDay,
                               true,
                               lockedActivityId: activity.id,
+                              pinnedLunchActivityId: pinResult.lunchWasPinned ? pinResult.lunchActivityId : null,
                             );
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1065,109 +1100,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                                 );
                                 if (!mounted) return;
 
-                                showDialog(
-                                  context: context,
-                                  builder: (ctx) => Dialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(24),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.timer_outlined,
-                                            color: AppColors.primary,
-                                            size: 48,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          const Text(
-                                            'Chi tiết giảm giờ',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Flexible(
-                                            child: SingleChildScrollView(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: mappedNotes
-                                                    .map(
-                                                      (n) => Padding(
-                                                        padding:
-                                                            const EdgeInsets.only(
-                                                              bottom: 8.0,
-                                                            ),
-                                                        child: Row(
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            const Text(
-                                                              '• ',
-                                                              style: TextStyle(
-                                                                fontSize: 15,
-                                                                color: AppColors
-                                                                    .textSecondary,
-                                                                height: 1.4,
-                                                              ),
-                                                            ),
-                                                            Expanded(
-                                                              child: Text(
-                                                                n,
-                                                                style: const TextStyle(
-                                                                  fontSize: 15,
-                                                                  color: AppColors
-                                                                      .textSecondary,
-                                                                  height: 1.4,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    )
-                                                    .toList(),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: ElevatedButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primary,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 14,
-                                                    ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                elevation: 0,
-                                              ),
-                                              child: const Text(
-                                                'Đóng',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
+                                _showOptimizationNotes(context, mappedNotes);
                               }
                             }
                           } catch (e) {
@@ -1201,17 +1134,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               shiftStartTimeOnly: isStart,
             );
             if (mounted && pinResult.lunchWasPinned) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Bữa trưa "${pinResult.lunchActivityTitle}" được giữ nguyên trong khung giờ 11:30–13:30.',
-                  ),
-                  backgroundColor: const Color(0xFFF59E0B),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+              _handleLunchPinnedOptimization(
+                cubit,
+                activity.id,
+                pinResult.lunchActivityId!,
+                pinResult.lunchActivityTitle ?? 'Ăn trưa',
               );
             }
             return;
@@ -1291,6 +1218,147 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     }
   }
 
+  void _showOptimizationNotes(BuildContext context, List<String> mappedNotes) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.timer_outlined,
+                color: AppColors.primary,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Chi tiết tối ưu',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: mappedNotes
+                        .map(
+                          (n) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '• ',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: AppColors.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    n,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: AppColors.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Đóng',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleLunchPinnedOptimization(
+    ItineraryCubit cubit,
+    String lockedActivityId,
+    String pinnedLunchActivityId,
+    String lunchTitle,
+  ) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Đã đụng giờ ăn trưa "$lunchTitle". Đang tự động tối ưu lại lịch trình...',
+        ),
+        backgroundColor: const Color(0xFFF59E0B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+    try {
+      final notes = await cubit.applyOptimizedDay(
+        _selectedDay,
+        true,
+        lockedActivityId: lockedActivityId,
+        pinnedLunchActivityId: pinnedLunchActivityId,
+      );
+      if (mounted && notes.isNotEmpty) {
+        final state = cubit.state;
+        if (state is ItineraryLoaded && state.selectedItinerary != null) {
+          final dayData = state.selectedItinerary!.days.firstWhere(
+            (d) => d.dayNumber == _selectedDay,
+          );
+          final mappedNotes = notes.map((note) {
+            String newNote = note;
+            for (var a in dayData.activities) {
+              if (newNote.contains(a.id)) {
+                newNote = newNote.replaceAll(a.id, a.title);
+              }
+            }
+            return newNote;
+          }).toList();
+
+          await Future.delayed(const Duration(milliseconds: 600));
+          if (!mounted) return;
+          _showOptimizationNotes(context, mappedNotes);
+        }
+      }
+    } catch (_) {}
+  }
+
   double _calcDistance(double lat1, double lng1, double lat2, double lng2) {
     const r = 6371.0;
     final dLat = (lat2 - lat1) * pi / 180;
@@ -1314,7 +1382,10 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       destinationCity = state.selectedItinerary!.destination;
       for (final day in state.selectedItinerary!.days) {
         for (final act in day.activities) {
-          existingIds.add(act.placeId ?? act.id);
+          final String id = act.placeId ?? act.id;
+          if (id.isNotEmpty) {
+            existingIds.add(id);
+          }
         }
       }
     }
@@ -1933,6 +2004,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     required bool canExtend,
     required bool canReduce,
     required bool canAddDay,
+    String? errorMessage,
   }) {
     showModalBottomSheet(
       context: context,
@@ -1942,6 +2014,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         canExtend: canExtend,
         canReduce: canReduce,
         canAddDay: canAddDay,
+        errorMessage: errorMessage,
         onSelect: (option) async {
           Navigator.pop(ctx);
           if (option == 0) return; // Hủy bỏ
@@ -1977,17 +2050,13 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               extendTime: extendTime,
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                  'Vẫn không thể thêm địa điểm này sau khi điều chỉnh.',
-                ),
-                backgroundColor: Colors.redAccent,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            _showAddActivityConflictResolutionSheet(
+              context,
+              place: place,
+              canExtend: retrySuccess?.canExtend ?? false,
+              canReduce: retrySuccess?.canReduceTime ?? false,
+              canAddDay: retrySuccess?.canAddDay ?? false,
+              errorMessage: 'Vẫn không thể thêm sau khi điều chỉnh. Lý do: Thời gian đóng/mở cửa không khớp, hoặc lịch trình vẫn quá kín. Hãy thử phương án khác bên dưới.',
             );
           }
         },

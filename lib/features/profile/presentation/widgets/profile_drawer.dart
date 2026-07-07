@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -152,6 +152,24 @@ class _DrawerContent extends StatelessWidget {
                 ),
               ),
 
+            const SizedBox.shrink(),
+            _SectionSubHeader(
+              label: 'Chờ đánh giá',
+              trailing: profile.reviewPendingCount > 0
+                  ? _CountBadge(value: profile.reviewPendingCount)
+                  : null,
+            ),
+            if (pendingItems.isEmpty)
+              const _SectionEmptyHint(label: 'Không có đánh giá đang chờ')
+            else
+              ...pendingItems.map(
+                (e) => _ActivityTile(
+                  item: e,
+                  icon: Icons.image_outlined,
+                  isImage: true,
+                ),
+              ),
+
             InkWell(
               onTap: () {
                 Navigator.pop(context);
@@ -177,24 +195,6 @@ class _DrawerContent extends StatelessWidget {
                 ),
               ),
             ),
-
-            const SizedBox.shrink(),
-            _SectionSubHeader(
-              label: 'Chờ đánh giá',
-              trailing: profile.reviewPendingCount > 0
-                  ? _CountBadge(value: profile.reviewPendingCount)
-                  : null,
-            ),
-            if (pendingItems.isEmpty)
-              const _SectionEmptyHint(label: 'Không có đánh giá đang chờ')
-            else
-              ...pendingItems.map(
-                (e) => _ActivityTile(
-                  item: e,
-                  icon: Icons.image_outlined,
-                  isImage: true,
-                ),
-              ),
             const SizedBox(height: 16),
 
             // Am thuc
@@ -293,8 +293,8 @@ class _PillHeader extends StatelessWidget {
             : label;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.blobLight.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(24),
@@ -302,11 +302,11 @@ class _PillHeader extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               displayLabel,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 12,
@@ -575,6 +575,22 @@ class _FoodOrdersGrouped extends StatelessWidget {
               onTap: () => _showOrderDetail(context, dataSource, order),
             ),
           ),
+
+        _SectionSubHeader(
+          label: 'Lịch sử đơn hàng',
+          trailing: historyOrders.isNotEmpty
+              ? _CountBadge(value: historyOrders.length)
+              : null,
+        ),
+        if (historyOrders.isEmpty)
+          const _SectionEmptyHint(label: 'Chưa có đơn hàng nào')
+        else
+          ...historyOrders.map(
+            (order) => _TouristOrderCard(
+              order: order,
+              onTap: () => _showOrderDetail(context, dataSource, order),
+            ),
+          ),
         InkWell(
           onTap: () => _showAllOrders(context, dataSource),
           child: Align(
@@ -592,21 +608,6 @@ class _FoodOrdersGrouped extends StatelessWidget {
             ),
           ),
         ),
-        _SectionSubHeader(
-          label: 'Lịch sử đơn hàng',
-          trailing: historyOrders.isNotEmpty
-              ? _CountBadge(value: historyOrders.length)
-              : null,
-        ),
-        if (historyOrders.isEmpty)
-          const _SectionEmptyHint(label: 'Chưa có đơn hàng nào')
-        else
-          ...historyOrders.map(
-            (order) => _TouristOrderCard(
-              order: order,
-              onTap: () => _showOrderDetail(context, dataSource, order),
-            ),
-          ),
       ],
     );
   }

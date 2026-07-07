@@ -20,6 +20,12 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   String _currentSort = 'Mới nhất';
 
+  @override
+  void initState() {
+    super.initState();
+    context.read<NotificationCubit>().loadNotifications(silent: true);
+  }
+
   void _showSortOptions() {
     showModalBottomSheet(
       context: context,
@@ -295,6 +301,7 @@ class _NotificationTile extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _iconColorFor(notification).withValues(alpha: 0.14),
                   shape: BoxShape.circle,
