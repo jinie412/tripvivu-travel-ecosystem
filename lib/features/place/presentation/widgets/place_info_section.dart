@@ -5,21 +5,21 @@ import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 class PlaceInfoSection extends StatelessWidget {
   final String name;
   final double rating;
-  final String location;
+  final String? typeName;
   final List<String> vibes;
-  final VoidCallback? onLocationTap;
 
   const PlaceInfoSection({
     super.key,
     required this.name,
     required this.rating,
-    required this.location,
+    this.typeName,
     required this.vibes,
-    this.onLocationTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasType = typeName != null && typeName!.trim().isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -29,31 +29,31 @@ class PlaceInfoSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 22, 
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               _ratingBadge(rating),
             ],
           ),
-          const SizedBox(height: 16),
-          if (vibes.isNotEmpty)
+          if (hasType) ...[
+            const SizedBox(height: 12),
+            _typeChip(typeName!.trim()),
+          ],
+          if (vibes.isNotEmpty) ...[
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 8,
               children: vibes.map((vibe) => _vibeWidget(vibe)).toList(),
             ),
+          ],
         ],
       ),
     );
@@ -61,6 +61,7 @@ class PlaceInfoSection extends StatelessWidget {
 
   Widget _ratingBadge(double rating) {
     return Container(
+      constraints: const BoxConstraints(minWidth: 48),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.primary,
@@ -70,15 +71,39 @@ class PlaceInfoSection extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            rating.toString(),
+            _formatRating(rating),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Colors.white, 
+              color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
           ),
+          const SizedBox(height: 1),
           const Icon(Icons.star, color: Colors.amber, size: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _typeChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Color(0xFF2563EB),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          ),
       ),
     );
   }
@@ -94,11 +119,21 @@ class PlaceInfoSection extends StatelessWidget {
       child: Text(
         vibe,
         style: const TextStyle(
-          color: Color(0xFF0369A1), 
-          fontSize: 11, 
+          color: Color(0xFF0369A1),
+          fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
       ),
     );
+  }
+
+  String _formatRating(double value) {
+    if (value <= 0) {
+      return '0';
+    }
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
   }
 }

@@ -12,12 +12,15 @@ import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_de
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_contact_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_description_section.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_food_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_gallery_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_header.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_info_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/place_review_section.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/widgets/related_places_section.dart';
 import 'package:travel_advisor_mobile/core/widgets/map_bottom_sheet.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_food_items_screen.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_reviews_screen.dart';
 
 class PlaceDetailScreen extends StatefulWidget {
   final String placeId;
@@ -207,19 +210,12 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       },
                     ),
 
-                    // 2. Title, Rating, Location, Vibes
+                    // 2. Title, Rating, Type, Vibes
                     PlaceInfoSection(
                       name: place.name,
                       rating: place.rating,
-                      location: '${place.district}, ${place.city}',
+                      typeName: place.typeName,
                       vibes: place.vibes,
-                      onLocationTap: () => _showMap(
-                        context,
-                        place.latitude ?? 10.7766,
-                        place.longitude ?? 106.7032,
-                        place.name,
-                        place.address,
-                      ),
                     ),
 
                     // 3. Image Gallery
@@ -242,11 +238,38 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       ),
                     ),
 
+                    PlaceFoodSection(
+                      items: place.foodItems.take(5).toList(),
+                      onViewAll: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PlaceFoodItemsScreen(
+                              placeId: place.id,
+                              placeName: place.name,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
                     // 6. Reviews Section
                     PlaceReviewSection(
                       rating: place.rating,
                       totalReviews: place.totalReviews,
                       reviews: place.reviews,
+                      breakdown: place.reviewBreakdown,
+                      onViewAll: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PlaceReviewsScreen(
+                              placeId: place.id,
+                              placeName: place.name,
+                            ),
+                          ),
+                        );
+                      },
                     ),
 
                     // 7. Related Places - ONLY SHOW if showRelatedPlaces is true

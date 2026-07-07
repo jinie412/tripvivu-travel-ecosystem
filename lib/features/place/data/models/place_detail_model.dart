@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'place_food_item_model.dart';
 import 'place_model.dart';
 import 'place_review_model.dart';
 
@@ -16,6 +17,8 @@ class PlaceDetailModel {
   final double rating;
   @JsonKey(name: 'review_count')
   final int totalReviews;
+  @JsonKey(name: 'type_name')
+  final String? typeName;
   final List<String> vibes;
   final List<String> categories;
   final List<String> images;
@@ -27,7 +30,10 @@ class PlaceDetailModel {
   @JsonKey(name: 'open_hour_compressed')
   final String? openHourCompressed;
   final String? phone;
+  @JsonKey(name: 'food_items')
+  final List<PlaceFoodItemModel> foodItems;
   final List<PlaceReviewModel> reviews;
+  final Map<int, int> reviewBreakdown;
   @JsonKey(name: 'related_places')
   final List<PlaceModel> relatedPlaces;
   @JsonKey(name: 'is_favorite')
@@ -43,6 +49,7 @@ class PlaceDetailModel {
     required this.city,
     required this.rating,
     required this.totalReviews,
+    this.typeName,
     this.vibes = const [],
     this.categories = const [],
     this.images = const [],
@@ -51,7 +58,9 @@ class PlaceDetailModel {
     this.closingHours,
     this.openHourCompressed,
     this.phone,
+    this.foodItems = const [],
     this.reviews = const [],
+    this.reviewBreakdown = const {},
     this.relatedPlaces = const [],
     this.isFavorite = false,
     this.latitude,
@@ -70,6 +79,7 @@ class PlaceDetailModel {
     city: city,
     rating: rating,
     totalReviews: totalReviews,
+    typeName: typeName,
     vibes: vibes,
     categories: categories,
     images: images,
@@ -78,7 +88,9 @@ class PlaceDetailModel {
     closingHours: closingHours,
     openHourCompressed: openHourCompressed,
     phone: phone,
+    foodItems: foodItems.map((e) => e.toEntity()).toList(),
     reviews: reviews.map((e) => e.toEntity()).toList(),
+    reviewBreakdown: reviewBreakdown,
     relatedPlaces: relatedPlaces.map((e) => e.toEntity()).toList(),
     isFavorite: isFavorite,
     latitude: latitude,

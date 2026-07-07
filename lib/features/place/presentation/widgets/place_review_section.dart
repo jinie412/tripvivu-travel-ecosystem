@@ -9,18 +9,21 @@ class PlaceReviewSection extends StatelessWidget {
   final double rating;
   final int totalReviews;
   final List<PlaceReviewEntity> reviews;
+  final Map<int, int>? breakdown;
+  final VoidCallback? onViewAll;
 
   const PlaceReviewSection({
     super.key,
     required this.rating,
     required this.totalReviews,
     required this.reviews,
+    this.breakdown,
+    this.onViewAll,
   });
 
   @override
   Widget build(BuildContext context) {
-    final reviewCount = totalReviews > 0 ? totalReviews : reviews.length;
-    final breakdown = _buildBreakdown(reviews);
+    final effectiveBreakdown = breakdown ?? _buildBreakdown(reviews);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -30,30 +33,35 @@ class PlaceReviewSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Bài đánh giá',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 0),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              if (onViewAll != null)
+                TextButton(
+                  onPressed: onViewAll,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Xem tất cả',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  'Xem tất cả', 
-                  style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
-          _ratingSummaryBox(reviewCount, breakdown),
-          const SizedBox(height: 24),
-          ...reviews.asMap().entries.map((entry) => ReviewCard(
-            review: entry.value,
-          )),
+          _ratingSummaryBox(totalReviews, effectiveBreakdown),
+          if (reviews.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            ...reviews.take(3).map((review) => ReviewCard(review: review)),
+          ],
         ],
       ),
     );
@@ -85,34 +93,55 @@ class PlaceReviewSection extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    rating.toString(),
-                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 6),
-                    child: Text(
-                      '/5', 
-                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+          SizedBox(
+            width: 92,
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _formatRating(rating),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '/5',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _stars(rating.floor()),
+                const SizedBox(height: 8),
+                Text(
+                  '$reviewCount đánh giá',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              _stars(rating.floor()),
-              const SizedBox(height: 8),
-              Text(
-                '$reviewCount đánh giá',
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 32),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               children: [
@@ -135,8 +164,12 @@ class PlaceReviewSection extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            star.toString(), 
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+            star.toString(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -145,7 +178,8 @@ class PlaceReviewSection extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percent,
                 backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 minHeight: 5,
               ),
             ),
@@ -157,11 +191,25 @@ class PlaceReviewSection extends StatelessWidget {
 
   Widget _stars(int count) {
     return Row(
-      children: List.generate(5, (index) => Icon(
-        Icons.star,
-        size: 16,
-        color: index < count ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
-      )),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        5,
+        (index) => Icon(
+          Icons.star,
+          size: 16,
+          color: index < count ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
+        ),
+      ),
     );
+  }
+
+  String _formatRating(double value) {
+    if (value <= 0) {
+      return '0';
+    }
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
   }
 }

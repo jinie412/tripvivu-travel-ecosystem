@@ -16,6 +16,8 @@ class PlaceReviewModel {
   final String timeAgo;
   @JsonKey(name: 'review_text')
   final String reviewText;
+  final String? provider;
+  final String status;
   @JsonKey(name: 'review_images')
   final List<String> reviewImages;
 
@@ -26,6 +28,8 @@ class PlaceReviewModel {
     required this.rating,
     required this.timeAgo,
     required this.reviewText,
+    this.provider,
+    this.status = 'approved',
     this.reviewImages = const [],
   });
 
@@ -39,6 +43,8 @@ class PlaceReviewModel {
     rating: rating,
     timeAgo: timeAgo,
     reviewText: reviewText,
+    provider: provider,
+    status: status,
     reviewImages: reviewImages,
   );
 }
