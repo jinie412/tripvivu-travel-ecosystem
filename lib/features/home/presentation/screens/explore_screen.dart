@@ -357,13 +357,13 @@ class _ExploreViewState extends State<_ExploreView> {
     return s is ExploreLoaded ? s : null;
   }
 
-  Future<void> _setPlaceFavorite(String placeId, bool isFavorite) async {
+  Future<bool> _setPlaceFavorite(String placeId, bool isFavorite) async {
     try {
       await sl<FavoriteRemoteDataSource>().setPlaceFavorite(
         placeId,
         isFavorite,
       );
-      if (!mounted) return;
+      if (!mounted) return true;
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -376,8 +376,9 @@ class _ExploreViewState extends State<_ExploreView> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return true;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -386,6 +387,7 @@ class _ExploreViewState extends State<_ExploreView> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return false;
     }
   }
 

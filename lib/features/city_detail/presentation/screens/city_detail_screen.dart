@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,6 +24,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itin
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
 import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
+import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 class CityDetailScreen extends StatelessWidget {
@@ -103,7 +106,10 @@ class CityDetailScreen extends StatelessWidget {
               );
               return;
             }
-            Navigator.popUntil(context, (route) => route.isFirst);
+            final didSelectTab = MainShellTabController.selectTab(i);
+            if (didSelectTab) {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            }
           },
         ),
       ),
@@ -143,11 +149,49 @@ class _CityDetailContentState extends State<_CityDetailContent> {
   final PageController _activityController = PageController(viewportFraction: 0.45);
   final PageController _restaurantController = PageController(viewportFraction: 0.45);
   final PageController _hotelController = PageController(viewportFraction: 0.45);
+  final FavoriteRemoteDataSource _favoriteRemoteDataSource = sl<FavoriteRemoteDataSource>();
+  StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
 
   int _itineraryIndex = 0;
   int _activityIndex = 0;
   int _restaurantIndex = 0;
   int _hotelIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _favoriteSubscription = _favoriteRemoteDataSource.changes.listen((event) {
+      if (!mounted || event.type != FavoriteTargetType.place) return;
+      context.read<CityDetailCubit>().updatePlaceFavorite(
+            event.id,
+            event.isFavorite,
+          );
+    });
+  }
+
+  @override
+  void dispose() {
+    _favoriteSubscription?.cancel();
+    _itineraryController.dispose();
+    _activityController.dispose();
+    _restaurantController.dispose();
+    _hotelController.dispose();
+    super.dispose();
+  }
+
+  Future<bool> _setPlaceFavorite(String placeId, bool isFavorite) async {
+    final updatedFavorite = await _favoriteRemoteDataSource.setPlaceFavorite(
+      placeId,
+      isFavorite,
+    );
+    if (mounted) {
+      context.read<CityDetailCubit>().updatePlaceFavorite(
+            placeId,
+            updatedFavorite,
+          );
+    }
+    return updatedFavorite;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,16 +233,19 @@ class _CityDetailContentState extends State<_CityDetailContent> {
                       ? _ActivityTabContent(
                           activities: widget.filteredActivities,
                           filter: widget.activityFilter,
+                          onFavoriteChanged: _setPlaceFavorite,
                         )
                       : widget.activeTab == 3
                           ? _RestaurantTabContent(
                               restaurants: widget.filteredRestaurants,
                               filter: widget.restaurantFilter,
+                              onFavoriteChanged: _setPlaceFavorite,
                             )
                           : widget.activeTab == 4
                               ? _HotelTabContent(
                                   hotels: widget.filteredHotels,
                                   filter: widget.hotelFilter,
+                                  onFavoriteChanged: _setPlaceFavorite,
                                 )
                               : const Center(
                                   child: Text(
@@ -307,7 +354,7 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: ItineraryCard(item: item),
+                      child: ItineraryCard(item: item, showFavorite: false),
                     ),
                   );
                 },
@@ -356,7 +403,7 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: ActivityCard(item: item),
+                      child: ActivityCard(item: item, showFavorite: false),
                     ),
                   );
                 },
@@ -405,7 +452,7 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: RestaurantCard(item: item),
+                      child: RestaurantCard(item: item, showFavorite: false),
                     ),
                   );
                 },
@@ -454,7 +501,7 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: HotelCard(item: item),
+                      child: HotelCard(item: item, showFavorite: false),
                     ),
                   );
                 },
@@ -578,7 +625,13 @@ class _FilterHeader extends StatelessWidget {
 class _ActivityTabContent extends StatelessWidget {
   final List<CityActivity> activities;
   final ActivityFilter filter;
-  const _ActivityTabContent({required this.activities, required this.filter});
+  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+
+  const _ActivityTabContent({
+    required this.activities,
+    required this.filter,
+    required this.onFavoriteChanged,
+  });
 
   bool get _hasActiveFilter =>
       filter.categories.isNotEmpty ||
@@ -621,7 +674,10 @@ class _ActivityTabContent extends StatelessWidget {
                 ),
               );
             },
-            child: ActivityVerticalCard(item: item),
+            child: ActivityVerticalCard(
+              item: item,
+              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+            ),
           ),
         ),
         const SizedBox(height: 100),
@@ -647,7 +703,13 @@ class _ActivityTabContent extends StatelessWidget {
 class _RestaurantTabContent extends StatelessWidget {
   final List<CityRestaurant> restaurants;
   final RestaurantFilter filter;
-  const _RestaurantTabContent({required this.restaurants, required this.filter});
+  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+
+  const _RestaurantTabContent({
+    required this.restaurants,
+    required this.filter,
+    required this.onFavoriteChanged,
+  });
 
   bool get _hasActiveFilter =>
       filter.minRating != MinRating.all ||
@@ -689,7 +751,10 @@ class _RestaurantTabContent extends StatelessWidget {
                 ),
               );
             },
-            child: RestaurantVerticalCard(item: item),
+            child: RestaurantVerticalCard(
+              item: item,
+              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+            ),
           ),
         ),
         const SizedBox(height: 100),
@@ -715,7 +780,13 @@ class _RestaurantTabContent extends StatelessWidget {
 class _HotelTabContent extends StatelessWidget {
   final List<CityHotel> hotels;
   final HotelFilter filter;
-  const _HotelTabContent({required this.hotels, required this.filter});
+  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+
+  const _HotelTabContent({
+    required this.hotels,
+    required this.filter,
+    required this.onFavoriteChanged,
+  });
 
   bool get _hasActiveFilter =>
       filter.minRating != MinRating.all ||
@@ -756,7 +827,10 @@ class _HotelTabContent extends StatelessWidget {
                 ),
               );
             },
-            child: HotelVerticalCard(item: item),
+            child: HotelVerticalCard(
+              item: item,
+              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+            ),
           ),
         ),
         SizedBox(height: MediaQuery.of(context).padding.bottom + 20),

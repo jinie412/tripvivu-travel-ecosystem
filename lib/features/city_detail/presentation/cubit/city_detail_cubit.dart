@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/filter_enums.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/usecases/get_city_overview_usecase.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/cubit/city_detail_state.dart';
@@ -36,6 +37,80 @@ class CityDetailCubit extends Cubit<CityDetailState> {
   /// Chuyển tab
   void changeTab(int index) {
     state.mapOrNull(loaded: (s) => emit(s.copyWith(activeTab: index)));
+  }
+
+  void updatePlaceFavorite(String placeId, bool isFavorite) {
+    state.mapOrNull(
+      loaded: (s) {
+        final updatedOverview = s.overview.copyWith(
+          activities: _updateActivityFavorite(
+            s.overview.activities,
+            placeId,
+            isFavorite,
+          ),
+          restaurants: _updateRestaurantFavorite(
+            s.overview.restaurants,
+            placeId,
+            isFavorite,
+          ),
+          hotels: _updateHotelFavorite(s.overview.hotels, placeId, isFavorite),
+        );
+
+        emit(
+          s.copyWith(
+            overview: updatedOverview,
+            filteredActivities: _updateActivityFavorite(
+              s.filteredActivities,
+              placeId,
+              isFavorite,
+            ),
+            filteredRestaurants: _updateRestaurantFavorite(
+              s.filteredRestaurants,
+              placeId,
+              isFavorite,
+            ),
+            filteredHotels: _updateHotelFavorite(
+              s.filteredHotels,
+              placeId,
+              isFavorite,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  List<CityActivity> _updateActivityFavorite(
+    List<CityActivity> items,
+    String placeId,
+    bool isFavorite,
+  ) {
+    return items
+        .map((item) =>
+            item.id == placeId ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
+  }
+
+  List<CityRestaurant> _updateRestaurantFavorite(
+    List<CityRestaurant> items,
+    String placeId,
+    bool isFavorite,
+  ) {
+    return items
+        .map((item) =>
+            item.id == placeId ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
+  }
+
+  List<CityHotel> _updateHotelFavorite(
+    List<CityHotel> items,
+    String placeId,
+    bool isFavorite,
+  ) {
+    return items
+        .map((item) =>
+            item.id == placeId ? item.copyWith(isFavorite: isFavorite) : item)
+        .toList();
   }
 
   /// Sắp xếp chung cho cả 3 tab. Sort ổn định nhờ tie-break:

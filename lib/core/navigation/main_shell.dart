@@ -36,6 +36,17 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
+class MainShellTabController {
+  static void Function(int index)? _selectTab;
+
+  static bool selectTab(int index) {
+    final selectTab = _selectTab;
+    if (selectTab == null) return false;
+    selectTab(index);
+    return true;
+  }
+}
+
 class _MainShellState extends State<MainShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   RealtimeChannel? _notificationChannel;
@@ -194,6 +205,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    MainShellTabController._selectTab = null;
     _fcmSubscription?.cancel();
     if (_notificationChannel != null) {
       Supabase.instance.client.removeChannel(_notificationChannel!);
@@ -201,6 +213,29 @@ class _MainShellState extends State<MainShell> {
     _savedCubit.close();
     _notificationCubit.close();
     super.dispose();
+  }
+
+  void _handleBottomNavTap(BuildContext navigationContext, int i) {
+    if (i == 2) {
+      Navigator.of(navigationContext).push(
+        MaterialPageRoute(
+          builder: (context) => const TripPlannerScreen(),
+        ),
+      );
+      return;
+    }
+    if (i == 1) {
+      final cubit = navigationContext.read<ItineraryCubit>();
+      if (cubit.state is ItineraryInitial) cubit.loadData();
+    }
+    if (i == 4) {
+      final cubit = navigationContext.read<ProfileCubit>();
+      if (cubit.state is ProfileInitial) cubit.loadProfile();
+    }
+    if (i == 3) {
+      _savedCubit.loadSavedContent(silent: true);
+    }
+    navigationContext.read<TabCubit>().changeTab(i);
   }
 
   @override
@@ -216,6 +251,8 @@ class _MainShellState extends State<MainShell> {
       child: _TrackingRestorer(
         child: BlocBuilder<TabCubit, int>(
           builder: (context, currentIndex) {
+            MainShellTabController._selectTab = (i) =>
+                _handleBottomNavTap(context, i);
             // Bắt trường hợp Profile đã load xong trước khi Widget build (ví dụ Hot Reload)
             final currentState = context.read<ProfileCubit>().state;
             if (currentState is ProfileLoaded && _notificationChannel == null) {
@@ -236,28 +273,7 @@ class _MainShellState extends State<MainShell> {
                 body: IndexedStack(index: currentIndex, children: _pages),
                 bottomNavigationBar: SharedBottomNav(
                   currentIndex: currentIndex,
-                  onTap: (i) {
-                    if (i == 2) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const TripPlannerScreen(),
-                        ),
-                      );
-                      return;
-                    }
-                    if (i == 1) {
-                      final cubit = context.read<ItineraryCubit>();
-                      if (cubit.state is ItineraryInitial) cubit.loadData();
-                    }
-                    if (i == 4) {
-                      final cubit = context.read<ProfileCubit>();
-                      if (cubit.state is ProfileInitial) cubit.loadProfile();
-                    }
-                    if (i == 3) {
-                      _savedCubit.loadSavedContent(silent: true);
-                    }
-                    context.read<TabCubit>().changeTab(i);
-                  },
+                  onTap: (i) => _handleBottomNavTap(context, i),
                 ),
               ),
             );

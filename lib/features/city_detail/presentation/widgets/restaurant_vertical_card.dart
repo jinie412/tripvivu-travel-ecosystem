@@ -6,11 +6,13 @@ import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_
 
 class RestaurantVerticalCard extends StatefulWidget {
   final CityRestaurant item;
-  final ValueChanged<bool>? onFavoriteChanged;
+  final bool showFavorite;
+  final Future<bool> Function(bool isFavorite)? onFavoriteChanged;
 
   const RestaurantVerticalCard({
     super.key,
     required this.item,
+    this.showFavorite = true,
     this.onFavoriteChanged,
   });
 
@@ -20,6 +22,7 @@ class RestaurantVerticalCard extends StatefulWidget {
 
 class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
   late bool _isFavorite;
+  bool _isUpdatingFavorite = false;
 
   @override
   void initState() {
@@ -35,16 +38,52 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
     }
   }
 
-  void _toggleFavorite() {
+  Future<void> _toggleFavorite() async {
+    if (_isUpdatingFavorite) return;
+
+    final nextFavorite = !_isFavorite;
     setState(() {
-      _isFavorite = !_isFavorite;
+      _isFavorite = nextFavorite;
+      _isUpdatingFavorite = true;
     });
-    widget.onFavoriteChanged?.call(_isFavorite);
-    if (_isFavorite) {
+
+    try {
+      final success = await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
+      if (!success) {
+        if (!mounted) return;
+        setState(() {
+          _isFavorite = !nextFavorite;
+          _isUpdatingFavorite = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isUpdatingFavorite = false;
+      });
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextFavorite
+                ? 'Đã lưu vào danh mục yêu thích'
+                : 'Đã xoá khỏi danh mục yêu thích',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = !nextFavorite;
+        _isUpdatingFavorite = false;
+      });
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã lưu vào danh mục yêu thích'),
+          content: Text('Không thể cập nhật yêu thích. Vui lòng thử lại.'),
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
@@ -113,14 +152,18 @@ class _RestaurantVerticalCardState extends State<RestaurantVerticalCard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: _toggleFavorite,
-                            child: Icon(
-                              _isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: _isFavorite ? Colors.red : Colors.grey,
-                              size: 24,
+                          if (widget.showFavorite)
+                            GestureDetector(
+                              onTap: _toggleFavorite,
+                              child: Opacity(
+                                opacity: _isUpdatingFavorite ? 0.5 : 1,
+                                child: Icon(
+                                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                                  color: _isFavorite ? Colors.red : Colors.grey,
+                                  size: 24,
+                                ),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),

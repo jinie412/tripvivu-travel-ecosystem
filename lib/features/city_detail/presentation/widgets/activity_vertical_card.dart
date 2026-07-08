@@ -9,7 +9,7 @@ class ActivityVerticalCard extends StatefulWidget {
   final bool showFavorite;
   final bool showLocationIcon;
   final bool showDestinationStats;
-  final ValueChanged<bool>? onFavoriteChanged;
+  final Future<bool> Function(bool isFavorite)? onFavoriteChanged;
 
   const ActivityVerticalCard({
     super.key,
@@ -26,6 +26,7 @@ class ActivityVerticalCard extends StatefulWidget {
 
 class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
   late bool _isFavorite;
+  bool _isUpdatingFavorite = false;
 
   @override
   void initState() {
@@ -41,16 +42,52 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
     }
   }
 
-  void _toggleFavorite() {
+  Future<void> _toggleFavorite() async {
+    if (_isUpdatingFavorite) return;
+
+    final nextFavorite = !_isFavorite;
     setState(() {
-      _isFavorite = !_isFavorite;
+      _isFavorite = nextFavorite;
+      _isUpdatingFavorite = true;
     });
-    widget.onFavoriteChanged?.call(_isFavorite);
-    if (_isFavorite) {
+
+    try {
+      final success = await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
+      if (!success) {
+        if (!mounted) return;
+        setState(() {
+          _isFavorite = !nextFavorite;
+          _isUpdatingFavorite = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isUpdatingFavorite = false;
+      });
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nextFavorite
+                ? 'Đã lưu vào danh mục yêu thích'
+                : 'Đã xoá khỏi danh mục yêu thích',
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isFavorite = !nextFavorite;
+        _isUpdatingFavorite = false;
+      });
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã lưu vào danh mục yêu thích'),
+          content: Text('Không thể cập nhật yêu thích. Vui lòng thử lại.'),
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
@@ -124,12 +161,15 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                           if (widget.showFavorite)
                             GestureDetector(
                               onTap: _toggleFavorite,
-                              child: Icon(
-                                _isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: _isFavorite ? Colors.red : Colors.grey,
-                                size: 24,
+                              child: Opacity(
+                                opacity: _isUpdatingFavorite ? 0.5 : 1,
+                                child: Icon(
+                                  _isFavorite
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: _isFavorite ? Colors.red : Colors.grey,
+                                  size: 24,
+                                ),
                               ),
                             ),
                         ],

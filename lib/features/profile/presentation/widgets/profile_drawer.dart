@@ -155,9 +155,9 @@ class _DrawerContent extends StatelessWidget {
             const SizedBox.shrink(),
             _SectionSubHeader(
               label: 'Chờ đánh giá',
-              trailing: profile.reviewPendingCount > 0
-                  ? _CountBadge(value: profile.reviewPendingCount)
-                  : null,
+              trailing: _ReviewPendingBadge(
+                fallbackCount: profile.reviewPendingCount,
+              ),
             ),
             if (pendingItems.isEmpty)
               const _SectionEmptyHint(label: 'Không có đánh giá đang chờ')
@@ -578,9 +578,6 @@ class _FoodOrdersGrouped extends StatelessWidget {
 
         _SectionSubHeader(
           label: 'Lịch sử đơn hàng',
-          trailing: historyOrders.isNotEmpty
-              ? _CountBadge(value: historyOrders.length)
-              : null,
         ),
         if (historyOrders.isEmpty)
           const _SectionEmptyHint(label: 'Chưa có đơn hàng nào')
@@ -657,6 +654,26 @@ class _SectionEmptyHint extends StatelessWidget {
           fontStyle: FontStyle.italic,
         ),
       ),
+    );
+  }
+}
+
+class _ReviewPendingBadge extends StatelessWidget {
+  final int fallbackCount;
+
+  const _ReviewPendingBadge({required this.fallbackCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: sl<ReviewRepository>()
+          .getReviewCatalog()
+          .then((catalog) => catalog.pending.length),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? fallbackCount;
+        if (count <= 0) return const SizedBox();
+        return _CountBadge(value: count);
+      },
     );
   }
 }

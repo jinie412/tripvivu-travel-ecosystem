@@ -63,12 +63,14 @@ class _LikeButtonState extends State<LikeButton> {
 class ItineraryCard extends StatelessWidget {
   final CityItinerary item;
   final bool isFavorite;
+  final bool showFavorite;
   final ValueChanged<bool>? onFavoriteChanged;
 
   const ItineraryCard({
     super.key,
     required this.item,
     this.isFavorite = false,
+    this.showFavorite = true,
     this.onFavoriteChanged,
   });
 
@@ -118,14 +120,15 @@ class ItineraryCard extends StatelessWidget {
                 ),
               ),
             ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: LikeButton(
-                isLiked: isFavorite,
-                onChanged: onFavoriteChanged,
+            if (showFavorite)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: LikeButton(
+                  isLiked: isFavorite,
+                  onChanged: onFavoriteChanged,
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 12),
