@@ -139,7 +139,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               to="/admin/algorithm-history"
               className={`menu-item ${isAlgoHistoryActive ? 'active' : ''}`}>
               <History size={20} />
-              <span>Lịch sử chạy thuật toán</span>
+              <span>Lịch sử thiết lập và chạy thuật toán</span>
             </Link>
           </div>
         </div>

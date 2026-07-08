@@ -50,6 +50,17 @@ export interface PipelineHistoryItem {
 export interface PipelineHistoryResponse {
   history: PipelineHistoryItem[];
   total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PipelineHistoryParams {
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  algorithm?: string;
+  date?: string;
 }
 
 export type ReviewFilterScheduleFrequency = 'daily' | 'weekly' | 'monthly';
@@ -82,7 +93,7 @@ const formatDuration = (seconds: number): string => {
 const formatDateTime = (iso: string): string => {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return `${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+  return `${d.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' })}`;
 };
 
 export const formatPipelineDuration = formatDuration;
@@ -98,10 +109,14 @@ export const algorithmPipelineAPI = {
     return response.data;
   },
 
-  getHistory: async (limit = 20): Promise<PipelineHistoryResponse> => {
+  getHistory: async (
+    params: PipelineHistoryParams | number = {},
+  ): Promise<PipelineHistoryResponse> => {
+    const queryParams =
+      typeof params === 'number' ? { limit: params } : params;
     const response = await apiClient.get<PipelineHistoryResponse>(
       '/admin/algorithm-pipeline/history',
-      { params: { limit } },
+      { params: queryParams },
     );
     return response.data;
   },

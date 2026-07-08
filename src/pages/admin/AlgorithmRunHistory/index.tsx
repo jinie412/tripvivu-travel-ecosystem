@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, RefreshCw } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import {
   algorithmPipelineAPI,
@@ -14,6 +14,9 @@ const ALGORITHM_LABELS: Record<string, string> = {
   two_tower_retrieval: 'Lập lịch - Mô hình truy xuất địa điểm',
   hybrid_recommender: 'Gợi ý địa điểm',
 };
+
+const PAGE_SIZE = 10;
+const HISTORY_TITLE = 'Lịch sử thiết lập và chạy thuật toán';
 
 const getAlgorithmLabel = (name?: string): string => {
   if (!name) return 'Thuật toán';
@@ -35,6 +38,7 @@ const formatValue = (value: unknown): string => {
 };
 
 const getDetailText = (row: PipelineHistoryItem): string => {
+  if (!row.success || row.status === 'failed') return 'Đã xảy ra lỗi hệ thống';
   if (row.error) return row.error;
 
   const details = row.details ?? {};
@@ -87,13 +91,25 @@ export const AlgorithmRunHistory: React.FC = () => {
   const [rows, setRows] = useState<PipelineHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [algorithmFilter, setAlgorithmFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
-  const loadHistory = async () => {
+  const loadHistory = async (nextPage = page) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await algorithmPipelineAPI.getHistory(50);
+      const response = await algorithmPipelineAPI.getHistory({
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+        algorithm: algorithmFilter || undefined,
+        date: dateFilter || undefined,
+      });
       setRows(response.history);
+      setTotal(response.total);
+      setTotalPages(response.totalPages);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Không thể tải lịch sử chạy thuật toán';
@@ -105,23 +121,23 @@ export const AlgorithmRunHistory: React.FC = () => {
 
   useEffect(() => {
     void loadHistory();
-  }, []);
+  }, [page, algorithmFilter, dateFilter]);
 
   return (
     <div className="page-container arh-page">
       <header className="page-header">
         <div className="header-titles">
-          <h1 className="page-title">Lịch sử chạy thuật toán</h1>
+          <h1 className="page-title">{HISTORY_TITLE}</h1>
           <div className="breadcrumb">
             <span className="text-muted">Cài đặt</span>
             {' / '}
-            <span className="active-bread">Lịch sử chạy thuật toán</span>
+            <span className="active-bread">{HISTORY_TITLE}</span>
           </div>
         </div>
         <div className="header-actions">
           <button
             className="icon-btn"
-            onClick={loadHistory}
+            onClick={() => loadHistory(page)}
             disabled={loading}
             title="Tải lại"
             type="button"
@@ -137,6 +153,53 @@ export const AlgorithmRunHistory: React.FC = () => {
 
       <div className="page-content arh-content">
         <div className="arh-card">
+          <div className="arh-toolbar">
+            <label className="arh-filter">
+              <select
+                value={algorithmFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setAlgorithmFilter(event.target.value);
+                }}
+              >
+                <option value="">Thuật toán (Tất cả)</option>
+                {Object.entries(ALGORITHM_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="arh-filter arh-date-filter">
+              {!dateFilter && (
+                <span className="arh-date-placeholder">
+                  Ngày chạy (Tất cả)
+                </span>
+              )}
+              <input
+                type="date"
+                className={!dateFilter ? 'arh-date-input--empty' : undefined}
+                value={dateFilter}
+                onChange={(event) => {
+                  setPage(1);
+                  setDateFilter(event.target.value);
+                }}
+              />
+            </label>
+            {(algorithmFilter || dateFilter) && (
+              <button
+                className="arh-clear-btn"
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  setAlgorithmFilter('');
+                  setDateFilter('');
+                }}
+              >
+                Xóa lọc
+              </button>
+            )}
+          </div>
           <div className="arh-table-wrap">
             <table className="arh-table">
               <thead>
@@ -205,6 +268,38 @@ export const AlgorithmRunHistory: React.FC = () => {
                   })}
               </tbody>
             </table>
+          </div>
+          <div className="arh-pagination">
+            <span>
+              {total > 0
+                ? `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, total)} / ${total}`
+                : '0 / 0'}
+            </span>
+            <div className="arh-pagination__actions">
+              <button
+                className="icon-btn"
+                type="button"
+                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                disabled={loading || page <= 1}
+                title="Trang trước"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span>
+                Trang {totalPages > 0 ? page : 0} / {totalPages}
+              </span>
+              <button
+                className="icon-btn"
+                type="button"
+                onClick={() =>
+                  setPage((current) => Math.min(current + 1, totalPages))
+                }
+                disabled={loading || page >= totalPages || totalPages === 0}
+                title="Trang sau"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

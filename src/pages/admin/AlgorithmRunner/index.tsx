@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Loader2 } from 'lucide-react';
+import { Bell, CalendarClock, Clock3, Loader2, Play, Save } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import {
   algorithmPipelineAPI,
@@ -9,13 +9,15 @@ import './AlgorithmRunner.css';
 
 // ── Toggle ───────────────────────────────────────────────────────────────────
 
-const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({
-  checked, onChange,
+const Toggle: React.FC<{ checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }> = ({
+  checked, disabled = false, onChange,
 }) => (
   <button
+    type="button"
     role="switch"
     aria-checked={checked}
-    className={`ar-toggle${checked ? ' ar-toggle--on' : ''}`}
+    className={`ar-toggle${checked ? ' ar-toggle--on' : ''}${disabled ? ' ar-toggle--disabled' : ''}`}
+    disabled={disabled}
     onClick={() => onChange(!checked)}
   >
     <span className="ar-toggle__thumb" />
@@ -51,22 +53,41 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
   runTime, onRunTimeChange,
   isRunning, scheduleSaving = false, scheduleDirty = false, lastRun, onSaveSchedule, onRunNow,
 }) => (
-  <div className="ar-dropdown">
+  <div className={`ar-dropdown${!available ? ' ar-dropdown--muted' : ''}`}>
     <div className="ar-dropdown__header">
-      <span className="ar-dropdown__title">{title}</span>
+      <div className="ar-dropdown__title-wrap">
+        <div className="ar-dropdown__title-row">
+          <span className="ar-dropdown__title">{title}</span>
+          {/* <span className={`ar-badge ${available ? (autoEnabled ? 'ar-badge--active' : 'ar-badge--inactive') : 'ar-badge--disabled'}`}>
+            {!available ? 'Chưa khả dụng' : autoEnabled ? 'Tự động bật' : 'Tự động tắt'}
+          </span> */}
+        </div>
+      </div>
       <div className="ar-dropdown__toggle-wrap">
         <span className="ar-dropdown__auto-label">Tự động</span>
-        <Toggle checked={autoEnabled} onChange={onAutoChange} />
+        <Toggle checked={autoEnabled} disabled={!available} onChange={onAutoChange} />
       </div>
     </div>
 
     <div className="ar-dropdown__body">
-          {lastRun && (
-            <div className="ar-dropdown__last-run ar-dropdown__last-run--top">
-              <span className="ar-dropdown__last-run-label">Lần chạy cuối</span>
-              <span className="ar-dropdown__last-run-time">{lastRun}</span>
+          <div className="ar-dropdown__meta-row">
+            <div className="ar-dropdown__meta">
+              <Clock3 size={16} />
+              <div>
+                <span className="ar-dropdown__meta-label">Lần chạy cuối</span>
+                <span className="ar-dropdown__meta-value">{lastRun ?? 'Chưa ghi nhận'}</span>
+              </div>
             </div>
-          )}
+          </div>
+
+          <section className="ar-section ar-section--schedule">
+            <div className="ar-section__header">
+              <CalendarClock size={18} />
+              <div>
+                <h2>Lịch tự động</h2>
+                <p>{autoEnabled ? 'Đang chạy theo lịch đã thiết lập' : 'Đã tắt lịch tự động cho thuật toán này'}</p>
+              </div>
+            </div>
           <div className="ar-dropdown__schedule">
             <div className="ar-dropdown__field">
               <label className="ar-dropdown__field-label">ĐỊNH KỲ</label>
@@ -137,15 +158,23 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
                     Đang lưu...
                   </>
                 ) : (
-                  'Lưu thay đổi'
+                  <>
+                    <Save size={14} />
+                    Lưu thay đổi
+                  </>
                 )}
               </button>
             </div>
           )}
+          </section>
 
-          <div className="ar-dropdown__footer">
-            <div className="ar-dropdown__last-run">
-              <span className="ar-dropdown__last-run-label">Chạy thủ công</span>
+          <section className="ar-section ar-section--manual">
+            <div className="ar-section__header">
+              <Play size={18} />
+              <div>
+                <h2>Chạy thủ công</h2>
+                <p>{autoEnabled ? 'Tắt tự động để chạy ngay thủ công' : 'Kích hoạt thuật toán một lần theo nhu cầu'}</p>
+              </div>
             </div>
             <button
               className={`ar-btn-primary${(autoEnabled || !available || isRunning) ? ' ar-btn-primary--disabled' : ''}`}
@@ -159,10 +188,13 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
                   Đang chạy...
                 </>
               ) : (
-                'Chạy ngay'
+                <>
+                  <Play size={14} />
+                  Chạy ngay
+                </>
               )}
             </button>
-        </div>
+          </section>
     </div>
   </div>
 );

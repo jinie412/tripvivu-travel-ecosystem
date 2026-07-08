@@ -65,7 +65,7 @@
 
 .menu-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
   border-radius: var(--border-radius-md);
@@ -73,6 +73,16 @@
   font-weight: 500;
   font-size: 0.875rem;
   transition: all 0.2s ease;
+}
+
+.menu-item svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.menu-item span {
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .menu-item:hover {
