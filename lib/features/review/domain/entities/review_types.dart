@@ -174,6 +174,9 @@ class ReviewedPlaceItem {
   final List<String> tags;
   final List<String> mediaUrls;
   final DateTime? reviewedAt;
+  final String? reviewStatus;
+  final String? timeLabel;
+  final DateTime? expirationDate;
 
   const ReviewedPlaceItem({
     required this.title,
@@ -184,6 +187,9 @@ class ReviewedPlaceItem {
     required this.tags,
     required this.mediaUrls,
     required this.reviewedAt,
+    this.reviewStatus,
+    this.timeLabel,
+    this.expirationDate,
   });
 
   factory ReviewedPlaceItem.fromJson(Map<String, dynamic> json) =>
@@ -201,6 +207,11 @@ class ReviewedPlaceItem {
             .where((item) => item.isNotEmpty)
             .toList(),
         reviewedAt: DateTime.tryParse((json['reviewed_at'] ?? '').toString()),
+        reviewStatus: (json['status'] ?? json['review_status'])?.toString(),
+        timeLabel: json['time_label']?.toString(),
+        expirationDate: DateTime.tryParse(
+          (json['expiration_date'] ?? '').toString(),
+        ),
       );
 }
 
@@ -225,6 +236,8 @@ class ReviewCatalogItem {
   final List<String> mediaUrls;
   final String? reviewStatus;
   final String? itineraryStatus;
+  final String? timeLabel;
+  final DateTime? expirationDate;
   final List<ReviewedPlaceItem> placeReviews;
 
   const ReviewCatalogItem({
@@ -248,6 +261,8 @@ class ReviewCatalogItem {
     required this.mediaUrls,
     required this.reviewStatus,
     required this.itineraryStatus,
+    this.timeLabel,
+    this.expirationDate,
     required this.placeReviews,
   });
 
@@ -281,6 +296,10 @@ class ReviewCatalogItem {
             .toList(),
         reviewStatus: json['review_status']?.toString(),
         itineraryStatus: json['itinerary_status']?.toString(),
+        timeLabel: json['time_label']?.toString(),
+        expirationDate: DateTime.tryParse(
+          (json['expiration_date'] ?? '').toString(),
+        ),
         placeReviews: ((json['place_reviews'] as List?) ?? const [])
             .whereType<Map>()
             .map(

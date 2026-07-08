@@ -289,6 +289,34 @@ DateTime? _computeVisitDate(String startDate, String dayLabel) {
   return start.add(Duration(days: day - 1));
 }
 
+String? _reviewVisibilityNote({
+  required bool isPlace,
+  required String? reviewStatus,
+  required String? timeLabel,
+  required DateTime? expirationDate,
+}) {
+  switch (reviewStatus?.toLowerCase()) {
+    case 'pending':
+      return 'Đánh giá này đang được kiểm duyệt và chưa được hiển thị trên hệ thống.';
+    case 'approved':
+      if (!isPlace) return null;
+      if (timeLabel?.toLowerCase() == 'short-term') {
+        final date = expirationDate == null
+            ? 'không rõ ngày'
+            : DateFormat('dd/MM/yyyy').format(expirationDate);
+        return 'Đánh giá này phản ánh trải nghiệm tại một thời điểm nhất định nên chỉ hiển thị đến ngày $date.';
+      }
+      return null;
+    case 'hidden':
+      if (!isPlace) return null;
+      return 'Đánh giá này đã hết thời gian hiển thị và hiện không còn được hiển thị công khai trên hệ thống.';
+    case 'violation':
+      return 'Đánh giá này không được hiển thị do vi phạm quy định về nội dung đánh giá.';
+    default:
+      return null;
+  }
+}
+
 class ReviewCatalogScreen extends StatefulWidget {
   final int initialTab;
   const ReviewCatalogScreen({super.key, this.initialTab = 0});
@@ -498,6 +526,12 @@ class _ReviewItemSubtitle extends StatelessWidget {
     final contextLine = item.isItinerary
         ? 'Lịch trình du lịch ${item.destination ?? 'chưa xác định điểm đến'} từ ngày ${_date(item.startDate)} đến ngày ${_date(item.endDate)}'
         : 'Ghé thăm ngày ${_date(item.visitDate)} • Lịch trình ${item.itineraryTitle ?? 'không xác định'}';
+    final note = _reviewVisibilityNote(
+      isPlace: !item.isItinerary,
+      reviewStatus: item.reviewStatus,
+      timeLabel: item.timeLabel,
+      expirationDate: item.expirationDate,
+    );
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Column(
@@ -519,10 +553,45 @@ class _ReviewItemSubtitle extends StatelessWidget {
               ],
             ),
           ],
+          if (note != null) ...[
+            const SizedBox(height: 6),
+            _ReviewVisibilityNote(text: note),
+          ],
         ],
       ),
     );
   }
+}
+
+class _ReviewVisibilityNote extends StatelessWidget {
+  final String text;
+  const _ReviewVisibilityNote({required this.text});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(top: 1),
+        child: Icon(
+          Icons.info_outline_rounded,
+          size: 14,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      const SizedBox(width: 5),
+      Expanded(
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            height: 1.25,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 class ReviewReadOnlyScreen extends StatelessWidget {
@@ -579,6 +648,12 @@ class _ItineraryReviewDetail extends StatelessWidget {
         break;
       }
     }
+    final note = _reviewVisibilityNote(
+      isPlace: false,
+      reviewStatus: item.reviewStatus,
+      timeLabel: item.timeLabel,
+      expirationDate: item.expirationDate,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -640,6 +715,10 @@ class _ItineraryReviewDetail extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Center(child: _ReadOnlyStars(rating: item.rating ?? 0)),
+        if (note != null) ...[
+          const SizedBox(height: 12),
+          _ReviewVisibilityNote(text: note),
+        ],
         _ReviewTags(tags: item.tags),
         const SizedBox(height: 20),
         _ReviewContent(content: item.content),
@@ -684,86 +763,98 @@ class ReviewedPlaceCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(16),
-    onTap: () => Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            ReviewedPlaceScreen(place: place, itineraryTitle: itineraryTitle),
+  Widget build(BuildContext context) {
+    final note = _reviewVisibilityNote(
+      isPlace: true,
+      reviewStatus: place.reviewStatus,
+      timeLabel: place.timeLabel,
+      expirationDate: place.expirationDate,
+    );
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ReviewedPlaceScreen(place: place, itineraryTitle: itineraryTitle),
+        ),
       ),
-    ),
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 54,
-            height: 54,
-            child: NetImage(url: place.imageUrl, borderRadius: 12),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  place.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      size: 17,
-                      color: Color(0xFFFFA500),
-                    ),
-                    Text(' ${place.rating.toStringAsFixed(1)}'),
-                    if (place.visitDate != null)
-                      Text(
-                        '  •  ${DateFormat('dd/MM/yyyy').format(place.visitDate!)}',
-                      ),
-                  ],
-                ),
-                if (place.content?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    place.content!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-                if (place.tags.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    place.tags.join(' • '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ],
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 54,
+              height: 54,
+              child: NetImage(url: place.imageUrl, borderRadius: 12),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    place.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 17,
+                        color: Color(0xFFFFA500),
+                      ),
+                      Text(' ${place.rating.toStringAsFixed(1)}'),
+                      if (place.visitDate != null)
+                        Text(
+                          '  •  ${DateFormat('dd/MM/yyyy').format(place.visitDate!)}',
+                        ),
+                    ],
+                  ),
+                  if (note != null) ...[
+                    const SizedBox(height: 6),
+                    _ReviewVisibilityNote(text: note),
+                  ],
+                  if (place.content?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      place.content!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (place.tags.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      place.tags.join(' • '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _PlaceReviewDetail extends StatelessWidget {
@@ -775,6 +866,12 @@ class _PlaceReviewDetail extends StatelessWidget {
     final visit = item.visitDate == null
         ? 'Không rõ ngày ghé thăm'
         : 'Ghé thăm ${DateFormat('dd/MM/yyyy').format(item.visitDate!)}';
+    final note = _reviewVisibilityNote(
+      isPlace: true,
+      reviewStatus: item.reviewStatus,
+      timeLabel: item.timeLabel,
+      expirationDate: item.expirationDate,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -827,6 +924,10 @@ class _PlaceReviewDetail extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Center(child: _ReadOnlyStars(rating: item.rating ?? 0)),
+        if (note != null) ...[
+          const SizedBox(height: 12),
+          _ReviewVisibilityNote(text: note),
+        ],
         _ReviewTags(tags: item.tags),
         const SizedBox(height: 24),
         _ReviewContent(content: item.content),
@@ -1151,6 +1252,12 @@ class ReviewedPlaceScreen extends StatelessWidget {
     final visit = place.visitDate == null
         ? 'Không rõ ngày ghé thăm'
         : 'Ghé thăm ${DateFormat('dd/MM/yyyy').format(place.visitDate!)}';
+    final note = _reviewVisibilityNote(
+      isPlace: true,
+      reviewStatus: place.reviewStatus,
+      timeLabel: place.timeLabel,
+      expirationDate: place.expirationDate,
+    );
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -1214,6 +1321,10 @@ class ReviewedPlaceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Center(child: _ReadOnlyStars(rating: place.rating)),
+            if (note != null) ...[
+              const SizedBox(height: 12),
+              _ReviewVisibilityNote(text: note),
+            ],
             _ReviewTags(tags: place.tags),
             const SizedBox(height: 24),
             _ReviewContent(content: place.content),

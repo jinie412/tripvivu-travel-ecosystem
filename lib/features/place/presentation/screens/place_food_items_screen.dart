@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
@@ -199,6 +200,8 @@ class _FoodItemCard extends StatelessWidget {
 
   const _FoodItemCard({required this.item});
 
+  static final _priceFormat = NumberFormat.decimalPattern('vi_VN');
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -245,7 +248,9 @@ class _FoodItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  item.price > 0 ? '${item.price.round()} đ' : 'Liên hệ',
+                  item.price > 0
+                      ? '${_priceFormat.format(item.price.round())} đ'
+                      : 'Liên hệ',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

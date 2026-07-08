@@ -30,8 +30,10 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
   int _page = 1;
   int _limit = 10;
   int _total = 0;
+  int _filteredTotal = 0;
   int _pages = 0;
   double _average = 0;
+  int? _selectedRating;
   Map<int, int> _breakdown = const {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
 
   @override
@@ -76,6 +78,7 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
       final data = await sl<PlaceDataSource>().getPlaceReviews(
         widget.placeId,
         touristId: touristId,
+        rating: _selectedRating,
         page: _page,
         limit: _limit,
       );
@@ -89,6 +92,7 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
           _items.addAll(data.items);
         }
         _total = data.total;
+        _filteredTotal = data.filteredTotal;
         _pages = data.pages;
         _limit = data.limit;
         _page = data.page + 1;
@@ -105,6 +109,15 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
         _errorMessage = e.toString();
       });
     }
+  }
+
+  void _changeRatingFilter(int? rating) {
+    if (_selectedRating == rating) {
+      return;
+    }
+
+    setState(() => _selectedRating = rating);
+    _loadPage(reset: true);
   }
 
   @override
@@ -168,9 +181,25 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
             if (_items.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  _StateMessage(message: 'Địa điểm này chưa có đánh giá.'),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                children: [
+                  _SummaryBox(
+                    rating: _average,
+                    totalReviews: _total,
+                    breakdown: _breakdown,
+                  ),
+                  const SizedBox(height: 14),
+                  _RatingFilterBar(
+                    selectedRating: _selectedRating,
+                    breakdown: _breakdown,
+                    onChanged: _changeRatingFilter,
+                  ),
+                  const SizedBox(height: 56),
+                  _StateMessage(
+                    message: _selectedRating == null
+                        ? 'Địa điểm này chưa có đánh giá.'
+                        : 'Chưa có đánh giá ${_selectedRating!} sao.',
+                  ),
                 ],
               );
             }
@@ -185,6 +214,12 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
                   totalReviews: _total,
                   breakdown: _breakdown,
                 ),
+                const SizedBox(height: 14),
+                _RatingFilterBar(
+                  selectedRating: _selectedRating,
+                  breakdown: _breakdown,
+                  onChanged: _changeRatingFilter,
+                ),
                 const SizedBox(height: 18),
                 ..._items.map((review) => ReviewCard(review: review)),
                 if (_isLoadingMore)
@@ -198,7 +233,73 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
           },
         ),
       ),
-      bottomNavigationBar: _SummaryBar(total: _total),
+      bottomNavigationBar: _SummaryBar(
+        total: _total,
+        filteredTotal: _filteredTotal,
+        selectedRating: _selectedRating,
+      ),
+    );
+  }
+}
+
+class _RatingFilterBar extends StatelessWidget {
+  final int? selectedRating;
+  final Map<int, int> breakdown;
+  final ValueChanged<int?> onChanged;
+
+  const _RatingFilterBar({
+    required this.selectedRating,
+    required this.breakdown,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: 6,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final rating = index == 0 ? null : 6 - index;
+          final isSelected = selectedRating == rating;
+          final label = rating == null ? 'Tất cả' : '$rating';
+          final count = rating == null
+              ? breakdown.values.fold<int>(0, (sum, item) => sum + item)
+              : breakdown[rating] ?? 0;
+
+          return ChoiceChip(
+            selected: isSelected,
+            showCheckmark: false,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+            avatar: rating == null
+                ? null
+                : Icon(
+                    Icons.star,
+                    size: 14,
+                    color: isSelected ? Colors.white : Colors.amber,
+                  ),
+            label: Text(
+              count > 0 ? '$label ($count)' : label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : const Color(0xFF334155),
+              ),
+            ),
+            selectedColor: AppColors.primary,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+            ),
+            onSelected: (_) => onChanged(rating),
+          );
+        },
+      ),
     );
   }
 }
@@ -258,7 +359,7 @@ class _SummaryBox extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                _stars(rating.floor()),
+                _stars(rating),
                 const SizedBox(height: 8),
                 Text(
                   '$totalReviews đánh giá',
@@ -321,15 +422,40 @@ class _SummaryBox extends StatelessWidget {
     );
   }
 
-  Widget _stars(int count) {
+  Widget _stars(double rating) {
+    final roundedRating = (rating * 10).round() / 10;
     return Row(
       children: List.generate(
         5,
-        (index) => Icon(
-          Icons.star,
-          size: 16,
-          color: index < count ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
+        (index) => _fractionalStar(
+          (roundedRating - index).clamp(0.0, 1.0).toDouble(),
         ),
+      ),
+    );
+  }
+
+  Widget _fractionalStar(double fill) {
+    const size = 16.0;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          Icon(
+            Icons.star,
+            size: size,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
+          ClipRect(
+            clipper: _StarFillClipper(fill),
+            child: const Icon(
+              Icons.star,
+              size: size,
+              color: Colors.amber,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -343,6 +469,18 @@ class _SummaryBox extends StatelessWidget {
     }
     return value.toStringAsFixed(1);
   }
+}
+
+class _StarFillClipper extends CustomClipper<Rect> {
+  final double fill;
+
+  const _StarFillClipper(this.fill);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fill, size.height);
+
+  @override
+  bool shouldReclip(_StarFillClipper oldClipper) => oldClipper.fill != fill;
 }
 
 class _StateMessage extends StatelessWidget {
@@ -391,8 +529,14 @@ class _StateMessage extends StatelessWidget {
 
 class _SummaryBar extends StatelessWidget {
   final int total;
+  final int filteredTotal;
+  final int? selectedRating;
 
-  const _SummaryBar({required this.total});
+  const _SummaryBar({
+    required this.total,
+    required this.filteredTotal,
+    required this.selectedRating,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -403,7 +547,7 @@ class _SummaryBar extends StatelessWidget {
         border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
       ),
       child: Text(
-        total > 0 ? '$total đánh giá khả dụng' : 'Chưa có đánh giá khả dụng',
+        _summaryText,
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontSize: 13,
@@ -412,5 +556,15 @@ class _SummaryBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String get _summaryText {
+    if (selectedRating != null) {
+      return filteredTotal > 0
+          ? '$filteredTotal đánh giá ${selectedRating!} sao'
+          : 'Chưa có đánh giá ${selectedRating!} sao';
+    }
+
+    return total > 0 ? '$total đánh giá khả dụng' : 'Chưa có đánh giá khả dụng';
   }
 }

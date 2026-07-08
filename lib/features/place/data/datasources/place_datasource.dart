@@ -33,6 +33,7 @@ class PlaceReviewsPage {
   final String placeName;
   final double average;
   final int total;
+  final int filteredTotal;
   final Map<int, int> breakdown;
   final List<PlaceReviewEntity> items;
   final int page;
@@ -44,6 +45,7 @@ class PlaceReviewsPage {
     required this.placeName,
     required this.average,
     required this.total,
+    required this.filteredTotal,
     required this.breakdown,
     required this.items,
     required this.page,
@@ -62,6 +64,7 @@ abstract class PlaceDataSource {
   Future<PlaceReviewsPage> getPlaceReviews(
     String id, {
     String? touristId,
+    int? rating,
     int page,
     int limit,
   });
@@ -199,6 +202,7 @@ class MockPlaceDataSource implements PlaceDataSource {
   Future<PlaceReviewsPage> getPlaceReviews(
     String id, {
     String? touristId,
+    int? rating,
     int page = 1,
     int limit = 10,
   }) async {
@@ -210,6 +214,11 @@ class MockPlaceDataSource implements PlaceDataSource {
       final rating = review.rating.round().clamp(1, 5);
       breakdown[rating] = (breakdown[rating] ?? 0) + 1;
     }
+    final filteredItems = rating == null
+        ? items
+        : items
+            .where((item) => item.rating.round().clamp(1, 5) == rating)
+            .toList();
 
     return PlaceReviewsPage(
       placeId: id,
@@ -219,11 +228,12 @@ class MockPlaceDataSource implements PlaceDataSource {
         : items.fold<double>(0.0, (sum, item) => sum + item.rating) /
           items.length,
       total: items.length,
+      filteredTotal: filteredItems.length,
       breakdown: breakdown,
-      items: items.skip(offset).take(limit).toList(),
+      items: filteredItems.skip(offset).take(limit).toList(),
       page: page,
       limit: limit,
-      pages: items.isEmpty ? 0 : (items.length / limit).ceil(),
+      pages: filteredItems.isEmpty ? 0 : (filteredItems.length / limit).ceil(),
     );
   }
 }
@@ -443,6 +453,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
   Future<PlaceReviewsPage> getPlaceReviews(
     String id, {
     String? touristId,
+    int? rating,
     int page = 1,
     int limit = 10,
   }) async {
@@ -450,6 +461,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
       '/places/$id/reviews',
       queryParameters: {
         if (touristId != null && touristId.isNotEmpty) 'tourist_id': touristId,
+        if (rating != null) 'rating': rating,
         'page': page,
         'limit': limit,
       },
@@ -462,12 +474,14 @@ class RemotePlaceDataSource implements PlaceDataSource {
     final list = _asList(reviewsInfo['list']).map(_mapReview).map((item) => item.toEntity()).toList();
     final breakdown = _mapBreakdown(reviewsInfo['breakdown']);
     final pagination = (reviewsInfo['pagination'] as Map<String, dynamic>?) ?? const {};
+    final filteredTotal = (pagination['total'] as num?)?.toInt() ?? list.length;
 
     return PlaceReviewsPage(
       placeId: (place['id'] ?? id).toString(),
       placeName: (place['name'] ?? 'Địa điểm').toString(),
       average: ((reviewsInfo['average'] as num?) ?? 0).toDouble(),
       total: (reviewsInfo['total'] as num?)?.toInt() ?? list.length,
+      filteredTotal: filteredTotal,
       breakdown: breakdown,
       items: list,
       page: (pagination['page'] as num?)?.toInt() ?? page,

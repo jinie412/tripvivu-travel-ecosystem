@@ -126,7 +126,7 @@ class PlaceReviewSection extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                _stars(rating.floor()),
+                _stars(rating),
                 const SizedBox(height: 8),
                 Text(
                   '$reviewCount đánh giá',
@@ -189,16 +189,41 @@ class PlaceReviewSection extends StatelessWidget {
     );
   }
 
-  Widget _stars(int count) {
+  Widget _stars(double rating) {
+    final roundedRating = (rating * 10).round() / 10;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
         5,
-        (index) => Icon(
-          Icons.star,
-          size: 16,
-          color: index < count ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
+        (index) => _fractionalStar(
+          (roundedRating - index).clamp(0.0, 1.0).toDouble(),
         ),
+      ),
+    );
+  }
+
+  Widget _fractionalStar(double fill) {
+    const size = 16.0;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          Icon(
+            Icons.star,
+            size: size,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
+          ClipRect(
+            clipper: _StarFillClipper(fill),
+            child: const Icon(
+              Icons.star,
+              size: size,
+              color: Colors.amber,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -212,4 +237,16 @@ class PlaceReviewSection extends StatelessWidget {
     }
     return value.toStringAsFixed(1);
   }
+}
+
+class _StarFillClipper extends CustomClipper<Rect> {
+  final double fill;
+
+  const _StarFillClipper(this.fill);
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fill, size.height);
+
+  @override
+  bool shouldReclip(_StarFillClipper oldClipper) => oldClipper.fill != fill;
 }
