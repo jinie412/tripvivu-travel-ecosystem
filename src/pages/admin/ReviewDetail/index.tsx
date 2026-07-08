@@ -37,16 +37,29 @@ export const ReviewDetail: React.FC = () => {
   };
 
   /** Xử lý cập nhật phân loại (ngắn hạn / dài hạn) */
-  const handleUpdateClassification = (newType: 'Ngắn hạn' | 'Dài hạn') => {
+  const handleUpdateClassification = async (newType: 'Ngắn hạn' | 'Dài hạn') => {
     if (!review) return;
-    setReview({ ...review, classification: newType });
+    if (!id) return;
+
+    try {
+      const result = await reviewAPI.updateReviewTimeLabel(id, newType);
+      setReview({
+        ...review,
+        classification: newType,
+        status: result.status ?? review.status,
+      });
+    } catch (error) {
+      console.error('Failed to update review classification', error);
+      window.alert('Không thể cập nhật phân loại đánh giá. Vui lòng thử lại.');
+      throw error;
+    }
   };
 
   /** Xử lý cập nhật trạng thái (Đã duyệt / Vi phạm) */
-  const handleUpdateStatus = async (newStatus: 'Đã duyệt' | 'Vi phạm' | 'Chờ duyệt') => {
+  const handleUpdateStatus = async (newStatus: ReviewDetailInfo['status']) => {
     if (!review) return;
     if (!id) return;
-    if (newStatus === 'Chờ duyệt') {
+    if (!newStatus || newStatus === 'Chờ duyệt' || newStatus === 'Đã ẩn') {
       window.alert('Không thể chuyển trạng thái về Chờ duyệt.');
       return;
     }
@@ -107,6 +120,7 @@ export const ReviewDetail: React.FC = () => {
               <ReviewActions 
                 status={review.status || 'Đã duyệt'}
                 classification={review.classification}
+                hasContent={review.reviewType === 'with_content'}
                 onUpdateClassification={handleUpdateClassification}
                 onUpdateStatus={(status) => {
                   void handleUpdateStatus(status);

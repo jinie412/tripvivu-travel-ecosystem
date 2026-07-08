@@ -35,7 +35,7 @@ export const ItineraryReviewHeader: React.FC<ItineraryReviewHeaderProps> = ({ re
         <div className="rd-user-details">
           <h3 className="rd-user-name">{review.userName}</h3>
           <span className="rd-user-meta">
-            {review.totalReviews} đánh giá &nbsp;·&nbsp; {review.totalReports} report
+            {review.totalReviews} đánh giá &nbsp;·&nbsp; {review.totalReports} vi phạm
           </span>
         </div>
       </div>

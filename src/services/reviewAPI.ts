@@ -1,8 +1,9 @@
 import { apiClient } from './apiClient';
 import { Review, ReviewDetailInfo, ReviewStatsInfo, ItineraryReview, ItineraryReviewStatsInfo, ItineraryReviewDetailInfo } from '../types/review';
 
-type BackendReviewStatus = 'pending' | 'approved' | 'violation';
+type BackendReviewStatus = 'pending' | 'approved' | 'violation' | 'hidden';
 type BackendReviewClassification = 'short-term' | 'long-term' | 'need-action' | 'unclassified';
+type EditableBackendReviewClassification = 'short-term' | 'long-term';
 type BackendReviewDateSent = 'all' | 'today' | 'yesterday' | 'last_7_days' | 'last_30_days';
 
 interface BackendReviewItem {
@@ -11,6 +12,7 @@ interface BackendReviewItem {
   place_id: string;
   place_name: string;
   rating: number;
+  review_type: string;
   review_content: string | null;
   main_topic: string | null;
   time_label: string | null;
@@ -48,6 +50,7 @@ interface BackendReviewDetailResponse {
     address: string;
   };
   rating: number;
+  review_type: string;
   main_topic: string | null;
   time_label: string | null;
   review_content: string | null;
@@ -152,6 +155,9 @@ const formatDateTime = (value: string): string => {
 };
 
 const mapStatus = (status: BackendReviewStatus): Review['status'] => {
+  if (status === 'hidden') {
+    return 'Đã ẩn';
+  }
   if (status === 'approved') {
     return 'Đã duyệt';
   }
@@ -184,9 +190,13 @@ const mapReview = (item: BackendReviewItem): Review => ({
   locationName: item.place_name,
   content: item.review_content || '(Không có nội dung)',
   rating: item.rating,
+  reviewType: item.review_type,
   date: formatDateTime(item.created_at),
   status: mapStatus(item.status),
-  classification: mapClassification(item.time_label),
+  classification:
+    item.review_type === 'with_content'
+      ? mapClassification(item.time_label)
+      : undefined,
 });
 
 const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo => ({
@@ -198,12 +208,16 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   locationName: item.place.name,
   locationAddress: item.place.address,
   rating: item.rating,
+  reviewType: item.review_type,
   datetime: formatDateTime(item.created_at),
   content: item.review_content || '(Không có nội dung)',
   images: item.images.map((image) => image.url),
   status: mapStatus(item.status),
   violation_reason: item.violation_reason ?? null,
-  classification: mapClassification(item.time_label),
+  classification:
+    item.review_type === 'with_content'
+      ? mapClassification(item.time_label)
+      : 'Chưa phân loại',
   reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
   adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
@@ -237,6 +251,12 @@ const mapItineraryReviewDetail = (item: BackendItineraryReviewDetailResponse): I
 
 const toBackendStatus = (status: Review['status']): 'approved' | 'violation' => {
   return status === 'Vi phạm' ? 'violation' : 'approved';
+};
+
+const toBackendTimeLabel = (
+  classification: 'Ngắn hạn' | 'Dài hạn',
+): EditableBackendReviewClassification => {
+  return classification === 'Ngắn hạn' ? 'short-term' : 'long-term';
 };
 
 export const reviewAPI = {
@@ -304,6 +324,22 @@ export const reviewAPI = {
       status: 'violation',
       reason: reason || 'Đánh giá vi phạm chính sách nội dung.',
     });
+  },
+
+  updateReviewTimeLabel: async (
+    id: string,
+    classification: 'Ngắn hạn' | 'Dài hạn',
+  ): Promise<{ status?: Review['status'] }> => {
+    const response = await apiClient.put<{ status?: BackendReviewStatus }>(
+      `/admin/reviews/${id}/time-label`,
+      {
+        time_label: toBackendTimeLabel(classification),
+      },
+    );
+
+    return {
+      status: response.data.status ? mapStatus(response.data.status) : undefined,
+    };
   },
 };
 

@@ -6,8 +6,9 @@ export interface Review {
   locationName: string;
   content: string;
   rating: number;
+  reviewType?: string;
   date: string;
-  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
   classification?: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
 }
 
@@ -19,7 +20,7 @@ export interface ItineraryReview {
   content: string;
   rating: number;
   date: string;
-  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
 }
 
 export interface ItineraryReviewStatsInfo {
@@ -40,11 +41,12 @@ export interface ReviewDetailInfo {
   locationAddress: string;
   // Nội dung đánh giá
   rating: number;
+  reviewType?: string;
   datetime: string;
   content: string;
   images: string[];
   // Báo cáo vi phạm từ người dùng
-  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
   violation_reason?: string | null;
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
   reportCount: number;
@@ -75,7 +77,7 @@ export interface ItineraryReviewDetailInfo {
   content: string;
   images: string[];
   // Status / violations
-  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm';
+  status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
   violation_reason?: string | null;
   reportCount: number;
   reportReasons: string[];

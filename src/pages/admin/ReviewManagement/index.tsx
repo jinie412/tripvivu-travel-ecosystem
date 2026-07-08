@@ -38,6 +38,11 @@ const statusOptions = [
   { value: 'violation', label: 'Vi phạm' },
 ];
 
+const locationStatusOptions = [
+  ...statusOptions,
+  { value: 'hidden', label: 'Đã ẩn' },
+];
+
 const ratingOptions = [
   { value: 'all', label: 'Tất cả' },
   { value: '1', label: '1 sao' },
@@ -227,7 +232,7 @@ export const ReviewManagement: React.FC = () => {
             rating={rating}
             classificationOptions={classificationOptions}
             dateSentOptions={dateSentOptions}
-            statusOptions={statusOptions}
+            statusOptions={activeTab === 'location' ? locationStatusOptions : statusOptions}
             ratingOptions={ratingOptions}
             showClassification={activeTab === 'location'}
             searchPlaceholder={

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Review } from '../../../../types/review';
-import { Star, ChevronDown, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Star, ChevronDown, CheckCircle, AlertTriangle, EyeOff, Info } from 'lucide-react';
 
 interface ReviewTableProps {
   reviews: Review[];
@@ -23,6 +24,53 @@ const statusConfig: Record<Review['status'], { bg: string; text: string; dot: st
   'Chờ duyệt': { bg: '#fef3c7', text: '#b45309', dot: '#b45309', icon: <AlertTriangle size={13} /> },
   'Đã duyệt': { bg: '#ccfbf1', text: '#0f766e', dot: '#0f766e', icon: <CheckCircle size={13} /> },
   'Vi phạm':  { bg: '#fef2f2', text: '#ef4444', dot: '#ef4444', icon: <AlertTriangle size={13} /> },
+  'Đã ẩn': { bg: '#e2e8f0', text: '#475569', dot: '#64748b', icon: <EyeOff size={13} /> },
+};
+
+const ClassificationTooltip = () => {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLSpanElement>(null);
+
+  const showTooltip = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPosition({
+      top: rect.bottom + 10,
+      left: rect.left + rect.width / 2,
+    });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className="rv-info-tip"
+        tabIndex={0}
+        aria-label="Định nghĩa phân loại đánh giá"
+        onMouseEnter={showTooltip}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={showTooltip}
+        onBlur={() => setOpen(false)}
+      >
+        <Info size={14} />
+      </span>
+      {open &&
+        createPortal(
+          <div
+            className="rv-info-popover"
+            style={{ top: position.top, left: position.left }}
+            role="tooltip"
+          >
+            <strong>Ngắn hạn:</strong> đánh giá mô tả trải nghiệm một lần cụ thể, có thể là trường hợp ngoại lệ, không đại diện cho mọi lần.
+            <br />
+            <strong>Dài hạn:</strong> đánh giá mô tả đặc điểm thường trực của địa điểm.
+          </div>,
+          document.body,
+        )}
+    </>
+  );
 };
 
 /** Dropdown chỉnh trạng thái riêng lẻ */
@@ -43,6 +91,22 @@ const StatusDropdown: React.FC<{
   }, []);
 
   const cfg = statusConfig[current];
+
+  if (current === 'Đã ẩn') {
+    return (
+      <span
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '4px 10px', borderRadius: '100px',
+          backgroundColor: cfg.bg, color: cfg.text,
+          fontWeight: 600, fontSize: '0.78rem',
+        }}
+      >
+        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: cfg.dot, flexShrink: 0 }} />
+        {current}
+      </span>
+    );
+  }
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
@@ -140,7 +204,11 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
     </div>
   );
 
-  const renderClassification = (classification: string) => {
+  const renderClassification = (classification?: Review['classification']) => {
+    if (!classification) {
+      return <span className="rv-muted-dash">-</span>;
+    }
+
     let dotColor = '#64748b', bg = '#f1f5f9', text = '#64748b';
     if (classification === 'Ngắn hạn')       { dotColor = '#2563eb'; bg = '#dbeafe'; text = '#2563eb'; }
     else if (classification === 'Dài hạn')   { dotColor = '#7c3aed'; bg = '#ede9fe'; text = '#7c3aed'; }
@@ -173,7 +241,14 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
             <th>NỘI DUNG ĐÁNH GIÁ</th>
             <th>RATING</th>
             <th>NGÀY GỬI</th>
-            {showClassification && <th>PHÂN LOẠI</th>}
+            {showClassification && (
+              <th>
+                <span className="rv-th-with-tip">
+                  PHÂN LOẠI
+                  <ClassificationTooltip />
+                </span>
+              </th>
+            )}
             <th>TRẠNG THÁI</th>
           </tr>
         </thead>
@@ -223,7 +298,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                   <td data-label="Đánh giá">{renderStars(review.rating)}</td>
                   <td data-label="Ngày gửi"><span className="rv-date">{review.date}</span></td>
                   {showClassification && (
-                    <td data-label="Phân loại">{renderClassification(review.classification ?? 'Chưa phân loại')}</td>
+                    <td data-label="Phân loại">{renderClassification(review.classification)}</td>
                   )}
                   <td data-label="Trạng thái" onClick={(event) => event.stopPropagation()}>
                     <StatusDropdown

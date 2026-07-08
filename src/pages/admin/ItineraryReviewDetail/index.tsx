@@ -36,9 +36,9 @@ export const ItineraryReviewDetail: React.FC = () => {
     navigate('/admin/reviews?tab=itinerary');
   };
 
-  const handleUpdateStatus = async (newStatus: 'Đã duyệt' | 'Vi phạm' | 'Chờ duyệt') => {
+  const handleUpdateStatus = async (newStatus: ItineraryReviewDetailInfo['status']) => {
     if (!review || !id) return;
-    if (newStatus === 'Chờ duyệt') {
+    if (!newStatus || newStatus === 'Chờ duyệt' || newStatus === 'Đã ẩn') {
       window.alert('Không thể chuyển trạng thái về Chờ duyệt.');
       return;
     }

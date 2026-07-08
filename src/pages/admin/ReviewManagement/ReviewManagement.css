@@ -4,6 +4,7 @@
 .tab-container .location-filter-bar {
   flex-wrap: nowrap;
   gap: 10px;
+  overflow: visible;
 }
 
 .tab-container .filter-left {
@@ -68,6 +69,45 @@
   border-bottom: 1px solid var(--border-color);
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+.rv-th-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rv-info-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.rv-info-tip:hover,
+.rv-info-tip:focus {
+  color: var(--primary-blue);
+}
+
+.rv-info-popover {
+  position: fixed;
+  z-index: 10000;
+  width: 280px;
+  transform: translateX(-50%);
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  pointer-events: none;
 }
 
 .rv-table td {
@@ -179,6 +219,14 @@
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.rv-muted-dash {
+  display: inline-flex;
+  width: 100%;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }
 
 .review-date-dropdown {

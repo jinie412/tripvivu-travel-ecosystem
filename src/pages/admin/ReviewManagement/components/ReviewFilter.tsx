@@ -79,21 +79,19 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
       </div>
 
       <div className="filter-right">
-        {showClassification && (
-          <div className="dropdown">
-            <select
-              value={classification}
-              onChange={(event) => onClassificationChange(event.target.value)}
-              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
-            >
-              {classificationOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  Phân loại ({option.label})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="dropdown">
+          <select
+            value={rating}
+            onChange={(event) => onRatingChange(event.target.value)}
+            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
+          >
+            {ratingOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                Rating ({option.label})
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="dropdown review-date-dropdown">
           <select
             value={dateSent}
@@ -125,6 +123,21 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
             aria-hidden="true"
           />
         </div>
+        {showClassification && (
+          <div className="dropdown">
+            <select
+              value={classification}
+              onChange={(event) => onClassificationChange(event.target.value)}
+              style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
+            >
+              {classificationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  Phân loại ({option.label})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="dropdown">
           <select
             value={status}
@@ -134,19 +147,6 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 Trạng thái ({option.label})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="dropdown">
-          <select
-            value={rating}
-            onChange={(event) => onRatingChange(event.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer' }}
-          >
-            {ratingOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                Rating ({option.label})
               </option>
             ))}
           </select>
