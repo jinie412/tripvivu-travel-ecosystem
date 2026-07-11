@@ -8,6 +8,7 @@ import { SenderInfo } from './components/SenderInfo';
 import { GeneralInfo } from './components/GeneralInfo';
 import { LocationMap } from './components/LocationMap';
 import './LocationDetail.css';
+import Swal from 'sweetalert2';
 
 export const LocationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +66,7 @@ export const LocationDetail: React.FC = () => {
       setLocation(refreshed);
     } catch (error) {
       console.error('Failed to approve location', error);
-      window.alert('Không thể duyệt địa điểm. Vui lòng thử lại.');
+      Swal.fire({ text: 'Không thể duyệt địa điểm. Vui lòng thử lại.', icon: 'error' });
     }
   };
 
@@ -79,7 +80,7 @@ export const LocationDetail: React.FC = () => {
       setLocation(refreshed);
     } catch (error) {
       console.error('Failed to reject location', error);
-      window.alert('Không thể từ chối địa điểm. Vui lòng thử lại.');
+      Swal.fire({ text: 'Không thể từ chối địa điểm. Vui lòng thử lại.', icon: 'error' });
     }
   };
 

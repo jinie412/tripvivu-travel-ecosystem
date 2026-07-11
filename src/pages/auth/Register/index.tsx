@@ -9,6 +9,7 @@ import { supabase } from '../../../utils/supabase';
 
 // 2. Import apiClient
 import apiClient from '../../../utils/apiClient';
+import Swal from 'sweetalert2';
 
 const GoogleIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 48 48">
@@ -56,7 +57,7 @@ const handleGoogleLogin = async () => {
     if (error) throw error;
   } catch (err: any) {
     console.error('Lỗi đăng nhập Google:', err.message);
-    alert('Không thể kết nối với Google. Vui lòng thử lại.');
+    Swal.fire({ text: 'Không thể kết nối với Google. Vui lòng thử lại.', icon: 'error' });
   }
 };
 
@@ -79,17 +80,17 @@ const RegisterPage: React.FC = () => {
 
     // --- BƯỚC 1: VALIDATION CƠ BẢN Ở FRONTEND ---
     if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
-      alert('Vui lòng điền đầy đủ các trường thông tin bắt buộc.');
+      Swal.fire({ text: 'Vui lòng điền đầy đủ các trường thông tin bắt buộc.', icon: 'warning' });
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      alert('Mật khẩu và Xác nhận mật khẩu không khớp nhau!');
+      Swal.fire({ text: 'Mật khẩu và Xác nhận mật khẩu không khớp nhau!', icon: 'warning' });
       return;
     }
 
     if (!formData.agree) {
-      alert('Bạn phải đồng ý với các Điều khoản & Chính sách để tiếp tục.');
+      Swal.fire({ text: 'Bạn phải đồng ý với các Điều khoản & Chính sách để tiếp tục.', icon: 'warning' });
       return;
     }
 
@@ -110,7 +111,7 @@ const RegisterPage: React.FC = () => {
 
       // --- BƯỚC 3: XỬ LÝ KHI THÀNH CÔNG ---
       // response.data.message sẽ chứa câu: "Đăng ký tài khoản đối tác thành công..." từ BE trả về
-      alert(response.data.message || 'Đăng ký thành công!');
+      Swal.fire({ title: response.data.message || 'Đăng ký thành công!', icon: 'success', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2000 });
 
       // Chuyển hướng người dùng về trang đăng nhập
       navigate('/login');
@@ -120,9 +121,9 @@ const RegisterPage: React.FC = () => {
       if (error.response && error.response.data && error.response.data.message) {
         // Có thể BE trả về mảng các lỗi validation, hoặc chuỗi
         const errorMsg = Array.isArray(error.response.data.message) ? error.response.data.message[0] : error.response.data.message;
-        alert(`Lỗi đăng ký: ${errorMsg}`);
+        Swal.fire({ text: `Lỗi đăng ký: ${errorMsg}`, icon: 'error' });
       } else {
-        alert('Có lỗi xảy ra khi kết nối với máy chủ. Vui lòng thử lại sau.');
+        Swal.fire({ text: 'Có lỗi xảy ra khi kết nối với máy chủ. Vui lòng thử lại sau.', icon: 'error' });
       }
       console.error('Register error:', error);
     } finally {

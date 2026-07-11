@@ -249,6 +249,21 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+/* Fix video object-fit in fullscreen */
+video.rd-video-element::-webkit-media-controls-enclosure {
+  overflow: hidden;
+}
+
+video.rd-video-element:-webkit-full-screen {
+  object-fit: contain !important;
+}
+video.rd-video-element:-moz-full-screen {
+  object-fit: contain !important;
+}
+video.rd-video-element:fullscreen {
+  object-fit: contain !important;
+}
+
 .rd-image {
   width: 100%;
   height: 100%;

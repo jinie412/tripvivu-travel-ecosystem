@@ -37,6 +37,7 @@ export interface ReviewDetailInfo {
   totalReviews: number;
   totalReports: number;
   // Thông tin địa điểm
+  locationId: string;
   locationName: string;
   locationAddress: string;
   // Nội dung đánh giá

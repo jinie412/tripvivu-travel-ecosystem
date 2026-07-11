@@ -39,6 +39,7 @@ import { apiClient, extractResponseData } from '../../../../services/apiClient';
 import type { Location } from '../../../../types/location';
 import { getCurrentUser } from '../../../../utils/auth';
 import { markLocationPendingApproval } from '../../../../utils/locationApprovalOverride';
+import Swal from 'sweetalert2';
 
 // ─── Map utilities (same as AddLocation) ─────────────────────────────────────
 type CityOption = { id: string; name: string };
@@ -806,7 +807,7 @@ const LocationEditPage: React.FC = () => {
   const saveService = async () => {
     if (!serviceEditor) return;
     const trimmedName = serviceDraft.name.trim();
-    if (!trimmedName) { window.alert('Vui lòng nhập tên dịch vụ'); return; }
+    if (!trimmedName) { Swal.fire({ text: 'Vui lòng nhập tên dịch vụ', icon: 'warning' }); return; }
     const price = serviceEditor.kind === 'paid'
       ? (() => { const n = Number(String(serviceDraft.price).replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : 0; })()
       : null;
@@ -844,7 +845,8 @@ const LocationEditPage: React.FC = () => {
     }
   };
   const deleteService = async (kind: ServiceKind, serviceId: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa dịch vụ này?')) return;
+    const result = await Swal.fire({ title: 'Xác nhận', text: 'Bạn có chắc muốn xóa dịch vụ này?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Đồng ý', cancelButtonText: 'Hủy' });
+    if (!result.isConfirmed) return;
     const targetPlaceId = id!;
     try {
       if (kind === 'paid') {

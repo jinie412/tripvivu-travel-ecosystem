@@ -7,6 +7,7 @@ import { Mail, Lock, Eye, EyeOff, Linkedin, AlertCircle } from 'lucide-react';
 import loginBg from '../../../assets/login-bg.png';
 import axios from 'axios';
 import { supabase } from '../../../utils/supabase';
+import Swal from 'sweetalert2';
 
 const GoogleIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 48 48">
@@ -88,10 +89,10 @@ const LoginPage: React.FC = () => {
       storage.setItem('userInfo', JSON.stringify(user));
 
       if (user.role === 'BUSINESS') {
-        alert('Đăng nhập thành công!');
+        Swal.fire({ title: 'Đăng nhập thành công!', icon: 'success', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 });
         navigate('/dashboard');
       } else if (user.role === 'ADMIN') {
-        alert('Đăng nhập thành công!');
+        Swal.fire({ title: 'Đăng nhập thành công!', icon: 'success', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 });
         navigate('/admin');
       } else {
         setError('Tài khoản của bạn không có quyền truy cập trang dành cho Đối tác!');

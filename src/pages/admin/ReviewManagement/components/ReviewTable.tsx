@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Review } from '../../../../types/review';
 import { Star, ChevronDown, CheckCircle, AlertTriangle, EyeOff, Info } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 interface ReviewTableProps {
   reviews: Review[];
@@ -192,7 +193,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
     } catch (error) {
       setReviews(initialReviews);
       console.error('Failed to update review status', error);
-      window.alert('Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.');
+      Swal.fire({ text: 'Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.', icon: 'error' });
     }
   };
 

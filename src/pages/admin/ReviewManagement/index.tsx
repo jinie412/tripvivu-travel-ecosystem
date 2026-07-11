@@ -12,6 +12,7 @@ import { ReviewTable } from './components/ReviewTable';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import './ReviewManagement.css';
+import Swal from 'sweetalert2';
 
 type ActiveTab = 'location' | 'itinerary';
 
@@ -167,7 +168,7 @@ export const ReviewManagement: React.FC = () => {
 
   const handleUpdateLocationStatus = async (reviewId: string, newStatus: Review['status']) => {
     if (newStatus === 'Chờ duyệt') {
-      window.alert('Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.');
+      Swal.fire({ text: 'Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.', icon: 'warning' });
       throw new Error('Unsupported status transition');
     }
     const reason = newStatus === 'Vi phạm'
@@ -180,7 +181,7 @@ export const ReviewManagement: React.FC = () => {
 
   const handleUpdateItineraryStatus = async (reviewId: string, newStatus: Review['status']) => {
     if (newStatus === 'Chờ duyệt') {
-      window.alert('Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.');
+      Swal.fire({ text: 'Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.', icon: 'warning' });
       throw new Error('Unsupported status transition');
     }
     const reason = newStatus === 'Vi phạm'

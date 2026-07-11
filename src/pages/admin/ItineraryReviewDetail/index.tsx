@@ -1,14 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Star, CheckCircle, Clock } from 'lucide-react';
 import { itineraryReviewAPI } from '../../../services/reviewAPI';
 import { ItineraryReviewDetailInfo } from '../../../types/review';
 import { ItineraryReviewHeader } from './components/ItineraryReviewHeader';
-import { ItineraryReviewActions } from './components/ItineraryReviewActions';
 import { ReviewContent } from '../ReviewDetail/components/ReviewContent';
-import { ReportSection } from '../ReviewDetail/components/ReportSection';
+
 import '../ReviewDetail/ReviewDetail.css';
 import './ItineraryReviewDetail.css';
+import Swal from 'sweetalert2';
+
+const getTranslatedReason = (reason: string) => {
+  let translated = reason.replace('Nội dung văn bản:', '').replace('Nội dung vi phạm:', '').trim();
+  if (translated.startsWith(':')) translated = translated.substring(1).trim();
+  const map: Record<string, string> = {
+    'sexual/minors': 'Nội dung khiêu dâm liên quan trẻ em',
+    'sexual': 'Nội dung khiêu dâm',
+    'harassment/threatening': 'Quấy rối kèm đe dọa',
+    'harassment': 'Quấy rối',
+    'hate/threatening': 'Thù ghét kèm đe dọa',
+    'hate': 'Thù ghét / phân biệt',
+    'illicit/violent': 'Nội dung phi pháp kèm bạo lực',
+    'illicit': 'Nội dung phi pháp',
+    'self-harm/intent': 'Ý định tự gây hại',
+    'self-harm/instructions': 'Hướng dẫn tự gây hại',
+    'self-harm': 'Tự gây hại',
+    'violence/graphic': 'Bạo lực, hình ảnh phản cảm',
+    'violence': 'Bạo lực',
+  };
+  Object.keys(map).forEach(k => {
+    translated = translated.replace(new RegExp(`\\b${k.replace(/\//g, '\\/')}\\b`, 'g'), map[k]);
+  });
+  return translated;
+};
 
 export const ItineraryReviewDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,31 +56,6 @@ export const ItineraryReviewDetail: React.FC = () => {
     fetchDetail();
   }, [id]);
 
-  const handleClose = () => {
-    navigate('/admin/reviews?tab=itinerary');
-  };
-
-  const handleUpdateStatus = async (newStatus: ItineraryReviewDetailInfo['status']) => {
-    if (!review || !id) return;
-    if (!newStatus || newStatus === 'Chờ duyệt' || newStatus === 'Đã ẩn') {
-      window.alert('Không thể chuyển trạng thái về Chờ duyệt.');
-      return;
-    }
-
-    const reason =
-      newStatus === 'Vi phạm'
-        ? window.prompt('Nhập lý do đánh dấu vi phạm:') || undefined
-        : undefined;
-
-    try {
-      await itineraryReviewAPI.updateItineraryReviewStatus(id, newStatus, reason);
-      setReview({ ...review, status: newStatus });
-    } catch (error) {
-      console.error('Failed to update itinerary review status', error);
-      window.alert('Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.');
-    }
-  };
-
   return (
     <div className="review-detail-page itinerary-review-detail-page">
       <div className="rd-page-header">
@@ -76,10 +75,6 @@ export const ItineraryReviewDetail: React.FC = () => {
 
         <div className="rd-header-main">
           <h1 className="rd-page-title">Chi tiết đánh giá lịch trình</h1>
-          <button className="btn-outline-secondary" onClick={handleClose}>
-            <ArrowLeft size={16} />
-            <span>Quay lại</span>
-          </button>
         </div>
       </div>
 
@@ -89,28 +84,88 @@ export const ItineraryReviewDetail: React.FC = () => {
         ) : !review ? (
           <div className="rd-loading">Không tìm thấy đánh giá.</div>
         ) : (
-          <div className="rd-grid">
-            <div className="rd-col-main">
+          <div style={{ display: 'flex', justifyContent: 'center', maxWidth: '900px', margin: '0 auto' }}>
+            <div className="rd-col-main" style={{ width: '100%' }}>
               <ItineraryReviewHeader review={review} />
-              {review.status === 'Vi phạm' && review.violation_reason && (
-                <div style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 6, padding: '10px 14px', marginBottom: 16, color: '#a8071a' }}>
-                  <strong>Lý do vi phạm (AI):</strong> {review.violation_reason}
+
+              {review.status === 'Đã duyệt' && (
+                <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#389e0d' }}>
+                    <CheckCircle size={20} />
+                    <strong style={{ fontSize: '15px' }}>Đánh giá này hợp lệ và đã được duyệt</strong>
+                  </div>
                 </div>
               )}
-              <ReviewContent content={review.content} images={review.images} />
-            </div>
 
-            <div className="rd-col-side">
-              <ReportSection
-                reportCount={review.reportCount}
-                reportReasons={review.reportReasons}
-                adminNote={review.adminNote}
-              />
-              <ItineraryReviewActions
-                status={review.status || 'Đã duyệt'}
-                onUpdateStatus={(status) => {
-                  void handleUpdateStatus(status);
-                }}
+              {review.status === 'Chờ duyệt' && (
+                <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d48806' }}>
+                    <Clock size={20} />
+                    <strong style={{ fontSize: '15px' }}>Đánh giá này đang chờ kiểm duyệt</strong>
+                  </div>
+                </div>
+              )}
+
+              {review.status === 'Vi phạm' && (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  gap: '12px',
+                  background: '#fff1f0', 
+                  border: '1px solid #ffa39e', 
+                  borderRadius: '8px', 
+                  padding: '16px', 
+                  marginBottom: '24px', 
+                  color: '#cf1322' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={20} color="#cf1322" />
+                    <strong style={{ fontSize: '16px' }}>Đánh giá này vi phạm tiêu chuẩn cộng đồng</strong>
+                  </div>
+                  {review.violation_reason && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '28px' }}>
+                      <span style={{ fontSize: '14px', color: '#a8071a', fontWeight: 500 }}>Lý do phát hiện:</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {getTranslatedReason(review.violation_reason).split(',').map((reason, idx) => (
+                          <span key={idx} style={{ 
+                            background: '#cf1322', 
+                            color: '#fff', 
+                            padding: '4px 10px', 
+                            borderRadius: '6px', 
+                            fontSize: '13px', 
+                            fontWeight: '600' 
+                          }}>
+                            {reason.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <ReviewContent 
+                content={review.content} 
+                images={review.images} 
+                isMediaViolated={review.status === 'Vi phạm'}
+                mediaViolationReason={review.violation_reason ? getTranslatedReason(review.violation_reason) : undefined}
+                headerNode={
+                  <div className="rd-rating-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: 'none', marginTop: 0, paddingTop: 0 }}>
+                    <div className="rd-stars" style={{ display: 'flex', alignItems: 'center' }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={24}
+                          fill={i < review.rating ? '#facc15' : 'none'}
+                          color={i < review.rating ? '#facc15' : '#d1d5db'}
+                        />
+                      ))}
+                      <span style={{ marginLeft: 8, fontSize: '18px', fontWeight: 600, color: '#facc15' }}>
+                        {review.rating}/5
+                      </span>
+                    </div>
+                    <span className="rd-datetime" style={{ color: '#64748b', fontSize: '14px' }}>Đăng lúc {review.datetime}</span>
+                  </div>
+                }
               />
             </div>
           </div>

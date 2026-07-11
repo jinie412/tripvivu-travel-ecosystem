@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
 
 :root {
-  font-family: "Plus Jakarta Sans", "Outfit", sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -137,7 +137,7 @@ h4,
 h5,
 h6 {
   margin: 0;
-  font-family: "Outfit", sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
 }
 

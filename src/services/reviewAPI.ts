@@ -205,6 +205,7 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   userName: item.user.name,
   totalReviews: item.user.review_count,
   totalReports: item.user.report_count,
+  locationId: item.place.id,
   locationName: item.place.name,
   locationAddress: item.place.address,
   rating: item.rating,

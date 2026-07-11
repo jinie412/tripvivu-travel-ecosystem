@@ -25,6 +25,7 @@ import { locationAPI, type AdminVendorOption } from '@/services/locationAPI';
 import { apiClient, extractResponseData } from '@/services/apiClient';
 import * as XLSX from 'xlsx';
 import defaultServiceIcon from '@/assets/images/service_icon_default.jpg';
+import Swal from 'sweetalert2';
 
 type CityOption = { id: string; name: string };
 type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
@@ -742,19 +743,19 @@ export const AddLocation: React.FC = () => {
 
   const validateBasicInfo = () => {
     if (!formData.name || !formData.address || !formData.phone || !formData.email || !formData.type || !formData.typeId) {
-      alert('Vui lòng điền đầy đủ thông tin tại Bước 1');
+      Swal.fire({ text: 'Vui lòng điền đầy đủ thông tin tại Bước 1', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (phoneError) {
-      alert('SĐT liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0.');
+      Swal.fire({ text: 'SĐT liên hệ phải gồm đúng 10 chữ số và bắt đầu bằng số 0.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (emailError) {
-      alert('Email liên hệ không đúng định dạng.');
+      Swal.fire({ text: 'Email liên hệ không đúng định dạng.', icon: 'warning' });
       setStep(1);
       return false;
     }
@@ -764,68 +765,68 @@ export const AddLocation: React.FC = () => {
       .filter((item) => item.enabled);
 
     if (openDays.length === 0) {
-      alert('Vui lòng chọn ít nhất một ngày mở cửa.');
+      Swal.fire({ text: 'Vui lòng chọn ít nhất một ngày mở cửa.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (openDays.some((item) => !item.openTime || !item.closeTime || item.openTime >= item.closeTime)) {
-      alert('Giờ mở cửa theo ngày chưa hợp lệ. Giờ đóng cửa phải sau giờ mở cửa.');
+      Swal.fire({ text: 'Giờ mở cửa theo ngày chưa hợp lệ. Giờ đóng cửa phải sau giờ mở cửa.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (loadingCities) {
-      alert('Danh sách tỉnh/thành đang tải. Vui lòng chờ trong giây lát.');
+      Swal.fire({ text: 'Danh sách tỉnh/thành đang tải. Vui lòng chờ trong giây lát.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (citiesError || cities.length === 0) {
-      alert('Không thể tải danh sách tỉnh/thành từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.');
+      Swal.fire({ text: 'Không thể tải danh sách tỉnh/thành từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.', icon: 'error' });
       setStep(1);
       return false;
     }
 
     if (!cities.some((city) => city.name === formData.city)) {
-      alert('Vui lòng chọn tỉnh/thành hợp lệ từ danh sách hệ thống.');
+      Swal.fire({ text: 'Vui lòng chọn tỉnh/thành hợp lệ từ danh sách hệ thống.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (loadingBusinessTypes) {
-      alert('Danh sách loại hình kinh doanh đang tải. Vui lòng chờ trong giây lát.');
+      Swal.fire({ text: 'Danh sách loại hình kinh doanh đang tải. Vui lòng chờ trong giây lát.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (businessTypesError || businessTypes.length === 0) {
-      alert('Không thể tải danh sách loại hình kinh doanh từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.');
+      Swal.fire({ text: 'Không thể tải danh sách loại hình kinh doanh từ hệ thống. Vui lòng bấm "Tải lại" trước khi tiếp tục.', icon: 'error' });
       setStep(1);
       return false;
     }
 
     if (!businessTypes.some((type) => type.id === formData.typeId && type.name === formData.type)) {
-      alert('Vui lòng chọn loại hình kinh doanh hợp lệ từ danh sách hệ thống.');
+      Swal.fire({ text: 'Vui lòng chọn loại hình kinh doanh hợp lệ từ danh sách hệ thống.', icon: 'warning' });
       setStep(1);
       return false;
     }
 
     if (sourceMode === 'vendor') {
       if (loadingVendors) {
-        alert('Danh sách đối tác đang tải. Vui lòng chờ trong giây lát.');
+        Swal.fire({ text: 'Danh sách đối tác đang tải. Vui lòng chờ trong giây lát.', icon: 'warning' });
         setStep(1);
         return false;
       }
 
       if (vendorsError || vendors.length === 0) {
-        alert('Không thể tải danh sách đối tác. Vui lòng bấm "Tải lại" trước khi tiếp tục.');
+        Swal.fire({ text: 'Không thể tải danh sách đối tác. Vui lòng bấm "Tải lại" trước khi tiếp tục.', icon: 'error' });
         setStep(1);
         return false;
       }
 
       if (!vendors.some((vendor) => vendor.id === selectedVendorId)) {
-        alert('Vui lòng chọn đối tác quản lý địa điểm.');
+        Swal.fire({ text: 'Vui lòng chọn đối tác quản lý địa điểm.', icon: 'warning' });
         setStep(1);
         return false;
       }
@@ -837,7 +838,7 @@ export const AddLocation: React.FC = () => {
 
   const handleAddService = () => {
     if (!serviceInput.name.trim()) {
-      alert('Vui lòng nhập tên dịch vụ');
+      Swal.fire({ text: 'Vui lòng nhập tên dịch vụ', icon: 'warning' });
       return;
     }
 
@@ -865,19 +866,19 @@ export const AddLocation: React.FC = () => {
 
   const handleAddMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      alert(isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn');
+      Swal.fire({ text: isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn', icon: 'warning' });
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      Swal.fire({ text: 'Giá dịch vụ có phí phải lớn hơn 0', icon: 'warning' });
       return;
     }
 
     const quantity = parseInt(menuInput.quantity || '1', 10);
     if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
-      alert('Sức chứa phòng phải lớn hơn 0');
+      Swal.fire({ text: 'Sức chứa phòng phải lớn hơn 0', icon: 'warning' });
       return;
     }
 
@@ -917,19 +918,19 @@ export const AddLocation: React.FC = () => {
 
   const handleUpdateMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      alert(isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn');
+      Swal.fire({ text: isAccommodation ? 'Vui lòng nhập tên phòng và giá phòng' : 'Vui lòng nhập tên và giá của món ăn', icon: 'warning' });
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      alert('Giá dịch vụ có phí phải lớn hơn 0');
+      Swal.fire({ text: 'Giá dịch vụ có phí phải lớn hơn 0', icon: 'warning' });
       return;
     }
 
     const quantity = parseInt(menuInput.quantity || '1', 10);
     if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
-      alert('Sức chứa phòng phải lớn hơn 0');
+      Swal.fire({ text: 'Sức chứa phòng phải lớn hơn 0', icon: 'warning' });
       return;
     }
 
@@ -998,14 +999,14 @@ export const AddLocation: React.FC = () => {
   const handleExcelFileUpload = (file: File) => {
     const reader = new FileReader();
 
-    reader.onerror = () => alert('Lỗi khi đọc file. Vui lòng thử lại.');
+    reader.onerror = () => Swal.fire({ text: 'Lỗi khi đọc file. Vui lòng thử lại.', icon: 'error' });
 
     reader.onload = (e: any) => {
       try {
         const workbook = XLSX.read(e.target.result, { type: 'array' });
 
         if (!workbook.SheetNames?.length) {
-          alert('File Excel không chứa bảng tính');
+          Swal.fire({ text: 'File Excel không chứa bảng tính', icon: 'warning' });
           return;
         }
 
@@ -1013,7 +1014,7 @@ export const AddLocation: React.FC = () => {
         const rows = XLSX.utils.sheet_to_json(worksheet);
 
         if (rows.length === 0) {
-          alert('Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.');
+          Swal.fire({ text: 'Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.', icon: 'warning' });
           return;
         }
 
@@ -1032,7 +1033,7 @@ export const AddLocation: React.FC = () => {
         })).filter(item => item.name && !Number.isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0);
 
         if (parsed.length === 0) {
-          alert('Không tìm thấy dữ liệu hợp lệ trong file. File cần có cột "Tên món" và "Giá bán".');
+          Swal.fire({ text: 'Không tìm thấy dữ liệu hợp lệ trong file. File cần có cột "Tên món" và "Giá bán".', icon: 'warning' });
           return;
         }
 
@@ -1040,7 +1041,7 @@ export const AddLocation: React.FC = () => {
         setUploadedFile(file);
         setShowExcelPreview(true);
       } catch (err) {
-        alert(`Lỗi khi xử lý file: ${err instanceof Error ? err.message : 'Không xác định'}`);
+        Swal.fire({ text: `Lỗi khi xử lý file: ${err instanceof Error ? err.message : 'Không xác định'}`, icon: 'error' });
       }
     };
 
@@ -1154,7 +1155,7 @@ export const AddLocation: React.FC = () => {
       await locationAPI.createFullLocation(payload);
       window.localStorage.removeItem(ADMIN_ADD_LOCATION_DRAFT_KEY);
 
-      alert('Tạo địa điểm và lưu ảnh thành công!');
+      Swal.fire({ text: 'Tạo địa điểm và lưu ảnh thành công!', icon: 'success' });
       navigate('/admin/locations');
 
     } catch (error) {
@@ -1164,7 +1165,7 @@ export const AddLocation: React.FC = () => {
       const message = Array.isArray(responseMessage)
         ? responseMessage.join('\n')
         : responseMessage || responseError || (error instanceof Error ? error.message : '');
-      alert(message ? `Không thể tạo địa điểm: ${message}` : 'Không thể tạo địa điểm. Vui lòng thử lại.');
+      Swal.fire({ text: message ? `Không thể tạo địa điểm: ${message}` : 'Không thể tạo địa điểm. Vui lòng thử lại.', icon: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -1176,12 +1177,12 @@ export const AddLocation: React.FC = () => {
     }
 
     if (step === 2 && serviceMode === 'free' && serviceInput.name.trim()) {
-      alert('Bạn có dịch vụ chưa thêm vào danh sách. Vui lòng bấm Thêm vào danh sách hoặc xóa nội dung.');
+      Swal.fire({ text: 'Bạn có dịch vụ chưa thêm vào danh sách. Vui lòng bấm Thêm vào danh sách hoặc xóa nội dung.', icon: 'warning' });
       return;
     }
 
     if (step === 2 && serviceMode === 'paid' && (menuInput.name.trim() || menuInput.price.trim())) {
-      alert('Bạn có dịch vụ có phí chưa thêm vào danh sách. Vui lòng bấm Thêm hoặc xóa nội dung.');
+      Swal.fire({ text: 'Bạn có dịch vụ có phí chưa thêm vào danh sách. Vui lòng bấm Thêm hoặc xóa nội dung.', icon: 'warning' });
       return;
     }
 
