@@ -1,3 +1,5 @@
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
+
 class CreateItineraryRequestModel {
   final String userId;
   final String tripType;
@@ -15,6 +17,11 @@ class CreateItineraryRequestModel {
   final List<String> foodPreferences;
   // [TRIP_NAME_INPUT] Ánh xạ sang trường description trong CreateItineraryDto
   final String? description;
+  // Gửi true khi user đã xác nhận tiếp tục với lịch trình vượt ngân sách đề
+  // xuất (sau khi nhận cảnh báo BUDGET_CONFIRMATION_REQUIRED).
+  final bool proceedWithOverBudget;
+  // Kết quả wizard phân bổ vùng (sau khi nhận REGION_ALLOCATION_REQUIRED).
+  final List<RegionAllocationInput> regionAllocations;
 
   const CreateItineraryRequestModel({
     required this.userId,
@@ -32,6 +39,8 @@ class CreateItineraryRequestModel {
     required this.budget,
     required this.foodPreferences,
     this.description,
+    this.proceedWithOverBudget = false,
+    this.regionAllocations = const [],
   });
 
   static const _foodPrefMap = {
@@ -62,5 +71,8 @@ class CreateItineraryRequestModel {
     // [TRIP_NAME_INPUT] Chỉ gửi khi user đã nhập tên
     if (description != null && description!.isNotEmpty)
       'description': description,
+    if (proceedWithOverBudget) 'proceedWithOverBudget': true,
+    if (regionAllocations.isNotEmpty)
+      'regionAllocations': regionAllocations.map((r) => r.toJson()).toList(),
   };
 }

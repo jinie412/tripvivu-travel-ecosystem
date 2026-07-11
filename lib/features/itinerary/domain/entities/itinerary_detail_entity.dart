@@ -58,9 +58,24 @@ class ItineraryDetailEntity {
   final int hotelsCount;
   final int transportTurns;
 
+  // Per-adult estimated cost for the whole itinerary (summed across all
+  // days) — never a group total, never divided by participantCount.
   final double estimatedBudget;
+  // User's original input budget ceiling (trip_budget_total), also per
+  // adult. 0 when unknown (e.g. itineraries created before this field
+  // existed). Kept separate from estimatedBudget so the UI can show both and
+  // warn when the calculated cost exceeds 90% of it.
+  final double userBudget;
   final int participantCount;
-  final double spentBudget;
+  final int adultCount;
+  final int childCount;
+  // Ratio applied to estimatedBudget/userBudget to get the child rate
+  // (e.g. 0.7 = child pays 70% of an adult's rate).
+  final double childPriceRatio;
+  // Display-only, computed fresh from estimatedBudget/adultCount/childCount
+  // by the backend — never stored, never divided back into a per-adult
+  // figure.
+  final double estimatedCostForGroup;
   final double placeCost;
   final double hotelCost;
   final double transportCost;
@@ -76,6 +91,9 @@ class ItineraryDetailEntity {
 
   final String? dailyStartTime;
   final String? dailyEndTime;
+  // 'DRIVING' | 'MOTORBIKE' — dùng để vẽ đúng đường đi (Goong/Google Maps
+  // vehicle param), thay vì luôn mặc định ô tô như trước.
+  final String travelMode;
 
   const ItineraryDetailEntity({
     required this.id,
@@ -97,8 +115,12 @@ class ItineraryDetailEntity {
     required this.hotelsCount,
     required this.transportTurns,
     required this.estimatedBudget,
+    this.userBudget = 0,
     this.participantCount = 1,
-    required this.spentBudget,
+    this.adultCount = 1,
+    this.childCount = 0,
+    this.childPriceRatio = 0.7,
+    this.estimatedCostForGroup = 0,
     this.placeCost = 0,
     this.hotelCost = 0,
     this.transportCost = 0,
@@ -111,6 +133,7 @@ class ItineraryDetailEntity {
     this.trackingActive = false,
     this.dailyStartTime,
     this.dailyEndTime,
+    this.travelMode = 'DRIVING',
   });
 
   ItineraryDetailEntity copyWith({
@@ -133,8 +156,12 @@ class ItineraryDetailEntity {
     int? hotelsCount,
     int? transportTurns,
     double? estimatedBudget,
+    double? userBudget,
     int? participantCount,
-    double? spentBudget,
+    int? adultCount,
+    int? childCount,
+    double? childPriceRatio,
+    double? estimatedCostForGroup,
     double? placeCost,
     double? hotelCost,
     double? transportCost,
@@ -147,6 +174,7 @@ class ItineraryDetailEntity {
     bool? trackingActive,
     String? dailyStartTime,
     String? dailyEndTime,
+    String? travelMode,
   }) {
     return ItineraryDetailEntity(
       id: id ?? this.id,
@@ -168,8 +196,12 @@ class ItineraryDetailEntity {
       hotelsCount: hotelsCount ?? this.hotelsCount,
       transportTurns: transportTurns ?? this.transportTurns,
       estimatedBudget: estimatedBudget ?? this.estimatedBudget,
+      userBudget: userBudget ?? this.userBudget,
       participantCount: participantCount ?? this.participantCount,
-      spentBudget: spentBudget ?? this.spentBudget,
+      adultCount: adultCount ?? this.adultCount,
+      childCount: childCount ?? this.childCount,
+      childPriceRatio: childPriceRatio ?? this.childPriceRatio,
+      estimatedCostForGroup: estimatedCostForGroup ?? this.estimatedCostForGroup,
       placeCost: placeCost ?? this.placeCost,
       hotelCost: hotelCost ?? this.hotelCost,
       transportCost: transportCost ?? this.transportCost,
@@ -183,6 +215,7 @@ class ItineraryDetailEntity {
       trackingActive: trackingActive ?? this.trackingActive,
       dailyStartTime: dailyStartTime ?? this.dailyStartTime,
       dailyEndTime: dailyEndTime ?? this.dailyEndTime,
+      travelMode: travelMode ?? this.travelMode,
     );
   }
 }

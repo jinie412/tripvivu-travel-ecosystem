@@ -20,7 +20,6 @@ class ItineraryCard extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool>? onStartToggle;
   final Widget? bottomChild;
-  final bool showPerPersonCost;
 
   const ItineraryCard({
     super.key,
@@ -30,7 +29,6 @@ class ItineraryCard extends StatelessWidget {
     this.onTap,
     this.onStartToggle,
     this.bottomChild,
-    this.showPerPersonCost = false,
   });
 
   @override
@@ -230,7 +228,7 @@ class ItineraryCard extends StatelessWidget {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       // Chi phí + Số ngày
                       Row(
                         children: [
@@ -240,17 +238,22 @@ class ItineraryCard extends StatelessWidget {
                             color: AppColors.primary,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            showPerPersonCost
-                                ? '${_formatCost(item.estimatedCost / item.participantCount.clamp(1, 999), item.currency)} / người'
-                                : '${_formatCost(item.estimatedCost, item.currency)} / tổng ${item.participantCount.clamp(1, 999)} người',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
+                          Expanded(
+                            child: Text(
+                              _formatCost(
+                                item.estimatedCostForGroup,
+                                item.currency,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 8),
                           const Icon(
                             Icons.calendar_today_outlined,
                             size: 14,
@@ -266,7 +269,29 @@ class ItineraryCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
+                      // Số người lớn + trẻ em
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.people_alt_outlined,
+                            size: 14,
+                            color: Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.adultCount} người lớn'
+                            '${item.childCount > 0 ? ' + ${item.childCount} trẻ em' : ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       // Progress bar
                       _buildProgressBar(),
                     ],

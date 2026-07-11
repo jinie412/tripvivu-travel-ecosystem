@@ -32,30 +32,43 @@ class MapUtils {
     return 'https://www.google.com/maps/search/?api=1&query=$query';
   }
 
-  /// Sinh ra link chỉ đường từ điểm xuất phát đến điểm đến (Google Maps)
+  /// Sinh ra link chỉ đường từ điểm xuất phát đến điểm đến (Google Maps).
+  /// [travelMode] là giá trị lưu ở backend ('DRIVING'/'MOTORBIKE') — map sang
+  /// travelmode của Google Maps để không luôn mặc định "driving" khi lịch
+  /// trình dùng xe máy.
   static String getDirectionsUrl(
     double originLat,
     double originLng,
     double destLat,
-    double destLng,
-  ) {
+    double destLng, {
+    String travelMode = 'DRIVING',
+  }) {
+    final googleTravelMode = travelMode.toUpperCase() == 'MOTORBIKE'
+        ? 'two-wheeler'
+        : 'driving';
     return 'https://www.google.com/maps/dir/?api=1'
         '&origin=${originLat.toStringAsFixed(6)},${originLng.toStringAsFixed(6)}'
-        '&destination=${destLat.toStringAsFixed(6)},${destLng.toStringAsFixed(6)}';
+        '&destination=${destLat.toStringAsFixed(6)},${destLng.toStringAsFixed(6)}'
+        '&travelmode=$googleTravelMode';
   }
 
-  /// Lấy danh sách tọa độ uốn lượn theo đường đi thực tế từ Goong
+  /// Lấy danh sách tọa độ uốn lượn theo đường đi thực tế từ Goong.
+  /// [travelMode] map 'MOTORBIKE' -> Goong 'bike', mặc định 'car' — trước
+  /// đây luôn hardcode 'car' nên đường vẽ luôn theo tuyến ô tô kể cả khi
+  /// lịch trình chọn xe máy, gây lệch khoảng cách hiển thị.
   static Future<List<mapbox.Position>> getGoongRoute(
-    List<mapbox.Position> waypoints,
-  ) async {
+    List<mapbox.Position> waypoints, {
+    String travelMode = 'DRIVING',
+  }) async {
     if (waypoints.length < 2) return waypoints;
 
     final origin = '${waypoints.first.lat},${waypoints.first.lng}';
     final destination = '${waypoints.last.lat},${waypoints.last.lng}';
+    final vehicle = travelMode.toUpperCase() == 'MOTORBIKE' ? 'bike' : 'car';
 
     // API v2 hỗ trợ origin và destination. Nếu có waypoints trung gian, v2 cũng xử lý tốt hơn
     final url =
-        'https://rsapi.goong.io/v2/direction?origin=$origin&destination=$destination&vehicle=car&api_key=${AppConfig.kGoongApiKey}';
+        'https://rsapi.goong.io/v2/direction?origin=$origin&destination=$destination&vehicle=$vehicle&api_key=${AppConfig.kGoongApiKey}';
 
     try {
       final response = await Dio().get(url);

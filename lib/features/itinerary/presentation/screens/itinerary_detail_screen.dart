@@ -23,6 +23,7 @@ import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tr
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/widgets/tracking_section.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_state.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/day_selector_chip.dart';
@@ -66,7 +67,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   bool _isPublic = true;
   bool _isEditMode = false;
   bool _isMapLoaded = false;
-  bool _showPerPersonCost = false;
   ItineraryDetailEntity? _editSnapshot;
   MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
@@ -79,6 +79,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   Map<String, bool> _isVisitedFromBackendById = {};
   bool _reviewStatusLoading = false;
   bool _isRefreshing = false;
+
+  /// Tổng chi phí phát sinh (mục 1.6) theo từng place_id — chỉ hiển thị bên
+  /// cạnh giá, không có hành động thêm/sửa ở màn này (xem "Quản lý chi phí"
+  /// ở tổng quan lịch trình).
+  Map<String, double> _costsByPlace = {};
 
   ItineraryDetailEntity? get _currentItinerary {
     final state = context.read<ItineraryCubit>().state;
@@ -95,6 +100,27 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadReviewStatuses();
     });
+    _loadCostsByPlace();
+  }
+
+  /// Chỉ để hiển thị badge "+chi phí" bên cạnh giá — lỗi ở đây không được
+  /// làm hỏng màn hình chi tiết lịch trình.
+  Future<void> _loadCostsByPlace() async {
+    try {
+      final costs = await sl<ItineraryRepository>().getIncurredCosts(
+        widget.itineraryId,
+      );
+      if (!mounted) return;
+      final byPlace = <String, double>{};
+      for (final cost in costs) {
+        final placeId = cost.placeId;
+        if (placeId == null || placeId.isEmpty) continue;
+        byPlace[placeId] = (byPlace[placeId] ?? 0) + cost.amount;
+      }
+      setState(() => _costsByPlace = byPlace);
+    } catch (_) {
+      // Bỏ qua — badge chi phí phát sinh chỉ là hiển thị phụ.
+    }
   }
 
   void _showAddPlaceScreen() {
@@ -294,6 +320,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         from.longitude!,
         to.latitude!,
         to.longitude!,
+        travelMode: _currentItinerary?.travelMode ?? 'DRIVING',
       ),
     );
     try {
@@ -2196,10 +2223,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             onDiscardTap: _onDiscardChanges,
             isRefreshing: _isRefreshing,
             onRefreshTap: _onRefresh,
-            showPerPersonCost: _showPerPersonCost,
-            onCostScopeChanged: (value) {
-              setState(() => _showPerPersonCost = value);
-            },
+            costsByPlace: _costsByPlace,
           ),
         ),
       ),
@@ -2398,41 +2422,42 @@ class _DayVisitProgressCard extends StatelessWidget {
 class _DayCostSummaryCard extends StatelessWidget {
   final ItineraryDayEntity day;
   final List<ItineraryActivityEntity> visitActivities;
-  final bool Function(ItineraryActivityEntity activity) isHotelStart;
   final int participantCount;
-  final bool showPerPersonCost;
-  final ValueChanged<bool> onCostScopeChanged;
+  // Chi ph\u00ed l\u01b0u tr\u00fa CHO C\u1ea2 CHUY\u1ebeN (itin.hotelCost, \u0111\u00e3 per-adult) \u2014
+  // backend c\u1ed1 \u00fd ki t\u00ednh 0\u0111 cho hotel-row hi\u1ec3n th\u1ecb theo ng\u00e0y (xem
+  // itinerary.service.ts), n\u00ean kh\u00f4ng th\u1ec3 t\u00ednh l\u1ea1i t\u1eeb activity trong ng\u00e0y.
+  final double tripHotelCost;
+  final int durationDays;
 
   const _DayCostSummaryCard({
     required this.day,
     required this.visitActivities,
-    required this.isHotelStart,
     required this.participantCount,
-    required this.showPerPersonCost,
-    required this.onCostScopeChanged,
+    required this.tripHotelCost,
+    required this.durationDays,
   });
 
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat('#,###', 'vi_VN');
-    final hotelCost = day.activities
-        .where(isHotelStart)
-        .fold<double>(0, (sum, activity) => sum + activity.price);
+    final hotelCost = durationDays > 1
+        ? tripHotelCost / (durationDays - 1)
+        : tripHotelCost;
     final placeCost = visitActivities.fold<double>(
       0,
       (sum, activity) => sum + activity.price,
     );
-    final selfDriveCost = day.activities.fold<double>(
-      0,
-      (sum, activity) => sum + activity.transportCost,
-    );
-    final totalCost = placeCost + hotelCost + selfDriveCost;
-
     final people = participantCount.clamp(1, 999);
-    double displayCost(double value) =>
-        showPerPersonCost ? value / people : value;
+    final transportCost =
+        day.activities.fold<double>(
+          0,
+          (sum, activity) => sum + activity.transportCost,
+        ) /
+        people;
+    final totalCost = placeCost + hotelCost + transportCost;
+
     String money(double value) =>
-        '${formatter.format(displayCost(value))} ${day.currency}';
+        '${formatter.format(value)} ${day.currency}';
 
     return Container(
       width: double.infinity,
@@ -2452,35 +2477,15 @@ class _DayCostSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            showPerPersonCost
-                ? 'Chi ph\u00ed trong ng\u00e0y / 1 ng\u01b0\u1eddi'
-                : 'T\u1ed5ng chi ph\u00ed trong ng\u00e0y / $people ng\u01b0\u1eddi',
-            style: const TextStyle(
+          const Text(
+            'Chi ph\u00ed trong ng\u00e0y (m\u1ed7i ng\u01b0\u1eddi l\u1edbn)',
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 10),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('T\u1ed5ng nh\u00f3m')),
-              ButtonSegment(value: true, label: Text('1 ng\u01b0\u1eddi')),
-            ],
-            selected: {showPerPersonCost},
-            showSelectedIcon: false,
-            onSelectionChanged: (selection) {
-              onCostScopeChanged(selection.first);
-            },
-          ),
           const SizedBox(height: 12),
-          _DayCostRow(
-            icon: Icons.receipt_long_rounded,
-            label: 'T\u1ed5ng ng\u00e0y',
-            value: money(totalCost),
-            color: const Color(0xFF10B981),
-          ),
           _DayCostRow(
             icon: Icons.place_rounded,
             label: '\u0110\u1ecba \u0111i\u1ec3m & \u0103n u\u1ed1ng',
@@ -2496,8 +2501,14 @@ class _DayCostSummaryCard extends StatelessWidget {
           _DayCostRow(
             icon: Icons.two_wheeler_rounded,
             label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
-            value: money(selfDriveCost),
+            value: money(transportCost),
             color: const Color(0xFF2563EB),
+          ),
+          _DayCostRow(
+            icon: Icons.receipt_long_rounded,
+            label: 'T\u1ed5ng ng\u00e0y',
+            value: money(totalCost),
+            color: const Color(0xFF10B981),
           ),
         ],
       ),
@@ -2773,8 +2784,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final VoidCallback onDiscardTap;
   final bool isRefreshing;
   final VoidCallback onRefreshTap;
-  final bool showPerPersonCost;
-  final ValueChanged<bool> onCostScopeChanged;
+  final Map<String, double> costsByPlace;
 
   const _ItineraryDetailView({
     required this.selectedDay,
@@ -2807,8 +2817,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.onDiscardTap,
     required this.isRefreshing,
     required this.onRefreshTap,
-    required this.showPerPersonCost,
-    required this.onCostScopeChanged,
+    this.costsByPlace = const {},
   });
 
   @override
@@ -2932,6 +2941,7 @@ class _ItineraryDetailView extends StatelessWidget {
                           selectedDay: selectedDay,
                           onMarkerTap: onMarkerTap,
                           onMapCreated: onMapCreated,
+                          travelMode: itin.travelMode,
                         )
                       : _LazyMapPreview(
                           day: currentDayData,
@@ -3269,10 +3279,9 @@ class _ItineraryDetailView extends StatelessWidget {
           _DayCostSummaryCard(
             day: currentDayData,
             visitActivities: _visitActivities(currentDayData),
-            isHotelStart: _isHotelStart,
             participantCount: itin.participantCount,
-            showPerPersonCost: showPerPersonCost,
-            onCostScopeChanged: onCostScopeChanged,
+            tripHotelCost: itin.hotelCost,
+            durationDays: itin.durationDays,
           ),
           const SizedBox(height: AppSizes.s12),
           _DayVisitProgressCard(
@@ -3327,8 +3336,9 @@ class _ItineraryDetailView extends StatelessWidget {
                     isFirst: index == 0,
                     isLast: index == activities.length - 1,
                     nextTransportInfo: nextTransport,
-                    participantCount: itin.participantCount,
-                    showPerPersonCost: showPerPersonCost,
+                    extraCost: activity.placeId != null
+                        ? costsByPlace[activity.placeId]
+                        : null,
                     onAddTap: itin.isOwner ? onAddPlaceTap : null,
                     onEditTap: itin.isOwner
                         ? () => onEditActivity(activity)

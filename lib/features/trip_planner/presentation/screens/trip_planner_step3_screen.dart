@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/cubit/itinerary_cubit.dart';
@@ -7,6 +8,7 @@ import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/it
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_cubit.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_region_allocation_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
 import '../widgets/step_progress_bar.dart';
 
@@ -81,6 +83,42 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
               ),
             );
           },
+          budgetConfirmationRequired:
+              (
+                message,
+                userBudget,
+                calculatedCost,
+                recommendedBudget,
+                participantCount,
+              ) {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                }
+                _showBudgetConfirmationDialog(
+                  context,
+                  message: message,
+                  recommendedBudget: recommendedBudget,
+                );
+              },
+          regionAllocationRequired:
+              (message, regions, numDays, estimatedTotalDays) {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<TripPlannerCubit>(),
+                      child: TripPlannerRegionAllocationScreen(
+                        message: message,
+                        regions: regions,
+                        numDays: numDays,
+                      ),
+                    ),
+                  ),
+                );
+              },
         );
       },
       builder: (context, state) {
@@ -334,6 +372,41 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showBudgetConfirmationDialog(
+    BuildContext context, {
+    required String message,
+    required double recommendedBudget,
+  }) {
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    final cubit = context.read<TripPlannerCubit>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ngân sách chưa phù hợp'),
+        content: Text(
+          '$message\n\nMức ngân sách đề xuất: ${formatter.format(recommendedBudget)} VNĐ.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.proceedWithCurrentBudget();
+            },
+            child: const Text('Tiếp tục với ngân sách hiện tại'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.retryWithRecommendedBudget();
+            },
+            child: const Text('Dùng mức đề xuất'),
+          ),
+        ],
       ),
     );
   }

@@ -22,8 +22,12 @@ class ItineraryDetailModel {
   final int hotelsCount;
   final int transportTurns;
   final double estimatedBudget;
+  final double userBudget;
   final int participantCount;
-  final double spentBudget;
+  final int adultCount;
+  final int childCount;
+  final double childPriceRatio;
+  final double estimatedCostForGroup;
   final double placeCost;
   final double hotelCost;
   final double transportCost;
@@ -37,6 +41,7 @@ class ItineraryDetailModel {
 
   final String? dailyStartTime;
   final String? dailyEndTime;
+  final String travelMode;
 
   const ItineraryDetailModel({
     required this.id,
@@ -58,8 +63,12 @@ class ItineraryDetailModel {
     required this.hotelsCount,
     required this.transportTurns,
     required this.estimatedBudget,
+    this.userBudget = 0,
     this.participantCount = 1,
-    required this.spentBudget,
+    this.adultCount = 1,
+    this.childCount = 0,
+    this.childPriceRatio = 0.7,
+    this.estimatedCostForGroup = 0,
     this.placeCost = 0,
     this.hotelCost = 0,
     this.transportCost = 0,
@@ -72,6 +81,7 @@ class ItineraryDetailModel {
     this.trackingActive = false,
     this.dailyStartTime,
     this.dailyEndTime,
+    this.travelMode = 'DRIVING',
   });
 
   factory ItineraryDetailModel.fromJson(Map<String, dynamic> json) {
@@ -141,12 +151,24 @@ class ItineraryDetailModel {
                   json['totalBudget'] ??
                   0.0)
               .toDouble(),
+      userBudget: (json['userBudget'] ?? json['user_budget'] ?? 0.0)
+          .toDouble(),
       participantCount:
           (json['participantCount'] ?? json['participant_count'] as num?)
               ?.toInt() ??
           1,
-      spentBudget: (json['spentBudget'] ?? json['spent_budget'] ?? 0.0)
-          .toDouble(),
+      adultCount:
+          (json['adultCount'] ?? json['adult_count'] as num?)?.toInt() ?? 1,
+      childCount:
+          (json['childCount'] ?? json['children_count'] as num?)?.toInt() ?? 0,
+      childPriceRatio:
+          (json['childPriceRatio'] ?? json['child_price_ratio'] ?? 0.7)
+              .toDouble(),
+      estimatedCostForGroup:
+          (json['estimatedCostForGroup'] ??
+                  json['estimated_cost_for_group'] ??
+                  0.0)
+              .toDouble(),
       placeCost: (json['placeCost'] ?? json['place_cost'] ?? 0.0).toDouble(),
       hotelCost: (json['hotelCost'] ?? json['hotel_cost'] ?? 0.0).toDouble(),
       transportCost: (json['transportCost'] ?? json['transport_cost'] ?? 0.0)
@@ -188,6 +210,8 @@ class ItineraryDetailModel {
       dailyEndTime:
           json['dailyEndTime']?.toString() ??
           json['daily_end_time']?.toString(),
+      travelMode:
+          (json['travelMode'] ?? json['travel_mode'] ?? 'DRIVING').toString(),
     );
   }
 
@@ -212,8 +236,12 @@ class ItineraryDetailModel {
       hotelsCount: hotelsCount,
       transportTurns: transportTurns,
       estimatedBudget: estimatedBudget,
+      userBudget: userBudget,
       participantCount: participantCount,
-      spentBudget: spentBudget,
+      adultCount: adultCount,
+      childCount: childCount,
+      childPriceRatio: childPriceRatio,
+      estimatedCostForGroup: estimatedCostForGroup,
       placeCost: placeCost,
       hotelCost: hotelCost,
       transportCost: transportCost,
@@ -226,6 +254,7 @@ class ItineraryDetailModel {
       trackingActive: trackingActive,
       dailyStartTime: dailyStartTime,
       dailyEndTime: dailyEndTime,
+      travelMode: travelMode,
     );
   }
 }

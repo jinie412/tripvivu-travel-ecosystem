@@ -12,6 +12,9 @@ class ItineraryModel {
   final bool trackingActive;
   final double estimatedCost;
   final int participantCount;
+  final int adultCount;
+  final int childCount;
+  final double estimatedCostForGroup;
   final int totalLocations;
   final int visitedLocations;
   final List<String> placeImages;
@@ -29,6 +32,9 @@ class ItineraryModel {
   this.trackingActive = false,
   this.estimatedCost = 0,
   this.participantCount = 1,
+  this.adultCount = 1,
+  this.childCount = 0,
+  this.estimatedCostForGroup = 0,
   this.totalLocations = 0,
   this.visitedLocations = 0,
   this.placeImages = const [],
@@ -51,6 +57,14 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
         (json['participantCount'] ?? json['participant_count'] as num?)
             ?.toInt() ??
         1,
+    adultCount: (json['adultCount'] ?? json['adult_count'] as num?)?.toInt() ?? 1,
+    childCount:
+        (json['childCount'] ?? json['children_count'] as num?)?.toInt() ?? 0,
+    estimatedCostForGroup:
+        (json['estimatedCostForGroup'] ??
+                json['estimated_cost_for_group'] as num?)
+            ?.toDouble() ??
+        0,
     totalLocations: (json['total_locations'] as num?)?.toInt() ?? 0,
     visitedLocations: (json['visited_locations'] as num?)?.toInt() ?? 0,
     placeImages: (json['place_images'] as List<dynamic>?)
@@ -79,6 +93,9 @@ ItineraryEntity toEntity() {
 
     estimatedCost: estimatedCost,
     participantCount: participantCount,
+    adultCount: adultCount,
+    childCount: childCount,
+    estimatedCostForGroup: estimatedCostForGroup,
 
     currency: 'VNĐ',
 

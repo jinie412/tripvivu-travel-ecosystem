@@ -5,6 +5,7 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinera
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
 
 typedef ItineraryShareLink = ({
   String token,
@@ -77,4 +78,31 @@ abstract class ItineraryRepository {
 
   Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
   optimizeDay(String itineraryId, Map<String, dynamic> payload);
+
+  // ── Chi phí phát sinh (mục 1.6-1.7) ──────────────────────────────────
+  Future<List<IncurredCostEntity>> getIncurredCosts(
+    String itineraryId, {
+    String? placeId,
+    String? filterUserId,
+  });
+  Future<List<EligiblePlaceEntity>> getEligiblePlaces(String itineraryId);
+  Future<CostBreakdownEntity> getCostBreakdown(String itineraryId);
+  Future<IncurredCostEntity> createIncurredCost(
+    String itineraryId, {
+    CostType type = CostType.other,
+    required String note,
+    required double amount,
+    String? placeId,
+    List<String>? chargedTo,
+  });
+  Future<IncurredCostEntity> updateIncurredCost(
+    String itineraryId,
+    String costId, {
+    CostType? type,
+    String? note,
+    double? amount,
+    String? placeId,
+    List<String>? chargedTo,
+  });
+  Future<void> deleteIncurredCost(String itineraryId, String costId);
 }

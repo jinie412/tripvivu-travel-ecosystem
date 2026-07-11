@@ -30,6 +30,9 @@ class ItineraryMapView extends StatefulWidget {
   final int selectedDay;
   final Function(String)? onMarkerTap;
   final Function(mapbox.MapboxMap)? onMapCreated;
+  // 'DRIVING' | 'MOTORBIKE' — quyết định Goong vẽ đường theo tuyến ô tô hay
+  // xe máy, thay vì luôn mặc định ô tô.
+  final String travelMode;
 
   const ItineraryMapView({
     super.key,
@@ -38,6 +41,7 @@ class ItineraryMapView extends StatefulWidget {
     required this.selectedDay,
     this.onMarkerTap,
     this.onMapCreated,
+    this.travelMode = 'DRIVING',
   });
 
   @override
@@ -640,10 +644,13 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
       final to = activities[i + 1];
       final key =
           '${from.id}:${from.longitude},${from.latitude}->${to.id}:${to.longitude},${to.latitude}';
-      final segment = _routeCache[key] ??= await MapUtils.getGoongRoute([
-        mapbox.Position(from.longitude!, from.latitude!),
-        mapbox.Position(to.longitude!, to.latitude!),
-      ]);
+      final segment = _routeCache[key] ??= await MapUtils.getGoongRoute(
+        [
+          mapbox.Position(from.longitude!, from.latitude!),
+          mapbox.Position(to.longitude!, to.latitude!),
+        ],
+        travelMode: widget.travelMode,
+      );
 
       if (route.isNotEmpty && segment.isNotEmpty) {
         route.addAll(segment.skip(1));

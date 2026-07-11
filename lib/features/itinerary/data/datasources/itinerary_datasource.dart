@@ -10,8 +10,13 @@ import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_d
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_detail_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/itinerary_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/incurred_cost_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart'
+    show CostType;
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/core/error/conflict_exception.dart';
+import 'package:travel_advisor_mobile/core/error/budget_confirmation_required_exception.dart';
+import 'package:travel_advisor_mobile/core/error/region_allocation_required_exception.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
 
 typedef ItineraryShareLinkData = ({
@@ -79,6 +84,33 @@ abstract class ItineraryDataSource {
 
   Future<({List<ItineraryActivityModel> optimized, List<String> reorderNotes})>
   optimizeDay(String itineraryId, Map<String, dynamic> payload);
+
+  // ── Chi phí phát sinh (mục 1.6-1.7) ──────────────────────────────────
+  Future<List<IncurredCostModel>> getIncurredCosts(
+    String itineraryId, {
+    String? placeId,
+    String? filterUserId,
+  });
+  Future<List<EligiblePlaceModel>> getEligiblePlaces(String itineraryId);
+  Future<CostBreakdownModel> getCostBreakdown(String itineraryId);
+  Future<IncurredCostModel> createIncurredCost(
+    String itineraryId, {
+    CostType type = CostType.other,
+    required String note,
+    required double amount,
+    String? placeId,
+    List<String>? chargedTo,
+  });
+  Future<IncurredCostModel> updateIncurredCost(
+    String itineraryId,
+    String costId, {
+    CostType? type,
+    String? note,
+    double? amount,
+    String? placeId,
+    List<String>? chargedTo,
+  });
+  Future<void> deleteIncurredCost(String itineraryId, String costId);
 }
 
 class RemoteItineraryDataSource implements ItineraryDataSource {
@@ -419,6 +451,19 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
         gaItineraryId: (gaId != null && gaId.isNotEmpty) ? gaId : null,
       );
     }
+    if (res.statusCode == 422) {
+      try {
+        final errBody = jsonDecode(res.body) as Map<String, dynamic>;
+        if (errBody['code'] == 'BUDGET_CONFIRMATION_REQUIRED') {
+          throw BudgetConfirmationRequiredException.fromJson(errBody);
+        }
+        if (errBody['code'] == 'REGION_ALLOCATION_REQUIRED') {
+          throw RegionAllocationRequiredException.fromJson(errBody);
+        }
+      } on FormatException {
+        // fall through to the generic error below
+      }
+    }
     String errMsg = 'Tạo lịch trình thất bại: ${res.statusCode}';
     try {
       final errBody = jsonDecode(res.body);
@@ -541,7 +586,6 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
         data['participantCount'] ?? data['participant_count'],
         1,
       ),
-      spentBudget: _asDouble(data['spentBudget'] ?? data['spent_budget']),
       placeCost: _asDouble(data['placeCost'] ?? data['place_cost']),
       hotelCost: _asDouble(data['hotelCost'] ?? data['hotel_cost']),
       transportCost: _asDouble(data['transportCost'] ?? data['transport_cost']),
@@ -680,5 +724,172 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     }
 
     throw Exception('Failed to optimize day: ${res.statusCode}');
+  }
+
+  // ── Chi phí phát sinh (mục 1.6-1.7) ──────────────────────────────────
+
+  String _extractErrorMessage(http.Response res, String fallback) {
+    try {
+      final data = jsonDecode(res.body);
+      final raw = data is Map ? data['message'] : null;
+      if (raw is List) return raw.join('\n');
+      if (raw != null) return raw.toString();
+    } catch (_) {}
+    return '$fallback: ${res.statusCode}';
+  }
+
+  @override
+  Future<List<IncurredCostModel>> getIncurredCosts(
+    String itineraryId, {
+    String? placeId,
+    String? filterUserId,
+  }) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.get(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/incurred-costs').replace(
+        queryParameters: {
+          'user_id': userId,
+          if (placeId != null) 'place_id': placeId,
+          if (filterUserId != null) 'filter_user_id': filterUserId,
+        },
+      ),
+      headers: headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể tải danh sách chi phí phát sinh'),
+      );
+    }
+    final list = jsonDecode(res.body) as List;
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(IncurredCostModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<EligiblePlaceModel>> getEligiblePlaces(
+    String itineraryId,
+  ) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.get(
+      Uri.parse(
+        '$baseUrl/itinerary/$itineraryId/incurred-costs/eligible-places',
+      ).replace(queryParameters: {'user_id': userId}),
+      headers: headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể tải danh sách địa điểm'),
+      );
+    }
+    final list = jsonDecode(res.body) as List;
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(EligiblePlaceModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<CostBreakdownModel> getCostBreakdown(String itineraryId) async {
+    final headers = await _authHeaders();
+    final res = await http.get(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/incurred-costs/breakdown'),
+      headers: headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể tải tổng hợp chi phí'),
+      );
+    }
+    return CostBreakdownModel.fromJson(
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<IncurredCostModel> createIncurredCost(
+    String itineraryId, {
+    CostType type = CostType.other,
+    required String note,
+    required double amount,
+    String? placeId,
+    List<String>? chargedTo,
+  }) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.post(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/incurred-costs'),
+      headers: headers,
+      body: jsonEncode({
+        'userId': userId,
+        'type': type.toApi(),
+        'note': note,
+        'amount': amount,
+        if (placeId != null) 'placeId': placeId,
+        if (chargedTo != null) 'chargedTo': chargedTo,
+      }),
+    );
+    if (res.statusCode != 201) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể ghi nhận chi phí phát sinh'),
+      );
+    }
+    return IncurredCostModel.fromJson(
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<IncurredCostModel> updateIncurredCost(
+    String itineraryId,
+    String costId, {
+    CostType? type,
+    String? note,
+    double? amount,
+    String? placeId,
+    List<String>? chargedTo,
+  }) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.patch(
+      Uri.parse('$baseUrl/itinerary/$itineraryId/incurred-costs/$costId'),
+      headers: headers,
+      body: jsonEncode({
+        'userId': userId,
+        if (type != null) 'type': type.toApi(),
+        if (note != null) 'note': note,
+        if (amount != null) 'amount': amount,
+        if (placeId != null) 'placeId': placeId,
+        if (chargedTo != null) 'chargedTo': chargedTo,
+      }),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể cập nhật chi phí phát sinh'),
+      );
+    }
+    return IncurredCostModel.fromJson(
+      jsonDecode(res.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<void> deleteIncurredCost(String itineraryId, String costId) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.delete(
+      Uri.parse(
+        '$baseUrl/itinerary/$itineraryId/incurred-costs/$costId',
+      ).replace(queryParameters: {'user_id': userId}),
+      headers: headers,
+    );
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể xoá chi phí phát sinh'),
+      );
+    }
   }
 }

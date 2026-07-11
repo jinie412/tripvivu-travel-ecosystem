@@ -27,11 +27,20 @@ class ItineraryEntity with _$ItineraryEntity {
     /// Ngày kết thúc chuyến đi.
     DateTime? endDate,
 
-    /// Tổng chi phí dự kiến (VNĐ). VD: 5200000
+    /// Chi phí dự kiến TÍNH THEO 1 NGƯỜI LỚN (VNĐ). VD: 5200000
     @Default(0) double estimatedCost,
 
-    /// Tổng số người của chuyến đi. Chi phí mặc định là tổng cho nhóm này.
+    /// Tổng số người của chuyến đi.
     @Default(1) int participantCount,
+
+    /// Số người lớn / trẻ em trong chuyến đi.
+    @Default(1) int adultCount,
+    @Default(0) int childCount,
+
+    /// Tổng chi phí ước tính cho CẢ NHÓM — tính tươi ở backend từ
+    /// estimatedCost * adultCount + estimatedCost * childPriceRatio *
+    /// childCount, không lưu trữ, không dùng để suy ngược lại estimatedCost.
+    @Default(0) double estimatedCostForGroup,
 
     /// Đơn vị tiền tệ. VD: "VNĐ"
     @Default('VNĐ') String currency,

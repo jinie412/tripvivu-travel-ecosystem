@@ -368,7 +368,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
               hotelsCount: 1,
               transportTurns: 3,
               estimatedBudget: 4500000,
-              spentBudget: 1200000,
               currency: 'VNĐ',
               days: [],
               notes: [],
@@ -1101,7 +1100,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       visitedLocations: 0,
       totalLocations: 27,
       estimatedBudget: 6800000,
-      spentBudget: 0,
       currency: 'VNĐ',
       centerCoordinate: [10.7769, 106.7009],
       notes: [

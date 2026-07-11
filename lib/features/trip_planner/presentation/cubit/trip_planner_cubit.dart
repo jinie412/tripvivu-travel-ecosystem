@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:travel_advisor_mobile/core/error/budget_confirmation_required_exception.dart';
+import 'package:travel_advisor_mobile/core/error/region_allocation_required_exception.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_form.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_intent_options.dart';
@@ -11,6 +13,13 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
 
   /// Giữ gaItineraryId ngoài state (tránh tái gen Freezed) — chỉ có giá trị khi compare.
   String? lastGaItineraryId;
+
+  /// Params/form của lần submit gần nhất — giữ ngoài state (tránh tái gen
+  /// Freezed) để retryWithRecommendedBudget()/proceedWithCurrentBudget() có
+  /// thể gửi lại đúng request đó với budget/proceedWithOverBudget đã đổi,
+  /// và để quay lại đúng form nếu request đó lỗi.
+  CreateItineraryParams? _lastAttemptedParams;
+  TripForm? _lastAttemptedForm;
 
   TripPlannerCubit({required CreateItineraryUseCase createItinerary})
     : _createItinerary = createItinerary,
@@ -387,36 +396,106 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
       return;
     }
 
+    final params = CreateItineraryParams(
+      userId: await AuthUtils.requireCurrentUserId(),
+      tripType: _tripTypeToApi(form.tripType),
+      departureLocationId: form.departureLocationId!,
+      destinationLocationId: form.destinationLocationId!,
+      transportMode: _transportToApi(form.transportation),
+      startDate: _formatDate(form.startDate),
+      endDate: _formatDate(form.endDate),
+      dailyStartTime: dailyStartTime,
+      dailyEndTime: dailyEndTime,
+      tripIntent: selectedTripIntents.isEmpty
+          ? kGeneralTripIntent
+          : selectedTripIntents.join(', '),
+      adultCount: form.adultCount,
+      childCount: form.childCount,
+      budget: form.budget,
+      foodPreferences: form.foodPreferences,
+      tripName: (form.tripName != null && form.tripName!.isNotEmpty)
+          ? form.tripName
+          : _generateTripName(form),
+    );
+    await _submitParams(params, form);
+  }
+
+  /// Gọi lại request tạo lịch trình gần nhất với budget = recommendedBudget
+  /// từ state budgetConfirmationRequired — người dùng chọn "Dùng mức đề xuất".
+  Future<void> retryWithRecommendedBudget() async {
+    final recommendedBudget = state.whenOrNull(
+      budgetConfirmationRequired: (_, _, _, recommendedBudget, _) =>
+          recommendedBudget,
+    );
+    final lastParams = _lastAttemptedParams;
+    final lastForm = _lastAttemptedForm;
+    if (recommendedBudget == null || lastParams == null || lastForm == null) {
+      return;
+    }
+    await _submitParams(
+      lastParams.copyWith(budget: recommendedBudget),
+      lastForm.copyWith(budget: recommendedBudget),
+    );
+  }
+
+  /// Gọi lại request tạo lịch trình gần nhất với proceedWithOverBudget=true —
+  /// người dùng chọn "Tiếp tục với ngân sách hiện tại" (xem lịch trình chưa
+  /// hoàn hảo thay vì tăng ngân sách).
+  Future<void> proceedWithCurrentBudget() async {
+    final lastParams = _lastAttemptedParams;
+    final lastForm = _lastAttemptedForm;
+    if (lastParams == null || lastForm == null) return;
+    await _submitParams(
+      lastParams.copyWith(proceedWithOverBudget: true),
+      lastForm,
+    );
+  }
+
+  /// Gọi lại request tạo lịch trình gần nhất sau khi người dùng đã chốt số
+  /// ngày cho từng vùng ở màn wizard phân bổ vùng (từ state
+  /// regionAllocationRequired).
+  Future<void> submitRegionAllocations(
+    List<RegionAllocationInput> allocations,
+  ) async {
+    final lastParams = _lastAttemptedParams;
+    final lastForm = _lastAttemptedForm;
+    if (lastParams == null || lastForm == null) return;
+    await _submitParams(
+      lastParams.copyWith(regionAllocations: allocations),
+      lastForm,
+    );
+  }
+
+  Future<void> _submitParams(
+    CreateItineraryParams params,
+    TripForm form,
+  ) async {
+    _lastAttemptedParams = params;
+    _lastAttemptedForm = form;
     emit(const TripPlannerState.generating());
     try {
-      final userId = await AuthUtils.requireCurrentUserId();
-
-      final result = await _createItinerary(
-        CreateItineraryParams(
-          userId: userId,
-          tripType: _tripTypeToApi(form.tripType),
-          departureLocationId: form.departureLocationId!,
-          destinationLocationId: form.destinationLocationId!,
-          transportMode: _transportToApi(form.transportation),
-          startDate: _formatDate(form.startDate),
-          endDate: _formatDate(form.endDate),
-          dailyStartTime: dailyStartTime,
-          dailyEndTime: dailyEndTime,
-          tripIntent: selectedTripIntents.isEmpty
-              ? kGeneralTripIntent
-              : selectedTripIntents.join(', '),
-          adultCount: form.adultCount,
-          childCount: form.childCount,
-          budget: form.budget,
-          foodPreferences: form.foodPreferences,
-          tripName: (form.tripName != null && form.tripName!.isNotEmpty)
-              ? form.tripName
-              : _generateTripName(form),
-        ),
-      );
-
+      final result = await _createItinerary(params);
       lastGaItineraryId = result.gaItineraryId;
       emit(TripPlannerState.success(itineraryId: result.itineraryId));
+    } on BudgetConfirmationRequiredException catch (e) {
+      emit(
+        TripPlannerState.budgetConfirmationRequired(
+          message: e.message,
+          userBudget: e.userBudget,
+          calculatedCost: e.calculatedCost,
+          recommendedBudget: e.recommendedBudget,
+          participantCount: e.participantCount,
+        ),
+      );
+    } on RegionAllocationRequiredException catch (e) {
+      emit(
+        TripPlannerState.regionAllocationRequired(
+          message: e.message,
+          regions: e.regions,
+          numDays: e.numDays,
+          estimatedTotalDays: e.estimatedTotalDays,
+        ),
+      );
     } catch (e) {
       emit(TripPlannerState.error(e.toString()));
       emit(TripPlannerState.loaded(tripForm: form));

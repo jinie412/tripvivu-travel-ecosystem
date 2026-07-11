@@ -40,7 +40,6 @@ class _ItineraryViewState extends State<_ItineraryView> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _isSearchOpen = false;
-  bool _showPerPersonCost = false;
 
   @override
   void initState() {
@@ -185,23 +184,6 @@ class _ItineraryViewState extends State<_ItineraryView> {
               ),
             ),
 
-          if (hasAnyItineraries)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                child: SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Tổng nhóm')),
-                    ButtonSegment(value: true, label: Text('Bình quân/người')),
-                  ],
-                  selected: {_showPerPersonCost},
-                  onSelectionChanged: (selection) {
-                    setState(() => _showPerPersonCost = selection.first);
-                  },
-                ),
-              ),
-            ),
-
           // Summary grid chỉ hiện ở tab "Tất cả", không tìm kiếm, có kết quả.
           if (hasAnyItineraries &&
               state.activeFilter == null &&
@@ -276,7 +258,6 @@ class _ItineraryViewState extends State<_ItineraryView> {
 
                 return _ItineraryCardWithStart(
                   item: item,
-                  showPerPersonCost: _showPerPersonCost,
                   onCardTap: onCardTap,
                   onDelete: () =>
                       _confirmAndDelete(context, cubit, item.id, item.title),
@@ -383,13 +364,11 @@ class _ItineraryCardWithStart extends StatelessWidget {
   final ItineraryEntity item;
   final VoidCallback onCardTap;
   final VoidCallback onDelete;
-  final bool showPerPersonCost;
 
   const _ItineraryCardWithStart({
     required this.item,
     required this.onCardTap,
     required this.onDelete,
-    required this.showPerPersonCost,
   });
 
   bool get _shouldShowStart {
@@ -413,7 +392,6 @@ class _ItineraryCardWithStart extends StatelessWidget {
       onTap: onCardTap,
       onEdit: () {},
       onDelete: onDelete,
-      showPerPersonCost: showPerPersonCost,
       bottomChild: _shouldShowStart ? _StartButton(item: item) : null,
     );
   }
