@@ -1,11 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CalendarClock, Clock3, Loader2, Play, Save } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import {
   algorithmPipelineAPI,
   formatPipelineDateTime,
 } from '../../../services/algorithmPipelineAPI';
 import './AlgorithmRunner.css';
+
+const notify = (icon: 'success' | 'error' | 'info', title: string) => {
+  void Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon,
+    title,
+    showConfirmButton: false,
+    timer: 5000,
+    timerProgressBar: true,
+  });
+};
 
 // ── Toggle ───────────────────────────────────────────────────────────────────
 
@@ -41,6 +54,7 @@ interface AlgoDropdownProps {
   scheduleSaving?: boolean;
   scheduleDirty?: boolean;
   lastRun?: string;
+  statusDetail?: string;
   onSaveSchedule?: () => void;
   onRunNow: () => void;
 }
@@ -51,7 +65,7 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
   frequency, onFrequencyChange,
   runDay, onRunDayChange,
   runTime, onRunTimeChange,
-  isRunning, scheduleSaving = false, scheduleDirty = false, lastRun, onSaveSchedule, onRunNow,
+  isRunning, scheduleSaving = false, scheduleDirty = false, lastRun, statusDetail, onSaveSchedule, onRunNow,
 }) => (
   <div className={`ar-dropdown${!available ? ' ar-dropdown--muted' : ''}`}>
     <div className="ar-dropdown__header">
@@ -78,6 +92,15 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
                 <span className="ar-dropdown__meta-value">{lastRun ?? 'Chưa ghi nhận'}</span>
               </div>
             </div>
+            {statusDetail && (
+              <div className="ar-dropdown__meta">
+                <Loader2 size={16} className={isRunning ? 'ar-spin' : ''} />
+                <div>
+                  <span className="ar-dropdown__meta-label">Trạng thái</span>
+                  <span className="ar-dropdown__meta-value">{statusDetail}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <section className="ar-section ar-section--schedule">
@@ -217,6 +240,14 @@ export const AlgorithmRunner: React.FC = () => {
   const [recommendFrequency, setRecommendFrequency] = useState('daily');
   const [recommendRunDay, setRecommendRunDay] = useState('1');
   const [recommendRunTime, setRecommendRunTime] = useState('03:00');
+  const [recommendRunning, setRecommendRunning] = useState(false);
+  const [recommendScheduleSaving, setRecommendScheduleSaving] = useState(false);
+  const [recommendScheduleDirty, setRecommendScheduleDirty] = useState(false);
+  const [recommendLastRun, setRecommendLastRun] = useState<string | undefined>();
+  const [recommendProgress, setRecommendProgress] = useState(0);
+  const [recommendStep, setRecommendStep] = useState('Sẵn sàng');
+  const observedRunId = useRef<string | null>(null);
+  const notifiedRunIds = useRef(new Set<string>());
 
   // ── Schedule pipeline ──
   const [scheduleAutoEnabled, setScheduleAutoEnabled] = useState(false);
@@ -224,14 +255,16 @@ export const AlgorithmRunner: React.FC = () => {
   const [scheduleRunDay, setScheduleRunDay] = useState('1');
   const [scheduleRunTime, setScheduleRunTime] = useState('04:00');
 
-  const [runResult, setRunResult] = useState<string | null>(null);
-
   useEffect(() => {
     let alive = true;
 
-    async function loadReviewSchedule() {
+    async function loadSchedules() {
       try {
-        const schedule = await algorithmPipelineAPI.getReviewFilterSchedule();
+        const [schedule, recommendSchedule, retrainStatus] = await Promise.all([
+          algorithmPipelineAPI.getReviewFilterSchedule(),
+          algorithmPipelineAPI.getRecommenderRetrainSchedule(),
+          algorithmPipelineAPI.getRecommenderRetrainStatus(),
+        ]);
         if (!alive) return;
         setReviewAutoEnabled(schedule.autoEnabled);
         setReviewFrequency(schedule.frequency);
@@ -241,18 +274,118 @@ export const AlgorithmRunner: React.FC = () => {
         if (schedule.lastRunAt) {
           setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
         }
+        setRecommendAutoEnabled(recommendSchedule.autoEnabled);
+        setRecommendFrequency(recommendSchedule.frequency);
+        setRecommendRunDay(recommendSchedule.runDay);
+        setRecommendRunTime(recommendSchedule.runTime);
+        setRecommendScheduleDirty(false);
+        if (recommendSchedule.lastRunAt) {
+          setRecommendLastRun(formatPipelineDateTime(recommendSchedule.lastRunAt));
+        }
+        if (retrainStatus.currentRun) {
+          observedRunId.current = retrainStatus.currentRun.id;
+          setRecommendRunning(true);
+          setRecommendProgress(retrainStatus.currentRun.metrics?.progress ?? 0);
+          setRecommendStep(retrainStatus.currentRun.metrics?.current_step ?? retrainStatus.currentRun.status);
+        } else if (retrainStatus.latestRun) {
+          const latest = retrainStatus.latestRun;
+          observedRunId.current = latest.id;
+          setRecommendStep(latest.status === 'completed' ? 'Hoàn thành' : latest.status);
+          setRecommendProgress(latest.metrics?.progress ?? 0);
+          if (latest.completedAt) setRecommendLastRun(formatPipelineDateTime(latest.completedAt));
+        }
       } catch (err: unknown) {
         if (!alive) return;
         const message = err instanceof Error ? err.message : 'Không thể tải lịch chạy tự động';
-        setRunResult(`Lỗi: ${message}`);
+        notify('error', message);
       }
     }
 
-    void loadReviewSchedule();
+    void loadSchedules();
     return () => {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    const syncRetrainStatus = async () => {
+      try {
+        const status = await algorithmPipelineAPI.getRecommenderRetrainStatus();
+        const run = status.currentRun ?? status.latestRun;
+        if (!run) return;
+
+        // Scheduler có thể tạo run mà trang không biết trước. Poll chung sẽ phát hiện
+        // run mới và hiển thị tiến trình ngay trên card.
+        if (status.currentRun) {
+          observedRunId.current = run.id;
+          setRecommendRunning(true);
+        }
+        setRecommendProgress(run.metrics?.progress ?? 0);
+        setRecommendStep(run.metrics?.current_step ?? run.status);
+        if (run.startedAt || run.createdAt) {
+          setRecommendLastRun(formatPipelineDateTime(run.startedAt ?? run.createdAt));
+        }
+        if (run.status === 'completed' || run.status === 'failed') {
+          setRecommendRunning(false);
+          if (run.completedAt) setRecommendLastRun(formatPipelineDateTime(run.completedAt));
+          if (!notifiedRunIds.current.has(run.id) && observedRunId.current === run.id) {
+            notifiedRunIds.current.add(run.id);
+            if (run.status === 'completed') {
+            const baseline = run.metrics?.rating_only_test_rmse;
+            const hybrid = run.metrics?.test_rmse;
+              notify('success',
+              `Retrain hoàn thành${baseline != null && hybrid != null ? ` — RMSE rating ${baseline.toFixed(4)}, hybrid ${hybrid.toFixed(4)}` : ''}.`
+              );
+            } else {
+              notify('error', run.errorMessage ?? 'Retrain thất bại');
+            }
+          }
+        }
+      } catch {
+        // Keep polling; transient API errors should not lose the running job UI.
+      }
+    };
+    const timer = window.setInterval(() => void syncRetrainStatus(), 3000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const saveRecommendSchedule = async () => {
+    setRecommendScheduleSaving(true);
+    try {
+      const schedule = await algorithmPipelineAPI.updateRecommenderRetrainSchedule({
+        autoEnabled: recommendAutoEnabled,
+        frequency: recommendFrequency as 'daily' | 'weekly' | 'monthly',
+        runTime: recommendRunTime,
+        runDay: Number(recommendRunDay),
+      });
+      setRecommendAutoEnabled(schedule.autoEnabled);
+      setRecommendFrequency(schedule.frequency);
+      setRecommendRunDay(schedule.runDay);
+      setRecommendRunTime(schedule.runTime);
+      setRecommendScheduleDirty(false);
+      notify('success', 'Đã lưu lịch retrain thuật toán gợi ý.');
+    } catch (err: unknown) {
+      notify('error', err instanceof Error ? err.message : 'Không thể lưu lịch retrain');
+    } finally {
+      setRecommendScheduleSaving(false);
+    }
+  };
+
+  const handleRunRecommendPipeline = async () => {
+    setRecommendRunning(true);
+    setRecommendProgress(0);
+    setRecommendStep('Đang tạo job');
+    try {
+      const status = await algorithmPipelineAPI.runRecommenderRetrain();
+      if (status.currentRun) {
+        observedRunId.current = status.currentRun.id;
+        setRecommendStep(status.currentRun.metrics?.current_step ?? 'queued');
+      }
+    } catch (err: unknown) {
+      setRecommendRunning(false);
+      notify('error', err instanceof Error ? err.message : 'Không thể chạy retrain');
+    }
+  };
 
   const saveReviewSchedule = async () => {
     setReviewScheduleSaving(true);
@@ -271,10 +404,10 @@ export const AlgorithmRunner: React.FC = () => {
       if (schedule.lastRunAt) {
         setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
       }
-      setRunResult('Đã lưu lịch chạy tự động thuật toán lọc đánh giá.');
+      notify('success', 'Đã lưu lịch chạy tự động thuật toán lọc đánh giá.');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Không thể lưu lịch chạy tự động';
-      setRunResult(`Lỗi: ${message}`);
+      notify('error', message);
     } finally {
       setReviewScheduleSaving(false);
     }
@@ -312,18 +445,17 @@ export const AlgorithmRunner: React.FC = () => {
 
   const handleRunReviewPipeline = async () => {
     setReviewRunning(true);
-    setRunResult(null);
     try {
       const result = await algorithmPipelineAPI.runPipeline({ dry_run: false });
       setReviewLastRun(formatPipelineDateTime(result.completed_at));
-      setRunResult(
+      notify('success',
         `Hoàn thành: xử lý ${result.total_reviews} đánh giá, ` +
         `${result.conflicts_detected} xung đột, ` +
         `${result.long_term_summaries} tóm tắt dài hạn.`
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Lỗi không xác định';
-      setRunResult(`Lỗi: ${message}`);
+      notify('error', message);
     } finally {
       setReviewRunning(false);
     }
@@ -347,30 +479,25 @@ export const AlgorithmRunner: React.FC = () => {
       </header>
 
       <div className="ar-content">
-        {runResult && (
-          <div
-            className={`ar-banner${runResult.startsWith('Lỗi') ? ' ar-banner--error' : ' ar-banner--success'}`}
-            role="alert"
-          >
-            <span>{runResult}</span>
-            <button className="ar-banner__close" onClick={() => setRunResult(null)}>×</button>
-          </div>
-        )}
-
         <div className="ar-accordion">
           <AlgoDropdown
             title="Thuật toán gợi ý"
-            available={false}
+            available={true}
             autoEnabled={recommendAutoEnabled}
-            onAutoChange={setRecommendAutoEnabled}
+            onAutoChange={(value) => { setRecommendAutoEnabled(value); setRecommendScheduleDirty(true); }}
             frequency={recommendFrequency}
-            onFrequencyChange={setRecommendFrequency}
+            onFrequencyChange={(value) => { setRecommendFrequency(value); setRecommendScheduleDirty(true); }}
             runDay={recommendRunDay}
-            onRunDayChange={setRecommendRunDay}
+            onRunDayChange={(value) => { setRecommendRunDay(value); setRecommendScheduleDirty(true); }}
             runTime={recommendRunTime}
-            onRunTimeChange={setRecommendRunTime}
-            isRunning={false}
-            onRunNow={() => {}}
+            onRunTimeChange={(value) => { setRecommendRunTime(value); setRecommendScheduleDirty(true); }}
+            isRunning={recommendRunning}
+            scheduleSaving={recommendScheduleSaving}
+            scheduleDirty={recommendScheduleDirty}
+            lastRun={recommendLastRun}
+            statusDetail={`${recommendStep}${recommendRunning ? ` ${recommendProgress}%` : ''}`}
+            onSaveSchedule={saveRecommendSchedule}
+            onRunNow={handleRunRecommendPipeline}
           />
           <AlgoDropdown
             title="Lọc đánh giá"
