@@ -80,6 +80,31 @@ export interface UpdateReviewFilterScheduleRequest {
   runDay?: number;
 }
 
+export interface RecommenderRetrainRun {
+  id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  triggerType: 'manual' | 'scheduled';
+  triggeredBy: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationSeconds: number | null;
+  errorMessage: string | null;
+  metrics: {
+    progress?: number;
+    current_step?: string;
+    rating_only_test_rmse?: number;
+    test_rmse?: number;
+    hybrid_log_coverage_test?: number;
+    log_tail?: string[];
+  } | null;
+  createdAt: string;
+}
+
+export interface RecommenderRetrainStatus {
+  currentRun: RecommenderRetrainRun | null;
+  latestRun: RecommenderRetrainRun | null;
+}
+
 const formatDuration = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
   const mins = Math.floor(seconds / 60);
@@ -133,6 +158,45 @@ export const algorithmPipelineAPI = {
   ): Promise<ReviewFilterSchedule> => {
     const response = await apiClient.patch<ReviewFilterSchedule>(
       '/admin/algorithm-pipeline/review-filter/schedule',
+      request,
+    );
+    return response.data;
+  },
+
+  runRecommenderRetrain: async (): Promise<RecommenderRetrainStatus> => {
+    const response = await apiClient.post<RecommenderRetrainStatus>(
+      '/admin/algorithm-pipeline/recommender-retrain/run',
+      {},
+    );
+    return response.data;
+  },
+
+  getRecommenderRetrainStatus: async (): Promise<RecommenderRetrainStatus> => {
+    const response = await apiClient.get<RecommenderRetrainStatus>(
+      '/admin/algorithm-pipeline/recommender-retrain/status',
+    );
+    return response.data;
+  },
+
+  getRecommenderRetrainRun: async (id: string): Promise<RecommenderRetrainRun> => {
+    const response = await apiClient.get<RecommenderRetrainRun>(
+      `/admin/algorithm-pipeline/recommender-retrain/runs/${id}`,
+    );
+    return response.data;
+  },
+
+  getRecommenderRetrainSchedule: async (): Promise<ReviewFilterSchedule> => {
+    const response = await apiClient.get<ReviewFilterSchedule>(
+      '/admin/algorithm-pipeline/recommender-retrain/schedule',
+    );
+    return response.data;
+  },
+
+  updateRecommenderRetrainSchedule: async (
+    request: UpdateReviewFilterScheduleRequest,
+  ): Promise<ReviewFilterSchedule> => {
+    const response = await apiClient.patch<ReviewFilterSchedule>(
+      '/admin/algorithm-pipeline/recommender-retrain/schedule',
       request,
     );
     return response.data;
