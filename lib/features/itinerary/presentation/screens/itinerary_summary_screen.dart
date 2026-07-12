@@ -309,10 +309,13 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         ),
         body: Stack(
           children: [
-            SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.zero,
-              child: Column(
+            RefreshIndicator(
+              onRefresh: () =>
+                  context.read<ItineraryCubit>().refreshDetail(itin.id),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.zero,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header với Glassmorphism Image Card
@@ -402,6 +405,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   ),
                 ],
               ),
+            ),
             ),
             // Nút xem chi tiết ở dưới cùng (Floating effect)
             Positioned(

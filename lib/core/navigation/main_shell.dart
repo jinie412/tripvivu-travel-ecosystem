@@ -38,6 +38,7 @@ class MainShell extends StatefulWidget {
 
 class MainShellTabController {
   static void Function(int index)? _selectTab;
+  static void Function()? _refreshItineraries;
 
   static bool selectTab(int index) {
     final selectTab = _selectTab;
@@ -45,6 +46,8 @@ class MainShellTabController {
     selectTab(index);
     return true;
   }
+
+  static void refreshItineraries() => _refreshItineraries?.call();
 }
 
 class _MainShellState extends State<MainShell> {
@@ -206,6 +209,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     MainShellTabController._selectTab = null;
+    MainShellTabController._refreshItineraries = null;
     _fcmSubscription?.cancel();
     if (_notificationChannel != null) {
       Supabase.instance.client.removeChannel(_notificationChannel!);
@@ -253,6 +257,8 @@ class _MainShellState extends State<MainShell> {
           builder: (context, currentIndex) {
             MainShellTabController._selectTab = (i) =>
                 _handleBottomNavTap(context, i);
+            MainShellTabController._refreshItineraries =
+                () => context.read<ItineraryCubit>().loadData();
             // Bắt trường hợp Profile đã load xong trước khi Widget build (ví dụ Hot Reload)
             final currentState = context.read<ProfileCubit>().state;
             if (currentState is ProfileLoaded && _notificationChannel == null) {

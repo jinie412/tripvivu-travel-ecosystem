@@ -58,7 +58,9 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
   void initState() {
     super.initState();
     _search(''); // load toàn bộ thành phố khi mở
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _focusNode.requestFocus(),
+    );
   }
 
   @override
@@ -143,13 +145,21 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
                 child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline, size: 18, color: AppColors.primary),
+                    Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'App hiện chỉ hỗ trợ lên lịch trình cho các tỉnh/thành phổ biến dưới đây. '
+                        'Ứng dụng hiện chỉ hỗ trợ lên lịch trình cho các tỉnh/thành phổ biến dưới đây. '
                         'Các điểm đến khác sẽ sớm được bổ sung.',
-                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -167,12 +177,20 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
               focusNode: _focusNode,
               onChanged: _onChanged,
               decoration: InputDecoration(
-                hintText: widget.destinationOnly ? 'Tìm trong các tỉnh/thành hỗ trợ...' : 'Tìm thành phố...',
+                hintText: widget.destinationOnly
+                    ? 'Tìm trong các tỉnh/thành hỗ trợ...'
+                    : 'Tìm thành phố...',
                 hintStyle: const TextStyle(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppColors.textSecondary,
+                ),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: AppColors.textSecondary),
+                        icon: const Icon(
+                          Icons.clear,
+                          color: AppColors.textSecondary,
+                        ),
                         onPressed: () {
                           _controller.clear();
                           _onChanged('');
@@ -181,7 +199,10 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
                     : null,
                 filled: true,
                 fillColor: AppColors.background,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -193,9 +214,7 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
           const Divider(height: 1),
 
           // Results
-          Expanded(
-            child: _buildBody(),
-          ),
+          Expanded(child: _buildBody()),
 
           SizedBox(height: bottomPadding),
         ],
@@ -209,7 +228,10 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
     }
     if (_error != null) {
       return Center(
-        child: Text(_error!, style: const TextStyle(color: AppColors.textSecondary)),
+        child: Text(
+          _error!,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
       );
     }
     if (_results.isEmpty) {
@@ -234,7 +256,10 @@ class _CitySearchBottomSheetState extends State<CitySearchBottomSheet> {
       itemBuilder: (context, index) {
         final city = _results[index];
         return ListTile(
-          leading: const Icon(Icons.location_city_outlined, color: AppColors.primary),
+          leading: const Icon(
+            Icons.location_city_outlined,
+            color: AppColors.primary,
+          ),
           title: Text(
             city.name,
             style: const TextStyle(

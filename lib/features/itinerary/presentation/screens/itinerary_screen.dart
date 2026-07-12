@@ -63,8 +63,21 @@ class _ItineraryViewState extends State<_ItineraryView> {
     BuildContext context,
     ItineraryCubit cubit,
     String id,
-    String title,
-  ) async {
+    String title, {
+    bool trackingActive = false,
+  }) async {
+    if (trackingActive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Lịch trình đang được theo dõi. Vui lòng dừng chuyến đi trước khi xoá.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -90,7 +103,25 @@ class _ItineraryViewState extends State<_ItineraryView> {
       ),
     );
     if (ok == true && context.mounted) {
-      cubit.deleteItem(id);
+      // Hiện loading dialog ngăn người dùng thao tác trong khi đang xóa
+      // ignore: use_build_context_synchronously
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1A6EBD)),
+          ),
+        ),
+      );
+
+      // Chờ tác vụ xóa hoàn tất
+      await cubit.deleteItem(id);
+
+      // Tắt loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -259,8 +290,13 @@ class _ItineraryViewState extends State<_ItineraryView> {
                 return _ItineraryCardWithStart(
                   item: item,
                   onCardTap: onCardTap,
-                  onDelete: () =>
-                      _confirmAndDelete(context, cubit, item.id, item.title),
+                  onDelete: () => _confirmAndDelete(
+                    context,
+                    cubit,
+                    item.id,
+                    item.title,
+                    trackingActive: item.trackingActive,
+                  ),
                 );
               }, childCount: state.itineraries.length + 2),
             ),

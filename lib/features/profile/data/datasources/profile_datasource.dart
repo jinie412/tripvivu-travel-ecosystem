@@ -27,7 +27,13 @@ class RemoteProfileDataSource implements ProfileDataSource {
 
   @override
   Future<ProfileModel> getProfile() async {
-    final profileResponse = await dioClient.dio.get('/profile/tourist/me');
+    // Không cache: response gắn với user hiện tại (theo Bearer token), nhưng
+    // cache key của dio_cache_interceptor chỉ dựa trên URL — nếu cache, user
+    // khác đăng nhập lại có thể nhận nhầm response cache của user trước.
+    final profileResponse = await dioClient.dio.get(
+      '/profile/tourist/me',
+      options: dioClient.forceRefreshOptions,
+    );
     return _parseProfileData(profileResponse.data as Map<String, dynamic>);
   }
 

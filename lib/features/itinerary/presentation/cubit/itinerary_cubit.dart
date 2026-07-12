@@ -294,12 +294,58 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     loadData(keepCurrentList: true);
   }
 
+  /// Xóa 1 lịch trình. Sau khi API xác nhận thành công, xóa cục bộ ngay khỏi
+  /// danh sách hiện có (không gọi lại loadData) để tránh 1 round-trip mạng
+  /// thừa và tránh việc cả danh sách bị thay bằng shimmer loading chỉ để
+  /// gỡ đúng 1 card. Nếu API lỗi, giữ nguyên danh sách cũ và báo lỗi.
   Future<void> deleteItem(String id) async {
+    if (state is! ItineraryLoaded) return;
+    final previousState = state as ItineraryLoaded;
+
     try {
       await _deleteItinerary(id);
-      await loadData();
     } catch (e) {
       emit(ItineraryError('Không thể xóa lịch trình: ${e.toString()}'));
+      emit(previousState);
+      return;
+    }
+
+    ItineraryStatus? deletedStatus;
+    for (final i in previousState.itineraries) {
+      if (i.id == id) {
+        deletedStatus = i.status;
+        break;
+      }
+    }
+
+    emit(
+      previousState.copyWith(
+        itineraries: previousState.itineraries
+            .where((i) => i.id != id)
+            .toList(),
+        summary: _decrementSummary(previousState.summary, deletedStatus),
+      ),
+    );
+  }
+
+  ItinerarySummary _decrementSummary(
+    ItinerarySummary summary,
+    ItineraryStatus? status,
+  ) {
+    int dec(int value) => value > 0 ? value - 1 : 0;
+    final total = dec(summary.total);
+    switch (status) {
+      case ItineraryStatus.completed:
+        return summary.copyWith(total: total, completed: dec(summary.completed));
+      case ItineraryStatus.upcoming:
+        return summary.copyWith(total: total, upcoming: dec(summary.upcoming));
+      case ItineraryStatus.ongoing:
+        return summary.copyWith(total: total, ongoing: dec(summary.ongoing));
+      case ItineraryStatus.draft:
+        return summary.copyWith(total: total, draft: dec(summary.draft));
+      case ItineraryStatus.uncompleted:
+      case null:
+        return summary.copyWith(total: total);
     }
   }
 

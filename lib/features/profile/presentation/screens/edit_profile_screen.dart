@@ -29,42 +29,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String _email = '';
   String _avatarUrl = '';
 
-  // Interests
-  final List<String> _allInterests = [
-    'Biển',
-    'Núi',
-    'Thành phố',
-    'Văn hóa',
-    'Ẩm thực',
-    'Mua sắm',
-    'Nghỉ dưỡng',
-    'Thể thao mạo hiểm',
-  ];
-  List<String> _selectedInterests = [];
-
-  String _getIconForInterest(String interest) {
-    switch (interest) {
-      case 'Biển':
-        return '🌴';
-      case 'Núi':
-        return '🏔️';
-      case 'Thành phố':
-        return '🏙️';
-      case 'Văn hóa':
-        return '🏛️';
-      case 'Ẩm thực':
-        return '🥣';
-      case 'Mua sắm':
-        return '🛍️';
-      case 'Nghỉ dưỡng':
-        return '💆';
-      case 'Thể thao mạo hiểm':
-        return '🧗';
-      default:
-        return '📍';
-    }
-  }
-
   String _mapGenderFromBackend(String? gender) {
     switch (gender?.toUpperCase()) {
       case 'MALE':
@@ -89,13 +53,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  bool _samePreferences(List<String>? current, List<String> next) {
-    final currentSet = (current ?? const <String>[]).toSet();
-    final nextSet = next.toSet();
-    return currentSet.length == nextSet.length &&
-        currentSet.containsAll(nextSet);
-  }
-
   void _syncProfileFields(
     ProfileLoaded state, {
     required bool overwriteEditable,
@@ -104,7 +61,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (overwriteEditable) {
       _nameController.text = profile.name;
       _gender = _mapGenderFromBackend(profile.gender);
-      _selectedInterests = List<String>.from(profile.travelPreferences ?? []);
     }
     _phoneNumber = profile.phoneNumber ?? '';
     _email = profile.email;
@@ -138,14 +94,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final currentGender = _mapGenderToBackend(
       _mapGenderFromBackend(state.profile.gender),
     );
-    final preferencesChanged = !_samePreferences(
-      state.profile.travelPreferences,
-      _selectedInterests,
-    );
     final displayNameChanged = displayName != state.profile.name;
     final genderChanged = gender != currentGender;
-    final hasChanges =
-        displayNameChanged || genderChanged || preferencesChanged;
+    final hasChanges = displayNameChanged || genderChanged;
 
     if (!hasChanges) {
       setState(() {
@@ -162,9 +113,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await context.read<ProfileCubit>().updateProfile(
         displayName: displayNameChanged ? displayName : null,
         gender: genderChanged ? gender : null,
-        travelPreferences: preferencesChanged
-            ? List<String>.from(_selectedInterests)
-            : null,
       );
       if (!mounted) return;
 
@@ -379,58 +327,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           label: 'Email',
                           value: _email,
                           isEditing: _isEditing,
-                        ),
-
-                        const SizedBox(height: AppSizes.s32),
-
-                        // Interests Section
-                        Text(
-                          'Sở thích du lịch',
-                          style: AppTextStyles.heading2.copyWith(
-                            fontSize: 20,
-                            color: AppColorsExt.textDark,
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.s8),
-                        Text(
-                          'Giúp chúng tôi gợi ý chuyến đi phù hợp hơn cho bạn',
-                          style: AppTextStyles.body.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.s16),
-
-                        // Chips
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 12,
-                          children:
-                              (_isEditing ? _allInterests : _selectedInterests)
-                                  .map((interest) {
-                                    final isSelected = _selectedInterests
-                                        .contains(interest);
-                                    return _buildInterestChip(
-                                      icon: _getIconForInterest(interest),
-                                      label: interest,
-                                      isSelected: isSelected,
-                                      onTap: _isEditing
-                                          ? () {
-                                              setState(() {
-                                                if (isSelected) {
-                                                  _selectedInterests.remove(
-                                                    interest,
-                                                  );
-                                                } else {
-                                                  _selectedInterests.add(
-                                                    interest,
-                                                  );
-                                                }
-                                              });
-                                            }
-                                          : null,
-                                    );
-                                  })
-                                  .toList(),
                         ),
                       ],
                     ),
@@ -705,40 +601,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildInterestChip({
-    required String icon,
-    required String label,
-    required bool isSelected,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColorsExt.chipActive : Colors.white,
-          borderRadius: BorderRadius.circular(AppSizes.r24),
-          border: Border.all(color: AppColorsExt.chipActive, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF113D3C),
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

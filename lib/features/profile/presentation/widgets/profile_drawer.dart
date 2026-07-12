@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
 
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
@@ -40,6 +41,28 @@ class ProfileDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<bool> _confirmLogout(BuildContext context) async {
+  final shouldLogout = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Đăng xuất'),
+      content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Hủy'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Đăng xuất'),
+        ),
+      ],
+    ),
+  );
+
+  return shouldLogout ?? false;
 }
 
 class _DrawerContent extends StatelessWidget {
@@ -212,7 +235,15 @@ class _DrawerContent extends StatelessWidget {
           _MenuTile(
             icon: Icons.exit_to_app_rounded,
             label: 'Đăng xuất',
-            onTap: () {
+            onTap: () async {
+              final shouldLogout = await _confirmLogout(context);
+              if (!shouldLogout || !context.mounted) return;
+
+              final authCubit = sl<AuthCubit>();
+              await authCubit.logout();
+              await authCubit.close();
+
+              if (!context.mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,

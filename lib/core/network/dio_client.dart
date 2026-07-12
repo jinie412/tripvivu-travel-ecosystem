@@ -56,6 +56,11 @@ class DioClient {
             .toExtra(),
       );
 
+  /// Xóa toàn bộ HTTP response cache (in-memory).
+  /// Bắt buộc phải gọi khi logout: cache được key theo URL chứ không theo user,
+  /// nên nếu không xóa, user B đăng nhập lại có thể vẫn nhận response cache của user A
+  /// (vd. GET /profile/tourist/me) trong lúc maxStale còn hiệu lực.
+  Future<void> clearCache() => _cacheOptions.store!.clean();
 }
 
 /// Đính kèm Bearer token từ SecureStorage vào mỗi request.

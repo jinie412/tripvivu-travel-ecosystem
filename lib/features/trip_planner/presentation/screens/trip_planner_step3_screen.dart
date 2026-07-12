@@ -10,6 +10,7 @@ import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/t
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/cubit/trip_planner_state.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_region_allocation_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/widgets/budget_slider_section.dart';
+import 'package:travel_advisor_mobile/core/navigation/main_shell.dart';
 import '../widgets/step_progress_bar.dart';
 
 // ════════════════════════════════════════════════════════════════
@@ -51,6 +52,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
           generating: () => _showLoadingDialog(context),
           success: (itineraryId) {
             if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+            MainShellTabController.refreshItineraries();
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(

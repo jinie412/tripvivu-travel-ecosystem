@@ -54,7 +54,11 @@ class ExploreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => sl<ExploreCubit>()..loadData()),
+        // ExploreCubit là DI singleton (persist qua các lần chuyển tab) — phải
+        // cấp bằng .value chứ không phải create(), vì BlocProvider(create: ...)
+        // tự động gọi close() khi widget dispose (vd. khi logout xóa navigator
+        // stack), làm "chết" singleton vĩnh viễn cho tới khi restart app.
+        BlocProvider.value(value: sl<ExploreCubit>()),
         BlocProvider(create: (_) => sl<LocationCubit>()..fetchLocation()),
       ],
       child: const _ExploreView(),
@@ -88,6 +92,7 @@ class _ExploreViewState extends State<_ExploreView> {
   @override
   void initState() {
     super.initState();
+    context.read<ExploreCubit>().loadData();
     _favoriteSubscription = sl<FavoriteRemoteDataSource>().changes.listen((
       event,
     ) {

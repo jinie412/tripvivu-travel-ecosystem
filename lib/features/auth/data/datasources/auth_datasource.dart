@@ -254,9 +254,14 @@ class RemoteAuthDataSource implements AuthDataSource {
 
   @override
   Future<UserEntity?> restoreSession() async {
-    final accessToken = await AuthStorage.read(_kAccessToken);
-    final refreshToken = await AuthStorage.read(_kRefreshToken);
-    final cachedUserJson = await AuthStorage.read(_kCachedUser);
+    final results = await Future.wait([
+      AuthStorage.read(_kAccessToken),
+      AuthStorage.read(_kRefreshToken),
+      AuthStorage.read(_kCachedUser),
+    ]);
+    final accessToken = results[0];
+    final refreshToken = results[1];
+    final cachedUserJson = results[2];
 
     // Không có token hoặc user cache → chưa đăng nhập
     if (accessToken == null || refreshToken == null || cachedUserJson == null) {
@@ -302,6 +307,7 @@ class RemoteAuthDataSource implements AuthDataSource {
   Future<void> logout() async {
     await Supabase.instance.client.auth.signOut();
     await _clearStorage();
+    await _client.clearCache();
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

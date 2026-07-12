@@ -21,6 +21,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/app_config.dart';
+import 'package:flutter/services.dart';
 
 /// 🔧 DEV FLAG — true = bỏ qua AuthGate, vào thẳng MainShell (chỉ dùng khi dev)
 const bool kSkipLogin = AppConfig.kSkipLogin;
@@ -61,7 +62,7 @@ void main() async {
         'pk.eyJ1IjoibWFwdHJhdmVsNjgiLCJhIjoiY21vbmpkdXh4MDF0YTJxczlhMzQ3ZzF1cSJ9.gC1J7jzlMnFD_yHe-4JgqQ';
     MapboxOptions.setAccessToken(mapboxPublicToken);
   }
-
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
   runApp(const TravelAdvisorApp());
 }
 
