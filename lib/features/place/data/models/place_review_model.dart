@@ -18,6 +18,8 @@ class PlaceReviewModel {
   final String reviewText;
   final String? provider;
   final String status;
+  @JsonKey(name: 'time_label')
+  final String? timeLabel;
   @JsonKey(name: 'review_images')
   final List<String> reviewImages;
 
@@ -30,6 +32,7 @@ class PlaceReviewModel {
     required this.reviewText,
     this.provider,
     this.status = 'approved',
+    this.timeLabel,
     this.reviewImages = const [],
   });
 
@@ -45,6 +48,7 @@ class PlaceReviewModel {
     reviewText: reviewText,
     provider: provider,
     status: status,
+    timeLabel: timeLabel,
     reviewImages: reviewImages,
   );
 }

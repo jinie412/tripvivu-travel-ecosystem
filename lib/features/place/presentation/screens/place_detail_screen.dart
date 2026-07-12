@@ -177,6 +177,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       imageUrl: place.images.isNotEmpty
                           ? place.images[0]
                           : 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&q=80',
+                      typeName: place.typeName,
                       isFavorite: place.isFavorite,
                       onBack: () => Navigator.pop(context),
                       onFavorite: () async {
@@ -214,7 +215,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     PlaceInfoSection(
                       name: place.name,
                       rating: place.rating,
-                      typeName: place.typeName,
                       vibes: place.vibes,
                     ),
 

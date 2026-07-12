@@ -4,6 +4,7 @@ import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
 
 class PlaceHeader extends StatelessWidget {
   final String imageUrl;
+  final String? typeName;
   final bool isFavorite;
   final VoidCallback onBack;
   final VoidCallback onFavorite;
@@ -11,6 +12,7 @@ class PlaceHeader extends StatelessWidget {
   const PlaceHeader({
     super.key,
     required this.imageUrl,
+    this.typeName,
     this.isFavorite = false,
     required this.onBack,
     required this.onFavorite,
@@ -18,6 +20,8 @@ class PlaceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final typeLabel = typeName?.trim();
+
     return Stack(
       children: [
         NetImage(
@@ -42,11 +46,40 @@ class PlaceHeader extends StatelessWidget {
             ),
           ),
         ),
+        if (typeLabel != null && typeLabel.isNotEmpty)
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Text(
+                typeLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF2563EB),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _circularButton(IconData icon, VoidCallback onTap, {Color? color, double? iconSize}) {
+  Widget _circularButton(
+    IconData icon,
+    VoidCallback onTap, {
+    Color? color,
+    double? iconSize,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(

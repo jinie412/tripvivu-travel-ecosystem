@@ -345,6 +345,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
           ? null
           : (json['provider'] ?? '').toString(),
       status: (json['status'] ?? 'approved').toString(),
+      timeLabel: json['time_label']?.toString(),
       reviewImages: const <String>[],
     );
   }

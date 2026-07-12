@@ -349,7 +349,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       MaterialPageRoute(
         builder: (_) => BlocProvider(
           create: (_) => sl<PlaceDetailCubit>(),
-          child: PlaceDetailScreen(placeId: placeId, showRelatedPlaces: false),
+          child: PlaceDetailScreen(placeId: placeId, showRelatedPlaces: true),
         ),
       ),
     );

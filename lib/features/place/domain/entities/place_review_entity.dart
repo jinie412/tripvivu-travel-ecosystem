@@ -13,6 +13,7 @@ class PlaceReviewEntity with _$PlaceReviewEntity {
     required String reviewText,
     String? provider,
     @Default('approved') String status,
+    String? timeLabel,
     @Default([]) List<String> reviewImages,
   }) = _PlaceReviewEntity;
 }

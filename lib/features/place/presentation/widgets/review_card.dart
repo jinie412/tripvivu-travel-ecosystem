@@ -12,6 +12,9 @@ class ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPending = review.status.trim().toLowerCase() == 'pending';
+    final isShortTermApproved =
+        review.status.trim().toLowerCase() == 'approved' &&
+        review.timeLabel?.trim().toLowerCase() == 'short-term';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -108,6 +111,26 @@ class ReviewCard extends StatelessWidget {
                   fontSize: 11,
                   height: 1.35,
                   color: Color(0xFF9A3412),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+          if (isShortTermApproved) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Text(
+                'Đánh giá này phản ánh trải nghiệm tại một thời điểm nhất định và có thể không còn phù hợp với tình trạng hiện tại của địa điểm.',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.35,
+                  color: Color(0xFF92400E),
                   fontWeight: FontWeight.w500,
                 ),
               ),
