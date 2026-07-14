@@ -45,6 +45,7 @@ import '../widgets/replace_place_sheet.dart';
 import '../widgets/add_place_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:travel_advisor_mobile/core/utils/map_utils.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/utils/day_cost_calculator.dart';
 
 class ItineraryDetailScreen extends StatefulWidget {
   final String itineraryId;
@@ -2421,40 +2422,22 @@ class _DayVisitProgressCard extends StatelessWidget {
 
 class _DayCostSummaryCard extends StatelessWidget {
   final ItineraryDayEntity day;
-  final List<ItineraryActivityEntity> visitActivities;
-  final int participantCount;
-  // Chi ph\u00ed l\u01b0u tr\u00fa CHO C\u1ea2 CHUY\u1ebeN (itin.hotelCost, \u0111\u00e3 per-adult) \u2014
-  // backend c\u1ed1 \u00fd ki t\u00ednh 0\u0111 cho hotel-row hi\u1ec3n th\u1ecb theo ng\u00e0y (xem
-  // itinerary.service.ts), n\u00ean kh\u00f4ng th\u1ec3 t\u00ednh l\u1ea1i t\u1eeb activity trong ng\u00e0y.
-  final double tripHotelCost;
-  final int durationDays;
+  final ItineraryDetailEntity itin;
 
   const _DayCostSummaryCard({
     required this.day,
-    required this.visitActivities,
-    required this.participantCount,
-    required this.tripHotelCost,
-    required this.durationDays,
+    required this.itin,
   });
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat('#,###', 'vi_VN');
-    final hotelCost = durationDays > 1
-        ? tripHotelCost / (durationDays - 1)
-        : tripHotelCost;
-    final placeCost = visitActivities.fold<double>(
-      0,
-      (sum, activity) => sum + activity.price,
+    final breakdown = DayCostCalculator.computeDaily(
+      day: day,
+      adultCount: itin.adultCount,
+      childCount: itin.childCount,
+      childPriceRatio: itin.childPriceRatio,
     );
-    final people = participantCount.clamp(1, 999);
-    final transportCost =
-        day.activities.fold<double>(
-          0,
-          (sum, activity) => sum + activity.transportCost,
-        ) /
-        people;
-    final totalCost = placeCost + hotelCost + transportCost;
+    final formatter = NumberFormat('#,###', 'vi_VN');
 
     String money(double value) =>
         '${formatter.format(value)} ${day.currency}';
@@ -2478,7 +2461,7 @@ class _DayCostSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Chi ph\u00ed trong ng\u00e0y (m\u1ed7i ng\u01b0\u1eddi l\u1edbn)',
+            'Chi phí trong ngày (Tổng cả nhóm)',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
@@ -2488,27 +2471,117 @@ class _DayCostSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           _DayCostRow(
             icon: Icons.place_rounded,
-            label: '\u0110\u1ecba \u0111i\u1ec3m & \u0103n u\u1ed1ng',
-            value: money(placeCost),
+            label: 'Địa điểm & ăn uống',
+            value: money(breakdown.placeCost),
             color: const Color(0xFFF59E0B),
           ),
           _DayCostRow(
-            icon: Icons.hotel_rounded,
-            label: 'L\u01b0u tr\u00fa',
-            value: money(hotelCost),
-            color: const Color(0xFF0F766E),
-          ),
-          _DayCostRow(
             icon: Icons.two_wheeler_rounded,
-            label: 'X\u0103ng xe/t\u1ef1 t\u00fac',
-            value: money(transportCost),
+            label: 'Xăng xe/tự túc',
+            value: money(breakdown.transportShare),
             color: const Color(0xFF2563EB),
           ),
           _DayCostRow(
             icon: Icons.receipt_long_rounded,
-            label: 'T\u1ed5ng ng\u00e0y',
-            value: money(totalCost),
+            label: 'Tổng ngày',
+            value: money(breakdown.total),
             color: const Color(0xFF10B981),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HotelCostCard extends StatelessWidget {
+  final ItineraryDetailEntity itin;
+
+  const _HotelCostCard({required this.itin});
+
+  @override
+  Widget build(BuildContext context) {
+    // itin.hotelCost là TỔNG chi phí lưu trú cho 1 người CHO CẢ CHUYẾN (đã
+    // gồm mọi đêm — xem itinerary.service.ts, hotelCost lấy MAX theo dòng,
+    // không phải đơn giá 1 đêm) — KHÔNG nhân thêm số đêm ở đây, chỉ nhân số
+    // người. Đơn giá/đêm hiển thị bên dưới suy ngược bằng cách chia số đêm.
+    final nightCount = itin.durationDays > 1 ? itin.durationDays - 1 : 0;
+    final totalPeople = itin.adultCount + itin.childCount;
+    final totalHotelCost = itin.hotelCost * totalPeople;
+    final pricePerNightPerPerson = nightCount > 0
+        ? itin.hotelCost / nightCount
+        : itin.hotelCost;
+    final formatter = NumberFormat('#,###', 'vi_VN');
+
+    if (totalHotelCost <= 0) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.hotel_rounded,
+                  size: 18,
+                  color: Color(0xFF8B5CF6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Khách sạn (Cả nhóm)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      '${formatter.format(pricePerNightPerPerson)} đ / 1 đêm / 1 người',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '${formatter.format(totalHotelCost)} đ',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF8B5CF6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '* Chi phí các ngày bên dưới chỉ bao gồm tham quan + ăn uống + xăng xe (không bao gồm khách sạn).',
+            style: TextStyle(
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              color: Color(0xFF64748B),
+            ),
           ),
         ],
       ),
@@ -3276,12 +3349,10 @@ class _ItineraryDetailView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSizes.s16),
+          _HotelCostCard(itin: itin),
           _DayCostSummaryCard(
             day: currentDayData,
-            visitActivities: _visitActivities(currentDayData),
-            participantCount: itin.participantCount,
-            tripHotelCost: itin.hotelCost,
-            durationDays: itin.durationDays,
+            itin: itin,
           ),
           const SizedBox(height: AppSizes.s12),
           _DayVisitProgressCard(

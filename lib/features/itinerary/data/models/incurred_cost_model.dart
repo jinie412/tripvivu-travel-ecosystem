@@ -145,11 +145,17 @@ class CostBreakdownModel {
   final double payableLimitForGroup;
   final double payableLimitPerAdult;
   final double payableLimitPerChild;
+  final double reserveCost;
+  final double roundedGroupTotal;
+  final double contingencyCost;
+  final double roundedCostPerAdult;
+  final double roundedCostPerChild;
   final double placeCostPerAdult;
   final double placeCostPerChild;
   final double hotelCostPerAdult;
   final double hotelCostPerChild;
   final double transportPerAdult;
+  final double childPriceRatio;
   final double transportRatePerKmMotorbike;
   final double transportRatePerKmCar;
   final int adultCount;
@@ -168,11 +174,17 @@ class CostBreakdownModel {
     this.payableLimitForGroup = 0,
     this.payableLimitPerAdult = 0,
     this.payableLimitPerChild = 0,
+    this.reserveCost = 0,
+    this.roundedGroupTotal = 0,
+    this.contingencyCost = 0,
+    this.roundedCostPerAdult = 0,
+    this.roundedCostPerChild = 0,
     this.placeCostPerAdult = 0,
     this.placeCostPerChild = 0,
     this.hotelCostPerAdult = 0,
     this.hotelCostPerChild = 0,
     this.transportPerAdult = 0,
+    this.childPriceRatio = 0.7,
     this.transportRatePerKmMotorbike = 0,
     this.transportRatePerKmCar = 0,
     this.adultCount = 1,
@@ -226,6 +238,20 @@ class CostBreakdownModel {
                   json['payable_limit_per_child'] ??
                   0)
               .toDouble(),
+      reserveCost: (json['reserveCost'] ?? json['reserve_cost'] ?? 0)
+          .toDouble(),
+      roundedGroupTotal:
+          (json['roundedGroupTotal'] ?? json['rounded_group_total'] ?? 0)
+              .toDouble(),
+      contingencyCost:
+          (json['contingencyCost'] ?? json['contingency_cost'] ?? 0)
+              .toDouble(),
+      roundedCostPerAdult:
+          (json['roundedCostPerAdult'] ?? json['rounded_cost_per_adult'] ?? 0)
+              .toDouble(),
+      roundedCostPerChild:
+          (json['roundedCostPerChild'] ?? json['rounded_cost_per_child'] ?? 0)
+              .toDouble(),
       placeCostPerAdult:
           (json['placeCostPerAdult'] ?? json['place_cost_per_adult'] ?? 0)
               .toDouble(),
@@ -240,6 +266,9 @@ class CostBreakdownModel {
               .toDouble(),
       transportPerAdult:
           (json['transportPerAdult'] ?? json['transport_per_adult'] ?? 0)
+              .toDouble(),
+      childPriceRatio:
+          (json['childPriceRatio'] ?? json['child_price_ratio'] ?? 0.7)
               .toDouble(),
       transportRatePerKmMotorbike:
           (((json['transportRatePerKm'] ?? json['transport_rate_per_km'])
@@ -271,11 +300,17 @@ class CostBreakdownModel {
     payableLimitForGroup: payableLimitForGroup,
     payableLimitPerAdult: payableLimitPerAdult,
     payableLimitPerChild: payableLimitPerChild,
+    reserveCost: reserveCost,
+    roundedGroupTotal: roundedGroupTotal,
+    contingencyCost: contingencyCost,
+    roundedCostPerAdult: roundedCostPerAdult,
+    roundedCostPerChild: roundedCostPerChild,
     placeCostPerAdult: placeCostPerAdult,
     placeCostPerChild: placeCostPerChild,
     hotelCostPerAdult: hotelCostPerAdult,
     hotelCostPerChild: hotelCostPerChild,
     transportPerAdult: transportPerAdult,
+    childPriceRatio: childPriceRatio,
     transportRatePerKmMotorbike: transportRatePerKmMotorbike,
     transportRatePerKmCar: transportRatePerKmCar,
     adultCount: adultCount,

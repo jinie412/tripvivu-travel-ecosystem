@@ -139,6 +139,15 @@ class CostBreakdownEntity {
   final double payableLimitForGroup;
   final double payableLimitPerAdult;
   final double payableLimitPerChild;
+  // Tổng cả nhóm đã gồm 10% dự trù, làm tròn đến hàng trăm nghìn — dùng làm
+  // con số "to nhất" hiển thị và ngưỡng so sánh cảnh báo vượt ngân sách. Tính
+  // 1 lần duy nhất ở backend (computeCostBreakdown) để tránh mỗi màn tự làm
+  // tròn/suy dự trù một kiểu khác nhau rồi lệch số.
+  final double reserveCost;
+  final double roundedGroupTotal;
+  final double contingencyCost;
+  final double roundedCostPerAdult;
+  final double roundedCostPerChild;
   // Breakdown xổ ra khi bấm vào dòng "Người lớn"/"Trẻ em" ở Card 1 — đã
   // per-adult sẵn (transport dùng CHUNG 1 mức cho cả người lớn/trẻ em, vì
   // xăng xe chia đều đầu người thật, không phải giá vé).
@@ -147,6 +156,9 @@ class CostBreakdownEntity {
   final double hotelCostPerAdult;
   final double hotelCostPerChild;
   final double transportPerAdult;
+  // Minh bạch: hiển thị rõ "trẻ em = người lớn × childPriceRatio" ở mục Địa
+  // điểm & ăn uống / Lưu trú, để tránh hiểu nhầm số trẻ em không rõ căn cứ.
+  final double childPriceRatio;
   // Minh bạch: mức giá/km hiện dùng để tính transportPerAdult (VNĐ/km),
   // hiển thị phụ dưới số tiền để user hiểu căn cứ thay vì thấy "thấp" mà
   // không rõ vì sao.
@@ -168,11 +180,17 @@ class CostBreakdownEntity {
     this.payableLimitForGroup = 0,
     this.payableLimitPerAdult = 0,
     this.payableLimitPerChild = 0,
+    this.reserveCost = 0,
+    this.roundedGroupTotal = 0,
+    this.contingencyCost = 0,
+    this.roundedCostPerAdult = 0,
+    this.roundedCostPerChild = 0,
     this.placeCostPerAdult = 0,
     this.placeCostPerChild = 0,
     this.hotelCostPerAdult = 0,
     this.hotelCostPerChild = 0,
     this.transportPerAdult = 0,
+    this.childPriceRatio = 0.7,
     this.transportRatePerKmMotorbike = 0,
     this.transportRatePerKmCar = 0,
     this.adultCount = 1,
