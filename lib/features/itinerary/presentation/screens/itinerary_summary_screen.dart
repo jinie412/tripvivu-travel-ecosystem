@@ -1183,13 +1183,29 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
       childCount: itin.childCount,
       childPriceRatio: itin.childPriceRatio,
     );
+    final stats = DayCostCalculator.travelStats(day);
     final formatter = NumberFormat('#,###', 'vi_VN');
-    
+
+    String? hoursText(int minutes) {
+      if (minutes <= 0) return null;
+      final hours = minutes / 60;
+      return '${hours.toStringAsFixed(hours.truncateToDouble() == hours ? 0 : 1)} giờ';
+    }
+
     return ShortItineraryItem(
       dayNumber: day.dayNumber,
       date: DateFormat('dd/MM/yyyy').format(day.date),
-      locationCount: DayCostCalculator.visitActivities(day).length,
       totalCostText: "${formatter.format(breakdown.total)}đ",
+      locationCount: DayCostCalculator.visitActivities(day).length,
+      distanceKmText: stats.distanceKm > 0
+          ? '${stats.distanceKm.toStringAsFixed(1)} km'
+          : null,
+      sightseeingTimeText: hoursText(stats.sightseeingMinutes) != null
+          ? '${hoursText(stats.sightseeingMinutes)} tham quan'
+          : null,
+      travelTimeText: hoursText(stats.travelMinutes) != null
+          ? '${hoursText(stats.travelMinutes)} di chuyển'
+          : null,
       icon: Icons.event_note_rounded,
       onTap: () {
         if (isFromSheet) {
@@ -1230,8 +1246,12 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   Widget _buildHotelOverviewRow(ItineraryDetailEntity itin) {
     final hotelName = _hotelDisplayName(itin);
     final nightCount = itin.durationDays > 1 ? itin.durationDays - 1 : 0;
-    final totalPeople = itin.adultCount + itin.childCount;
-    final totalHotelCost = itin.hotelCost * totalPeople;
+    // Trẻ em tính theo childPriceRatio (khớp estimatedCostForGroup/Sổ chi
+    // tiêu) — trước đây nhân theo TỔNG số người (trẻ em tính đủ 100% giá
+    // khách sạn), khiến "card ngày (không gồm khách sạn) + card khách sạn"
+    // luôn CAO HƠN "chi phí chưa dự trù" khi có trẻ em trong đoàn.
+    final totalHotelCost = itin.hotelCost * itin.adultCount +
+        itin.hotelCost * itin.childPriceRatio * itin.childCount;
     if (hotelName == null || totalHotelCost <= 0) return const SizedBox.shrink();
     final pricePerNightPerPerson = nightCount > 0
         ? itin.hotelCost / nightCount
@@ -1246,28 +1266,31 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF3F4F6)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      // Tên khách sạn xuống dòng riêng thay vì chia đôi hàng ngang với cột
+      // giá — tên dài + "N đêm • giá/đêm/người" ép chung 1 hàng trước đây
+      // khiến tên khách sạn bị bóp/che gần hết.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.hotel_rounded,
-              color: Color(0xFFEC4899),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.hotel_rounded,
+                  color: Color(0xFFEC4899),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
                   'Khách sạn (cả chuyến)',
                   style: TextStyle(
                     fontSize: 13,
@@ -1275,20 +1298,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                     color: Color(0xFF1C1C1E),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  hotelName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+              ),
               Text(
                 '${formatter.format(totalHotelCost)}đ',
                 style: const TextStyle(
@@ -1297,14 +1307,21 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                nightCount > 0
-                    ? '$nightCount đêm • ${formatter.format(pricePerNightPerPerson)}đ/đêm/người'
-                    : '${formatter.format(pricePerNightPerPerson)}đ/đêm/người',
-                style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hotelName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            nightCount > 0
+                ? '$nightCount đêm • ${formatter.format(pricePerNightPerPerson)}đ/đêm/người'
+                : '${formatter.format(pricePerNightPerPerson)}đ/đêm/người',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -1313,9 +1330,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
 
   Widget _buildStatsGrid(ItineraryDetailEntity itin) {
     final visitCount = _totalVisitCount(itin);
-    final peopleValue = itin.childCount > 0
-        ? '${itin.adultCount} người lớn, ${itin.childCount} trẻ em'
-        : '${itin.adultCount} người lớn';
+    final isMotorbike = itin.travelMode.toUpperCase() == 'MOTORBIKE';
 
     return Column(
       children: [
@@ -1339,12 +1354,33 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           ],
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: _StatCardV2(
-            value: peopleValue,
-            icon: Icons.groups_rounded,
-            color: const Color(0xFF10B981),
+        // Bọc IntrinsicHeight để card phương tiện cao bằng card người
+        // lớn/trẻ em (card kia giờ 2 dòng nên cao hơn 1 dòng "Xe máy"/"Ô tô").
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _StatCardV2(
+                  value: '${itin.adultCount} người lớn',
+                  secondLine: itin.childCount > 0
+                      ? '${itin.childCount} trẻ em'
+                      : null,
+                  icon: Icons.groups_rounded,
+                  color: const Color(0xFF10B981),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _StatCardV2(
+                  value: isMotorbike ? 'Xe máy' : 'Ô tô',
+                  icon: isMotorbike
+                      ? Icons.two_wheeler_rounded
+                      : Icons.directions_car_filled_rounded,
+                  color: const Color(0xFF3B82F6),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1458,6 +1494,30 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                         color: Color(0xFF64748B),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Mức có thể chi trả',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${formatter.format(breakdown.payableLimitForGroup)} ${itin.currency}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 );
               },
@@ -1484,7 +1544,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Lưu ý: Chi phí thực tế có thể thay đổi theo thời gian và thời điểm. Bấm để xem chi tiết, ghi chi phí phát sinh và chia cho từng thành viên.',
+                      'Lưu ý: Chi phí thực tế có thể thay đổi theo thời gian và địa điểm.',
                       style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                   ),
@@ -2106,11 +2166,13 @@ class _CostSnapshot {
 
 class _StatCardV2 extends StatelessWidget {
   final String value;
+  final String? secondLine;
   final IconData icon;
   final Color color;
 
   const _StatCardV2({
     required this.value,
+    this.secondLine,
     required this.icon,
     required this.color,
   });
@@ -2118,6 +2180,7 @@ class _StatCardV2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2133,6 +2196,7 @@ class _StatCardV2 extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -2151,6 +2215,17 @@ class _StatCardV2 extends StatelessWidget {
               color: Color(0xFF1E293B),
             ),
           ),
+          if (secondLine != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              secondLine!,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ],
         ],
       ),
     );

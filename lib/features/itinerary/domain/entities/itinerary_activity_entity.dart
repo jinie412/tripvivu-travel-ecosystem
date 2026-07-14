@@ -19,6 +19,11 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     @Default(0) double transportCost,
     @Default('VNĐ') String currency,
     String? transportInfo,
+    // Quãng đường/thời gian di chuyển ĐẾN hoạt động tiếp theo (transitToNext),
+    // dùng để cộng dồn "km di chuyển"/"giờ di chuyển" cho card tổng quan
+    // ngày — transportInfo chỉ là chuỗi hiển thị, không parse ngược được.
+    double? transitDistanceKm,
+    int? transitDurationMinutes,
     @Default(false) bool isFree,
     String? category, // e.g. "Cà phê", "Tham quan"
 

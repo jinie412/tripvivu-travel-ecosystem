@@ -315,6 +315,37 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
+            'Mức có thể chi trả',
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          Text(
+            '${_formatter.format(breakdown.payableLimitForGroup)}đ',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const Text(
+            'cho cả nhóm',
+            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+          ),
+          const SizedBox(height: 8),
+          formulaLine(
+            'Người lớn',
+            breakdown.adultCount,
+            breakdown.payableLimitPerAdult,
+          ),
+          if (breakdown.childCount > 0)
+            formulaLine(
+              'Trẻ em',
+              breakdown.childCount,
+              breakdown.payableLimitPerChild,
+            ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          const Text(
             'Tổng ước tính (đã gồm 10% dự trù)',
             style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
@@ -355,37 +386,6 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               adultPlaceCost: breakdown.placeCostPerAdult,
               adultHotelCost: breakdown.hotelCostPerAdult,
             ),
-          const SizedBox(height: 8),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          const Text(
-            'Mức có thể chi trả',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-          ),
-          Text(
-            '${_formatter.format(breakdown.payableLimitForGroup)}đ',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const Text(
-            'cho cả nhóm',
-            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 8),
-          formulaLine(
-            'Người lớn',
-            breakdown.adultCount,
-            breakdown.payableLimitPerAdult,
-          ),
-          if (breakdown.childCount > 0)
-            formulaLine(
-              'Trẻ em',
-              breakdown.childCount,
-              breakdown.payableLimitPerChild,
-            ),
         ],
       ),
     );
@@ -407,6 +407,15 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
           const Text(
             'Mỗi người phải trả',
             style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          // Số này là CHI PHÍ THỰC TẾ (chỉ địa điểm đã ghé + chi phí phát
+          // sinh gắn địa điểm đã ghé) — khác với "Chi phí ước tính" ở card
+          // trên (tính cho cả kế hoạch), nên cần ghi rõ mốc thời gian để
+          // tránh hiểu nhầm 2 số không khớp nhau là do sai sót.
+          const Text(
+            'Tính đến hiện tại',
+            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
           ),
           const SizedBox(height: 8),
           ...breakdown.memberTotals.map(
@@ -437,10 +446,12 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              '+ Phần trẻ em (phụ trách)',
-                              style: TextStyle(
+                              breakdown.childCount > 1
+                                  ? '+ Phần trẻ em (phụ trách ${breakdown.childCount} trẻ)'
+                                  : '+ Phần trẻ em (phụ trách 1 trẻ)',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF64748B),
                               ),

@@ -25,6 +25,8 @@ class ItineraryActivityModel {
   final String currency;
   @JsonKey(name: 'transport_info')
   final String? transportInfo;
+  final double? transitDistanceKm;
+  final int? transitDurationMinutes;
   @JsonKey(name: 'is_free')
   final bool isFree;
   final String? category;
@@ -50,6 +52,8 @@ class ItineraryActivityModel {
     this.transportCost = 0,
     this.currency = 'VNĐ',
     this.transportInfo,
+    this.transitDistanceKm,
+    this.transitDurationMinutes,
     this.isFree = false,
     this.category,
     this.latitude,
@@ -84,6 +88,12 @@ class ItineraryActivityModel {
           (json['transitToNext'] != null
               ? (json['transitToNext']['durationStr'] ?? '')
               : ''),
+      transitDistanceKm: json['transitToNext']?['distanceKm'] != null
+          ? (json['transitToNext']['distanceKm'] as num).toDouble()
+          : null,
+      transitDurationMinutes: json['transitToNext']?['durationMinutes'] != null
+          ? (json['transitToNext']['durationMinutes'] as num).round()
+          : null,
       isFree:
           json['is_free'] ??
           json['isFree'] ??
@@ -151,6 +161,8 @@ class ItineraryActivityModel {
       transportCost: transportCost,
       currency: currency,
       transportInfo: transportInfo,
+      transitDistanceKm: transitDistanceKm,
+      transitDurationMinutes: transitDurationMinutes,
       isFree: isFree,
       category: category,
       latitude: latitude,
