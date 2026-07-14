@@ -526,3 +526,73 @@
     padding: 16px;
   }
 }
+
+/* ── Model versions panel (Two-Tower training) ─────────────────────────────────── */
+
+.ar-versions {
+  margin-top: 8px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background: var(--bg-surface);
+}
+
+.ar-versions__title {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ar-versions__empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ar-versions__table-wrap {
+  overflow-x: auto;
+}
+
+.ar-versions__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.ar-versions__table th,
+.ar-versions__table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 0.5px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.ar-versions__table th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.ar-versions__tag {
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+.ar-versions__status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ar-versions__status--active { background: #f0fdf4; color: #166534; }
+.ar-versions__status--candidate { background: #eff6ff; color: #1d4ed8; }
+.ar-versions__status--archived { background: var(--bg-main); color: var(--text-muted); }
+.ar-versions__status--failed { background: #fff5f5; color: #991b1b; }
+
+.ar-versions__table .ar-btn-primary {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}

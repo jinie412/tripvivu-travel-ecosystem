@@ -2,10 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CalendarClock, Clock3, Loader2, Play, Save } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
-import {
-  algorithmPipelineAPI,
-  formatPipelineDateTime,
-} from '../../../services/algorithmPipelineAPI';
+import { algorithmPipelineAPI, formatPipelineDateTime } from '../../../services/algorithmPipelineAPI';
+import { sessionCfTrainingAPI } from '../../../services/sessionCfTrainingAPI';
+import { algorithmTrainingAPI } from '../../../services/algorithmTrainingAPI';
 import './AlgorithmRunner.css';
 
 const notify = (icon: 'success' | 'error' | 'info', title: string) => {
@@ -23,7 +22,9 @@ const notify = (icon: 'success' | 'error' | 'info', title: string) => {
 // ── Toggle ───────────────────────────────────────────────────────────────────
 
 const Toggle: React.FC<{ checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }> = ({
-  checked, disabled = false, onChange,
+  checked,
+  disabled = false,
+  onChange,
 }) => (
   <button
     type="button"
@@ -31,8 +32,7 @@ const Toggle: React.FC<{ checked: boolean; disabled?: boolean; onChange: (v: boo
     aria-checked={checked}
     className={`ar-toggle${checked ? ' ar-toggle--on' : ''}${disabled ? ' ar-toggle--disabled' : ''}`}
     disabled={disabled}
-    onClick={() => onChange(!checked)}
-  >
+    onClick={() => onChange(!checked)}>
     <span className="ar-toggle__thumb" />
   </button>
 );
@@ -57,15 +57,28 @@ interface AlgoDropdownProps {
   statusDetail?: string;
   onSaveSchedule?: () => void;
   onRunNow: () => void;
+  runLabel?: string;
 }
 
 const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
-  title, available,
-  autoEnabled, onAutoChange,
-  frequency, onFrequencyChange,
-  runDay, onRunDayChange,
-  runTime, onRunTimeChange,
-  isRunning, scheduleSaving = false, scheduleDirty = false, lastRun, statusDetail, onSaveSchedule, onRunNow,
+  title,
+  available,
+  autoEnabled,
+  onAutoChange,
+  frequency,
+  onFrequencyChange,
+  runDay,
+  onRunDayChange,
+  runTime,
+  onRunTimeChange,
+  isRunning,
+  scheduleSaving = false,
+  scheduleDirty = false,
+  lastRun,
+  statusDetail,
+  onSaveSchedule,
+  onRunNow,
+  runLabel = 'Chạy ngay',
 }) => (
   <div className={`ar-dropdown${!available ? ' ar-dropdown--muted' : ''}`}>
     <div className="ar-dropdown__header">
@@ -84,140 +97,123 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
     </div>
 
     <div className="ar-dropdown__body">
-          <div className="ar-dropdown__meta-row">
-            <div className="ar-dropdown__meta">
-              <Clock3 size={16} />
-              <div>
-                <span className="ar-dropdown__meta-label">Lần chạy cuối</span>
-                <span className="ar-dropdown__meta-value">{lastRun ?? 'Chưa ghi nhận'}</span>
-              </div>
-            </div>
-            {statusDetail && (
-              <div className="ar-dropdown__meta">
-                <Loader2 size={16} className={isRunning ? 'ar-spin' : ''} />
-                <div>
-                  <span className="ar-dropdown__meta-label">Trạng thái</span>
-                  <span className="ar-dropdown__meta-value">{statusDetail}</span>
-                </div>
-              </div>
-            )}
+      <div className="ar-dropdown__meta-row">
+        <div className="ar-dropdown__meta">
+          <Clock3 size={16} />
+          <div>
+            <span className="ar-dropdown__meta-label">Lần chạy cuối</span>
+            <span className="ar-dropdown__meta-value">{lastRun ?? 'Chưa ghi nhận'}</span>
           </div>
-
-          <section className="ar-section ar-section--schedule">
-            <div className="ar-section__header">
-              <CalendarClock size={18} />
-              <div>
-                <h2>Lịch tự động</h2>
-                <p>{autoEnabled ? 'Đang chạy theo lịch đã thiết lập' : 'Đã tắt lịch tự động cho thuật toán này'}</p>
-              </div>
+        </div>
+        {statusDetail && (
+          <div className="ar-dropdown__meta">
+            <Loader2 size={16} className={isRunning ? 'ar-spin' : ''} />
+            <div>
+              <span className="ar-dropdown__meta-label">Trạng thái</span>
+              <span className="ar-dropdown__meta-value">{statusDetail}</span>
             </div>
-          <div className="ar-dropdown__schedule">
+          </div>
+        )}
+      </div>
+
+      <section className="ar-section ar-section--schedule">
+        <div className="ar-section__header">
+          <CalendarClock size={18} />
+          <div>
+            <h2>Lịch tự động</h2>
+            <p>{autoEnabled ? 'Đang chạy theo lịch đã thiết lập' : 'Đã tắt lịch tự động cho thuật toán này'}</p>
+          </div>
+        </div>
+        <div className="ar-dropdown__schedule">
+          <div className="ar-dropdown__field">
+            <label className="ar-dropdown__field-label">ĐỊNH KỲ</label>
+            <select className="ar-select" value={frequency} onChange={(e) => onFrequencyChange(e.target.value)}>
+              <option value="daily">Hàng ngày</option>
+              <option value="weekly">Hàng tuần</option>
+              <option value="monthly">Hàng tháng</option>
+            </select>
+          </div>
+          <div className="ar-dropdown__field">
+            <label className="ar-dropdown__field-label">GIỜ CHẠY</label>
+            <input type="time" className="ar-input" value={runTime} onChange={(e) => onRunTimeChange(e.target.value)} />
+          </div>
+          {frequency === 'weekly' && (
             <div className="ar-dropdown__field">
-              <label className="ar-dropdown__field-label">ĐỊNH KỲ</label>
-              <select
-                className="ar-select"
-                value={frequency}
-                onChange={e => onFrequencyChange(e.target.value)}
-              >
-                <option value="daily">Hàng ngày</option>
-                <option value="weekly">Hàng tuần</option>
-                <option value="monthly">Hàng tháng</option>
+              <label className="ar-dropdown__field-label">NGÀY CHẠY</label>
+              <select className="ar-select" value={runDay} onChange={(e) => onRunDayChange(e.target.value)}>
+                <option value="1">Thứ Hai</option>
+                <option value="2">Thứ Ba</option>
+                <option value="3">Thứ Tư</option>
+                <option value="4">Thứ Năm</option>
+                <option value="5">Thứ Sáu</option>
+                <option value="6">Thứ Bảy</option>
+                <option value="0">Chủ Nhật</option>
               </select>
             </div>
+          )}
+          {frequency === 'monthly' && (
             <div className="ar-dropdown__field">
-              <label className="ar-dropdown__field-label">GIỜ CHẠY</label>
-              <input
-                type="time"
-                className="ar-input"
-                value={runTime}
-                onChange={e => onRunTimeChange(e.target.value)}
-              />
-            </div>
-            {frequency === 'weekly' && (
-              <div className="ar-dropdown__field">
-                <label className="ar-dropdown__field-label">NGÀY CHẠY</label>
-                <select
-                  className="ar-select"
-                  value={runDay}
-                  onChange={e => onRunDayChange(e.target.value)}
-                >
-                  <option value="1">Thứ Hai</option>
-                  <option value="2">Thứ Ba</option>
-                  <option value="3">Thứ Tư</option>
-                  <option value="4">Thứ Năm</option>
-                  <option value="5">Thứ Sáu</option>
-                  <option value="6">Thứ Bảy</option>
-                  <option value="0">Chủ Nhật</option>
-                </select>
-              </div>
-            )}
-            {frequency === 'monthly' && (
-              <div className="ar-dropdown__field">
-                <label className="ar-dropdown__field-label">NGÀY TRONG THÁNG</label>
-                <select
-                  className="ar-select"
-                  value={runDay}
-                  onChange={e => onRunDayChange(e.target.value)}
-                >
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                    <option key={d} value={String(d)}>Ngày {d}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {onSaveSchedule && (
-            <div className="ar-dropdown__schedule-actions">
-              <button
-                className={`ar-btn-primary${(!available || scheduleSaving || !scheduleDirty) ? ' ar-btn-primary--disabled' : ''}`}
-                type="button"
-                onClick={onSaveSchedule}
-                disabled={!available || scheduleSaving || !scheduleDirty}
-              >
-                {scheduleSaving ? (
-                  <>
-                    <Loader2 size={14} className="ar-spin" />
-                    Đang lưu...
-                  </>
-                ) : (
-                  <>
-                    <Save size={14} />
-                    Lưu thay đổi
-                  </>
-                )}
-              </button>
+              <label className="ar-dropdown__field-label">NGÀY TRONG THÁNG</label>
+              <select className="ar-select" value={runDay} onChange={(e) => onRunDayChange(e.target.value)}>
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={String(d)}>
+                    Ngày {d}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
-          </section>
+        </div>
 
-          <section className="ar-section ar-section--manual">
-            <div className="ar-section__header">
-              <Play size={18} />
-              <div>
-                <h2>Chạy thủ công</h2>
-                <p>{autoEnabled ? 'Tắt tự động để chạy ngay thủ công' : 'Kích hoạt thuật toán một lần theo nhu cầu'}</p>
-              </div>
-            </div>
+        {onSaveSchedule && (
+          <div className="ar-dropdown__schedule-actions">
             <button
-              className={`ar-btn-primary${(autoEnabled || !available || isRunning) ? ' ar-btn-primary--disabled' : ''}`}
-              onClick={onRunNow}
-              disabled={autoEnabled || !available || isRunning}
-              title={autoEnabled ? 'Tắt lịch tự động để chạy thủ công' : !available ? 'Tính năng chưa được triển khai' : undefined}
-            >
-              {isRunning ? (
+              className={`ar-btn-primary${!available || scheduleSaving || !scheduleDirty ? ' ar-btn-primary--disabled' : ''}`}
+              type="button"
+              onClick={onSaveSchedule}
+              disabled={!available || scheduleSaving || !scheduleDirty}>
+              {scheduleSaving ? (
                 <>
                   <Loader2 size={14} className="ar-spin" />
-                  Đang chạy...
+                  Đang lưu...
                 </>
               ) : (
                 <>
-                  <Play size={14} />
-                  Chạy ngay
+                  <Save size={14} />
+                  Lưu thay đổi
                 </>
               )}
             </button>
-          </section>
+          </div>
+        )}
+      </section>
+
+      <section className="ar-section ar-section--manual">
+        <div className="ar-section__header">
+          <Play size={18} />
+          <div>
+            <h2>Chạy thủ công</h2>
+            <p>{autoEnabled ? 'Tắt tự động để chạy ngay thủ công' : 'Kích hoạt thuật toán một lần theo nhu cầu'}</p>
+          </div>
+        </div>
+        <button
+          className={`ar-btn-primary${autoEnabled || !available || isRunning ? ' ar-btn-primary--disabled' : ''}`}
+          onClick={onRunNow}
+          disabled={autoEnabled || !available || isRunning}
+          title={autoEnabled ? 'Tắt lịch tự động để chạy thủ công' : !available ? 'Tính năng chưa được triển khai' : undefined}>
+          {isRunning ? (
+            <>
+              <Loader2 size={14} className="ar-spin" />
+              Đang chạy...
+            </>
+          ) : (
+            <>
+              <Play size={14} />
+              {runLabel}
+            </>
+          )}
+        </button>
+      </section>
     </div>
   </div>
 );
@@ -235,7 +231,7 @@ export const AlgorithmRunner: React.FC = () => {
   const [reviewScheduleDirty, setReviewScheduleDirty] = useState(false);
   const [reviewLastRun, setReviewLastRun] = useState<string | undefined>(undefined);
 
-  // ── Recommend pipeline ──
+  // ── Recommend pipeline (retrain hybrid recommender) ──
   const [recommendAutoEnabled, setRecommendAutoEnabled] = useState(false);
   const [recommendFrequency, setRecommendFrequency] = useState('daily');
   const [recommendRunDay, setRecommendRunDay] = useState('1');
@@ -254,6 +250,30 @@ export const AlgorithmRunner: React.FC = () => {
   const [scheduleFrequency, setScheduleFrequency] = useState('weekly');
   const [scheduleRunDay, setScheduleRunDay] = useState('1');
   const [scheduleRunTime, setScheduleRunTime] = useState('04:00');
+
+  // ── Session-CF training (Funk-SVD historical CF, docs/create-data) ──
+  const [sessionCfAutoEnabled, setSessionCfAutoEnabled] = useState(false);
+  const [sessionCfFrequency, setSessionCfFrequency] = useState('daily');
+  const [sessionCfRunDay, setSessionCfRunDay] = useState('1');
+  const [sessionCfRunTime, setSessionCfRunTime] = useState('02:00');
+  const [sessionCfRunning, setSessionCfRunning] = useState(false);
+  const [sessionCfScheduleSaving, setSessionCfScheduleSaving] = useState(false);
+  const [sessionCfScheduleDirty, setSessionCfScheduleDirty] = useState(false);
+  const [sessionCfLastRun, setSessionCfLastRun] = useState<string | undefined>(undefined);
+
+  // ── Two-Tower training (docs/trigger — Phase 0/1 + Modal) ──
+  const [twoTowerAutoEnabled, setTwoTowerAutoEnabled] = useState(false);
+  const [twoTowerFrequency, setTwoTowerFrequency] = useState('daily');
+  const [twoTowerRunDay, setTwoTowerRunDay] = useState('1');
+  const [twoTowerRunTime, setTwoTowerRunTime] = useState('01:00');
+  const [twoTowerRunning, setTwoTowerRunning] = useState(false);
+  const [twoTowerScheduleSaving, setTwoTowerScheduleSaving] = useState(false);
+  const [twoTowerScheduleDirty, setTwoTowerScheduleDirty] = useState(false);
+  const [twoTowerLastRun, setTwoTowerLastRun] = useState<string | undefined>(undefined);
+  const twoTowerObservedRunId = useRef<string | null>(null);
+  const twoTowerNotifiedRunIds = useRef(new Set<string>());
+
+  const [runResult, setRunResult] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -301,7 +321,47 @@ export const AlgorithmRunner: React.FC = () => {
       }
     }
 
+    async function loadSessionCfSchedule() {
+      try {
+        const schedule = await sessionCfTrainingAPI.getSchedule();
+        if (!alive) return;
+        setSessionCfAutoEnabled(schedule.autoEnabled);
+        setSessionCfFrequency(schedule.frequency);
+        setSessionCfRunDay(schedule.runDay);
+        setSessionCfRunTime(schedule.runTime);
+        setSessionCfScheduleDirty(false);
+        if (schedule.lastRunAt) {
+          setSessionCfLastRun(formatPipelineDateTime(schedule.lastRunAt));
+        }
+      } catch (err: unknown) {
+        if (!alive) return;
+        const message = err instanceof Error ? err.message : 'Không thể tải lịch chạy tự động';
+        setRunResult(`Lỗi: ${message}`);
+      }
+    }
+
+    async function loadTwoTowerSchedule() {
+      try {
+        const schedule = await algorithmTrainingAPI.getSchedule('two-tower');
+        if (!alive) return;
+        setTwoTowerAutoEnabled(schedule.autoEnabled);
+        setTwoTowerFrequency(schedule.frequency);
+        setTwoTowerRunDay(schedule.runDay);
+        setTwoTowerRunTime(schedule.runTime);
+        setTwoTowerScheduleDirty(false);
+        if (schedule.lastRunAt) {
+          setTwoTowerLastRun(formatPipelineDateTime(schedule.lastRunAt));
+        }
+      } catch (err: unknown) {
+        if (!alive) return;
+        const message = err instanceof Error ? err.message : 'Không thể tải lịch chạy tự động';
+        setRunResult(`Lỗi: ${message}`);
+      }
+    }
+
     void loadSchedules();
+    void loadSessionCfSchedule();
+    void loadTwoTowerSchedule();
     return () => {
       alive = false;
     };
@@ -331,10 +391,11 @@ export const AlgorithmRunner: React.FC = () => {
           if (!notifiedRunIds.current.has(run.id) && observedRunId.current === run.id) {
             notifiedRunIds.current.add(run.id);
             if (run.status === 'completed') {
-            const baseline = run.metrics?.rating_only_test_rmse;
-            const hybrid = run.metrics?.test_rmse;
-              notify('success',
-              `Retrain hoàn thành${baseline != null && hybrid != null ? ` — RMSE rating ${baseline.toFixed(4)}, hybrid ${hybrid.toFixed(4)}` : ''}.`
+              const baseline = run.metrics?.rating_only_test_rmse;
+              const hybrid = run.metrics?.test_rmse;
+              notify(
+                'success',
+                `Retrain hoàn thành${baseline != null && hybrid != null ? ` — RMSE rating ${baseline.toFixed(4)}, hybrid ${hybrid.toFixed(4)}` : ''}.`,
               );
             } else {
               notify('error', run.errorMessage ?? 'Retrain thất bại');
@@ -346,6 +407,44 @@ export const AlgorithmRunner: React.FC = () => {
       }
     };
     const timer = window.setInterval(() => void syncRetrainStatus(), 3000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // Train Two-Tower chay tren GPU (Modal) mat ~30 phut, khong the doi tai cho -- job duoc gui
+    // bat dong bo (spawn) roi bao ve qua webhook. Poll training_runs de biet khi nao xong thay vi
+    // gia dinh xong ngay sau khi goi API run-full-training.
+    const syncTwoTowerStatus = async () => {
+      try {
+        const runs = await algorithmTrainingAPI.getRuns('two-tower', 5);
+        const run = runs.find((r) => r.runType === 'training');
+        if (!run) return;
+
+        const isActive = run.status === 'pending' || run.status === 'running';
+        setTwoTowerRunning(isActive);
+
+        if (isActive) {
+          twoTowerObservedRunId.current = run.id;
+          return;
+        }
+
+        if (run.completedAt) {
+          setTwoTowerLastRun(formatPipelineDateTime(run.completedAt));
+        }
+        if (twoTowerObservedRunId.current === run.id && !twoTowerNotifiedRunIds.current.has(run.id)) {
+          twoTowerNotifiedRunIds.current.add(run.id);
+          if (run.status === 'completed') {
+            notify('success', 'Two-Tower train xong.');
+          } else if (run.status === 'failed') {
+            notify('error', run.errorMessage ?? 'Two-Tower train thất bại');
+          }
+        }
+      } catch {
+        // Giu polling; loi tam thoi khong nen lam mat trang thai dang chay tren UI.
+      }
+    };
+    void syncTwoTowerStatus();
+    const timer = window.setInterval(() => void syncTwoTowerStatus(), 5000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -448,16 +547,180 @@ export const AlgorithmRunner: React.FC = () => {
     try {
       const result = await algorithmPipelineAPI.runPipeline({ dry_run: false });
       setReviewLastRun(formatPipelineDateTime(result.completed_at));
-      notify('success',
+      notify(
+        'success',
         `Hoàn thành: xử lý ${result.total_reviews} đánh giá, ` +
-        `${result.conflicts_detected} xung đột, ` +
-        `${result.long_term_summaries} tóm tắt dài hạn.`
+          `${result.conflicts_detected} xung đột, ` +
+          `${result.long_term_summaries} tóm tắt dài hạn.`,
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Lỗi không xác định';
       notify('error', message);
     } finally {
       setReviewRunning(false);
+    }
+  };
+
+  const saveSessionCfSchedule = async () => {
+    setSessionCfScheduleSaving(true);
+    try {
+      const schedule = await sessionCfTrainingAPI.updateSchedule({
+        autoEnabled: sessionCfAutoEnabled,
+        frequency: sessionCfFrequency as 'daily' | 'weekly' | 'monthly',
+        runTime: sessionCfRunTime,
+        runDay: Number(sessionCfRunDay),
+      });
+      setSessionCfAutoEnabled(schedule.autoEnabled);
+      setSessionCfFrequency(schedule.frequency);
+      setSessionCfRunDay(schedule.runDay);
+      setSessionCfRunTime(schedule.runTime);
+      setSessionCfScheduleDirty(false);
+      if (schedule.lastRunAt) {
+        setSessionCfLastRun(formatPipelineDateTime(schedule.lastRunAt));
+      }
+      setRunResult('Đã lưu lịch chạy tự động huấn luyện Session-CF.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Không thể lưu lịch chạy tự động';
+      setRunResult(`Lỗi: ${message}`);
+    } finally {
+      setSessionCfScheduleSaving(false);
+    }
+  };
+
+  const handleSessionCfAutoChange = (next: boolean) => {
+    setSessionCfAutoEnabled(next);
+    setSessionCfScheduleDirty(true);
+  };
+
+  const handleSessionCfFrequencyChange = (next: string) => {
+    const frequency = next as 'daily' | 'weekly' | 'monthly';
+    const nextDay =
+      frequency === 'weekly'
+        ? ['0', '1', '2', '3', '4', '5', '6'].includes(sessionCfRunDay)
+          ? sessionCfRunDay
+          : '1'
+        : frequency === 'monthly'
+          ? String(Math.min(Math.max(Number(sessionCfRunDay) || 1, 1), 28))
+          : sessionCfRunDay;
+    setSessionCfFrequency(frequency);
+    setSessionCfRunDay(nextDay);
+    setSessionCfScheduleDirty(true);
+  };
+
+  const handleSessionCfRunTimeChange = (next: string) => {
+    setSessionCfRunTime(next);
+    setSessionCfScheduleDirty(true);
+  };
+
+  const handleSessionCfRunDayChange = (next: string) => {
+    setSessionCfRunDay(next);
+    setSessionCfScheduleDirty(true);
+  };
+
+  const handleRunSessionCfTraining = async () => {
+    setSessionCfRunning(true);
+    setRunResult(null);
+    try {
+      const result = await sessionCfTrainingAPI.runTraining({ dry_run: false, upload_r2: true });
+      setSessionCfLastRun(formatPipelineDateTime(result.completed_at));
+      const metricsText = Object.entries(result.metrics)
+        .map(([k, v]) => `${k}=${v.toFixed(4)}`)
+        .join(', ');
+      setRunResult(
+        `Hoàn thành: train lại với ${result.n_users} user, ${result.n_items} place ` +
+          `(model=${result.model_type}${metricsText ? `, ${metricsText}` : ''}). ` +
+          `${result.uploaded_r2 ? 'Đã upload R2 và nạp lại model đang chạy.' : 'Chưa upload R2.'}`,
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi không xác định';
+      setRunResult(`Lỗi: ${message}`);
+    } finally {
+      setSessionCfRunning(false);
+    }
+  };
+
+  const saveTwoTowerSchedule = async () => {
+    setTwoTowerScheduleSaving(true);
+    try {
+      const schedule = await algorithmTrainingAPI.updateSchedule('two-tower', {
+        autoEnabled: twoTowerAutoEnabled,
+        frequency: twoTowerFrequency as 'daily' | 'weekly' | 'monthly',
+        runTime: twoTowerRunTime,
+        runDay: Number(twoTowerRunDay),
+      });
+      setTwoTowerAutoEnabled(schedule.autoEnabled);
+      setTwoTowerFrequency(schedule.frequency);
+      setTwoTowerRunDay(schedule.runDay);
+      setTwoTowerRunTime(schedule.runTime);
+      setTwoTowerScheduleDirty(false);
+      if (schedule.lastRunAt) {
+        setTwoTowerLastRun(formatPipelineDateTime(schedule.lastRunAt));
+      }
+      setRunResult(
+        'Đã lưu lịch tự động cho Two-Tower — hệ thống sẽ tự chuẩn bị dữ liệu theo lịch, ' +
+          'và chỉ tự train khi có dữ liệu mới thật sự (đồng thời đã đủ thời gian tối thiểu kể từ lần train gần nhất).',
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Không thể lưu lịch chạy tự động';
+      setRunResult(`Lỗi: ${message}`);
+    } finally {
+      setTwoTowerScheduleSaving(false);
+    }
+  };
+
+  const handleTwoTowerAutoChange = (next: boolean) => {
+    setTwoTowerAutoEnabled(next);
+    setTwoTowerScheduleDirty(true);
+  };
+
+  const handleTwoTowerFrequencyChange = (next: string) => {
+    const frequency = next as 'daily' | 'weekly' | 'monthly';
+    const nextDay =
+      frequency === 'weekly'
+        ? ['0', '1', '2', '3', '4', '5', '6'].includes(twoTowerRunDay)
+          ? twoTowerRunDay
+          : '1'
+        : frequency === 'monthly'
+          ? String(Math.min(Math.max(Number(twoTowerRunDay) || 1, 1), 28))
+          : twoTowerRunDay;
+    setTwoTowerFrequency(frequency);
+    setTwoTowerRunDay(nextDay);
+    setTwoTowerScheduleDirty(true);
+  };
+
+  const handleTwoTowerRunTimeChange = (next: string) => {
+    setTwoTowerRunTime(next);
+    setTwoTowerScheduleDirty(true);
+  };
+
+  const handleTwoTowerRunDayChange = (next: string) => {
+    setTwoTowerRunDay(next);
+    setTwoTowerScheduleDirty(true);
+  };
+
+  const handleRunTwoTowerTraining = async () => {
+    setTwoTowerRunning(true);
+    setRunResult(null);
+    try {
+      const dataset = await algorithmTrainingAPI.prepareDataset('two-tower');
+      const training = await algorithmTrainingAPI.runFullTraining('two-tower', {
+        trainingDatasetId: dataset.trainingDatasetId,
+      });
+      const datasetNote = dataset.skipped
+        ? `Không có dữ liệu mới nên dùng lại dataset đã chuẩn bị trước đó ` +
+          `(${dataset.rowCounts.interactions ?? 0} tương tác, ${dataset.rowCounts.users ?? 0} user).`
+        : `Đã chuẩn bị dữ liệu (${dataset.rowCounts.interactions ?? 0} tương tác, ` + `${dataset.rowCounts.users ?? 0} user).`;
+      setRunResult(
+        `${datasetNote} Đã gửi job train lên Modal ` +
+          `(trạng thái: ${training.status}). Train chạy trên GPU khoảng 30 phút — bạn có thể rời trang, ` +
+          `hệ thống sẽ tự thông báo khi xong.`,
+      );
+      // Khong flip running=false o day -- job vua submit van dang chay tren Modal (~30 phut).
+      // Effect syncTwoTowerStatus() se polling va tu cap nhat running/thong bao khi run thuc su xong.
+    } catch (err: unknown) {
+      setTwoTowerRunning(false);
+      const message = err instanceof Error ? err.message : 'Lỗi không xác định';
+      setRunResult(`Lỗi: ${message}`);
     }
   };
 
@@ -473,24 +736,47 @@ export const AlgorithmRunner: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn"><Bell size={20} /></button>
+          <button className="icon-btn">
+            <Bell size={20} />
+          </button>
           <AdminHeaderProfile />
         </div>
       </header>
 
       <div className="ar-content">
+        {runResult && (
+          <div className={`ar-banner${runResult.startsWith('Lỗi') ? ' ar-banner--error' : ' ar-banner--success'}`} role="alert">
+            <span>{runResult}</span>
+            <button className="ar-banner__close" onClick={() => setRunResult(null)}>
+              ×
+            </button>
+          </div>
+        )}
+
         <div className="ar-accordion">
           <AlgoDropdown
             title="Thuật toán gợi ý"
             available={true}
             autoEnabled={recommendAutoEnabled}
-            onAutoChange={(value) => { setRecommendAutoEnabled(value); setRecommendScheduleDirty(true); }}
+            onAutoChange={(value) => {
+              setRecommendAutoEnabled(value);
+              setRecommendScheduleDirty(true);
+            }}
             frequency={recommendFrequency}
-            onFrequencyChange={(value) => { setRecommendFrequency(value); setRecommendScheduleDirty(true); }}
+            onFrequencyChange={(value) => {
+              setRecommendFrequency(value);
+              setRecommendScheduleDirty(true);
+            }}
             runDay={recommendRunDay}
-            onRunDayChange={(value) => { setRecommendRunDay(value); setRecommendScheduleDirty(true); }}
+            onRunDayChange={(value) => {
+              setRecommendRunDay(value);
+              setRecommendScheduleDirty(true);
+            }}
             runTime={recommendRunTime}
-            onRunTimeChange={(value) => { setRecommendRunTime(value); setRecommendScheduleDirty(true); }}
+            onRunTimeChange={(value) => {
+              setRecommendRunTime(value);
+              setRecommendScheduleDirty(true);
+            }}
             isRunning={recommendRunning}
             scheduleSaving={recommendScheduleSaving}
             scheduleDirty={recommendScheduleDirty}
@@ -518,6 +804,24 @@ export const AlgorithmRunner: React.FC = () => {
             onRunNow={handleRunReviewPipeline}
           />
           <AlgoDropdown
+            title="Cập nhật mô hình tương tác người dùng"
+            available={true}
+            autoEnabled={sessionCfAutoEnabled}
+            onAutoChange={handleSessionCfAutoChange}
+            frequency={sessionCfFrequency}
+            onFrequencyChange={handleSessionCfFrequencyChange}
+            runDay={sessionCfRunDay}
+            onRunDayChange={handleSessionCfRunDayChange}
+            runTime={sessionCfRunTime}
+            onRunTimeChange={handleSessionCfRunTimeChange}
+            isRunning={sessionCfRunning}
+            scheduleSaving={sessionCfScheduleSaving}
+            scheduleDirty={sessionCfScheduleDirty}
+            lastRun={sessionCfLastRun}
+            onSaveSchedule={saveSessionCfSchedule}
+            onRunNow={handleRunSessionCfTraining}
+          />
+          <AlgoDropdown
             title="Lập lịch"
             available={false}
             autoEnabled={scheduleAutoEnabled}
@@ -530,6 +834,26 @@ export const AlgorithmRunner: React.FC = () => {
             onRunTimeChange={setScheduleRunTime}
             isRunning={false}
             onRunNow={() => {}}
+          />
+          <AlgoDropdown
+            title="Thuật toán truy hồi (Two-Tower)"
+            available={true}
+            autoEnabled={twoTowerAutoEnabled}
+            onAutoChange={handleTwoTowerAutoChange}
+            frequency={twoTowerFrequency}
+            onFrequencyChange={handleTwoTowerFrequencyChange}
+            runDay={twoTowerRunDay}
+            onRunDayChange={handleTwoTowerRunDayChange}
+            runTime={twoTowerRunTime}
+            onRunTimeChange={handleTwoTowerRunTimeChange}
+            isRunning={twoTowerRunning}
+            scheduleSaving={twoTowerScheduleSaving}
+            scheduleDirty={twoTowerScheduleDirty}
+            lastRun={twoTowerLastRun}
+            statusDetail={twoTowerRunning ? 'Đang train trên GPU (khoảng 30 phút)...' : undefined}
+            onSaveSchedule={saveTwoTowerSchedule}
+            onRunNow={handleRunTwoTowerTraining}
+            runLabel="Train lại"
           />
         </div>
       </div>

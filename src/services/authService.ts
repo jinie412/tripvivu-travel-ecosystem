@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { LoginDto, AuthResponse } from '../types/auth';
 import { clearAuthData, getCurrentUser } from '../utils/auth';
+import { queryClient } from '../utils/queryClient';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -12,6 +13,7 @@ const authAPI = {
 
   logout: () => {
     clearAuthData();
+    queryClient.clear();
   },
 
   getCurrentUser: () => getCurrentUser(),

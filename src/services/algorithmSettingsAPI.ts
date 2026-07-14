@@ -7,7 +7,7 @@ export type SlotKey = 'attraction' | 'restaurant' | 'cafe' | 'entertainment' | '
 export interface ParameterMeta {
   name: string;
   defaultValue: number;
-  currentValue: number;
+  currentValue: number | boolean;
   minValue: number;
   maxValue: number;
   description: string | null;

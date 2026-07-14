@@ -8,6 +8,8 @@ import loginBg from '../../../assets/login-bg.png';
 import axios from 'axios';
 import { supabase } from '../../../utils/supabase';
 import Swal from 'sweetalert2';
+import { clearAuthData } from '../../../utils/auth';
+import { queryClient } from '../../../utils/queryClient';
 
 const GoogleIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 48 48">

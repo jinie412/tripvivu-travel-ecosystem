@@ -61,8 +61,18 @@ const cloneTwoTowerForm = (form: TwoTowerFormState): TwoTowerFormState => ({
 
 const outOfRange = (v: number, min: number, max: number) => v < min || v > max || Number.isNaN(v);
 
-const paramValue = (data: TwoTowerSettingsResponse, key: keyof TwoTowerSettingsResponse['core'], fallback: number) =>
-  data.core[key]?.currentValue ?? fallback;
+const paramValue = (data: TwoTowerSettingsResponse, key: keyof TwoTowerSettingsResponse['core'], fallback: number) => {
+  const raw = data.core[key]?.currentValue;
+  return typeof raw === 'number' ? raw : fallback;
+};
+
+// Backend trả currentValue của param boolean dưới dạng true/false thật (không phải 1/0),
+// nên phải so cả 2 dạng — so sánh "=== 1" sẽ luôn false với boolean và làm toggle hiển thị sai.
+const paramBool = (data: TwoTowerSettingsResponse, key: keyof TwoTowerSettingsResponse['core'], fallback: boolean) => {
+  const raw = data.core[key]?.currentValue;
+  if (raw === undefined || raw === null) return fallback;
+  return raw === true || raw === 1;
+};
 
 const mapResponseToForm = (data: TwoTowerSettingsResponse): TwoTowerFormState => {
   const fallback = DEFAULT_TWO_TOWER_FORM;
@@ -70,7 +80,8 @@ const mapResponseToForm = (data: TwoTowerSettingsResponse): TwoTowerFormState =>
 
   INTENT_ROWS.forEach(({ key: intent }) => {
     SLOT_COLUMNS.forEach(({ key: slot }) => {
-      quotas[intent][slot] = data.quotas?.[intent]?.[slot]?.currentValue ?? fallback.quotas[intent][slot];
+      const raw = data.quotas?.[intent]?.[slot]?.currentValue;
+      quotas[intent][slot] = typeof raw === 'number' ? raw : fallback.quotas[intent][slot];
     });
   });
 
@@ -80,9 +91,12 @@ const mapResponseToForm = (data: TwoTowerSettingsResponse): TwoTowerFormState =>
     maxTopK: paramValue(data, 'maxTopK', fallback.maxTopK),
     maxIntents: paramValue(data, 'maxIntents', fallback.maxIntents),
     fetchBufferMultiplier: paramValue(data, 'fetchBufferMultiplier', fallback.fetchBufferMultiplier),
-    enableAttractionTravelTypeFilter:
-      paramValue(data, 'enableAttractionTravelTypeFilter', fallback.enableAttractionTravelTypeFilter ? 1 : 0) === 1,
-    enableDiversityBudget: paramValue(data, 'enableDiversityBudget', fallback.enableDiversityBudget ? 1 : 0) === 1,
+    enableAttractionTravelTypeFilter: paramBool(
+      data,
+      'enableAttractionTravelTypeFilter',
+      fallback.enableAttractionTravelTypeFilter,
+    ),
+    enableDiversityBudget: paramBool(data, 'enableDiversityBudget', fallback.enableDiversityBudget),
     quotas,
   };
 };

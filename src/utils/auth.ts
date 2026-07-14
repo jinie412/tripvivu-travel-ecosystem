@@ -15,7 +15,17 @@ export const getActiveStorage = (): Storage =>
   localStorage.getItem(REFRESH_KEY) ? localStorage : sessionStorage;
 
 export const clearAuthData = (): void => {
-  [TOKEN_KEY, REFRESH_KEY, USER_KEY, 'token', 'user'].forEach((key) => {
+  [
+    TOKEN_KEY,
+    'access_token',
+    REFRESH_KEY,
+    USER_KEY,
+    'token',
+    'user',
+    'provider:add-location:draft:v1',
+    'admin:add-location:draft:v1',
+    'gp_location_approval_overrides',
+  ].forEach((key) => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
   });
