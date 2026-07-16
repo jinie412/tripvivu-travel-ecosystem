@@ -64,9 +64,9 @@ const ClassificationTooltip = () => {
             style={{ top: position.top, left: position.left }}
             role="tooltip"
           >
-            <strong>Ngắn hạn:</strong> đánh giá mô tả trải nghiệm một lần cụ thể, có thể là trường hợp ngoại lệ, không đại diện cho mọi lần.
+            <strong>Ngắn hạn:</strong> đánh giá mô tả trải nghiệm hoặc tình trạng tại một thời điểm cụ thể, có thể không đại diện cho địa điểm trong thời gian dài.
             <br />
-            <strong>Dài hạn:</strong> đánh giá mô tả đặc điểm thường trực của địa điểm.
+            <strong>Dài hạn:</strong> đánh giá mô tả đặc điểm ổn định của địa điểm, có tính duy trì hoặc lặp lại theo thời gian.
           </div>,
           document.body,
         )}

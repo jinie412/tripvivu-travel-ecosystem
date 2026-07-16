@@ -155,11 +155,15 @@ export const AlgorithmSettings: React.FC = () => {
   };
   const inputClass = (name: string, extra = '') => {
     const meta = param(name);
-    const invalid = meta ? outOfRange(value(name), meta.minValue, meta.maxValue) : false;
+    const nextValue = value(name);
+    const unlimitedCandidates = name === 'max_candidates_per_review' && nextValue === 0;
+    const invalid = meta && !unlimitedCandidates
+      ? outOfRange(nextValue, meta.minValue, meta.maxValue)
+      : false;
     return `as-input${extra}${invalid ? ' as-input--err' : ''}`;
   };
   const integerParam = (name: string) =>
-    name === 'top_k' ||
+    name === 'max_candidates_per_review' ||
     name.startsWith('ttl_hours.') ||
     name.startsWith('lookback_multiplier.') ||
     name.startsWith('window_days.') ||
@@ -170,7 +174,8 @@ export const AlgorithmSettings: React.FC = () => {
       const meta = param(name);
       const nextValue = value(name);
       if (!meta) continue;
-      if (outOfRange(nextValue, meta.minValue, meta.maxValue)) {
+      const unlimitedCandidates = name === 'max_candidates_per_review' && nextValue === 0;
+      if (!unlimitedCandidates && outOfRange(nextValue, meta.minValue, meta.maxValue)) {
         setBanner(`${meta.description || name} phải nằm trong khoảng ${meta.minValue} - ${meta.maxValue}.`);
         return false;
       }
@@ -220,8 +225,7 @@ export const AlgorithmSettings: React.FC = () => {
   ];
   const conflictNames = [
     'conflict_score_threshold',
-    'candidate_mode',
-    'top_k',
+    'max_candidates_per_review',
     ...allTopicNames('lookback_multiplier'),
   ];
   const timeNames = [
@@ -403,33 +407,19 @@ export const AlgorithmSettings: React.FC = () => {
             saveLabel={reviewFilterSaving ? 'Đang lưu...' : 'Lưu thay đổi'}>
             <div className="as-stack">
               <div className="as-field">
-                <label className="as-label">Ngưỡng điểm xung đột <Tip text="Điểm tối thiểu để xác nhận hai đánh giá mâu thuẫn nhau." /></label>
-                {renderNumberInput('conflict_score_threshold', ' as-input--sm', 0.01)}
-                {renderHint('conflict_score_threshold')}
+                <label className="as-label">
+                  Giới hạn đánh giá so sánh
+                  <Tip text="Số đánh giá dài hạn tối đa so sánh với mỗi đánh giá ngắn hạn. Nhập 0 để không giới hạn hoặc từ 1 đến 1000 để bật giới hạn." />
+                </label>
+                {renderNumberInput('max_candidates_per_review', ' as-input--sm')}
+                {renderHint('max_candidates_per_review')}
               </div>
 
               <div className="as-field">
-                <label className="as-label">Chế độ lựa chọn đánh giá so sánh <Tip text="Chọn phạm vi đánh giá dùng để đối chiếu khi phát hiện xung đột." /></label>
-                <div className="as-radio-group">
-                  <label className="as-radio">
-                    <input type="radio" name="candidateMode" checked={value('candidate_mode') === 0} onChange={() => setParam('candidate_mode', 0)} />
-                    So sánh tất cả
-                    <Tip text="Dùng toàn bộ đánh giá còn nằm trong cửa sổ tra cứu của chủ đề." />
-                  </label>
-                  <label className="as-radio">
-                    <input type="radio" name="candidateMode" checked={value('candidate_mode') === 1} onChange={() => setParam('candidate_mode', 1)} />
-                    Giới hạn K đánh giá
-                    <Tip text="Chỉ dùng tối đa K đánh giá gần nhất trong cửa sổ tra cứu để giảm chi phí xử lý." />
-                  </label>
-                </div>
-                {value('candidate_mode') === 1 && (
-                  <div className="as-indented">
-                    <label className="as-label">Số đánh giá tối đa để so sánh</label>
-                    {renderNumberInput('top_k', ' as-input--sm')}
-                    {renderHint('top_k')}
-                  </div>
-                )}
-              </div>
+                <label className="as-label">Ngưỡng điểm xung đột <Tip text="Điểm tối thiểu để xác nhận hai đánh giá mâu thuẫn nhau." /></label>
+                {renderNumberInput('conflict_score_threshold', ' as-input--sm', 0.01)}
+                {renderHint('conflict_score_threshold')}
+              </div>              
 
               <div className="as-table-wrap">
                 <table className="as-table">
@@ -459,7 +449,7 @@ export const AlgorithmSettings: React.FC = () => {
           </AccordionCard>
 
           <AccordionCard
-            title="Quản lý thời gian"
+            title="Quản lý thời gian và tổng hợp đánh giá dài hạn"
             open={open.time}
             onToggle={() => toggle('time')}
             onSave={() => saveReviewFilter(timeNames)}

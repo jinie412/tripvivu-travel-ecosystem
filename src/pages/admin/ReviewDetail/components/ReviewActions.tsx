@@ -12,7 +12,7 @@ interface ReviewActionsProps {
 export const ReviewActions: React.FC<ReviewActionsProps> = ({
   classification,
   hasContent = true,
-  onUpdateClassification,
+  onUpdateClassification
 }) => {
   const [selectedType, setSelectedType] = useState<'Ngắn hạn' | 'Dài hạn' | null>(
     (classification === 'Ngắn hạn' || classification === 'Dài hạn') ? classification : null
@@ -37,39 +37,52 @@ export const ReviewActions: React.FC<ReviewActionsProps> = ({
     }
   };
 
-  const disabled = updatingType || !hasContent;
-
   return (
-    <div className="rd-classification-selector">
-      <p className="rd-panel-title rd-panel-title-with-tip" style={{ color: '#0369a1' }}>
-        <span>Phân loại</span>
-        <span className="rd-info-tip" tabIndex={0} aria-label="Định nghĩa phân loại đánh giá">
-          <Info size={14} />
-          <span className="rd-info-popover">
-            <strong>Ngắn hạn:</strong> đánh giá mô tả trải nghiệm một lần cụ thể, có thể là trường hợp ngoại lệ, không đại diện cho mọi lần.
-            <br />
-            <strong>Dài hạn:</strong> đánh giá mô tả đặc điểm thường trực của địa điểm.
-          </span>
-        </span>
-      </p>
-      <div className="rd-toggle-group">
-        <button
-          className={`rd-toggle-btn rd-toggle-btn--info ${updatingType ? 'rd-toggle-btn--updating' : ''} ${selectedType === 'Ngắn hạn' ? 'active' : ''}`}
-          disabled={disabled}
-          onClick={() => handleTypeSelect('Ngắn hạn')}
+    <div className="rd-actions-container">
+      {/* Cập nhật Phân loại */}
+      {hasContent && (
+        <div
+          className={`rd-classification-selector ${
+            selectedType === 'Dài hạn'
+              ? 'rd-classification-selector--long-term'
+              : selectedType === 'Ngắn hạn'
+                ? 'rd-classification-selector--short-term'
+                : 'rd-classification-selector--need-action'
+          }`}
         >
-          <Clock size={15} />
-          <span>Ngắn hạn</span>
-        </button>
-        <button
-          className={`rd-toggle-btn rd-toggle-btn--info ${updatingType ? 'rd-toggle-btn--updating' : ''} ${selectedType === 'Dài hạn' ? 'active' : ''}`}
-          disabled={disabled}
-          onClick={() => handleTypeSelect('Dài hạn')}
-        >
-          <Calendar size={15} />
-          <span>Dài hạn</span>
-        </button>
-      </div>
+          <p className="rd-panel-title rd-panel-title-with-tip">
+            <span>Phân loại</span>
+            <span className="rd-info-tip" tabIndex={0} aria-label="Định nghĩa phân loại đánh giá">
+              <Info size={14} />
+              <span className="rd-info-popover">
+                <strong>Ngắn hạn:</strong> đánh giá mô tả trải nghiệm hoặc tình trạng tại một thời điểm cụ thể, có thể không đại diện cho địa điểm trong thời gian dài.
+                <br />
+                <strong>Dài hạn:</strong> đánh giá mô tả đặc điểm ổn định của địa điểm, có tính duy trì hoặc lặp lại theo thời gian.
+              </span>
+            </span>
+          </p>
+          <div className="rd-toggle-group">
+            <button 
+              type="button"
+              className={`rd-toggle-btn rd-toggle-btn--short-term ${selectedType === 'Ngắn hạn' ? 'active' : ''}`}
+              disabled={updatingType}
+              onClick={() => handleTypeSelect('Ngắn hạn')}
+            >
+              <Clock size={15} />
+              <span>Ngắn hạn</span>
+            </button>
+            <button 
+              type="button"
+              className={`rd-toggle-btn rd-toggle-btn--long-term ${selectedType === 'Dài hạn' ? 'active' : ''}`}
+              disabled={updatingType}
+              onClick={() => handleTypeSelect('Dài hạn')}
+            >
+              <Calendar size={15} />
+              <span>Dài hạn</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -4,7 +4,7 @@ export interface PipelineRunRequest {
   limit?: number;
   no_pretrained?: boolean;
   topic_other_threshold?: number;
-  candidate_mode?: 'all' | 'topk';
+  max_candidates_per_review?: number | null;
   promotion_mode?: 'representative' | 'all';
   dry_run?: boolean;
 }

@@ -124,6 +124,9 @@ export const ReviewDetail: React.FC = () => {
   const hasContent = Boolean(
     review?.content && review.content.trim() !== '' && review.content !== '(Không có nội dung)',
   );
+  const showClassification = Boolean(
+    hasContent && review?.classification !== 'Chưa phân loại',
+  );
 
   return (
     <div className="review-detail-page">
@@ -147,24 +150,29 @@ export const ReviewDetail: React.FC = () => {
             <div className="rd-col-main" style={{ width: '100%' }}>
               <ReviewHeader review={review} />
 
-              <div style={{ display: 'flex', gap: 20, alignItems: 'stretch', marginBottom: 20 }}>
-                <div style={{ flex: 1 }}>
-                  <ReviewStatusBanner
-                    status={review.status}
-                    violationReason={review.violation_reason}
-                    getTranslatedReason={getTranslatedReason}
-                    updating={updatingStatus}
-                    onUpdateStatus={handleUpdateStatus}
-                  />
+              {(review.status !== 'Đã ẩn' || showClassification) && (
+                <div style={{ display: 'flex', gap: 20, alignItems: 'stretch', marginBottom: 20 }}>
+                  {review.status !== 'Đã ẩn' && (
+                    <div style={{ flex: 1 }}>
+                      <ReviewStatusBanner
+                        status={review.status}
+                        violationReason={review.violation_reason}
+                        getTranslatedReason={getTranslatedReason}
+                        updating={updatingStatus}
+                        onUpdateStatus={handleUpdateStatus}
+                      />
+                    </div>
+                  )}
+                  {showClassification && (
+                    <div style={{ flex: 1 }}>
+                      <ReviewActions
+                        classification={review.classification}
+                        onUpdateClassification={handleUpdateClassification}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <ReviewActions
-                    classification={review.classification}
-                    hasContent={hasContent}
-                    onUpdateClassification={handleUpdateClassification}
-                  />
-                </div>
-              </div>
+              )}
 
               <ReviewContent
                 content={review.content} 
