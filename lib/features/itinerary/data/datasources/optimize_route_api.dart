@@ -36,6 +36,7 @@ class OptimizeRouteApi {
 
           return {
             'id':                a.id,
+            'placeId':           a.placeId,
             'title':             a.title,
             'startTime':         a.startTime,
             'endTime':           a.endTime,

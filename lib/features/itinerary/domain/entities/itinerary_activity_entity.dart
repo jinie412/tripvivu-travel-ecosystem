@@ -26,6 +26,10 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     int? transitDurationMinutes,
     @Default(false) bool isFree,
     String? category, // e.g. "Cà phê", "Tham quan"
+    // travel.places.slot_type — cùng nguồn phân loại dùng lúc tạo lịch trình
+    // (attraction | restaurant | cafe | entertainment | ...), dùng để nhận diện
+    // địa điểm ăn trưa kết hợp với khung giờ, thay vì đoán qua từ khóa category.
+    String? placeType,
 
     // Geographical coordinates
     double? latitude,

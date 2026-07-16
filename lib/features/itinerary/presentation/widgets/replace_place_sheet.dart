@@ -18,6 +18,8 @@ class ReplacePlaceSheet extends StatefulWidget {
   final Future<void> Function(NearbyPlaceModel place) onReplace;
   final List<String>? existingIds;
   final String? destinationCity;
+  /// Null skips AI suggestions and goes straight to nearby search.
+  final String? itineraryId;
 
   const ReplacePlaceSheet({
     super.key,
@@ -25,6 +27,7 @@ class ReplacePlaceSheet extends StatefulWidget {
     required this.onReplace,
     this.existingIds,
     this.destinationCity,
+    this.itineraryId,
   });
 
   static void show(
@@ -33,6 +36,7 @@ class ReplacePlaceSheet extends StatefulWidget {
     required Future<void> Function(NearbyPlaceModel place) onReplace,
     List<String>? existingIds,
     String? destinationCity,
+    String? itineraryId,
   }) {
     showModalBottomSheet(
       context: context,
@@ -43,6 +47,7 @@ class ReplacePlaceSheet extends StatefulWidget {
         onReplace: onReplace,
         existingIds: existingIds,
         destinationCity: destinationCity,
+        itineraryId: itineraryId,
       ),
     );
   }
@@ -73,17 +78,38 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   Future<void> _loadNearbyPlaces({String? q}) async {
     setState(() => _isLoading = true);
     try {
-      final lat = widget.currentActivity.latitude ?? 16.047079;
-      final lng = widget.currentActivity.longitude ?? 108.206230;
-      final places = await NearbyPlacesApi.getNearbyPlaces(
-        lat,
-        lng,
-        excludeIds: widget.existingIds,
-        preferCategory: (q != null && q.isNotEmpty) ? null : widget.currentActivity.category,
-        radius: q != null && q.isNotEmpty ? 50 : 15,
-        limit: q != null && q.isNotEmpty ? 30 : 10,
-        q: q,
-      );
+      final isDefaultFeed = q == null || q.isEmpty;
+      var places = <NearbyPlaceModel>[];
+
+      // Falls through to nearby search below if empty (AI error or no itineraryId).
+      if (isDefaultFeed && widget.itineraryId != null) {
+        places = await NearbyPlacesApi.getReplaceSuggestions(
+          widget.itineraryId!,
+          widget.currentActivity.id,
+        );
+      }
+
+      if (places.isEmpty) {
+        final lat = widget.currentActivity.latitude ?? 16.047079;
+        final lng = widget.currentActivity.longitude ?? 108.206230;
+        places = await NearbyPlacesApi.getNearbyPlaces(
+          lat,
+          lng,
+          excludeIds: widget.existingIds,
+          preferCategory: isDefaultFeed ? widget.currentActivity.category : null,
+          radius: isDefaultFeed ? 15 : 50,
+          limit: isDefaultFeed ? 10 : 30,
+          q: q,
+        );
+      }
+
+      // Hotels are never a valid replacement, regardless of category match.
+      places = places.where((p) {
+        final cat = p.category.toLowerCase();
+        return !cat.contains('khách sạn') &&
+            !cat.contains('hotel') &&
+            !cat.contains('lưu trú');
+      }).toList();
 
       if (mounted) {
         setState(() {
@@ -302,7 +328,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                           _SectionTitle(
                             icon: Icons.location_on_rounded,
                             iconColor: AppColors.primary,
-                            title: 'Gợi ý gần đây',
+                            title: 'Gợi ý',
                           ),
                           _buildList(otherPlaces),
                         ],

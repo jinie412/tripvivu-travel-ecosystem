@@ -73,3 +73,33 @@ dependencies {
 flutter {
     source = "../.."
 }
+
+// WORKAROUND: root android/build.gradle.kts redirects buildDir to
+// ../../build/<module> for every subproject. The Flutter Gradle plugin
+// resolves FlutterTask.intermediateDir (where app.so, the Dart AOT
+// snapshot, is written) eagerly against the ORIGINAL buildDir, but its
+// copyJniLibs<Variant> Sync task resolves its destination lazily against
+// the REDIRECTED buildDir. That split means app.so lands in
+// android/app/build/intermediates/flutter/<variant>/<abi>/ while AGP's
+// packaging pipeline looks under build/app/intermediates/... — so
+// libapp.so never reaches the APK and the release build crashes on
+// launch with "VM snapshot invalid and could not be inferred from
+// settings". This task bridges the two locations.
+listOf("release", "profile").forEach { variantName ->
+    val capitalized = variantName.replaceFirstChar { it.uppercase() }
+    val fixTask =
+        tasks.register<Copy>("fixFlutterLibapp$capitalized") {
+            dependsOn("compileFlutterBuild$capitalized")
+            listOf("arm64-v8a", "armeabi-v7a", "x86_64").forEach { abi ->
+                from(project.projectDir.resolve("build/intermediates/flutter/$variantName/$abi")) {
+                    include("app.so")
+                    rename { "libapp.so" }
+                    into(abi)
+                }
+            }
+            into(layout.buildDirectory.dir("intermediates/flutter/$variantName/jniLibs"))
+        }
+    tasks.matching { it.name == "merge${capitalized}JniLibFolders" }.configureEach {
+        dependsOn(fixTask)
+    }
+}

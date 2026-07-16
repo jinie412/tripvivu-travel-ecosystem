@@ -30,6 +30,8 @@ class ItineraryActivityModel {
   @JsonKey(name: 'is_free')
   final bool isFree;
   final String? category;
+  @JsonKey(name: 'place_type')
+  final String? placeType;
   final double? latitude;
   final double? longitude;
   final double? rating;
@@ -56,6 +58,7 @@ class ItineraryActivityModel {
     this.transitDurationMinutes,
     this.isFree = false,
     this.category,
+    this.placeType,
     this.latitude,
     this.longitude,
     this.rating,
@@ -99,6 +102,7 @@ class ItineraryActivityModel {
           json['isFree'] ??
           (json['priceLabel'] == 'MIỄN PHÍ'),
       category: json['category'],
+      placeType: json['placeType']?.toString() ?? json['place_type']?.toString(),
       latitude: json['latitude'] != null
           ? (json['latitude'] as num).toDouble()
           : (json['lat'] != null ? (json['lat'] as num).toDouble() : null),
@@ -165,6 +169,7 @@ class ItineraryActivityModel {
       transitDurationMinutes: transitDurationMinutes,
       isFree: isFree,
       category: category,
+      placeType: placeType,
       latitude: latitude,
       longitude: longitude,
       rating: rating,

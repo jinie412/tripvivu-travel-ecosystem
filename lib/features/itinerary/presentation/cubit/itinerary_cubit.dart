@@ -27,9 +27,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final DeleteActivityUseCase _deleteActivity;
   final OptimizeDayUseCase? optimizeDayUseCase;
 
-  // Khung giờ ăn trưa (đồng bộ với backend Python LUNCH_START / LUNCH_END)
-  static const int _kLunchWindowStartMin = 11 * 60 + 30; // 11:30
-  static const int _kLunchWindowEndMin = 13 * 60 + 30; // 13:30
+  // Khung giờ ăn trưa — PHẢI khớp với LUNCH_START/LUNCH_END trong
+  // ai-service/app/services/itinerary/planner.py (nguồn giá trị gốc).
+  static const int _kLunchWindowStartMin = 10 * 60 + 30; // 10:30
+  static const int _kLunchWindowEndMin = 14 * 60; // 14:00
 
   ItineraryStatus? _currentFilter;
   CompletedFilter _currentCompletedFilter = CompletedFilter.all;
@@ -1316,17 +1317,28 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
-  // Nhận diện activity ăn trưa dựa theo category
+  // Nhận diện activity ăn trưa: PHẢI thỏa cả 2 điều kiện (AND) —
+  // 1. place_type (travel.places.slot_type — cùng nguồn dùng lúc tạo lịch trình) = 'restaurant'.
+  // 2. CẢ giờ đến VÀ giờ rời đều nằm trong khung giờ ăn trưa (_kLunchWindowStartMin.._kLunchWindowEndMin)
+  //    — khớp đúng ràng buộc solver dùng khi tối ưu lại, không chỉ riêng giờ đến.
+  // Cùng cơ chế với isRestaurant() bên api-service, thay vì đoán qua từ khóa category.
   bool _isLunchActivity(ItineraryActivityEntity activity) {
-    final cat = (activity.category ?? '').toLowerCase();
-    return cat.contains('restaurant') ||
-        cat.contains('nhà hàng') ||
-        cat.contains('nha hang') ||
-        cat.contains('quán ăn') ||
-        cat.contains('quan an') ||
-        cat.contains('buffet') ||
-        cat.contains('ẩm thực') ||
-        cat.contains('am thuc');
+    final isFoodPlace = (activity.placeType ?? '').trim().toLowerCase() == 'restaurant';
+    if (!isFoodPlace) return false;
+
+    final startMin = _timeStrToMinutes(activity.startTime);
+    final endMin = _timeStrToMinutes(activity.endTime);
+    if (startMin == null || endMin == null) return false;
+    return startMin >= _kLunchWindowStartMin && endMin <= _kLunchWindowEndMin;
+  }
+
+  int? _timeStrToMinutes(String timeStr) {
+    try {
+      final p = timeStr.split(':');
+      return int.parse(p[0]) * 60 + int.parse(p[1]);
+    } catch (_) {
+      return null;
+    }
   }
 
   // Trả về (lunchWasPinned, lunchActivityTitle) để caller có thể thông báo cho user.
@@ -1518,6 +1530,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
                 'reviewCount': a.reviewCount,
                 'address': a.address,
                 'category': a.category,
+                'placeType': a.placeType,
                 'startTime': a.startTime,
                 'endTime': a.endTime,
                 'isLocked': a.id == lockedActivityId || a.id == pinnedLunchActivityId,

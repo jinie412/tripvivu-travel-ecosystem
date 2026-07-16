@@ -20,6 +20,9 @@ class AddPlaceSheet extends StatefulWidget {
   /// Giờ dự kiến tham quan (HH:mm) — dùng để validate opening hours.
   final String? proposedVisitTime;
   final String? destinationCity;
+  /// Null (or an itinerary created before this feature existed) falls back
+  /// to nearby search.
+  final String? itineraryId;
 
   const AddPlaceSheet({
     super.key,
@@ -30,6 +33,7 @@ class AddPlaceSheet extends StatefulWidget {
     this.visitDate,
     this.proposedVisitTime,
     this.destinationCity,
+    this.itineraryId,
   });
 
   static void show(
@@ -41,6 +45,7 @@ class AddPlaceSheet extends StatefulWidget {
     DateTime? visitDate,
     String? proposedVisitTime,
     String? destinationCity,
+    String? itineraryId,
   }) {
     showModalBottomSheet(
       context: context,
@@ -54,6 +59,7 @@ class AddPlaceSheet extends StatefulWidget {
         visitDate: visitDate,
         proposedVisitTime: proposedVisitTime,
         destinationCity: destinationCity,
+        itineraryId: itineraryId,
       ),
     );
   }
@@ -103,32 +109,51 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     'chợ', 'phố cổ', 'làng', 'market', 'old town', 'village',
   ];
 
+  bool _isDefaultFeed(String? q) => q == null || q.isEmpty;
+
+  List<NearbyPlaceModel> _filterTourismOnly(List<NearbyPlaceModel> places) {
+    return places.where((p) {
+      final cat = p.category.toLowerCase();
+      return _tourismCategoryKeywords.any((kw) => cat.contains(kw));
+    }).toList();
+  }
+
   Future<void> _loadNearbyPlaces({String? q, int retryCount = 0}) async {
     setState(() => _isLoading = true);
     try {
-      final lat = widget.referenceLat ?? 16.047079;
-      final lng = widget.referenceLng ?? 108.206230;
-      var places = await NearbyPlacesApi.getNearbyPlaces(
-        lat,
-        lng,
-        excludeIds: widget.existingIds,
-        preferCategory: (q != null && q.isNotEmpty) ? null : 'Tham quan',
-        radius: q != null && q.isNotEmpty ? 50 : 30,
-        limit: q != null && q.isNotEmpty ? 30 : 25,
-        q: q,
-      );
+      final isDefaultFeed = _isDefaultFeed(q);
+      var places = <NearbyPlaceModel>[];
 
-      // Khi không tìm kiếm: chỉ gợi ý địa điểm du lịch/tham quan nổi tiếng,
-      // loại bỏ hoàn toàn nhà hàng, quán ăn, khách sạn, v.v.
-      if (q == null || q.isEmpty) {
-        places = places.where((p) {
-          final cat = p.category.toLowerCase();
-          return _tourismCategoryKeywords.any((kw) => cat.contains(kw));
-        }).toList();
+      // Default feed prefers leftover candidates from itinerary creation
+      // (already filtered to attraction/entertainment server-side, so no
+      // need to re-apply the tourism keyword whitelist here). Falls through
+      // to nearby search below if empty.
+      if (isDefaultFeed && widget.itineraryId != null) {
+        places = await NearbyPlacesApi.getCandidateSuggestions(
+          widget.itineraryId!,
+          limit: 10,
+        );
+      }
+
+      if (places.isEmpty) {
+        final lat = widget.referenceLat ?? 16.047079;
+        final lng = widget.referenceLng ?? 108.206230;
+        places = await NearbyPlacesApi.getNearbyPlaces(
+          lat,
+          lng,
+          excludeIds: widget.existingIds,
+          preferCategory: isDefaultFeed ? 'Tham quan' : null,
+          radius: isDefaultFeed ? 30 : 50,
+          limit: isDefaultFeed ? 10 : 30,
+          q: q,
+        );
+        if (isDefaultFeed) {
+          places = _filterTourismOnly(places);
+        }
       }
 
       // If we got empty places on initial load and haven't retried yet, retry once for cold starts
-      if (places.isEmpty && retryCount < 1 && (q == null || q.isEmpty)) {
+      if (places.isEmpty && retryCount < 1 && isDefaultFeed) {
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
           await _loadNearbyPlaces(q: q, retryCount: retryCount + 1);

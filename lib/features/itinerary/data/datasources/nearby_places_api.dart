@@ -50,6 +50,43 @@ class NearbyPlaceModel {
 }
 
 class NearbyPlacesApi {
+  /// Empty for itineraries created before the candidate table existed —
+  /// caller should fall back to [getNearbyPlaces].
+  static Future<List<NearbyPlaceModel>> getCandidateSuggestions(
+    String itineraryId, {
+    int limit = 10,
+  }) async {
+    try {
+      final client = sl<DioClient>();
+      final response = await client.dio.get(
+        '/itinerary/$itineraryId/place-suggestions',
+        queryParameters: {'limit': limit},
+      );
+
+      final data = response.data as List;
+      return data.map((json) => NearbyPlaceModel.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<List<NearbyPlaceModel>> getReplaceSuggestions(
+    String itineraryId,
+    String activityId,
+  ) async {
+    try {
+      final client = sl<DioClient>();
+      final response = await client.dio.get(
+        '/itinerary/$itineraryId/activities/$activityId/suggestions',
+      );
+
+      final data = response.data?['suggestions'] as List? ?? [];
+      return data.map((json) => NearbyPlaceModel.fromJson(json)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
   static Future<List<NearbyPlaceModel>> getNearbyPlaces(
     double lat,
     double lng, {

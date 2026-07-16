@@ -133,10 +133,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     String? proposedVisitTime;
     List<String> existingIds = [];
     String? destinationCity;
+    String? itineraryId;
 
     if (state is ItineraryLoaded && state.selectedItinerary != null) {
       final itin = state.selectedItinerary!;
       destinationCity = itin.destination;
+      itineraryId = itin.id;
       for (final day in itin.days) {
         for (final act in day.activities) {
           final String id = act.placeId ?? act.id;
@@ -195,6 +197,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       visitDate: visitDate,
       proposedVisitTime: proposedVisitTime,
       destinationCity: destinationCity,
+      itineraryId: itineraryId,
       onAdd: (place) async {
         final success = await context.read<ItineraryCubit>().addActivityToDay(
           _selectedDay,
@@ -1405,9 +1408,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
 
     List<String> existingIds = [];
     String? destinationCity;
+    String? itineraryId;
     final state = context.read<ItineraryCubit>().state;
     if (state is ItineraryLoaded && state.selectedItinerary != null) {
       destinationCity = state.selectedItinerary!.destination;
+      itineraryId = state.selectedItinerary!.id;
       for (final day in state.selectedItinerary!.days) {
         for (final act in day.activities) {
           final String id = act.placeId ?? act.id;
@@ -1425,6 +1430,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       activity: activity,
       existingIds: existingIds,
       destinationCity: destinationCity,
+      itineraryId: itineraryId,
       onReplace: (place) async {
         final oldLat = activity.latitude;
         final oldLng = activity.longitude;
