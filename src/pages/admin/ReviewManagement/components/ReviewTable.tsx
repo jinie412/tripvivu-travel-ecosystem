@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Review } from '../../../../types/review';
-import { Star, ChevronDown, CheckCircle, AlertTriangle, EyeOff, Info } from 'lucide-react';
+import { Star, ChevronDown, CheckCircle, AlertTriangle, EyeOff, Info, Clock } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 interface ReviewTableProps {
@@ -22,7 +22,7 @@ interface ReviewTableProps {
 const STATUS_OPTIONS: Review['status'][] = ['Chờ duyệt', 'Đã duyệt', 'Vi phạm'];
 
 const statusConfig: Record<Review['status'], { bg: string; text: string; dot: string; icon: React.ReactNode }> = {
-  'Chờ duyệt': { bg: '#fef3c7', text: '#b45309', dot: '#b45309', icon: <AlertTriangle size={13} /> },
+  'Chờ duyệt': { bg: '#fef3c7', text: '#b45309', dot: '#b45309', icon: <Clock size={13} /> },
   'Đã duyệt': { bg: '#ccfbf1', text: '#0f766e', dot: '#0f766e', icon: <CheckCircle size={13} /> },
   'Vi phạm':  { bg: '#fef2f2', text: '#ef4444', dot: '#ef4444', icon: <AlertTriangle size={13} /> },
   'Đã ẩn': { bg: '#e2e8f0', text: '#475569', dot: '#64748b', icon: <EyeOff size={13} /> },
@@ -192,6 +192,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
       await onStatusChange(id, newStatus);
     } catch (error) {
       setReviews(initialReviews);
+      if (error instanceof Error && error.message === 'REASON_INPUT_CANCELLED') return;
       console.error('Failed to update review status', error);
       Swal.fire({ text: 'Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.', icon: 'error' });
     }

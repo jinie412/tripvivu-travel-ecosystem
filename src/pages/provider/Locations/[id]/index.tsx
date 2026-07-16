@@ -20,6 +20,7 @@ import {
   Search,
   RefreshCw,
   CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 import { businessLocationAPI } from '../../../../services/businessLocationAPI';
 import { businessReviewAPI } from '../../../../services/businessReviewAPI';
@@ -209,6 +210,7 @@ interface PlaceSummary {
   name: string;
   statusLabel: string;
   statusColor: string;
+  rejectionReason: string;
   isActive: boolean;
   category: string;
   rating: number;
@@ -364,6 +366,7 @@ const normalizePlaceDetail = (raw: unknown): { summary: PlaceSummary; draft: Pla
       name: getText(data.place_name ?? data.name ?? data.title, 'Đang tải...'),
       statusLabel: statusMeta.label,
       statusColor: statusMeta.color,
+      rejectionReason: getText(data.rejection_reason ?? data.rejectionReason, ''),
       isActive: getBoolean(data.is_active ?? data.active ?? true, true),
       category: getText(data.category ?? data.type ?? data.place_type, 'Địa điểm'),
       rating: getNumber(data.rating ?? data.average_rating, 0),
@@ -792,6 +795,7 @@ const LocationEditPage: React.FC = () => {
       markLocationPendingApproval(id);
       const pendingStatus = getStatusMeta('pending');
       setPlace((current) => current ? { ...current, statusLabel: pendingStatus.label, statusColor: pendingStatus.color } : current);
+      await Swal.fire({ text: 'Lưu thay đổi địa điểm thành công!', icon: 'success' });
       navigate('/locations');
     } catch (err) {
       setGeneralMessage(getApiErrorMessage(err, 'Không thể lưu thay đổi địa điểm'));
@@ -1400,6 +1404,30 @@ const LocationEditPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {place?.statusLabel === 'Từ chối' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '14px 18px',
+                marginBottom: '24px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderLeft: '4px solid #ef4444',
+                borderRadius: '12px',
+              }}
+            >
+              <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: '1px' }} />
+              <div style={{ fontSize: '13.5px', lineHeight: 1.5 }}>
+                <span style={{ fontWeight: '700', color: '#991b1b' }}>Lý do từ chối: </span>
+                <span style={{ color: '#7f1d1d' }}>
+                  {place.rejectionReason || 'Chưa cung cấp lý do cụ thể.'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <div style={{ display: 'flex', gap: '32px', marginBottom: '32px', borderBottom: '1px solid #F1F5F9' }}>

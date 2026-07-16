@@ -88,6 +88,7 @@ interface BackendPlaceDetailResponse {
   category: string;
   registered_date: string;
   status: BackendPlaceStatus;
+  rejection_reason?: string | null;
   contact_phone: string;
   contact_email: string;
   vendor: {
@@ -237,7 +238,10 @@ const mapLocationDetail = (item: BackendPlaceDetailResponse): LocationDetailInfo
     userAvatar: getInitials(vendorName),
     publishDate: formatDate(item.registered_date),
     status: toUiStatus(item.status),
-    rejectionReason: item.status === 'rejected' ? 'Địa điểm đã bị từ chối bởi quản trị viên.' : undefined,
+    rejectionReason:
+      item.status === 'rejected'
+        ? item.rejection_reason || 'Địa điểm đã bị từ chối bởi quản trị viên.'
+        : undefined,
     description: item.description || 'Không có mô tả.',
     phone: item.contact_phone,
     email: item.contact_email,

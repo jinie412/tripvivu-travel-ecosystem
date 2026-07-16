@@ -1,6 +1,7 @@
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../../components/NotificationBell';
 
 export const DetailHeader: React.FC = () => {
   const navigate = useNavigate();
@@ -19,9 +20,7 @@ export const DetailHeader: React.FC = () => {
       </div>
       
       <div className="header-actions">
-        <button className="icon-btn">
-          <Bell size={20} />
-        </button>
+        <NotificationBell />
         <AdminHeaderProfile showName />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Info } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import { AccordionCard, AlgoGroup, Tip } from './components/AlgorithmSettingsPrimitives';
 import { TwoTowerSettingsCard } from './components/TwoTowerSettingsCard';
 import { hybridConfigAPI } from '../../../services/hybridConfigAPI';
@@ -267,9 +268,7 @@ export const AlgorithmSettings: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn" type="button">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

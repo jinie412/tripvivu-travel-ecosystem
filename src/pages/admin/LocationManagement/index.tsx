@@ -8,6 +8,7 @@ import { LocationTable } from './components/LocationTable';
 import { Bell, Plus } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import './LocationManagement.css';
 
 const STATUS_OPTIONS = [
@@ -187,9 +188,7 @@ export const LocationManagement: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
           <Link to="/admin/locations/add" className="btn-primary">
             <Plus size={18} />

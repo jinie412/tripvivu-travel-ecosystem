@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bell, CalendarClock, Clock3, Loader2, Play, Save } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import { algorithmPipelineAPI, formatPipelineDateTime } from '../../../services/algorithmPipelineAPI';
 import { sessionCfTrainingAPI } from '../../../services/sessionCfTrainingAPI';
 import { algorithmTrainingAPI } from '../../../services/algorithmTrainingAPI';
@@ -736,9 +737,7 @@ export const AlgorithmRunner: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './ProviderLayout.css';
-import { LayoutDashboard, Building2, ShoppingBag, LogOut, HelpCircle, Search } from 'lucide-react';
+import { LayoutDashboard, Building2, ShoppingBag, LogOut, HelpCircle, Search, User } from 'lucide-react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import authAPI from '../../services/authService';
 import Swal from 'sweetalert2';
@@ -10,6 +10,7 @@ import { getCurrentUser } from '../../utils/auth';
 import { getOrdersByPlace, isPendingOrder } from '../../services/order.service';
 import { businessLocationAPI } from '../../services/businessLocationAPI';
 import type { Location } from '../../types/location';
+import { NotificationBell } from '../../components/NotificationBell';
 
 const defaultAvatar =
   'https://media.istockphoto.com/id/1477583639/vector/user-profile-icon-vector-avatar-or-person-icon-profile-picture-portrait-symbol-vector.jpg?s=612x612&w=0&k=20&c=OWGIPPkZIWLPvnQS14ZSyHMoGtVTn1zS8cAgLy1Uh24=';
@@ -221,6 +222,13 @@ const ProviderLayout: React.FC = () => {
 
         {/* Footer */}
         <div className="provider-sidebar-footer">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `provider-menu-item${isActive ? ' active' : ''}`}
+            style={{ marginBottom: '8px' }}>
+            <User size={20} />
+            <span>Hồ sơ cá nhân</span>
+          </NavLink>
           <button onClick={handleLogout} className="provider-logout-btn">
             <LogOut size={20} />
             <span>Đăng xuất</span>
@@ -291,6 +299,7 @@ const ProviderLayout: React.FC = () => {
 
           {/* Icon actions */}
           <div className="provider-topbar-actions">
+            <NotificationBell />
             <button className="provider-topbar-icon-btn">
               <HelpCircle size={20} />
             </button>

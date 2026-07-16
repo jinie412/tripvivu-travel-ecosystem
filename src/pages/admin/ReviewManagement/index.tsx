@@ -11,6 +11,7 @@ import { ReviewFilter } from './components/ReviewFilter';
 import { ReviewTable } from './components/ReviewTable';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import './ReviewManagement.css';
 import Swal from 'sweetalert2';
 
@@ -166,14 +167,30 @@ export const ReviewManagement: React.FC = () => {
     fetch();
   }, [activeTab, currentPage, search, dateSent, dateExact, status, rating]);
 
+  const promptViolationReason = async (): Promise<string | undefined> => {
+    const { value, isConfirmed } = await Swal.fire({
+      title: 'Đánh dấu vi phạm',
+      input: 'text',
+      inputLabel: 'Nhập lý do đánh dấu vi phạm',
+      inputPlaceholder: 'Lý do vi phạm...',
+      showCancelButton: true,
+      confirmButtonText: 'Xác nhận',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+    });
+    if (!isConfirmed) {
+      throw new Error('REASON_INPUT_CANCELLED');
+    }
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  };
+
   const handleUpdateLocationStatus = async (reviewId: string, newStatus: Review['status']) => {
     if (newStatus === 'Chờ duyệt') {
       Swal.fire({ text: 'Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.', icon: 'warning' });
       throw new Error('Unsupported status transition');
     }
-    const reason = newStatus === 'Vi phạm'
-      ? window.prompt('Nhập lý do đánh dấu vi phạm:') || undefined
-      : undefined;
+    const reason = newStatus === 'Vi phạm' ? await promptViolationReason() : undefined;
     await reviewAPI.updateReviewStatus(reviewId, newStatus, reason);
     const latestStats = await reviewAPI.getReviewStats();
     setLocationStats(latestStats);
@@ -184,9 +201,7 @@ export const ReviewManagement: React.FC = () => {
       Swal.fire({ text: 'Trạng thái Chờ duyệt không hỗ trợ cập nhật thủ công.', icon: 'warning' });
       throw new Error('Unsupported status transition');
     }
-    const reason = newStatus === 'Vi phạm'
-      ? window.prompt('Nhập lý do đánh dấu vi phạm:') || undefined
-      : undefined;
+    const reason = newStatus === 'Vi phạm' ? await promptViolationReason() : undefined;
     await itineraryReviewAPI.updateItineraryReviewStatus(reviewId, newStatus, reason);
     const latestStats = await itineraryReviewAPI.getItineraryReviewStats();
     setItineraryStats(latestStats);
@@ -216,6 +231,7 @@ export const ReviewManagement: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

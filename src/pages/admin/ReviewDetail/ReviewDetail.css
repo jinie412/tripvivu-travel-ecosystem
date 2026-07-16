@@ -379,32 +379,27 @@ video.rd-video-element:fullscreen {
   line-height: 1.7;
 }
 
-/* ----- Action Container ----- */
-.rd-actions-container {
+/* ----- Classification Selector ----- */
+.rd-classification-selector {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  background-color: white;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 24px;
-}
-
-.rd-classification-selector {
+  justify-content: flex-start;
   background-color: #f0f9ff;
-  border: 1px dashed #7dd3fc;
-  border-radius: 14px;
-  padding: 20px;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.rd-selector-label {
+/* ----- Shared panel title (Trạng thái / Phân loại đánh giá) ----- */
+.rd-panel-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #0369a1;
-  margin-bottom: 16px;
+  margin: 0 0 12px 0;
 }
 
-.rd-selector-label-with-tip {
+.rd-panel-title-with-tip {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -445,39 +440,57 @@ video.rd-video-element:fullscreen {
   transform: translateY(-2px);
 }
 
-.rd-selector-options {
+/* ----- Shared toggle button group (Trạng thái / Phân loại đánh giá) ----- */
+.rd-toggle-group {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.rd-opt-btn {
-  width: 100%;
+.rd-toggle-btn {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
   background-color: white;
-  border: 1px solid #e0f2fe;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.rd-opt-btn:hover {
-  background-color: #f0f9ff;
-  border-color: #bae6fd;
+.rd-toggle-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
 }
 
-.rd-opt-btn:disabled {
+.rd-toggle-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.rd-toggle-btn--updating:disabled {
   cursor: wait;
-  opacity: 0.7;
 }
 
-.rd-opt-btn.active {
+.rd-toggle-btn--approve.active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.rd-toggle-btn--violation.active {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.rd-toggle-btn--info.active {
   background: linear-gradient(135deg, #0ea5e9, #0284c7);
   color: white;
   border-color: transparent;
@@ -505,6 +518,36 @@ video.rd-video-element:fullscreen {
 .rd-btn-transfer:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+}
+
+/* ----- Status Banner ----- */
+.rd-status-banner {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-radius: 8px;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.rd-status-banner-reasons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: #a8071a;
+}
+
+.rd-status-banner-reason-pill {
+  background: #cf1322;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 /* Loading state */

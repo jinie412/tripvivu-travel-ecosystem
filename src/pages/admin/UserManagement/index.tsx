@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import './UserManagement.css';
 
 const ITEMS_PER_PAGE = 10;
@@ -202,9 +203,7 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
 
           <AdminHeaderProfile />
 

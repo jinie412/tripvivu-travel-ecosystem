@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../utils/apiClient'; // Import thư viện gọi API
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import './AddUser.css';
 
 export const AddUser: React.FC = () => {
@@ -161,9 +162,7 @@ export const AddUser: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

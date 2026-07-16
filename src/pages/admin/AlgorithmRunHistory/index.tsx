@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import {
   algorithmPipelineAPI,
   formatPipelineDateTime,
@@ -144,9 +145,7 @@ export const AlgorithmRunHistory: React.FC = () => {
           >
             <RefreshCw size={18} className={loading ? 'arh-spin' : undefined} />
           </button>
-          <button className="icon-btn" type="button">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

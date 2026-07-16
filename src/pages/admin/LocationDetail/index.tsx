@@ -134,18 +134,6 @@ export const LocationDetail: React.FC = () => {
         </div>
       </div>
 
-      {location.status === 'Từ chối' && (
-        <div className="ld-rejection-alert">
-          <div className="ld-rejection-title">
-            <X size={18} />
-            <span>Địa điểm đã bị từ chối</span>
-          </div>
-          <div className="ld-rejection-content">
-            <strong>Lý do:</strong> {location.rejectionReason || 'Chưa cung cấp lý do cụ thể.'}
-          </div>
-        </div>
-      )}
-
       <div className="ld-content-wrapper">
         <div className="ld-grid">
           {/* Left Column */}

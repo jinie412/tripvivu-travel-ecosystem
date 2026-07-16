@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ShieldAlert, Star, CheckCircle, Clock } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { reviewAPI } from '../../../services/reviewAPI';
 import { ReviewDetailInfo } from '../../../types/review';
 import { ReviewHeader } from './components/ReviewHeader';
 import { ReviewContent } from './components/ReviewContent';
-import { ReportSection } from './components/ReportSection';
+import { ReviewStatusBanner } from './components/ReviewStatusBanner';
 import { ReviewActions } from './components/ReviewActions';
 import './ReviewDetail.css';
 import Swal from 'sweetalert2';
@@ -15,6 +15,25 @@ export const ReviewDetail: React.FC = () => {
   const navigate = useNavigate();
   const [review, setReview] = useState<ReviewDetailInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const promptViolationReason = async (): Promise<string | undefined> => {
+    const { value, isConfirmed } = await Swal.fire({
+      title: 'Đánh dấu vi phạm',
+      input: 'text',
+      inputLabel: 'Nhập lý do đánh dấu vi phạm',
+      inputPlaceholder: 'Lý do vi phạm...',
+      showCancelButton: true,
+      confirmButtonText: 'Xác nhận',
+      cancelButtonText: 'Hủy',
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+    });
+    if (!isConfirmed) {
+      throw new Error('REASON_INPUT_CANCELLED');
+    }
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  };
 
   // Map lý do tiếng Anh sang tiếng Việt và loại bỏ tiền tố
   const getTranslatedReason = (reason: string) => {
@@ -31,33 +50,6 @@ export const ReviewDetail: React.FC = () => {
       translated = translated.replace(new RegExp(key, 'gi'), map[key]);
     });
     return translated;
-  };
-
-  const renderClassification = (review: ReviewDetailInfo) => {
-    if (!review.content || review.content.trim() === '' || review.content === '(Không có nội dung)') {
-      return null;
-    }
-
-    const cls = review.classification;
-    if (cls === 'Ngắn hạn') {
-      return (
-        <span style={{ background: '#dbeafe', color: '#2563eb', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>
-          Ngắn hạn
-        </span>
-      );
-    }
-    if (cls === 'Dài hạn') {
-      return (
-        <span style={{ background: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>
-          Dài hạn
-        </span>
-      );
-    }
-    return (
-      <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>
-        Chưa phân loại
-      </span>
-    );
   };
 
   useEffect(() => {
@@ -104,24 +96,34 @@ export const ReviewDetail: React.FC = () => {
   const handleUpdateStatus = async (newStatus: ReviewDetailInfo['status']) => {
     if (!review) return;
     if (!id) return;
-    if (!newStatus || newStatus === 'Chờ duyệt' || newStatus === 'Đã ẩn') {
-      Swal.fire({ text: 'Không thể chuyển trạng thái về Chờ duyệt.', icon: 'error' });
+    if (!newStatus || newStatus === 'Chờ duyệt' || newStatus === 'Đã ẩn' || newStatus === review.status) {
       return;
     }
 
-    const reason =
-      newStatus === 'Vi phạm'
-        ? window.prompt('Nhập lý do đánh dấu vi phạm:') || undefined
-        : undefined;
+    let reason: string | undefined;
+    if (newStatus === 'Vi phạm') {
+      try {
+        reason = await promptViolationReason();
+      } catch {
+        return;
+      }
+    }
 
+    setUpdatingStatus(true);
     try {
       await reviewAPI.updateReviewStatus(id, newStatus, reason);
-      setReview({ ...review, status: newStatus });
+      setReview({ ...review, status: newStatus, violation_reason: reason ?? review.violation_reason });
     } catch (error) {
       console.error('Failed to update review status', error);
       Swal.fire({ text: 'Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.', icon: 'error' });
+    } finally {
+      setUpdatingStatus(false);
     }
   };
+
+  const hasContent = Boolean(
+    review?.content && review.content.trim() !== '' && review.content !== '(Không có nội dung)',
+  );
 
   return (
     <div className="review-detail-page">
@@ -145,49 +147,26 @@ export const ReviewDetail: React.FC = () => {
             <div className="rd-col-main" style={{ width: '100%' }}>
               <ReviewHeader review={review} />
 
-              {review.status === 'Đã duyệt' && (
-                <div style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#389e0d' }}>
-                    <CheckCircle size={20} />
-                    <strong style={{ fontSize: '15px' }}>Đánh giá này hợp lệ và đã được duyệt</strong>
-                  </div>
+              <div style={{ display: 'flex', gap: 20, alignItems: 'stretch', marginBottom: 20 }}>
+                <div style={{ flex: 1 }}>
+                  <ReviewStatusBanner
+                    status={review.status}
+                    violationReason={review.violation_reason}
+                    getTranslatedReason={getTranslatedReason}
+                    updating={updatingStatus}
+                    onUpdateStatus={handleUpdateStatus}
+                  />
                 </div>
-              )}
+                <div style={{ flex: 1 }}>
+                  <ReviewActions
+                    classification={review.classification}
+                    hasContent={hasContent}
+                    onUpdateClassification={handleUpdateClassification}
+                  />
+                </div>
+              </div>
 
-              {review.status === 'Chờ duyệt' && (
-                <div style={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d48806' }}>
-                    <Clock size={20} />
-                    <strong style={{ fontSize: '15px' }}>Đánh giá này đang chờ kiểm duyệt</strong>
-                  </div>
-                </div>
-              )}
-              
-              {review.status === 'Vi phạm' && (
-                <div style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cf1322', marginBottom: review.violation_reason ? '12px' : 0 }}>
-                    <ShieldAlert size={20} />
-                    <strong style={{ fontSize: '15px' }}>Đánh giá này vi phạm tiêu chuẩn cộng đồng</strong>
-                  </div>
-                  
-                  {review.violation_reason && (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ color: '#a8071a', fontSize: '14px' }}>Lý do phát hiện:</span>
-                      {getTranslatedReason(review.violation_reason).split(',').map((reasonPart, idx) => {
-                        const cleanReason = reasonPart.trim().replace('Nội dung vi phạm: ', '');
-                        if (!cleanReason) return null;
-                        return (
-                          <span key={idx} style={{ background: '#cf1322', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600 }}>
-                            {cleanReason}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              <ReviewContent 
+              <ReviewContent
                 content={review.content} 
                 images={review.images} 
                 isMediaViolated={review.status === 'Vi phạm'}
@@ -200,10 +179,7 @@ export const ReviewDetail: React.FC = () => {
                       ))}
                       <span style={{ marginLeft: 8, fontWeight: 600, color: '#eab308', fontSize: '16px' }}>{review.rating}/5</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {renderClassification(review)}
-                      <span className="rd-datetime" style={{ color: '#64748b', fontSize: '13px' }}>Đăng lúc {review.datetime}</span>
-                    </div>
+                    <span className="rd-datetime" style={{ color: '#64748b', fontSize: '13px' }}>Đăng lúc {review.datetime}</span>
                   </div>
                 }
               />

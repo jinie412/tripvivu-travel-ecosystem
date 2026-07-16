@@ -1114,11 +1114,12 @@ const AddLocationPage: React.FC = () => {
       };
 
       // 4. Gọi API lưu vào Supabase qua hàm create_full_place
-      await addNewPlace(payload);
+      const result = await addNewPlace(payload);
       window.localStorage.removeItem(ADD_LOCATION_DRAFT_KEY);
 
-      Swal.fire({ text: 'Tạo địa điểm và lưu ảnh thành công!', icon: 'success' });
-      navigate('/dashboard');
+      await Swal.fire({ text: 'Tạo địa điểm và lưu ảnh thành công!', icon: 'success' });
+      const newPlaceId = result?.placeId;
+      navigate(newPlaceId ? `/locations/${newPlaceId}` : '/dashboard');
 
     } catch (error) {
       console.error('Lỗi khi thêm địa điểm:', error);

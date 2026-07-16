@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import authAPI from '../../services/authService';
 
 interface AdminHeaderProfileProps {
@@ -15,6 +16,7 @@ interface CurrentUser {
 }
 
 export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName = false }) => {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(authAPI.getCurrentUser() as CurrentUser | null);
   const [avatarCacheBuster, setAvatarCacheBuster] = useState(() => Date.now());
 
@@ -64,7 +66,13 @@ export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName
     undefined;
 
   return (
-    <>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate('/admin/profile')}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/admin/profile'); }}
+      style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+    >
       {headerUserAvatar ? (
         <img
           src={`${headerUserAvatar}${headerUserAvatar.includes('?') ? '&' : '?'}t=${avatarCacheBuster}`}
@@ -105,6 +113,6 @@ export const AdminHeaderProfile: React.FC<AdminHeaderProfileProps> = ({ showName
           {fullName || 'Admin'}
         </span>
       )}
-    </>
+    </div>
   );
 };

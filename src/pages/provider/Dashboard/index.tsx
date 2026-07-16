@@ -559,7 +559,6 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, loading, onClic
           fontSize: '1.875rem',
           fontWeight: 800,
           color: 'var(--text-primary)',
-          fontFamily: '"Outfit", sans-serif',
           lineHeight: 1,
           minHeight: '30px',
         }}>
@@ -809,7 +808,6 @@ const DashboardPage: React.FC = () => {
             fontSize: '1.5rem',
             fontWeight: 800,
             color: 'var(--text-primary)',
-            fontFamily: '"Outfit", sans-serif',
           }}>
           Hiệu suất dịch vụ kinh doanh
         </h3>

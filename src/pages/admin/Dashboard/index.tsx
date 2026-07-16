@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import apiClient from '../../../utils/apiClient';
 import { locationAPI } from '../../../services/locationAPI';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
+import { NotificationBell } from '../../../components/NotificationBell';
 import './Dashboard.css';
 
 // ─────────────────────────────────────────────────────────
@@ -223,9 +224,7 @@ export const AdminDashboard: React.FC = () => {
             title="Làm mới toàn bộ dữ liệu dashboard (xóa cache, lấy dữ liệu mới nhất)">
             <RefreshCw size={18} className={isRefreshing ? 'dash-refresh-spin' : ''} />
           </button>
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
+          <NotificationBell />
           <AdminHeaderProfile />
         </div>
       </header>

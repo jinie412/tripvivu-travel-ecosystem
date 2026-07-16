@@ -1152,11 +1152,11 @@ export const AddLocation: React.FC = () => {
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
 
-      await locationAPI.createFullLocation(payload);
+      const result = await locationAPI.createFullLocation(payload);
       window.localStorage.removeItem(ADMIN_ADD_LOCATION_DRAFT_KEY);
 
-      Swal.fire({ text: 'Tạo địa điểm và lưu ảnh thành công!', icon: 'success' });
-      navigate('/admin/locations');
+      await Swal.fire({ text: 'Tạo địa điểm và lưu ảnh thành công!', icon: 'success' });
+      navigate(result?.placeId ? `/admin/locations/${result.placeId}` : '/admin/locations');
 
     } catch (error) {
       console.error('Lỗi khi thêm địa điểm:', error);
