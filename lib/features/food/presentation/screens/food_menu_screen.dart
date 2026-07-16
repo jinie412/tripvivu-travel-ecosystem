@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -72,7 +73,6 @@ class FoodMenuScreen extends StatelessWidget {
         ),
         body: Column(
           children: [
-            const _FoodFilters(),
             Expanded(
               child: BlocBuilder<FoodCubit, FoodState>(
                 builder: (context, state) {
@@ -93,7 +93,7 @@ class FoodMenuScreen extends StatelessWidget {
                     );
                   }
 
-                  final items = state.filteredItems;
+                  final items = state.allItems;
                   if (items.isEmpty) {
                     return const _FoodMenuMessage(
                       message: 'Địa điểm này chưa có món ăn khả dụng.',
@@ -123,153 +123,114 @@ class FoodMenuScreen extends StatelessWidget {
   }
 }
 
-class _FoodFilters extends StatelessWidget {
-  const _FoodFilters();
+class _FoodItemCard extends StatelessWidget {
+  final FoodItemEntity item;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: BlocBuilder<FoodCubit, FoodState>(
-        builder: (context, state) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChipButton(
-                  label: FoodState.allCategoryLabel,
-                  isActive:
-                      state.selectedMainCategory == FoodState.allCategoryLabel,
-                  onTap: () => context
-                      .read<FoodCubit>()
-                      .selectMainCategory(FoodState.allCategoryLabel),
-                ),
-                const SizedBox(width: 8),
-                _FilterDropdownButton(
-                  label: FoodState.mainCategoryLabel,
-                  isActive:
-                      state.selectedMainCategory == FoodState.mainCategoryLabel,
-                  subCategories: state.subCategories,
-                  selectedSubCategory: state.selectedSubCategory,
-                ),
-                const SizedBox(width: 8),
-                _FilterChipButton(
-                  label: FoodState.drinkCategoryLabel,
-                  isActive:
-                      state.selectedMainCategory == FoodState.drinkCategoryLabel,
-                  onTap: () => context
-                      .read<FoodCubit>()
-                      .selectMainCategory(FoodState.drinkCategoryLabel),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FilterChipButton extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _FilterChipButton({
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
+  const _FoodItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _showFoodDetails(context, item),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: isActive ? Colors.white : const Color(0xFF2563EB),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterDropdownButton extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final List<String> subCategories;
-  final String selectedSubCategory;
-
-  const _FilterDropdownButton({
-    required this.label,
-    required this.isActive,
-    required this.subCategories,
-    required this.selectedSubCategory,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<FoodCubit>();
-    return PopupMenuButton<String>(
-      onSelected: (value) {
-        cubit.selectMainCategory(label);
-        cubit.selectSubCategory(value);
-      },
-      offset: const Offset(0, 50),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      itemBuilder: (context) => subCategories
-          .map(
-            (item) => PopupMenuItem(
-              value: item,
-              child: Text(
-                item,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: selectedSubCategory == item
-                      ? AppColors.primary
-                      : const Color(0xFF1E293B),
-                  fontWeight: selectedSubCategory == item
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          )
-          .toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(16),
+          ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              selectedSubCategory == FoodState.allCategoryLabel
-                  ? label
-                  : selectedSubCategory,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isActive ? Colors.white : const Color(0xFF2563EB),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: NetImage(
+                url: item.imageUrl,
+                width: 88,
+                height: 88,
+                fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 6),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: isActive ? Colors.white : const Color(0xFF2563EB),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E293B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatCurrency(item.price),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (item.quantity > 0) ...[
+                        _QuantityButton(
+                          icon: Icons.remove,
+                          onTap: () => context
+                              .read<FoodCubit>()
+                              .updateQuantity(item.id, -1),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          '${item.quantity}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      _QuantityButton(
+                        icon: Icons.add,
+                        filled: true,
+                        onTap: () => context
+                            .read<FoodCubit>()
+                            .updateQuantity(item.id, 1),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -278,116 +239,186 @@ class _FilterDropdownButton extends StatelessWidget {
   }
 }
 
-class _FoodItemCard extends StatelessWidget {
-  final FoodItemEntity item;
-
-  const _FoodItemCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: NetImage(
-              url: item.imageUrl,
-              width: 88,
-              height: 88,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.title,
+Future<void> _showFoodDetails(
+  BuildContext context,
+  FoodItemEntity item,
+) {
+  final menuContext = context;
+  final cubit = context.read<FoodCubit>();
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) {
+      return BlocProvider.value(
+        value: cubit,
+        child: BlocBuilder<FoodCubit, FoodState>(
+          builder: (context, state) {
+            final currentItem = state.allItems.firstWhere(
+              (candidate) => candidate.id == item.id,
+              orElse: () => item,
+            );
+            return SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: NetImage(
+                          url: currentItem.imageUrl,
+                          width: double.infinity,
+                          height: 240,
+                          memCacheWidth: 1440,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              currentItem.title,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            _formatCurrency(currentItem.price),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        currentItem.description.trim().isEmpty
+                            ? 'Món ăn chưa có mô tả.'
+                            : currentItem.description,
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E293B),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatCurrency(item.price),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (item.quantity > 0) ...[
-                      _QuantityButton(
-                        icon: Icons.remove,
-                        onTap: () => context
-                            .read<FoodCubit>()
-                            .updateQuantity(item.id, -1),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '${item.quantity}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          height: 1.5,
+                          color: Color(0xFF64748B),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(height: 24),
+                      if (currentItem.quantity == 0)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              context
+                                  .read<FoodCubit>()
+                                  .updateQuantity(currentItem.id, 1);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Đã thêm món vào giỏ hàng'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('Thêm vào giỏ'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        )
+                      else
+                        Row(
+                          children: [
+                            _QuantityButton(
+                              icon: Icons.remove,
+                              onTap: () => context
+                                  .read<FoodCubit>()
+                                  .updateQuantity(currentItem.id, -1),
+                            ),
+                            const SizedBox(width: 14),
+                            Text(
+                              '${currentItem.quantity}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            _QuantityButton(
+                              icon: Icons.add,
+                              filled: true,
+                              onTap: () => context
+                                  .read<FoodCubit>()
+                                  .updateQuantity(currentItem.id, 1),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(sheetContext);
+                                  Future<void>.delayed(
+                                    Duration.zero,
+                                    () => _showCart(menuContext),
+                                  );
+                                },
+                                icon: const Icon(Icons.shopping_cart_outlined),
+                                label: const Text('Xem giỏ hàng'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 15),
+                                  side: const BorderSide(
+                                    color: AppColors.primary,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
-                    _QuantityButton(
-                      icon: Icons.add,
-                      filled: true,
-                      onTap: () =>
-                          context.read<FoodCubit>().updateQuantity(item.id, 1),
-                    ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
 }
 
 class _QuantityButton extends StatelessWidget {
@@ -447,53 +478,69 @@ class _BottomCartBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Stack(
-                children: [
-                  const Icon(
-                    Icons.shopping_cart_outlined,
-                    size: 32,
-                    color: Color(0xFF2563EB),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${state.totalItems}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Tổng cộng',
-                      style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                child: InkWell(
+                  onTap: () => _showCart(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Stack(
+                          children: [
+                            const Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 32,
+                              color: Color(0xFF2563EB),
+                            ),
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${state.totalItems}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Tổng cộng · Xem giỏ hàng',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                _formatCurrency(state.totalPrice),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      _formatCurrency(state.totalPrice),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -568,7 +615,7 @@ class _BottomCartBar extends StatelessWidget {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể đặt món: $e'),
+          content: Text('Không thể đặt món: ${_orderErrorMessage(e)}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
@@ -576,6 +623,273 @@ class _BottomCartBar extends StatelessWidget {
       );
     }
   }
+}
+
+Future<void> _showCart(BuildContext context) {
+  final cubit = context.read<FoodCubit>();
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) {
+      return BlocProvider.value(
+        value: cubit,
+        child: BlocBuilder<FoodCubit, FoodState>(
+          builder: (context, state) {
+            final selectedItems =
+                state.allItems.where((item) => item.quantity > 0).toList();
+            return SafeArea(
+              top: false,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Giỏ hàng của bạn',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: selectedItems.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Text(
+                                'Giỏ hàng đang trống',
+                                style: TextStyle(color: Color(0xFF64748B)),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              itemCount: selectedItems.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 24),
+                              itemBuilder: (context, index) {
+                                final item = selectedItems[index];
+                                return Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: NetImage(
+                                        url: item.imageUrl,
+                                        width: 64,
+                                        height: 64,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.title,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatCurrency(item.price),
+                                            style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    _QuantityButton(
+                                      icon: Icons.remove,
+                                      onTap: () => context
+                                          .read<FoodCubit>()
+                                          .updateQuantity(item.id, -1),
+                                    ),
+                                    SizedBox(
+                                      width: 36,
+                                      child: Text(
+                                        '${item.quantity}',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    _QuantityButton(
+                                      icon: Icons.add,
+                                      filled: true,
+                                      onTap: () => context
+                                          .read<FoodCubit>()
+                                          .updateQuantity(item.id, 1),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${state.totalItems} món',
+                                style: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              Text(
+                                _formatCurrency(state.totalPrice),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed:
+                                  state.isSubmitting || selectedItems.isEmpty
+                                  ? null
+                                  : () => _submitOrderFromCart(
+                                        context,
+                                        sheetContext,
+                                        state.restaurantName,
+                                      ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: state.isSubmitting
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Đặt món',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _submitOrderFromCart(
+  BuildContext blocContext,
+  BuildContext sheetContext,
+  String restaurantName,
+) async {
+  try {
+    await blocContext.read<FoodCubit>().submitOrder();
+    if (!blocContext.mounted) return;
+    ScaffoldMessenger.of(blocContext).showSnackBar(
+      SnackBar(
+        content: Text('Đặt món thành công tại $restaurantName!'),
+        backgroundColor: const Color(0xFF22C55E),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+    if (sheetContext.mounted) Navigator.pop(sheetContext);
+  } catch (error) {
+    if (!blocContext.mounted) return;
+    ScaffoldMessenger.of(blocContext).showSnackBar(
+      SnackBar(
+        content: Text('Không thể đặt món: ${_orderErrorMessage(error)}'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+}
+
+String _orderErrorMessage(Object error) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is List) {
+        return message.map((item) => item.toString()).join(', ');
+      }
+      if (message != null) return message.toString();
+    }
+
+    return 'Máy chủ không thể xử lý yêu cầu. Vui lòng thử lại.';
+  }
+
+  return error.toString().replaceFirst('Exception: ', '');
 }
 
 class _FoodMenuMessage extends StatelessWidget {

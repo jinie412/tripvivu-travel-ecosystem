@@ -11,6 +11,7 @@ class NetImage extends StatelessWidget {
   final BoxFit fit;
   final double? width;
   final double? height;
+  final int? memCacheWidth;
 
   const NetImage({
     super.key,
@@ -20,6 +21,7 @@ class NetImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.width,
     this.height,
+    this.memCacheWidth,
   });
 
   @override
@@ -50,7 +52,7 @@ class NetImage extends StatelessWidget {
         // nếu không giới hạn; RAM cao là lý do Android kill app khi chạy nền.
         // KHÔNG dùng LayoutBuilder để đo khung: nó crash khi NetImage nằm
         // trong IntrinsicHeight (vd timeline_activity_card).
-        memCacheWidth: _decodeWidth(context),
+        memCacheWidth: memCacheWidth ?? _decodeWidth(context),
         fadeInDuration: const Duration(milliseconds: 200),
         fadeOutDuration: const Duration(milliseconds: 100),
         placeholder: (context, url) => placeholder,
