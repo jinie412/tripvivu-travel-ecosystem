@@ -15,5 +15,7 @@ class PlaceReviewEntity with _$PlaceReviewEntity {
     @Default('approved') String status,
     String? timeLabel,
     @Default([]) List<String> reviewImages,
+    String? reply,
+    String? repliedAt,
   }) = _PlaceReviewEntity;
 }
