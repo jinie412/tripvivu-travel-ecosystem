@@ -21,6 +21,8 @@ interface BackendBusinessReviewItem {
   main_topic: string | null;
   images: string[];
   created_at: string;
+  reply: string | null;
+  replied_at: string | null;
 }
 
 interface BackendBusinessReviewResponse {
@@ -91,6 +93,8 @@ export const businessReviewAPI = {
       topic: string | null;
       images: string[];
       createdAt: string;
+      reply: string | null;
+      repliedAt: string | null;
     }>;
     availableTopics: string[];
     pagination: { page: number; limit: number; total: number; pages: number };
@@ -125,9 +129,26 @@ export const businessReviewAPI = {
         topic: item.main_topic,
         images: item.images,
         createdAt: item.created_at,
+        reply: item.reply,
+        repliedAt: item.replied_at,
       })),
       availableTopics: response.data.filters.available_topics,
       pagination: response.data.pagination,
     };
+  },
+
+  submitReply: async (params: {
+    vendorId: string;
+    placeId: string;
+    reviewId: string;
+    content: string;
+  }): Promise<{ reply: string; repliedAt: string }> => {
+    const response = await apiClient.put<{ id: string; reply: string; replied_at: string }>(
+      `/business/reviews/${params.placeId}/${params.reviewId}/reply`,
+      { content: params.content },
+      { params: { vendor_id: params.vendorId } },
+    );
+
+    return { reply: response.data.reply, repliedAt: response.data.replied_at };
   },
 };
