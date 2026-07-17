@@ -22,6 +22,9 @@ class PlaceReviewModel {
   final String? timeLabel;
   @JsonKey(name: 'review_images')
   final List<String> reviewImages;
+  final String? reply;
+  @JsonKey(name: 'replied_at')
+  final String? repliedAt;
 
   const PlaceReviewModel({
     required this.id,
@@ -34,6 +37,8 @@ class PlaceReviewModel {
     this.status = 'approved',
     this.timeLabel,
     this.reviewImages = const [],
+    this.reply,
+    this.repliedAt,
   });
 
   factory PlaceReviewModel.fromJson(Map<String, dynamic> json) => _$PlaceReviewModelFromJson(json);
@@ -50,5 +55,7 @@ class PlaceReviewModel {
     status: status,
     timeLabel: timeLabel,
     reviewImages: reviewImages,
+    reply: reply,
+    repliedAt: repliedAt,
   );
 }
