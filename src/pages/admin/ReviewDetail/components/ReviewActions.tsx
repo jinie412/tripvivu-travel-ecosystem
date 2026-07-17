@@ -4,6 +4,8 @@ import { Clock, Calendar, Info } from 'lucide-react';
 
 interface ReviewActionsProps {
   classification: Review['classification'];
+  classificationReason?: string | null;
+  predictedTimeLabel?: 'Ngắn hạn' | 'Dài hạn' | null;
   hasContent?: boolean;
   onUpdateClassification: (newType: 'Ngắn hạn' | 'Dài hạn') => Promise<void> | void;
 }
@@ -11,6 +13,8 @@ interface ReviewActionsProps {
 /** Footer action: Chọn phân loại đánh giá (Ngắn hạn / Dài hạn) */
 export const ReviewActions: React.FC<ReviewActionsProps> = ({
   classification,
+  classificationReason,
+  predictedTimeLabel,
   hasContent = true,
   onUpdateClassification
 }) => {
@@ -81,6 +85,16 @@ export const ReviewActions: React.FC<ReviewActionsProps> = ({
               <span>Dài hạn</span>
             </button>
           </div>
+          {classification === 'Cần xử lý' && (classificationReason || predictedTimeLabel) && (
+            <div className="rd-classification-suggestion">
+              {classificationReason && (
+                <p><strong>Lý do:</strong> {classificationReason}</p>
+              )}
+              {predictedTimeLabel && (
+                <p><strong>Phân loại được đề xuất:</strong> {predictedTimeLabel}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

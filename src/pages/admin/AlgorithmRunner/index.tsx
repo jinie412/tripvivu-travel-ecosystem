@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CalendarClock, Clock3, Loader2, Play, Save } from 'lucide-react';
+import { Activity, Bell, CalendarClock, CheckCircle2, CircleHelp, Clock3, Loader2, Play, Save, XCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import { NotificationBell } from '../../../components/NotificationBell';
@@ -52,10 +52,12 @@ interface AlgoDropdownProps {
   runTime: string;
   onRunTimeChange: (v: string) => void;
   isRunning: boolean;
+  autoSaving?: boolean;
   scheduleSaving?: boolean;
   scheduleDirty?: boolean;
   lastRun?: string;
   statusDetail?: string;
+  statusType?: 'progress' | 'running' | 'success' | 'failed' | 'unknown';
   onSaveSchedule?: () => void;
   onRunNow: () => void;
   runLabel?: string;
@@ -73,10 +75,12 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
   runTime,
   onRunTimeChange,
   isRunning,
+  autoSaving = false,
   scheduleSaving = false,
   scheduleDirty = false,
   lastRun,
   statusDetail,
+  statusType = 'progress',
   onSaveSchedule,
   onRunNow,
   runLabel = 'Chạy ngay',
@@ -93,7 +97,7 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
       </div>
       <div className="ar-dropdown__toggle-wrap">
         <span className="ar-dropdown__auto-label">Tự động</span>
-        <Toggle checked={autoEnabled} disabled={!available} onChange={onAutoChange} />
+        <Toggle checked={autoEnabled} disabled={!available || autoSaving} onChange={onAutoChange} />
       </div>
     </div>
 
@@ -107,8 +111,18 @@ const AlgoDropdown: React.FC<AlgoDropdownProps> = ({
           </div>
         </div>
         {statusDetail && (
-          <div className="ar-dropdown__meta">
-            <Loader2 size={16} className={isRunning ? 'ar-spin' : ''} />
+          <div className={`ar-dropdown__meta ar-dropdown__meta--status-${statusType}`}>
+            {statusType === 'success' ? (
+              <CheckCircle2 size={17} />
+            ) : statusType === 'failed' ? (
+              <XCircle size={17} />
+            ) : statusType === 'running' ? (
+              <Activity size={17} />
+            ) : statusType === 'unknown' ? (
+              <CircleHelp size={17} />
+            ) : (
+              <Loader2 size={16} className={isRunning ? 'ar-spin' : ''} />
+            )}
             <div>
               <span className="ar-dropdown__meta-label">Trạng thái</span>
               <span className="ar-dropdown__meta-value">{statusDetail}</span>
@@ -231,6 +245,8 @@ export const AlgorithmRunner: React.FC = () => {
   const [reviewScheduleSaving, setReviewScheduleSaving] = useState(false);
   const [reviewScheduleDirty, setReviewScheduleDirty] = useState(false);
   const [reviewLastRun, setReviewLastRun] = useState<string | undefined>(undefined);
+  const [reviewAutoSaving, setReviewAutoSaving] = useState(false);
+  const [reviewStatusDetail, setReviewStatusDetail] = useState('Chưa ghi nhận');
 
   // ── Recommend pipeline (retrain hybrid recommender) ──
   const [recommendAutoEnabled, setRecommendAutoEnabled] = useState(false);
@@ -240,6 +256,7 @@ export const AlgorithmRunner: React.FC = () => {
   const [recommendRunning, setRecommendRunning] = useState(false);
   const [recommendScheduleSaving, setRecommendScheduleSaving] = useState(false);
   const [recommendScheduleDirty, setRecommendScheduleDirty] = useState(false);
+  const [recommendAutoSaving, setRecommendAutoSaving] = useState(false);
   const [recommendLastRun, setRecommendLastRun] = useState<string | undefined>();
   const [recommendProgress, setRecommendProgress] = useState(0);
   const [recommendStep, setRecommendStep] = useState('Sẵn sàng');
@@ -260,6 +277,7 @@ export const AlgorithmRunner: React.FC = () => {
   const [sessionCfRunning, setSessionCfRunning] = useState(false);
   const [sessionCfScheduleSaving, setSessionCfScheduleSaving] = useState(false);
   const [sessionCfScheduleDirty, setSessionCfScheduleDirty] = useState(false);
+  const [sessionCfAutoSaving, setSessionCfAutoSaving] = useState(false);
   const [sessionCfLastRun, setSessionCfLastRun] = useState<string | undefined>(undefined);
 
   // ── Two-Tower training (docs/trigger — Phase 0/1 + Modal) ──
@@ -270,6 +288,7 @@ export const AlgorithmRunner: React.FC = () => {
   const [twoTowerRunning, setTwoTowerRunning] = useState(false);
   const [twoTowerScheduleSaving, setTwoTowerScheduleSaving] = useState(false);
   const [twoTowerScheduleDirty, setTwoTowerScheduleDirty] = useState(false);
+  const [twoTowerAutoSaving, setTwoTowerAutoSaving] = useState(false);
   const [twoTowerLastRun, setTwoTowerLastRun] = useState<string | undefined>(undefined);
   const twoTowerObservedRunId = useRef<string | null>(null);
   const twoTowerNotifiedRunIds = useRef(new Set<string>());
@@ -281,10 +300,11 @@ export const AlgorithmRunner: React.FC = () => {
 
     async function loadSchedules() {
       try {
-        const [schedule, recommendSchedule, retrainStatus] = await Promise.all([
+        const [schedule, recommendSchedule, retrainStatus, reviewHistory] = await Promise.all([
           algorithmPipelineAPI.getReviewFilterSchedule(),
           algorithmPipelineAPI.getRecommenderRetrainSchedule(),
           algorithmPipelineAPI.getRecommenderRetrainStatus(),
+          algorithmPipelineAPI.getHistory({ algorithm: 'review_filter', pageSize: 20 }),
         ]);
         if (!alive) return;
         setReviewAutoEnabled(schedule.autoEnabled);
@@ -294,6 +314,12 @@ export const AlgorithmRunner: React.FC = () => {
         setReviewScheduleDirty(false);
         if (schedule.lastRunAt) {
           setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
+        }
+        const latestReviewRun = reviewHistory.history.find(
+          (item) => item.details?.requestedAction === 'run_pipeline',
+        );
+        if (latestReviewRun) {
+          setReviewStatusDetail(latestReviewRun.success && latestReviewRun.status !== 'failed' ? 'Hoàn thành' : 'Thất bại');
         }
         setRecommendAutoEnabled(recommendSchedule.autoEnabled);
         setRecommendFrequency(recommendSchedule.frequency);
@@ -471,6 +497,22 @@ export const AlgorithmRunner: React.FC = () => {
     }
   };
 
+  const handleRecommendAutoChange = async (next: boolean) => {
+    const previous = recommendAutoEnabled;
+    setRecommendAutoEnabled(next);
+    setRecommendAutoSaving(true);
+    try {
+      const schedule = await algorithmPipelineAPI.updateRecommenderRetrainSchedule({ autoEnabled: next });
+      setRecommendAutoEnabled(schedule.autoEnabled);
+      notify('success', `Đã ${schedule.autoEnabled ? 'bật' : 'tắt'} lịch tự động thuật toán gợi ý.`);
+    } catch (err: unknown) {
+      setRecommendAutoEnabled(previous);
+      notify('error', err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tự động');
+    } finally {
+      setRecommendAutoSaving(false);
+    }
+  };
+
   const handleRunRecommendPipeline = async () => {
     setRecommendRunning(true);
     setRecommendProgress(0);
@@ -513,9 +555,20 @@ export const AlgorithmRunner: React.FC = () => {
     }
   };
 
-  const handleReviewAutoChange = (next: boolean) => {
+  const handleReviewAutoChange = async (next: boolean) => {
+    const previous = reviewAutoEnabled;
     setReviewAutoEnabled(next);
-    setReviewScheduleDirty(true);
+    setReviewAutoSaving(true);
+    try {
+      const schedule = await algorithmPipelineAPI.updateReviewFilterSchedule({ autoEnabled: next });
+      setReviewAutoEnabled(schedule.autoEnabled);
+      notify('success', `Đã ${schedule.autoEnabled ? 'bật' : 'tắt'} lịch tự động lọc đánh giá.`);
+    } catch (err: unknown) {
+      setReviewAutoEnabled(previous);
+      notify('error', err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tự động');
+    } finally {
+      setReviewAutoSaving(false);
+    }
   };
 
   const handleReviewFrequencyChange = (next: string) => {
@@ -545,9 +598,11 @@ export const AlgorithmRunner: React.FC = () => {
 
   const handleRunReviewPipeline = async () => {
     setReviewRunning(true);
+    setReviewStatusDetail('Đang chạy');
     try {
       const result = await algorithmPipelineAPI.runPipeline({ dry_run: false });
       setReviewLastRun(formatPipelineDateTime(result.completed_at));
+      setReviewStatusDetail('Hoàn thành');
       notify(
         'success',
         `Hoàn thành: xử lý ${result.total_reviews} đánh giá, ` +
@@ -555,6 +610,7 @@ export const AlgorithmRunner: React.FC = () => {
           `${result.long_term_summaries} tóm tắt dài hạn.`,
       );
     } catch (err: unknown) {
+      setReviewStatusDetail('Thất bại');
       const message = err instanceof Error ? err.message : 'Lỗi không xác định';
       notify('error', message);
     } finally {
@@ -588,9 +644,20 @@ export const AlgorithmRunner: React.FC = () => {
     }
   };
 
-  const handleSessionCfAutoChange = (next: boolean) => {
+  const handleSessionCfAutoChange = async (next: boolean) => {
+    const previous = sessionCfAutoEnabled;
     setSessionCfAutoEnabled(next);
-    setSessionCfScheduleDirty(true);
+    setSessionCfAutoSaving(true);
+    try {
+      const schedule = await sessionCfTrainingAPI.updateSchedule({ autoEnabled: next });
+      setSessionCfAutoEnabled(schedule.autoEnabled);
+      notify('success', `Đã ${schedule.autoEnabled ? 'bật' : 'tắt'} lịch tự động cập nhật mô hình tương tác.`);
+    } catch (err: unknown) {
+      setSessionCfAutoEnabled(previous);
+      notify('error', err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tự động');
+    } finally {
+      setSessionCfAutoSaving(false);
+    }
   };
 
   const handleSessionCfFrequencyChange = (next: string) => {
@@ -669,9 +736,20 @@ export const AlgorithmRunner: React.FC = () => {
     }
   };
 
-  const handleTwoTowerAutoChange = (next: boolean) => {
+  const handleTwoTowerAutoChange = async (next: boolean) => {
+    const previous = twoTowerAutoEnabled;
     setTwoTowerAutoEnabled(next);
-    setTwoTowerScheduleDirty(true);
+    setTwoTowerAutoSaving(true);
+    try {
+      const schedule = await algorithmTrainingAPI.updateSchedule('two-tower', { autoEnabled: next });
+      setTwoTowerAutoEnabled(schedule.autoEnabled);
+      notify('success', `Đã ${schedule.autoEnabled ? 'bật' : 'tắt'} lịch tự động Two-Tower.`);
+    } catch (err: unknown) {
+      setTwoTowerAutoEnabled(previous);
+      notify('error', err instanceof Error ? err.message : 'Không thể cập nhật trạng thái tự động');
+    } finally {
+      setTwoTowerAutoSaving(false);
+    }
   };
 
   const handleTwoTowerFrequencyChange = (next: string) => {
@@ -757,10 +835,7 @@ export const AlgorithmRunner: React.FC = () => {
             title="Thuật toán gợi ý"
             available={true}
             autoEnabled={recommendAutoEnabled}
-            onAutoChange={(value) => {
-              setRecommendAutoEnabled(value);
-              setRecommendScheduleDirty(true);
-            }}
+            onAutoChange={handleRecommendAutoChange}
             frequency={recommendFrequency}
             onFrequencyChange={(value) => {
               setRecommendFrequency(value);
@@ -777,6 +852,7 @@ export const AlgorithmRunner: React.FC = () => {
               setRecommendScheduleDirty(true);
             }}
             isRunning={recommendRunning}
+            autoSaving={recommendAutoSaving}
             scheduleSaving={recommendScheduleSaving}
             scheduleDirty={recommendScheduleDirty}
             lastRun={recommendLastRun}
@@ -785,7 +861,7 @@ export const AlgorithmRunner: React.FC = () => {
             onRunNow={handleRunRecommendPipeline}
           />
           <AlgoDropdown
-            title="Lọc đánh giá"
+            title="Thuật toán lọc đánh giá"
             available={true}
             autoEnabled={reviewAutoEnabled}
             onAutoChange={handleReviewAutoChange}
@@ -796,9 +872,20 @@ export const AlgorithmRunner: React.FC = () => {
             runTime={reviewRunTime}
             onRunTimeChange={handleReviewRunTimeChange}
             isRunning={reviewRunning}
+            autoSaving={reviewAutoSaving}
             scheduleSaving={reviewScheduleSaving}
             scheduleDirty={reviewScheduleDirty}
             lastRun={reviewLastRun}
+            statusDetail={reviewStatusDetail}
+            statusType={
+              reviewStatusDetail === 'Hoàn thành'
+                ? 'success'
+                : reviewStatusDetail === 'Thất bại'
+                  ? 'failed'
+                  : reviewStatusDetail === 'Đang chạy'
+                    ? 'running'
+                    : 'unknown'
+            }
             onSaveSchedule={saveReviewSchedule}
             onRunNow={handleRunReviewPipeline}
           />
@@ -814,6 +901,7 @@ export const AlgorithmRunner: React.FC = () => {
             runTime={sessionCfRunTime}
             onRunTimeChange={handleSessionCfRunTimeChange}
             isRunning={sessionCfRunning}
+            autoSaving={sessionCfAutoSaving}
             scheduleSaving={sessionCfScheduleSaving}
             scheduleDirty={sessionCfScheduleDirty}
             lastRun={sessionCfLastRun}
@@ -846,6 +934,7 @@ export const AlgorithmRunner: React.FC = () => {
             runTime={twoTowerRunTime}
             onRunTimeChange={handleTwoTowerRunTimeChange}
             isRunning={twoTowerRunning}
+            autoSaving={twoTowerAutoSaving}
             scheduleSaving={twoTowerScheduleSaving}
             scheduleDirty={twoTowerScheduleDirty}
             lastRun={twoTowerLastRun}

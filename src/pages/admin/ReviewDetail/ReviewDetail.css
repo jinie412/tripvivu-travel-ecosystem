@@ -471,6 +471,25 @@ video.rd-video-element:fullscreen {
   gap: 10px;
 }
 
+.rd-classification-suggestion {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #78350f;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.rd-classification-suggestion p {
+  margin: 0;
+}
+
+.rd-classification-suggestion p + p {
+  margin-top: 6px;
+}
+
 .rd-toggle-btn {
   flex: 1;
   display: flex;

@@ -87,7 +87,7 @@ export const ReviewFilter: React.FC<ReviewFilterProps> = ({
           >
             {ratingOptions.map((option) => (
               <option key={option.value} value={option.value}>
-                Rating ({option.label})
+                Số sao ({option.label})
               </option>
             ))}
           </select>

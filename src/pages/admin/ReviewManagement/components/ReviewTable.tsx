@@ -241,7 +241,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
             <th>NGƯỜI ĐÁNH GIÁ</th>
             <th>{targetColumnLabel}</th>
             <th>NỘI DUNG ĐÁNH GIÁ</th>
-            <th>RATING</th>
+            <th>SỐ SAO</th>
             <th>NGÀY GỬI</th>
             {showClassification && (
               <th>

@@ -167,6 +167,8 @@ export const ReviewDetail: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <ReviewActions
                         classification={review.classification}
+                        classificationReason={review.classificationReason}
+                        predictedTimeLabel={review.predictedTimeLabel}
                         onUpdateClassification={handleUpdateClassification}
                       />
                     </div>

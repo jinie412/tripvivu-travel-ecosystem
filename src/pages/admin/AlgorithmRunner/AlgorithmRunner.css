@@ -178,6 +178,9 @@
 .ar-dropdown__meta-row {
   grid-column: 1 / -1;
   display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .ar-dropdown__meta {
@@ -194,6 +197,22 @@
 .ar-dropdown__meta svg {
   color: var(--primary-blue);
   flex-shrink: 0;
+}
+
+.ar-dropdown__meta--status-success svg {
+  color: #16a34a;
+}
+
+.ar-dropdown__meta--status-failed svg {
+  color: #dc2626;
+}
+
+.ar-dropdown__meta--status-running svg {
+  color: #2563eb;
+}
+
+.ar-dropdown__meta--status-unknown svg {
+  color: var(--text-muted);
 }
 
 .ar-dropdown__meta-label,

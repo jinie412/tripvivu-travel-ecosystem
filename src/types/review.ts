@@ -50,6 +50,8 @@ export interface ReviewDetailInfo {
   status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
   violation_reason?: string | null;
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
+  classificationReason?: string | null;
+  predictedTimeLabel?: 'Ngắn hạn' | 'Dài hạn' | null;
   reportCount: number;
   reportReasons: string[];
   adminNote: string;

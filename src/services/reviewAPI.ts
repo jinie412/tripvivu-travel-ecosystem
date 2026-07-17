@@ -53,6 +53,8 @@ interface BackendReviewDetailResponse {
   review_type: string;
   main_topic: string | null;
   time_label: string | null;
+  classification_reason: string | null;
+  predicted_time_label: string | null;
   review_content: string | null;
   images: Array<{ url: string }>;
   status: BackendReviewStatus;
@@ -219,6 +221,15 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
     item.review_type === 'with_content'
       ? mapClassification(item.time_label)
       : 'Chưa phân loại',
+  classificationReason: item.time_label === 'amb' ? item.classification_reason : null,
+  predictedTimeLabel:
+    item.time_label === 'amb' && item.predicted_time_label
+      ? item.predicted_time_label === 'short-term'
+        ? 'Ngắn hạn'
+        : item.predicted_time_label === 'long-term'
+          ? 'Dài hạn'
+        : null
+      : null,
   reportCount: item.status === 'violation' ? Math.max(item.user.report_count, 1) : 0,
   reportReasons: item.status === 'violation' ? ['Nội dung bị đánh dấu vi phạm'] : [],
   adminNote: item.status === 'violation' ? 'Đánh giá đã được hệ thống gắn nhãn vi phạm.' : '',
