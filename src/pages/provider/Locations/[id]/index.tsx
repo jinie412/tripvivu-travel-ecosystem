@@ -257,6 +257,8 @@ interface ReviewSummary {
     topic: string | null;
     images: string[];
     createdAt: string;
+    reply: string | null;
+    repliedAt: string | null;
   }>;
   availableTopics: string[];
 }
@@ -488,6 +490,10 @@ const LocationEditPage: React.FC = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  const [replyErrorMessage, setReplyErrorMessage] = useState<string | null>(null);
+  const [resolvedReviewIds, setResolvedReviewIds] = useState<{ placeId: string; vendorId: string } | null>(null);
 
   // Services
   const [freeServices, setFreeServices] = useState<PlaceServiceItem[]>([]);
@@ -647,6 +653,7 @@ const LocationEditPage: React.FC = () => {
             try {
               const response = await businessReviewAPI.getReviews({ vendorId: vendorIdCandidate, placeId: placeIdCandidate, rating: reviewRating, sort: reviewSort, hasImages: reviewHasImages || undefined }, 1, 20);
               setReviewData({ stats: response.stats, reviews: response.reviews, availableTopics: response.availableTopics });
+              setResolvedReviewIds({ placeId: placeIdCandidate, vendorId: vendorIdCandidate });
               loaded = true;
               break;
             } catch (error) { lastError = error; }
@@ -872,7 +879,7 @@ const LocationEditPage: React.FC = () => {
     reviews: {
       average: reviewData?.stats.averageRating || 0,
       total: reviewData?.stats.totalReviews || 0,
-      distribution: [5, 4, 3, 2, 1].map((score) => ({ score, percentage: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.percent || 0 })),
+      distribution: [5, 4, 3, 2, 1].map((score) => ({ score, percentage: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.percent || 0, count: reviewData?.stats.breakdown[score as 1 | 2 | 3 | 4 | 5]?.count || 0 })),
       aiInsight: reviewData?.stats.aiInsight || 'Chưa có dữ liệu phân tích AI.',
       list: (reviewData?.reviews || []).map((review) => ({
         id: review.id,
@@ -883,6 +890,8 @@ const LocationEditPage: React.FC = () => {
         content: review.content,
         images: review.images,
         tags: review.topic ? [{ name: review.topic, color: '#3b82f6' }] : [],
+        reply: review.reply,
+        repliedAt: review.repliedAt,
       })),
     },
   }), [reviewData]);
@@ -1163,13 +1172,49 @@ const LocationEditPage: React.FC = () => {
     </div>
   );
 
+  const openReplyEditor = (reviewId: string, existingReply: string | null) => {
+    setReplyErrorMessage(null);
+    if (replyingToId === reviewId) {
+      setReplyingToId(null);
+      return;
+    }
+    setReplyDraft(existingReply ?? '');
+    setReplyingToId(reviewId);
+  };
+
+  const submitReply = async (reviewId: string) => {
+    if (!resolvedReviewIds || !replyDraft.trim()) return;
+    try {
+      setReplySubmitting(true);
+      setReplyErrorMessage(null);
+      const result = await businessReviewAPI.submitReply({
+        vendorId: resolvedReviewIds.vendorId,
+        placeId: resolvedReviewIds.placeId,
+        reviewId,
+        content: replyDraft.trim(),
+      });
+      setReviewData((current) => current ? {
+        ...current,
+        reviews: current.reviews.map((review) => review.id === reviewId
+          ? { ...review, reply: result.reply, repliedAt: result.repliedAt }
+          : review),
+      } : current);
+      setReplyingToId(null);
+      setReplyDraft('');
+    } catch (err) {
+      setReplyErrorMessage(getApiErrorMessage(err, 'Không thể gửi phản hồi'));
+    } finally {
+      setReplySubmitting(false);
+    }
+  };
+
   // ── Reviews render ────────────────────────────────────────────────────────────
   const renderReviews = () => {
     const reviews = locationData.reviews.list;
     const displayAverageRating = locationData.reviews.average;
     const displayTotalReviews = locationData.reviews.total;
     const displayBreakdown = locationData.reviews.distribution.reduce((accumulator, item) => {
-      accumulator[item.score as 1 | 2 | 3 | 4 | 5] = { count: 0, percent: item.percentage };
+      accumulator[item.score as 1 | 2 | 3 | 4 | 5] = { count: item.count, percent: item.percentage };
       return accumulator;
     }, { 5: { count: 0, percent: 0 }, 4: { count: 0, percent: 0 }, 3: { count: 0, percent: 0 }, 2: { count: 0, percent: 0 }, 1: { count: 0, percent: 0 } } as Record<1 | 2 | 3 | 4 | 5, { count: number; percent: number }>);
 
@@ -1192,7 +1237,7 @@ const LocationEditPage: React.FC = () => {
                   <div style={{ flex: 1, height: '8px', background: '#F8FAFC', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${item.percent}%`, background: '#3b82f6' }} />
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8', minWidth: '32px' }}>{item.percent}%</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8', minWidth: '32px' }}>{item.count}</span>
                 </div>
               );
             })}
@@ -1239,21 +1284,43 @@ const LocationEditPage: React.FC = () => {
                     {review.images.map((image, index) => (<img key={`${review.id}-${index}`} src={image} alt="Review" style={{ width: '120px', height: '90px', borderRadius: '12px', objectFit: 'cover' }} />))}
                   </div>
                 )}
+                {review.reply && replyingToId !== review.id && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                    <div style={{ maxWidth: '80%', padding: '16px 20px', background: '#F8FAFC', borderRadius: '12px', borderRight: '3px solid #3b82f6' }}>
+                      {review.repliedAt && (
+                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#3b82f6', marginBottom: '6px', textAlign: 'right' }}>
+                          {new Date(review.repliedAt).toLocaleDateString('vi-VN')}
+                        </p>
+                      )}
+                      <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.6', textAlign: 'right' }}>{review.reply}</p>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     {review.tags.map((tag) => (<span key={`${review.id}-${tag.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#F1F5F9', color: tag.color, borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>{tag.name}</span>))}
                   </div>
-                  <Button variant="outline" onClick={() => setReplyingToId((current) => (current === review.id ? null : review.id))} style={{ borderRadius: '10px', fontSize: '13px', padding: '6px 20px', color: '#3b82f6', borderColor: '#EFF6FF', background: '#EFF6FF' }}>
-                    {replyingToId === review.id ? 'Hủy' : 'Trả lời'}
+                  <Button variant="outline" onClick={() => openReplyEditor(review.id, review.reply)} style={{ borderRadius: '10px', fontSize: '13px', padding: '6px 20px', color: '#3b82f6', borderColor: '#EFF6FF', background: '#EFF6FF' }}>
+                    {replyingToId === review.id ? 'Hủy' : review.reply ? 'Chỉnh sửa' : 'Trả lời'}
                   </Button>
                 </div>
                 {replyingToId === review.id && (
                   <div style={{ marginTop: '24px', padding: '24px', background: '#F8FAFC', borderRadius: '16px', border: '1px solid #F1F5F9' }}>
                     <label style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', display: 'block', marginBottom: '12px' }}>Nội dung phản hồi khách hàng</label>
-                    <textarea placeholder="Cảm ơn bạn đã phản hồi, chúng tôi sẽ sớm cải thiện..." style={{ width: '100%', minHeight: '100px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px', resize: 'vertical' }} />
+                    <textarea
+                      value={replyDraft}
+                      onChange={(event) => setReplyDraft(event.target.value)}
+                      placeholder="Cảm ơn bạn đã phản hồi, chúng tôi sẽ sớm cải thiện..."
+                      style={{ width: '100%', minHeight: '100px', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px', resize: 'vertical' }}
+                    />
+                    {replyErrorMessage && (
+                      <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '12px' }}>{replyErrorMessage}</p>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                      <Button variant="outline" onClick={() => setReplyingToId(null)} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px' }}>Hủy bỏ</Button>
-                      <Button onClick={() => setReplyingToId(null)} style={{ padding: '8px 24px', borderRadius: '8px', fontSize: '13px' }}>Gửi phản hồi</Button>
+                      <Button variant="outline" onClick={() => { setReplyingToId(null); setReplyErrorMessage(null); }} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px' }}>Hủy bỏ</Button>
+                      <Button onClick={() => submitReply(review.id)} disabled={replySubmitting || !replyDraft.trim()} style={{ padding: '8px 24px', borderRadius: '8px', fontSize: '13px' }}>
+                        {replySubmitting ? 'Đang gửi...' : 'Gửi phản hồi'}
+                      </Button>
                     </div>
                   </div>
                 )}
