@@ -315,9 +315,7 @@ export const AlgorithmRunner: React.FC = () => {
         if (schedule.lastRunAt) {
           setReviewLastRun(formatPipelineDateTime(schedule.lastRunAt));
         }
-        const latestReviewRun = reviewHistory.history.find(
-          (item) => item.details?.requestedAction === 'run_pipeline',
-        );
+        const latestReviewRun = reviewHistory.history.find((item) => item.details?.requestedAction === 'run_pipeline');
         if (latestReviewRun) {
           setReviewStatusDetail(latestReviewRun.success && latestReviewRun.status !== 'failed' ? 'Hoàn thành' : 'Thất bại');
         }
@@ -909,21 +907,7 @@ export const AlgorithmRunner: React.FC = () => {
             onRunNow={handleRunSessionCfTraining}
           />
           <AlgoDropdown
-            title="Lập lịch"
-            available={false}
-            autoEnabled={scheduleAutoEnabled}
-            onAutoChange={setScheduleAutoEnabled}
-            frequency={scheduleFrequency}
-            onFrequencyChange={setScheduleFrequency}
-            runDay={scheduleRunDay}
-            onRunDayChange={setScheduleRunDay}
-            runTime={scheduleRunTime}
-            onRunTimeChange={setScheduleRunTime}
-            isRunning={false}
-            onRunNow={() => {}}
-          />
-          <AlgoDropdown
-            title="Thuật toán truy hồi (Two-Tower)"
+            title="Thuật toán truy hồi"
             available={true}
             autoEnabled={twoTowerAutoEnabled}
             onAutoChange={handleTwoTowerAutoChange}
