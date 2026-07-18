@@ -224,7 +224,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         }
 
         if (success != null && !success.isFull) {
-          _handleSuccessAdd(context, success, place);
+          _handleSuccessAdd(
+            context,
+            success,
+            place,
+            reorderNotes: success.reorderNotes,
+          );
           return;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1004,15 +1009,15 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                         ),
                       );
 
-                      final error = await cubit.optimizeEditedDay(
+                      final optimizeResult = await cubit.optimizeEditedDay(
                         dayNumber: _selectedDay,
                         editedActivityId: activity.id,
                       );
-                      
-                      if (error != null && mounted) {
+
+                      if (optimizeResult.error != null && mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(error),
+                            content: Text(optimizeResult.error!),
                             backgroundColor: Colors.redAccent,
                           ),
                         );
@@ -1021,6 +1026,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                           activityId: activity.id,
                           deltaMinutes: -deltaMin,
                           shiftStartTimeOnly: isStart,
+                        );
+                      } else if (mounted &&
+                          optimizeResult.reorderNotes.isNotEmpty) {
+                        _showReduceTimeNotesDialog(
+                          context,
+                          optimizeResult.reorderNotes,
                         );
                       }
                     }
@@ -1949,6 +1960,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     dynamic success,
     dynamic place, {
     bool extendTime = false,
+    List<String> reorderNotes = const [],
   }) {
     final addedDayNumber = success.dayNumber as int?;
     final newActivityId = success.activityId as String?;
@@ -2007,7 +2019,9 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             ),
           ],
         ),
-      );
+      ).then((_) {
+        if (mounted) _showReduceTimeNotesDialog(this.context, reorderNotes);
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2023,6 +2037,13 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           ),
         ),
       );
+
+      if (reorderNotes.isNotEmpty) {
+        // Đợi snackbar bắt đầu hiện rồi mới hiện dialog, tránh chồng UI ngay lập tức
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) _showReduceTimeNotesDialog(this.context, reorderNotes);
+        });
+      }
     }
 
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -2030,6 +2051,81 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         _scrollToActivity(newActivityId);
       }
     });
+  }
+
+  /// Hiển thị dialog liệt kê các thay đổi (giảm giờ tham quan, dời giờ...)
+  /// mà AI optimizer đã tự động thực hiện khi người dùng chọn "Giảm giờ".
+  void _showReduceTimeNotesDialog(BuildContext context, List<String> notes) {
+    if (notes.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.timer_outlined, color: AppColors.primary, size: 22),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Đã điều chỉnh thời gian',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: notes
+                .map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.circle,
+                            size: 6,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            note,
+                            style: const TextStyle(fontSize: 13, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.r8),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Đã hiểu',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddActivityConflictResolutionSheet(
@@ -2082,6 +2178,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               retrySuccess,
               place,
               extendTime: extendTime,
+              reorderNotes: retrySuccess.reorderNotes,
             );
           } else {
             _showAddActivityConflictResolutionSheet(
