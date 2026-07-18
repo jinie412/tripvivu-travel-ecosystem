@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Loader2,
   Search,
+  Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { addNewPlace, fetchAllServices, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
@@ -29,6 +30,33 @@ type CityOption = { id: string; name: string };
 type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
 type AmenityDraft = { id: string; name: string; description: string; icon: React.ReactNode };
 type MenuDraft = { id: string; name: string; description: string; price: string; quantity?: string; img: string; imageFile?: File | null; previewUrl?: string };
+type MenuColumnKey = 'name' | 'price' | 'description';
+type MenuColumnMapping = Record<MenuColumnKey, string>;
+type ExcelRow = Record<string, unknown>;
+
+const MENU_COLUMNS: Array<{ key: MenuColumnKey; label: string; aliases: string[] }> = [
+  { key: 'name', label: 'Tên món', aliases: ['ten mon', 'ten', 'name', 'item', 'product'] },
+  { key: 'price', label: 'Giá bán', aliases: ['gia ban', 'gia', 'price', 'cost', 'value'] },
+  { key: 'description', label: 'Mô tả', aliases: ['mo ta', 'description', 'ghi chu', 'note'] },
+];
+
+const normalizeColumnName = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
+
+const parseMappedMenuRows = (rows: ExcelRow[], mapping: MenuColumnMapping) => rows.map(row => {
+  const rawPrice = row[mapping.price];
+  const numericPrice = typeof rawPrice === 'number'
+    ? rawPrice
+    : Number(String(rawPrice ?? '').replace(/[^\d-]/g, ''));
+  return {
+    name: String(row[mapping.name] ?? '').trim(),
+    price: numericPrice > 0 ? String(numericPrice) : '',
+    description: String(row[mapping.description] ?? '').trim(),
+  };
+}).filter(item => item.name && item.price);
 type WeekdayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 type DayHours = { enabled: boolean; openTime: string; closeTime: string };
 type WeeklyHours = Record<WeekdayKey, DayHours>;
@@ -482,6 +510,9 @@ const AddLocationPage: React.FC = () => {
   // Excel preview state
   const [excelPreviewItems, setExcelPreviewItems] = useState<{ name: string; price: string; description: string }[]>([]);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
+  const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
+  const [excelRows, setExcelRows] = useState<ExcelRow[]>([]);
+  const [columnMapping, setColumnMapping] = useState<MenuColumnMapping>({ name: '', price: '', description: '' });
 
   // DB services cache for dedup check
   const [dbServices, setDbServices] = useState<Array<{ id: string; name: string }>>([]);
@@ -953,41 +984,81 @@ const AddLocationPage: React.FC = () => {
         }
 
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(worksheet);
+        const rows = XLSX.utils.sheet_to_json<ExcelRow>(worksheet, { defval: '' });
 
         if (rows.length === 0) {
           Swal.fire({ text: 'Sheet không chứa dữ liệu. Vui lòng thêm dữ liệu vào file.', icon: 'warning' });
           return;
         }
 
-        const findCol = (row: any, ...keys: string[]) => {
-          for (const k of keys) {
-            const match = Object.keys(row).find(col => col.toLowerCase().includes(k.toLowerCase()));
-            if (match) return String(row[match] ?? '').trim();
-          }
-          return '';
-        };
+        const headers = Object.keys(rows[0]);
+        const suggestedMapping = MENU_COLUMNS.reduce<MenuColumnMapping>((mapping, column) => {
+          const match = headers.find(header => {
+            const normalizedHeader = normalizeColumnName(header);
+            return column.aliases.some(alias => normalizedHeader === alias);
+          });
+          mapping[column.key] = match ?? '';
+          return mapping;
+        }, { name: '', price: '', description: '' });
 
-        const parsed = rows.map((row: any) => ({
-          name: findCol(row, 'tên món', 'tên', 'name', 'item', 'product'),
-          price: findCol(row, 'giá bán', 'giá', 'price', 'cost', 'value'),
-          description: findCol(row, 'mô tả', 'description', 'ghi chú', 'note'),
-        })).filter(item => item.name && !Number.isNaN(parseFloat(item.price)) && parseFloat(item.price) > 0);
-
-        if (parsed.length === 0) {
-          Swal.fire({ text: 'Không tìm thấy dữ liệu hợp lệ trong file. File cần có cột "Tên món" và "Giá bán".', icon: 'warning' });
-          return;
-        }
-
-        setExcelPreviewItems(parsed);
+        setExcelHeaders(headers);
+        setExcelRows(rows);
+        setColumnMapping(suggestedMapping);
         setUploadedFile(file);
-        setShowExcelPreview(true);
+
+        const isFullyMapped = Object.values(suggestedMapping).every(Boolean)
+          && new Set(Object.values(suggestedMapping)).size === MENU_COLUMNS.length;
+        if (isFullyMapped) {
+          const parsed = parseMappedMenuRows(rows, suggestedMapping);
+          if (!parsed.length) {
+            Swal.fire({ text: 'Không có dòng hợp lệ. Tên món không được trống và giá bán phải lớn hơn 0.', icon: 'warning' });
+            return;
+          }
+          setExcelPreviewItems(parsed);
+          setShowExcelPreview(true);
+        } else {
+          setExcelPreviewItems([]);
+          setShowExcelPreview(false);
+        }
       } catch (err) {
         Swal.fire({ text: `Lỗi khi xử lý file: ${err instanceof Error ? err.message : 'Không xác định'}`, icon: 'error' });
       }
     };
 
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleApplyColumnMapping = () => {
+    const selectedColumns = Object.values(columnMapping);
+    if (selectedColumns.some(column => !column)) {
+      Swal.fire({ text: 'Vui lòng mapping đầy đủ 3 cột hệ thống.', icon: 'warning' });
+      return;
+    }
+    if (new Set(selectedColumns).size !== selectedColumns.length) {
+      Swal.fire({ text: 'Mỗi cột trong file chỉ được mapping với một cột hệ thống.', icon: 'warning' });
+      return;
+    }
+
+    const parsed = parseMappedMenuRows(excelRows, columnMapping);
+
+    if (!parsed.length) {
+      Swal.fire({ text: 'Không có dòng hợp lệ. Tên món không được trống và giá bán phải lớn hơn 0.', icon: 'warning' });
+      return;
+    }
+
+    setExcelPreviewItems(parsed);
+    setShowExcelPreview(true);
+  };
+
+  const handleDownloadMenuTemplate = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['Tên món', 'Giá bán', 'Mô tả'],
+      ['Phở bò', 50000, 'Phở bò tái, phục vụ nóng'],
+    ]);
+    worksheet['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 45 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Thực đơn');
+    XLSX.writeFile(workbook, 'mau-thuc-don.xlsx', { bookType: 'xlsx', compression: true });
   };
 
   const handleConfirmExcelImport = () => {
@@ -1000,6 +1071,9 @@ const AddLocationPage: React.FC = () => {
     }));
     setFormData(prev => ({ ...prev, menu: [...prev.menu, ...newItems] }));
     setShowExcelPreview(false);
+    setExcelHeaders([]);
+    setExcelRows([]);
+    setColumnMapping({ name: '', price: '', description: '' });
     setFileUploaded(true);
     setShowExcelImport(false);
     setStep(2);
@@ -1009,6 +1083,9 @@ const AddLocationPage: React.FC = () => {
     setShowExcelPreview(false);
     setUploadedFile(null);
     setExcelPreviewItems([]);
+    setExcelHeaders([]);
+    setExcelRows([]);
+    setColumnMapping({ name: '', price: '', description: '' });
     setShowExcelImport(false);
     setStep(2);
   };
@@ -2141,14 +2218,21 @@ const AddLocationPage: React.FC = () => {
 
       {/* File upload section */}
       <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', padding: '40px' }}>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
             <FileSpreadsheet size={24} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <h5 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Thêm món ăn từ file Excel (tùy chọn)</h5>
-            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Tải thêm dữ liệu thực đơn bằng file Excel. File cần có các cột: "Tên món", "Giá bán", "Mô tả" (tùy chọn).</p>
+            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Tải dữ liệu thực đơn và mapping 3 cột hệ thống: "Tên món", "Giá bán", "Mô tả".</p>
           </div>
+          <button
+            type="button"
+            onClick={handleDownloadMenuTemplate}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            <Download size={17} /> Tải file mẫu
+          </button>
         </div>
 
         <input
@@ -2164,7 +2248,7 @@ const AddLocationPage: React.FC = () => {
           }}
         />
 
-        {!showExcelPreview ? (
+        {excelHeaders.length === 0 ? (
           <div onClick={() => document.getElementById('fileInput')?.click()} style={{
             height: '240px',
             border: '2px dashed #E2E8F0',
@@ -2187,6 +2271,43 @@ const AddLocationPage: React.FC = () => {
             </div>
             <span style={{ fontSize: '11px', fontWeight: '800', color: '#CBD5E1', letterSpacing: '1px' }}>XLSX, XLS HOẶC CSV</span>
           </div>
+        ) : !showExcelPreview ? (
+          <div style={{ border: '1px solid #E2E8F0', borderRadius: '16px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <h6 style={{ margin: 0, fontSize: '15px', color: '#1E293B' }}>Mapping cột dữ liệu</h6>
+                <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748B' }}>Chọn cột trong file tương ứng với từng cột mà hệ thống yêu cầu.</p>
+              </div>
+              <button type="button" onClick={() => { setUploadedFile(null); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ name: '', price: '', description: '' }); }} style={{ border: 0, background: 'transparent', color: '#EF4444', fontWeight: 600, cursor: 'pointer' }}>Đổi file</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {MENU_COLUMNS.map(column => (
+                <div key={column.key} style={{ display: 'flex', alignItems: 'center', gap: '18px', padding: '14px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC', flexWrap: 'wrap' }}>
+                  <div style={{ width: '220px', minWidth: '180px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Cột hệ thống</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B' }}>{column.label} <span style={{ color: '#EF4444' }}>*</span></div>
+                  </div>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#DBEAFE', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <ArrowRight size={18} />
+                  </div>
+                  <label style={{ flex: 1, minWidth: '240px' }}>
+                    <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Cột trong file</span>
+                  <select
+                    value={columnMapping[column.key]}
+                    onChange={event => setColumnMapping(previous => ({ ...previous, [column.key]: event.target.value }))}
+                    style={{ width: '100%', padding: '11px 12px', border: '1px solid #CBD5E1', borderRadius: '10px', background: 'white', color: columnMapping[column.key] ? '#1E293B' : '#94A3B8', fontSize: '14px', outline: 'none' }}
+                  >
+                    <option value="">-- Chọn cột trong file --</option>
+                    {excelHeaders.map(header => <option key={header} value={header}>{header}</option>)}
+                  </select>
+                  </label>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <Button onClick={handleApplyColumnMapping} style={{ padding: '11px 24px', borderRadius: '10px' }}>Áp dụng mapping</Button>
+            </div>
+          </div>
         ) : (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -2199,7 +2320,7 @@ const AddLocationPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); }}
+                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ name: '', price: '', description: '' }); }}
                 style={{ fontSize: '13px', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}
               >
                 Đổi file
