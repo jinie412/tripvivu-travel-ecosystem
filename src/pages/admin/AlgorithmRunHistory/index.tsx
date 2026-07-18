@@ -12,8 +12,10 @@ import './AlgorithmRunHistory.css';
 
 const ALGORITHM_LABELS: Record<string, string> = {
   review_filter: 'Lọc đánh giá',
-  two_tower_retrieval: 'Lập lịch - Mô hình truy xuất địa điểm',
-  hybrid_recommender: 'Gợi ý địa điểm',
+  two_tower_retrieval: 'Mô hình truy xuất địa điểm',
+  // hybrid_recommender: 'Gợi ý địa điểm',
+  recommender_retrain: 'Gợi ý địa điểm',
+  session_cf_reranker: 'Tương tác người dùng',
 };
 
 const PAGE_SIZE = 10;
@@ -24,10 +26,8 @@ const getAlgorithmLabel = (name?: string): string => {
   return ALGORITHM_LABELS[name] ?? name;
 };
 
-const getReviewFilterMessage = (
-  processed: number,
-  total: number,
-): string => `Đã xử lý ${processed}/${total} đánh giá đã duyệt đang chờ xử lý`;
+const getReviewFilterMessage = (processed: number, total: number): string =>
+  `Đã xử lý ${processed}/${total} đánh giá đã duyệt đang chờ xử lý`;
 
 const formatValue = (value: unknown): string => {
   if (typeof value === 'number') {
@@ -71,21 +71,14 @@ const getDetailText = (row: PipelineHistoryItem): string => {
   }
 
   if (typeof message === 'string') {
-    const processedMatch = message.match(
-      /Processed\s+(\d+)\/(\d+)\s+approved pending reviews/i,
-    );
+    const processedMatch = message.match(/Processed\s+(\d+)\/(\d+)\s+approved pending reviews/i);
     if (processedMatch) {
-      return getReviewFilterMessage(
-        Number(processedMatch[1]),
-        Number(processedMatch[2]),
-      );
+      return getReviewFilterMessage(Number(processedMatch[1]), Number(processedMatch[2]));
     }
     return message;
   }
 
-  return typeof details.value === 'string'
-    ? details.value
-    : 'Đã ghi nhận lịch sử chạy thuật toán';
+  return typeof details.value === 'string' ? details.value : 'Đã ghi nhận lịch sử chạy thuật toán';
 };
 
 export const AlgorithmRunHistory: React.FC = () => {
@@ -112,8 +105,7 @@ export const AlgorithmRunHistory: React.FC = () => {
       setTotal(response.total);
       setTotalPages(response.totalPages);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Không thể tải lịch sử chạy thuật toán';
+      const message = err instanceof Error ? err.message : 'Không thể tải lịch sử chạy thuật toán';
       setError(message);
     } finally {
       setLoading(false);
@@ -136,13 +128,7 @@ export const AlgorithmRunHistory: React.FC = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button
-            className="icon-btn"
-            onClick={() => loadHistory(page)}
-            disabled={loading}
-            title="Tải lại"
-            type="button"
-          >
+          <button className="icon-btn" onClick={() => loadHistory(page)} disabled={loading} title="Tải lại" type="button">
             <RefreshCw size={18} className={loading ? 'arh-spin' : undefined} />
           </button>
           <NotificationBell />
@@ -159,8 +145,7 @@ export const AlgorithmRunHistory: React.FC = () => {
                 onChange={(event) => {
                   setPage(1);
                   setAlgorithmFilter(event.target.value);
-                }}
-              >
+                }}>
                 <option value="">Thuật toán (Tất cả)</option>
                 {Object.entries(ALGORITHM_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -170,11 +155,7 @@ export const AlgorithmRunHistory: React.FC = () => {
               </select>
             </label>
             <label className="arh-filter arh-date-filter">
-              {!dateFilter && (
-                <span className="arh-date-placeholder">
-                  Ngày chạy (Tất cả)
-                </span>
-              )}
+              {!dateFilter && <span className="arh-date-placeholder">Ngày chạy (Tất cả)</span>}
               <input
                 type="date"
                 className={!dateFilter ? 'arh-date-input--empty' : undefined}
@@ -193,8 +174,7 @@ export const AlgorithmRunHistory: React.FC = () => {
                   setPage(1);
                   setAlgorithmFilter('');
                   setDateFilter('');
-                }}
-              >
+                }}>
                 Xóa lọc
               </button>
             )}
@@ -238,30 +218,16 @@ export const AlgorithmRunHistory: React.FC = () => {
                     const status = row.success ? 'done' : 'error';
                     return (
                       <tr key={row.run_id}>
-                        <td className="arh-fw500">
-                          {getAlgorithmLabel(row.algorithm_name)}
-                        </td>
-                        <td className="arh-muted">
-                          {formatPipelineDateTime(
-                            row.started_at || row.created_at || '',
-                          )}
-                        </td>
-                        <td className="arh-muted">
-                          {formatPipelineDuration(row.duration_seconds || 0)}
-                        </td>
+                        <td className="arh-fw500">{getAlgorithmLabel(row.algorithm_name)}</td>
+                        <td className="arh-muted">{formatPipelineDateTime(row.started_at || row.created_at || '')}</td>
+                        <td className="arh-muted">{formatPipelineDuration(row.duration_seconds || 0)}</td>
                         <td>
                           <span className={`arh-badge arh-badge--${status}`}>
                             <span className="arh-badge__dot" />
                             {status === 'done' ? 'Hoàn thành' : 'Thất bại'}
                           </span>
                         </td>
-                        <td
-                          className={
-                            status === 'error' ? 'arh-err-text' : 'arh-muted'
-                          }
-                        >
-                          {getDetailText(row)}
-                        </td>
+                        <td className={status === 'error' ? 'arh-err-text' : 'arh-muted'}>{getDetailText(row)}</td>
                       </tr>
                     );
                   })}
@@ -269,19 +235,14 @@ export const AlgorithmRunHistory: React.FC = () => {
             </table>
           </div>
           <div className="arh-pagination">
-            <span>
-              {total > 0
-                ? `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, total)} / ${total}`
-                : '0 / 0'}
-            </span>
+            <span>{total > 0 ? `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, total)} / ${total}` : '0 / 0'}</span>
             <div className="arh-pagination__actions">
               <button
                 className="icon-btn"
                 type="button"
                 onClick={() => setPage((current) => Math.max(current - 1, 1))}
                 disabled={loading || page <= 1}
-                title="Trang trước"
-              >
+                title="Trang trước">
                 <ChevronLeft size={18} />
               </button>
               <span>
@@ -290,12 +251,9 @@ export const AlgorithmRunHistory: React.FC = () => {
               <button
                 className="icon-btn"
                 type="button"
-                onClick={() =>
-                  setPage((current) => Math.min(current + 1, totalPages))
-                }
+                onClick={() => setPage((current) => Math.min(current + 1, totalPages))}
                 disabled={loading || page >= totalPages || totalPages === 0}
-                title="Trang sau"
-              >
+                title="Trang sau">
                 <ChevronRight size={18} />
               </button>
             </div>
