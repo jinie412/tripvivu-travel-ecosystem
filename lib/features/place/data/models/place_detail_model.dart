@@ -30,6 +30,8 @@ class PlaceDetailModel {
   @JsonKey(name: 'open_hour_compressed')
   final String? openHourCompressed;
   final String? phone;
+  @JsonKey(name: 'min_price')
+  final double? minimumHotelPrice;
   @JsonKey(name: 'food_items')
   final List<PlaceFoodItemModel> foodItems;
   final List<PlaceReviewModel> reviews;
@@ -58,6 +60,7 @@ class PlaceDetailModel {
     this.closingHours,
     this.openHourCompressed,
     this.phone,
+    this.minimumHotelPrice,
     this.foodItems = const [],
     this.reviews = const [],
     this.reviewBreakdown = const {},
@@ -88,6 +91,7 @@ class PlaceDetailModel {
     closingHours: closingHours,
     openHourCompressed: openHourCompressed,
     phone: phone,
+    minimumHotelPrice: minimumHotelPrice,
     foodItems: foodItems.map((e) => e.toEntity()).toList(),
     reviews: reviews.map((e) => e.toEntity()).toList(),
     reviewBreakdown: reviewBreakdown,

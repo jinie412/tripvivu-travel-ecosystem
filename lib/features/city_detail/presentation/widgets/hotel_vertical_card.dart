@@ -49,7 +49,8 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
     });
 
     try {
-      final success = await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
+      final success =
+          await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
       if (!success) {
         if (!mounted) return;
         setState(() {
@@ -63,15 +64,17 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
       setState(() => _isUpdatingFavorite = false);
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text(
-            nextFavorite
-                ? 'Đã lưu vào danh mục yêu thích'
-                : 'Đã xoá khỏi danh mục yêu thích',
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              nextFavorite
+                  ? 'Đã lưu vào danh mục yêu thích'
+                  : 'Đã xoá khỏi danh mục yêu thích',
+            ),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
           ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ));
+        );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -80,31 +83,34 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
       });
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(
-          content: Text('Không thể cập nhật yêu thích. Vui lòng thử lại.'),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Không thể cập nhật yêu thích. Vui lòng thử lại.'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.premiumNavy.withValues(alpha: .07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,11 +121,11 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                 child: CachedNetworkImage(
                   imageUrl: widget.item.imageUrl,
                   fit: BoxFit.cover,
-                  memCacheWidth: 300, // thumbnail 100dp — không giải mã full-res
+                  memCacheWidth:
+                      300, // thumbnail 100dp — không giải mã full-res
                   placeholder: (context, url) =>
                       Container(color: Colors.grey[200]),
-                  errorWidget: (context, url, error) =>
-                      const Icon(Icons.error),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
                 ),
               ),
               Expanded(
@@ -137,10 +143,10 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                               widget.item.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.black,
+                                fontSize: 14,
+                                color: AppColors.premiumNavy,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -169,9 +175,10 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                       // thì "Từ ...", chưa có data giá thì "Liên hệ giá".
                       const SizedBox(height: 4),
                       Text(
-                        widget.item.price.trim().isNotEmpty &&
+                        widget.item.priceValue > 0 &&
+                                widget.item.price.trim().isNotEmpty &&
                                 widget.item.price != 'Liên hệ'
-                            ? 'Từ ${widget.item.price}'
+                            ? 'Từ ${widget.item.price}/ngày'
                             : 'Liên hệ giá',
                         style: const TextStyle(
                           fontSize: 12,
@@ -183,8 +190,11 @@ class _HotelVerticalCardState extends State<HotelVerticalCard> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.location_on_outlined,
-                                color: Colors.grey[600], size: 14),
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.grey[600],
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(

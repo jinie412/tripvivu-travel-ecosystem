@@ -77,7 +77,7 @@ class _RateItineraryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
         title: const Text(
           'Đánh giá lịch trình',
@@ -87,7 +87,7 @@ class _RateItineraryView extends StatelessWidget {
             color: Color(0xFF1C1C1E),
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -302,8 +302,8 @@ class _RateItineraryView extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => PlaceReviewScreen(
                                         locationId: loc.id,
-                                        reviewCubit:
-                                            context.read<ReviewCubit>(),
+                                        reviewCubit: context
+                                            .read<ReviewCubit>(),
                                         isReadOnly: true,
                                       ),
                                     ),

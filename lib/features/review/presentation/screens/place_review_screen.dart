@@ -51,10 +51,9 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
     super.initState();
     final state = widget.reviewCubit.state;
     if (state is ReviewLoaded) {
-      final loc = state.itinerary.locations.cast<LocationReviewEntity?>().firstWhere(
-        (l) => l?.id == widget.locationId,
-        orElse: () => null,
-      );
+      final loc = state.itinerary.locations
+          .cast<LocationReviewEntity?>()
+          .firstWhere((l) => l?.id == widget.locationId, orElse: () => null);
       if (loc == null) {
         _rating = 0.0;
         _reviewController = TextEditingController();
@@ -274,16 +273,15 @@ class _PlaceReviewScreenState extends State<PlaceReviewScreen> {
       builder: (context, state) {
         if (state is! ReviewLoaded) return const Scaffold();
 
-        final location = state.itinerary.locations.cast<LocationReviewEntity?>().firstWhere(
-          (l) => l?.id == widget.locationId,
-          orElse: () => null,
-        );
+        final location = state.itinerary.locations
+            .cast<LocationReviewEntity?>()
+            .firstWhere((l) => l?.id == widget.locationId, orElse: () => null);
         if (location == null) return const Scaffold();
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumBackground,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.premiumBackground,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(

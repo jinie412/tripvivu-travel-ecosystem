@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
 /// Configured with baseUrl, timeouts, auth injection, response cache, and 401 retry.
 class DioClient {
   late final Dio _dio;
+  String? _cacheOwnerUserId;
 
   static final _cacheOptions = CacheOptions(
     store: MemCacheStore(
@@ -61,6 +62,29 @@ class DioClient {
   /// nên nếu không xóa, user B đăng nhập lại có thể vẫn nhận response cache của user A
   /// (vd. GET /profile/tourist/me) trong lúc maxStale còn hiệu lực.
   Future<void> clearCache() => _cacheOptions.store!.clean();
+
+  /// Binds the in-memory response cache to an authenticated user.
+  /// Switching accounts invalidates every cached GET before Explore can load,
+  /// preventing user-specific responses from leaking across sessions.
+  Future<void> revalidateCacheForUser(String userId) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      await clearCache();
+      _cacheOwnerUserId = null;
+      return;
+    }
+
+    if (_cacheOwnerUserId != normalizedUserId) {
+      await clearCache();
+      _cacheOwnerUserId = normalizedUserId;
+    }
+  }
+
+  /// Clears cached responses and removes their session ownership on logout.
+  Future<void> clearSessionCache() async {
+    await clearCache();
+    _cacheOwnerUserId = null;
+  }
 }
 
 /// Đính kèm Bearer token từ SecureStorage vào mỗi request.

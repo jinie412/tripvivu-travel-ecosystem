@@ -15,9 +15,8 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   String? lastGaItineraryId;
 
   /// Params/form của lần submit gần nhất — giữ ngoài state (tránh tái gen
-  /// Freezed) để retryWithRecommendedBudget()/proceedWithCurrentBudget() có
-  /// thể gửi lại đúng request đó với budget/proceedWithOverBudget đã đổi,
-  /// và để quay lại đúng form nếu request đó lỗi.
+  /// Freezed) để retryWithRecommendedBudget() có thể gửi lại đúng request đó
+  /// với budget đã đổi, và để quay lại đúng form nếu request đó lỗi.
   CreateItineraryParams? _lastAttemptedParams;
   TripForm? _lastAttemptedForm;
 
@@ -435,19 +434,6 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
     await _submitParams(
       lastParams.copyWith(budget: recommendedBudget),
       lastForm.copyWith(budget: recommendedBudget),
-    );
-  }
-
-  /// Gọi lại request tạo lịch trình gần nhất với proceedWithOverBudget=true —
-  /// người dùng chọn "Tiếp tục với ngân sách hiện tại" (xem lịch trình chưa
-  /// hoàn hảo thay vì tăng ngân sách).
-  Future<void> proceedWithCurrentBudget() async {
-    final lastParams = _lastAttemptedParams;
-    final lastForm = _lastAttemptedForm;
-    if (lastParams == null || lastForm == null) return;
-    await _submitParams(
-      lastParams.copyWith(proceedWithOverBudget: true),
-      lastForm,
     );
   }
 

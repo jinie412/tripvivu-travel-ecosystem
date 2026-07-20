@@ -42,5 +42,9 @@ class ItineraryActivityEntity with _$ItineraryActivityEntity {
     // Status
     @Default(ActivityStatus.chuaDi) ActivityStatus status,
     String? openHourCompressed,
+    // Hệ thống tự ghi (VD: ngày không có quán ăn phù hợp gần lịch trình) —
+    // khác với ghi chú người dùng tự nhập, hiện dưới dạng banner cảnh báo
+    // trên card hoạt động thay vì ghi chú thông thường.
+    String? notes,
   }) = _ItineraryActivityEntity;
 }

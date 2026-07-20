@@ -30,23 +30,24 @@ class FoodMenuScreen extends StatelessWidget {
           itineraryDetailId: itineraryDetailId,
         ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: AppColors.premiumBackground,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumBackground,
           elevation: 0,
           centerTitle: true,
           title: BlocBuilder<FoodCubit, FoodState>(
             buildWhen: (previous, current) =>
                 previous.restaurantName != current.restaurantName,
             builder: (context, state) {
-              final name =
-                  state.restaurantName.isEmpty ? restaurantName : state.restaurantName;
+              final name = state.restaurantName.isEmpty
+                  ? restaurantName
+                  : state.restaurantName;
               return Column(
                 children: [
                   const Text(
                     'Khám phá ẩm thực',
                     style: TextStyle(
-                      color: Color(0xFF1E293B),
+                      color: AppColors.premiumNavy,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
@@ -66,7 +67,7 @@ class FoodMenuScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             icon: const Icon(
               Icons.arrow_back_ios_new,
-              color: Color(0xFF1E293B),
+              color: AppColors.premiumNavy,
               size: 20,
             ),
           ),
@@ -82,14 +83,15 @@ class FoodMenuScreen extends StatelessWidget {
 
                   if (state.errorMessage != null) {
                     return _FoodMenuMessage(
-                      message: '[placeId: ${state.placeId}]\n\n${state.errorMessage!}',
+                      message:
+                          '[placeId: ${state.placeId}]\n\n${state.errorMessage!}',
                       actionLabel: 'Thử lại',
                       onAction: () =>
                           context.read<FoodCubit>().loadRestaurantMenu(
-                                placeId: state.placeId,
-                                restaurantName: state.restaurantName,
-                                itineraryDetailId: state.itineraryDetailId,
-                              ),
+                            placeId: state.placeId,
+                            restaurantName: state.restaurantName,
+                            itineraryDetailId: state.itineraryDetailId,
+                          ),
                     );
                   }
 
@@ -206,9 +208,10 @@ class _FoodItemCard extends StatelessWidget {
                       if (item.quantity > 0) ...[
                         _QuantityButton(
                           icon: Icons.remove,
-                          onTap: () => context
-                              .read<FoodCubit>()
-                              .updateQuantity(item.id, -1),
+                          onTap: () => context.read<FoodCubit>().updateQuantity(
+                            item.id,
+                            -1,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Text(
@@ -223,9 +226,10 @@ class _FoodItemCard extends StatelessWidget {
                       _QuantityButton(
                         icon: Icons.add,
                         filled: true,
-                        onTap: () => context
-                            .read<FoodCubit>()
-                            .updateQuantity(item.id, 1),
+                        onTap: () => context.read<FoodCubit>().updateQuantity(
+                          item.id,
+                          1,
+                        ),
                       ),
                     ],
                   ),
@@ -239,10 +243,7 @@ class _FoodItemCard extends StatelessWidget {
   }
 }
 
-Future<void> _showFoodDetails(
-  BuildContext context,
-  FoodItemEntity item,
-) {
+Future<void> _showFoodDetails(BuildContext context, FoodItemEntity item) {
   final menuContext = context;
   final cubit = context.read<FoodCubit>();
   return showModalBottomSheet<void>(
@@ -334,9 +335,10 @@ Future<void> _showFoodDetails(
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              context
-                                  .read<FoodCubit>()
-                                  .updateQuantity(currentItem.id, 1);
+                              context.read<FoodCubit>().updateQuantity(
+                                currentItem.id,
+                                1,
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Đã thêm món vào giỏ hàng'),
@@ -396,8 +398,9 @@ Future<void> _showFoodDetails(
                                 label: const Text('Xem giỏ hàng'),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.primary,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 15),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                  ),
                                   side: const BorderSide(
                                     color: AppColors.primary,
                                   ),
@@ -550,8 +553,10 @@ class _BottomCartBar extends StatelessWidget {
                     : () => _submitOrder(context, state.restaurantName),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -563,8 +568,9 @@ class _BottomCartBar extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text(
@@ -604,7 +610,9 @@ class _BottomCartBar extends StatelessWidget {
           ),
           backgroundColor: const Color(0xFF22C55E),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 4),
         ),
@@ -636,8 +644,9 @@ Future<void> _showCart(BuildContext context) {
         value: cubit,
         child: BlocBuilder<FoodCubit, FoodState>(
           builder: (context, state) {
-            final selectedItems =
-                state.allItems.where((item) => item.quantity > 0).toList();
+            final selectedItems = state.allItems
+                .where((item) => item.quantity > 0)
+                .toList();
             return SafeArea(
               top: false,
               child: Container(
@@ -691,8 +700,9 @@ Future<void> _showCart(BuildContext context) {
                             )
                           : ListView.separated(
                               shrinkWrap: true,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
                               itemCount: selectedItems.length,
                               separatorBuilder: (_, _) =>
                                   const Divider(height: 24),
@@ -799,15 +809,16 @@ Future<void> _showCart(BuildContext context) {
                                   state.isSubmitting || selectedItems.isEmpty
                                   ? null
                                   : () => _submitOrderFromCart(
-                                        context,
-                                        sheetContext,
-                                        state.restaurantName,
-                                      ),
+                                      context,
+                                      sheetContext,
+                                      state.restaurantName,
+                                    ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -922,10 +933,7 @@ class _FoodMenuMessage extends StatelessWidget {
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
+              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
             ],
           ],
         ),

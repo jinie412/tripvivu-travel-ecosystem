@@ -191,14 +191,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         if (state is ProfileInitial || state is ProfileLoading) {
           return const Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.premiumBackground,
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
         if (state is ProfileError) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.premiumBackground,
             appBar: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
@@ -222,7 +222,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
         // ProfileLoaded — hiện giao diện đầy đủ
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumBackground,
           body: Stack(
             children: [
               // 1. Background Image
@@ -235,7 +235,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   imageUrl:
                       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
                   fit: BoxFit.cover,
-                  memCacheWidth: 1080, // ảnh nền header — không giải mã full-res
+                  memCacheWidth:
+                      1080, // ảnh nền header — không giải mã full-res
                 ),
               ),
 
@@ -447,16 +448,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: AppTextStyles.caption.copyWith(
-              color: Colors.black,
+              color: AppColors.premiumNavy,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
@@ -496,16 +494,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Giới tính',
             style: AppTextStyles.caption.copyWith(
-              color: Colors.black,
+              color: AppColors.premiumNavy,
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
@@ -569,9 +564,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -580,7 +572,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Text(
                 label,
                 style: AppTextStyles.caption.copyWith(
-                  color: Colors.black,
+                  color: AppColors.premiumNavy,
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),

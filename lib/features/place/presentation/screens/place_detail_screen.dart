@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -111,12 +111,16 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Xác nhận',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
+
   @override
   void dispose() {
     _favoriteSubscription?.cancel();
@@ -127,7 +131,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.premiumBackground,
       body: BlocConsumer<PlaceDetailCubit, PlaceDetailState>(
         listener: (context, state) {
           if (state is PlaceDetailLoaded) {
@@ -138,7 +142,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           if (state is PlaceDetailLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-
 
           if (state is PlaceDetailError) {
             return Center(
@@ -151,9 +154,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context
-                        
                         .read<PlaceDetailCubit>()
-                        
                         .loadPlaceDetail(widget.placeId),
                     child: const Text('Thử lại'),
                   ),
@@ -162,13 +163,13 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             );
           }
 
-
           if (state is PlaceDetailLoaded) {
             final place = state.placeDetail;
             return RefreshIndicator(
-              onRefresh: () => context
-                  .read<PlaceDetailCubit>()
-                  .loadPlaceDetail(widget.placeId, refresh: true),
+              onRefresh: () => context.read<PlaceDetailCubit>().loadPlaceDetail(
+                widget.placeId,
+                refresh: true,
+              ),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
@@ -202,7 +203,9 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                           ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Không thể cập nhật yêu thích. Vui lòng thử lại.'),
+                              content: Text(
+                                'Không thể cập nhật yêu thích. Vui lòng thử lại.',
+                              ),
                               duration: Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -216,6 +219,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                       name: place.name,
                       rating: place.rating,
                       vibes: place.vibes,
+                      minimumHotelPrice: place.minimumHotelPrice,
                     ),
 
                     // 3. Image Gallery

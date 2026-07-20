@@ -209,11 +209,13 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   Future<List<IncurredCostEntity>> getIncurredCosts(
     String itineraryId, {
     String? placeId,
+    int? dayNumber,
     String? filterUserId,
   }) async {
     final models = await _dataSource.getIncurredCosts(
       itineraryId,
       placeId: placeId,
+      dayNumber: dayNumber,
       filterUserId: filterUserId,
     );
     return models.map((m) => m.toEntity()).toList();
@@ -234,12 +236,25 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   }
 
   @override
+  Future<DayCostBreakdownEntity> getDayCostBreakdown(
+    String itineraryId,
+    int dayNumber,
+  ) async {
+    final model = await _dataSource.getDayCostBreakdown(
+      itineraryId,
+      dayNumber,
+    );
+    return model.toEntity();
+  }
+
+  @override
   Future<IncurredCostEntity> createIncurredCost(
     String itineraryId, {
     CostType type = CostType.other,
     required String note,
     required double amount,
     String? placeId,
+    int? dayNumber,
     List<String>? chargedTo,
   }) async {
     final model = await _dataSource.createIncurredCost(
@@ -248,6 +263,7 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       note: note,
       amount: amount,
       placeId: placeId,
+      dayNumber: dayNumber,
       chargedTo: chargedTo,
     );
     return model.toEntity();
@@ -261,6 +277,7 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
     String? note,
     double? amount,
     String? placeId,
+    int? dayNumber,
     List<String>? chargedTo,
   }) async {
     final model = await _dataSource.updateIncurredCost(
@@ -270,6 +287,7 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       note: note,
       amount: amount,
       placeId: placeId,
+      dayNumber: dayNumber,
       chargedTo: chargedTo,
     );
     return model.toEntity();
@@ -278,5 +296,19 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
   @override
   Future<void> deleteIncurredCost(String itineraryId, String costId) {
     return _dataSource.deleteIncurredCost(itineraryId, costId);
+  }
+
+  @override
+  Future<IncurredCostEntity> updatePlaceEffectivePrice(
+    String itineraryId,
+    String placeId,
+    double amount,
+  ) async {
+    final model = await _dataSource.updatePlaceEffectivePrice(
+      itineraryId,
+      placeId,
+      amount,
+    );
+    return model.toEntity();
   }
 }

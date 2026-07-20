@@ -42,24 +42,35 @@ class CityDetailScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => sl<CityDetailCubit>()..loadCityDetail(cityId, cityName),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumSurface,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.black,
-              size: 20,
+          leadingWidth: 64,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 16, top: 7, bottom: 7),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.premiumSoftBlue,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.premiumNavy,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
-            onPressed: () => Navigator.pop(context),
           ),
           title: Text(
             cityName,
             style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+              color: AppColors.premiumNavy,
+              fontWeight: FontWeight.w800,
+              fontSize: 19,
+              letterSpacing: -.3,
             ),
           ),
           centerTitle: true,
@@ -69,18 +80,18 @@ class CityDetailScreen extends StatelessWidget {
             return state.when(
               initial: () => const SizedBox.shrink(),
               loading: () => const Center(child: CircularProgressIndicator()),
-              loaded: (
-                overview,
-                activeTab,
-                activityFilter,
-                restaurantFilter,
-                hotelFilter,
-                filteredActivities,
-                filteredRestaurants,
-                filteredHotels,
-                itineraries,
-              ) =>
-                  _CityDetailContent(
+              loaded:
+                  (
+                    overview,
+                    activeTab,
+                    activityFilter,
+                    restaurantFilter,
+                    hotelFilter,
+                    filteredActivities,
+                    filteredRestaurants,
+                    filteredHotels,
+                    itineraries,
+                  ) => _CityDetailContent(
                     overview: overview,
                     activeTab: activeTab,
                     activityFilter: activityFilter,
@@ -145,11 +156,20 @@ class _CityDetailContent extends StatefulWidget {
 }
 
 class _CityDetailContentState extends State<_CityDetailContent> {
-  final PageController _itineraryController = PageController(viewportFraction: 0.88);
-  final PageController _activityController = PageController(viewportFraction: 0.45);
-  final PageController _restaurantController = PageController(viewportFraction: 0.45);
-  final PageController _hotelController = PageController(viewportFraction: 0.45);
-  final FavoriteRemoteDataSource _favoriteRemoteDataSource = sl<FavoriteRemoteDataSource>();
+  final PageController _itineraryController = PageController(
+    viewportFraction: 0.96,
+  );
+  final PageController _activityController = PageController(
+    viewportFraction: 0.45,
+  );
+  final PageController _restaurantController = PageController(
+    viewportFraction: 0.45,
+  );
+  final PageController _hotelController = PageController(
+    viewportFraction: 0.45,
+  );
+  final FavoriteRemoteDataSource _favoriteRemoteDataSource =
+      sl<FavoriteRemoteDataSource>();
   StreamSubscription<FavoriteChangedEvent>? _favoriteSubscription;
 
   int _itineraryIndex = 0;
@@ -163,9 +183,9 @@ class _CityDetailContentState extends State<_CityDetailContent> {
     _favoriteSubscription = _favoriteRemoteDataSource.changes.listen((event) {
       if (!mounted || event.type != FavoriteTargetType.place) return;
       context.read<CityDetailCubit>().updatePlaceFavorite(
-            event.id,
-            event.isFavorite,
-          );
+        event.id,
+        event.isFavorite,
+      );
     });
   }
 
@@ -186,75 +206,86 @@ class _CityDetailContentState extends State<_CityDetailContent> {
     );
     if (mounted) {
       context.read<CityDetailCubit>().updatePlaceFavorite(
-            placeId,
-            updatedFavorite,
-          );
+        placeId,
+        updatedFavorite,
+      );
     }
     return updatedFavorite;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: CityDetailTabBar(
-            selectedIndex: widget.activeTab,
-            onTabSelected: (index) {
-              context.read<CityDetailCubit>().changeTab(index);
-            },
+    return ColoredBox(
+      color: AppColors.premiumBackground,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: CityDetailTabBar(
+              selectedIndex: widget.activeTab,
+              onTabSelected: (index) {
+                context.read<CityDetailCubit>().changeTab(index);
+              },
+            ),
           ),
-        ),
-        Expanded(
-          child: widget.activeTab == 0
-              ? _OverviewTabContent(
-                  overviewItineraries: widget.itineraries.take(5).toList(),
-                  overviewActivities: widget.filteredActivities.take(5).toList(),
-                  overviewRestaurants: widget.filteredRestaurants.take(5).toList(),
-                  overviewHotels: widget.filteredHotels.take(5).toList(),
-                  itineraryController: _itineraryController,
-                  activityController: _activityController,
-                  restaurantController: _restaurantController,
-                  hotelController: _hotelController,
-                  itineraryIndex: _itineraryIndex,
-                  activityIndex: _activityIndex,
-                  restaurantIndex: _restaurantIndex,
-                  hotelIndex: _hotelIndex,
-                  onItineraryPageChanged: (i) => setState(() => _itineraryIndex = i),
-                  onActivityPageChanged: (i) => setState(() => _activityIndex = i),
-                  onRestaurantPageChanged: (i) => setState(() => _restaurantIndex = i),
-                  onHotelPageChanged: (i) => setState(() => _hotelIndex = i),
-                  onTabSelected: (index) => context.read<CityDetailCubit>().changeTab(index),
-                )
-              : widget.activeTab == 1
-                  ? _ItineraryTabContent(itineraries: widget.itineraries)
-                  : widget.activeTab == 2
-                      ? _ActivityTabContent(
-                          activities: widget.filteredActivities,
-                          filter: widget.activityFilter,
-                          onFavoriteChanged: _setPlaceFavorite,
-                        )
-                      : widget.activeTab == 3
-                          ? _RestaurantTabContent(
-                              restaurants: widget.filteredRestaurants,
-                              filter: widget.restaurantFilter,
-                              onFavoriteChanged: _setPlaceFavorite,
-                            )
-                          : widget.activeTab == 4
-                              ? _HotelTabContent(
-                                  hotels: widget.filteredHotels,
-                                  filter: widget.hotelFilter,
-                                  onFavoriteChanged: _setPlaceFavorite,
-                                )
-                              : const Center(
-                                  child: Text(
-                                    'Nội dung cho Tab này đang được phát triển',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ),
-        ),
-      ],
+          Expanded(
+            child: widget.activeTab == 0
+                ? _OverviewTabContent(
+                    overviewItineraries: widget.itineraries.take(5).toList(),
+                    overviewActivities: widget.filteredActivities
+                        .take(5)
+                        .toList(),
+                    overviewRestaurants: widget.filteredRestaurants
+                        .take(5)
+                        .toList(),
+                    overviewHotels: widget.filteredHotels.take(5).toList(),
+                    itineraryController: _itineraryController,
+                    activityController: _activityController,
+                    restaurantController: _restaurantController,
+                    hotelController: _hotelController,
+                    itineraryIndex: _itineraryIndex,
+                    activityIndex: _activityIndex,
+                    restaurantIndex: _restaurantIndex,
+                    hotelIndex: _hotelIndex,
+                    onItineraryPageChanged: (i) =>
+                        setState(() => _itineraryIndex = i),
+                    onActivityPageChanged: (i) =>
+                        setState(() => _activityIndex = i),
+                    onRestaurantPageChanged: (i) =>
+                        setState(() => _restaurantIndex = i),
+                    onHotelPageChanged: (i) => setState(() => _hotelIndex = i),
+                    onTabSelected: (index) =>
+                        context.read<CityDetailCubit>().changeTab(index),
+                  )
+                : widget.activeTab == 1
+                ? _ItineraryTabContent(itineraries: widget.itineraries)
+                : widget.activeTab == 2
+                ? _ActivityTabContent(
+                    activities: widget.filteredActivities,
+                    filter: widget.activityFilter,
+                    onFavoriteChanged: _setPlaceFavorite,
+                  )
+                : widget.activeTab == 3
+                ? _RestaurantTabContent(
+                    restaurants: widget.filteredRestaurants,
+                    filter: widget.restaurantFilter,
+                    onFavoriteChanged: _setPlaceFavorite,
+                  )
+                : widget.activeTab == 4
+                ? _HotelTabContent(
+                    hotels: widget.filteredHotels,
+                    filter: widget.hotelFilter,
+                    onFavoriteChanged: _setPlaceFavorite,
+                  )
+                : const Center(
+                    child: Text(
+                      'Nội dung cho Tab này đang được phát triển',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -301,9 +332,9 @@ class _OverviewTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
-    final activityCardH   = screenW * 0.45 * (3 / 4) + 64;
-    final restaurantCardH = screenW * 0.45 * (3 / 4) + 64;
-    final hotelCardH      = screenW * 0.45 * (3 / 4) + 86;
+    final activityCardH = screenW * 0.45 * (3 / 4) + 86;
+    final restaurantCardH = screenW * 0.45 * (3 / 4) + 86;
+    final hotelCardH = screenW * 0.45 * (3 / 4) + 108;
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -323,19 +354,19 @@ class _OverviewTabContent extends StatelessWidget {
           )
         else
           Padding(
-            padding: const EdgeInsets.only(left: 16),
+            padding: EdgeInsets.zero,
             child: SizedBox(
-              height: screenW * 0.88 * (9 / 16) + 126,
+              height: screenW * 0.96 * (9 / 16) + 100,
               child: PageView.builder(
                 controller: itineraryController,
-                padEnds: false,
+                padEnds: true,
                 clipBehavior: Clip.none,
                 onPageChanged: onItineraryPageChanged,
                 itemCount: overviewItineraries.length,
                 itemBuilder: (context, index) {
                   final item = overviewItineraries[index];
                   return Padding(
-                    padding: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 7),
                     child: GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -349,7 +380,9 @@ class _OverviewTabContent extends StatelessWidget {
                                 });
                                 return cubit;
                               },
-                              child: ItinerarySummaryScreen(itineraryId: item.id),
+                              child: ItinerarySummaryScreen(
+                                itineraryId: item.id,
+                              ),
                             ),
                           ),
                         );
@@ -361,20 +394,21 @@ class _OverviewTabContent extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 18),
         PageDots(count: overviewItineraries.length, current: itineraryIndex),
         const SizedBox(height: 16),
 
         // ── HOẠT ĐỘNG THAM QUAN & GIẢI TRÍ ────────────────────────
         SectionHeader(
-          title: 'Hoạt động tham quan & giải trí',
+          title: 'Tham quan & giải trí',
           onSeeAll: () => onTabSelected(2),
         ),
         const SizedBox(height: 12),
         if (overviewActivities.isEmpty)
           const _SectionEmptyState(
             height: 120,
-            message: 'Chưa có hoạt động tham quan & giải trí cho tỉnh/thành phố này.',
+            message:
+                'Chưa có hoạt động tham quan & giải trí cho tỉnh/thành phố này.',
           )
         else
           Padding(
@@ -403,14 +437,16 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: ActivityCard(item: item, showFavorite: false),
+                      child: _CityCarouselCard(
+                        child: ActivityCard(item: item, showFavorite: false),
+                      ),
                     ),
                   );
                 },
               ),
             ),
           ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 18),
         PageDots(count: overviewActivities.length, current: activityIndex),
         const SizedBox(height: 16),
 
@@ -452,14 +488,16 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: RestaurantCard(item: item, showFavorite: false),
+                      child: _CityCarouselCard(
+                        child: RestaurantCard(item: item, showFavorite: false),
+                      ),
                     ),
                   );
                 },
               ),
             ),
           ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 18),
         PageDots(count: overviewRestaurants.length, current: restaurantIndex),
         const SizedBox(height: 16),
 
@@ -501,14 +539,16 @@ class _OverviewTabContent extends StatelessWidget {
                           ),
                         );
                       },
-                      child: HotelCard(item: item, showFavorite: false),
+                      child: _CityCarouselCard(
+                        child: HotelCard(item: item, showFavorite: false),
+                      ),
                     ),
                   );
                 },
               ),
             ),
           ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 18),
         PageDots(count: overviewHotels.length, current: hotelIndex),
         SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
       ],
@@ -592,7 +632,9 @@ class _FilterHeader extends StatelessWidget {
                     : AppColors.inputFill,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: hasActiveFilter ? AppColors.primary : Colors.transparent,
+                  color: hasActiveFilter
+                      ? AppColors.primary
+                      : Colors.transparent,
                 ),
               ),
               child: Row(
@@ -601,15 +643,21 @@ class _FilterHeader extends StatelessWidget {
                   Icon(
                     Icons.tune,
                     size: 16,
-                    color: hasActiveFilter ? AppColors.primary : AppColors.textSecondary,
+                    color: hasActiveFilter
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'Bộ lọc',
                     style: TextStyle(
                       fontSize: 13,
-                      color: hasActiveFilter ? AppColors.primary : AppColors.textSecondary,
-                      fontWeight: hasActiveFilter ? FontWeight.w600 : FontWeight.normal,
+                      color: hasActiveFilter
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      fontWeight: hasActiveFilter
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -625,7 +673,8 @@ class _FilterHeader extends StatelessWidget {
 class _ActivityTabContent extends StatelessWidget {
   final List<CityActivity> activities;
   final ActivityFilter filter;
-  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+  final Future<bool> Function(String placeId, bool isFavorite)
+  onFavoriteChanged;
 
   const _ActivityTabContent({
     required this.activities,
@@ -676,7 +725,8 @@ class _ActivityTabContent extends StatelessWidget {
             },
             child: ActivityVerticalCard(
               item: item,
-              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+              onFavoriteChanged: (isFavorite) =>
+                  onFavoriteChanged(item.id, isFavorite),
             ),
           ),
         ),
@@ -703,7 +753,8 @@ class _ActivityTabContent extends StatelessWidget {
 class _RestaurantTabContent extends StatelessWidget {
   final List<CityRestaurant> restaurants;
   final RestaurantFilter filter;
-  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+  final Future<bool> Function(String placeId, bool isFavorite)
+  onFavoriteChanged;
 
   const _RestaurantTabContent({
     required this.restaurants,
@@ -753,7 +804,8 @@ class _RestaurantTabContent extends StatelessWidget {
             },
             child: RestaurantVerticalCard(
               item: item,
-              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+              onFavoriteChanged: (isFavorite) =>
+                  onFavoriteChanged(item.id, isFavorite),
             ),
           ),
         ),
@@ -780,7 +832,8 @@ class _RestaurantTabContent extends StatelessWidget {
 class _HotelTabContent extends StatelessWidget {
   final List<CityHotel> hotels;
   final HotelFilter filter;
-  final Future<bool> Function(String placeId, bool isFavorite) onFavoriteChanged;
+  final Future<bool> Function(String placeId, bool isFavorite)
+  onFavoriteChanged;
 
   const _HotelTabContent({
     required this.hotels,
@@ -789,8 +842,7 @@ class _HotelTabContent extends StatelessWidget {
   });
 
   bool get _hasActiveFilter =>
-      filter.minRating != MinRating.all ||
-      filter.sortOption != SortOption.none;
+      filter.minRating != MinRating.all || filter.sortOption != SortOption.none;
 
   @override
   Widget build(BuildContext context) {
@@ -829,7 +881,8 @@ class _HotelTabContent extends StatelessWidget {
             },
             child: HotelVerticalCard(
               item: item,
-              onFavoriteChanged: (isFavorite) => onFavoriteChanged(item.id, isFavorite),
+              onFavoriteChanged: (isFavorite) =>
+                  onFavoriteChanged(item.id, isFavorite),
             ),
           ),
         ),
@@ -857,10 +910,7 @@ class _SectionEmptyState extends StatelessWidget {
   final String message;
   final double height;
 
-  const _SectionEmptyState({
-    required this.message,
-    required this.height,
-  });
+  const _SectionEmptyState({required this.message, required this.height});
 
   @override
   Widget build(BuildContext context) {
@@ -880,6 +930,32 @@ class _SectionEmptyState extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CityCarouselCard extends StatelessWidget {
+  final Widget child;
+
+  const _CityCarouselCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(9, 9, 9, 11),
+      decoration: BoxDecoration(
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.premiumNavy.withValues(alpha: .08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

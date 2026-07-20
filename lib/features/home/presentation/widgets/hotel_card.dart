@@ -11,6 +11,11 @@ class HotelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final numericPrice = double.tryParse(
+      item.price.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    final hasPrice = numericPrice != null && numericPrice > 0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -35,10 +40,10 @@ class HotelCard extends StatelessWidget {
             Text(
               item.name,
               style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1C1C1E)),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
@@ -46,7 +51,7 @@ class HotelCard extends StatelessWidget {
               const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFFA500)),
               const SizedBox(width: 2),
               Text(
-                item.rating.toString(),
+                item.rating.toStringAsFixed(1),
                 style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF1C1C1E),
@@ -56,7 +61,7 @@ class HotelCard extends StatelessWidget {
             const SizedBox(height: 6),
             const SizedBox(height: 6),
             Text(
-              'Từ ${item.price}/đêm',
+              hasPrice ? 'Từ ${item.price}/ngày' : 'Liên hệ giá',
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,

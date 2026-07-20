@@ -26,31 +26,48 @@ class SearchHeaderWidget extends StatelessWidget {
           // Nút Back
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Padding(
-              padding: EdgeInsets.only(right: AppSizes.s16),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.black, // Theo thiết kế là đen
-                size: AppSizes.iconMd,
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: AppSizes.s12),
+              decoration: BoxDecoration(
+                color: AppColors.premiumSoftBlue,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.premiumNavy,
+                size: 20,
               ),
             ),
           ),
-          
+
           Expanded(
             child: Container(
               height: AppSizes.searchBarHeight,
               decoration: BoxDecoration(
-                color: AppColorsExt.searchBarBg,
-                border: Border.all(color: Colors.black, width: 1.0),
-                borderRadius: BorderRadius.circular(AppSizes.r24),
+                color: Colors.white,
+                border: Border.all(color: AppColors.premiumBorder),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.premiumNavy.withValues(alpha: .06),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.only(left: AppSizes.s12, right: AppSizes.s16),
+              padding: const EdgeInsets.only(
+                left: AppSizes.s12,
+                right: AppSizes.s16,
+              ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center, // Căn giữa theo trục dọc
+                crossAxisAlignment:
+                    CrossAxisAlignment.center, // Căn giữa theo trục dọc
                 children: [
                   const Icon(
-                    Icons.search,
-                    color: Colors.black, // Kính lúp màu đen (#000000)
+                    Icons.search_rounded,
+                    color: AppColors.premiumBlue,
                     size: AppSizes.iconMd,
                   ),
                   const SizedBox(width: AppSizes.s8),
@@ -59,14 +76,15 @@ class SearchHeaderWidget extends StatelessWidget {
                       controller: controller,
                       readOnly: false, // Sử dụng bàn phím thật
                       autofocus: true,
-                      textAlignVertical: TextAlignVertical.center, // Đảm bảo text align center
+                      textAlignVertical:
+                          TextAlignVertical.center, // Đảm bảo text align center
                       onChanged: onChanged,
                       onSubmitted: onSubmitted,
                       decoration: InputDecoration(
                         hintText: 'Tìm kiếm thành phố, địa điểm, nhà hàng...',
                         hintStyle: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey.shade500, // Màu xám nhạt
+                          color: AppColors.premiumMuted,
                           fontWeight: FontWeight.w400,
                         ),
                         border: InputBorder.none, // Bỏ viền mặc định
@@ -79,7 +97,7 @@ class SearchHeaderWidget extends StatelessWidget {
                       ),
                       style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.black, // Text input màu đen (#000000)
+                        color: AppColors.premiumNavy,
                       ),
                     ),
                   ),

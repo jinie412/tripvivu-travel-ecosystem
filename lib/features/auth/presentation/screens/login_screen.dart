@@ -73,7 +73,7 @@ class _LoginViewState extends State<_LoginView> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         body: Stack(
           children: [
             const AuthBackground(),
@@ -92,14 +92,29 @@ class _LoginViewState extends State<_LoginView> {
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: AppColorsExt.authBgLight,
-                          borderRadius: BorderRadius.circular(AppSizes.r32),
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppColors.premiumNavy,
+                              AppColors.premiumBlue,
+                              AppColors.premiumTeal,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.premiumNavy.withValues(alpha: .18),
+                              blurRadius: 24,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
                         child: const Center(
                           child: Icon(
                             Icons.flight_takeoff_rounded,
                             size: AppSizes.s48,
-                            color: AppColors.primary,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -110,7 +125,7 @@ class _LoginViewState extends State<_LoginView> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A3C6E),
+                        color: AppColors.premiumNavy,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -119,7 +134,7 @@ class _LoginViewState extends State<_LoginView> {
                       'Sẵn sàng cho chuyến đi tiếp theo?',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textSecondary,
+                        color: AppColors.premiumMuted,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -170,7 +185,7 @@ class _LoginViewState extends State<_LoginView> {
                         child: Text(
                           'Quên mật khẩu?',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.premiumBlue,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -189,14 +204,14 @@ class _LoginViewState extends State<_LoginView> {
                                 ? null
                                 : () => _submit(context),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: AppColors.premiumBlue,
                               foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppColors.primary
+                              disabledBackgroundColor: AppColors.premiumBlue
                                   .withValues(alpha: 0.6),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
-                                  AppSizes.r12,
+                                  14,
                                 ),
                               ),
                             ),

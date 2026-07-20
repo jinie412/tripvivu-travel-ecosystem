@@ -402,6 +402,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                         const SectionHeader(title: 'Tổng quan theo ngày'),
                         const SizedBox(height: 12),
                         _buildHotelOverviewRow(itin),
+                        _buildTransportOverviewRow(itin),
                         _buildDayOverviewNote(itin),
                         ...itin.days
                             .take(3)
@@ -1229,7 +1230,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
-        'Giá mỗi ngày dưới đây gồm tham quan + ăn uống + di chuyển (chưa gồm khách sạn), tính cho $peopleLabel.',
+        'Giá mỗi ngày dưới đây gồm tham quan + ăn uống (chưa gồm khách sạn, xăng xe), tính cho $peopleLabel.',
         style: const TextStyle(
           fontSize: 11.5,
           fontStyle: FontStyle.italic,
@@ -1328,6 +1329,67 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     );
   }
 
+  /// Xăng xe hiển thị ở đây là TỔNG CẢ CHUYẾN, đặt ngay dưới khách sạn — cùng
+  /// lý do: không thuộc riêng ngày nào, các ngày bên dưới chỉ còn tham quan +
+  /// ăn uống. KHÁC khách sạn ở chỗ: itin.transportCost đã là tổng CẢ NHÓM sẵn
+  /// (tính theo số xe cần dùng, xem backend estimateSelfDriveTransportCost),
+  /// nên KHÔNG nhân thêm theo adultCount/childCount như _buildHotelOverviewRow
+  /// — nhân thêm ở đây sẽ tính tiền xăng gấp đôi.
+  Widget _buildTransportOverviewRow(ItineraryDetailEntity itin) {
+    if (itin.transportCost <= 0) return const SizedBox.shrink();
+    final isMotorbike = itin.travelMode.toUpperCase() == 'MOTORBIKE';
+    final formatter = NumberFormat('#,###', 'vi_VN');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isMotorbike
+                  ? Icons.two_wheeler_rounded
+                  : Icons.directions_car_filled_rounded,
+              color: const Color(0xFF8B5CF6),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Xăng xe (cả chuyến)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1C1E),
+              ),
+            ),
+          ),
+          Text(
+            '${formatter.format(itin.transportCost)}đ',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsGrid(ItineraryDetailEntity itin) {
     final visitCount = _totalVisitCount(itin);
     final isMotorbike = itin.travelMode.toUpperCase() == 'MOTORBIKE';
@@ -1406,6 +1468,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
               itineraryId: itin.id,
               members: itin.members,
               isCompleted: itin.status.toUpperCase() == 'COMPLETED',
+              days: itin.days,
             ),
           ),
         );

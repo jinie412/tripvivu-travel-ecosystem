@@ -11,29 +11,32 @@ class AuthBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    return Stack(
-      children: [
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppColors.premiumBackground),
+      child: Stack(
+        children: [
         Positioned(
           top: -100, right: -80,
-          child: _blob(280, const Color(0xFFB8D8F8), 0.55),
+          child: _blob(280, AppColors.premiumBlue, 0.14),
         ),
         Positioned(
           top: 60, right: 30,
-          child: _blob(120, const Color(0xFFD6ECFF), 0.7),
+          child: _blob(120, AppColors.premiumTeal, 0.12),
         ),
         Positioned(
           top: 280, left: -40,
-          child: _blob(140, const Color(0xFFBFD9F8), 0.3),
+          child: _blob(140, AppColors.premiumNavy, 0.06),
         ),
         Positioned(
           bottom: -100, left: -80,
-          child: _blob(300, const Color(0xFFB8D8F8), 0.5),
+          child: _blob(300, AppColors.premiumBlue, 0.10),
         ),
         Positioned(
           bottom: 80, right: w * 0.12,
-          child: _blob(70, const Color(0xFFD6ECFF), 0.6),
+          child: _blob(70, AppColors.premiumTeal, 0.10),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -55,13 +58,13 @@ class OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+        const Expanded(child: Divider(color: AppColors.premiumBorder, thickness: 1)),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSizes.s12),
           child: Text('Hoặc',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              style: TextStyle(color: AppColors.premiumMuted, fontSize: 14)),
         ),
-        Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
+        const Expanded(child: Divider(color: AppColors.premiumBorder, thickness: 1)),
       ],
     );
   }
@@ -81,9 +84,9 @@ class GoogleSignInButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
-          shape: const StadiumBorder(),
+          backgroundColor: AppColors.premiumSurface,
+          side: const BorderSide(color: AppColors.premiumBorder, width: 1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: EdgeInsets.zero,
           elevation: 0,
         ),

@@ -5,6 +5,7 @@ class IncurredCostModel {
   final CostType type;
   final String? placeId;
   final String? placeName;
+  final int? dayNumber;
   final String note;
   final double amount;
   final List<String> chargedTo;
@@ -17,6 +18,7 @@ class IncurredCostModel {
     this.type = CostType.other,
     this.placeId,
     this.placeName,
+    this.dayNumber,
     required this.note,
     required this.amount,
     this.chargedTo = const [],
@@ -31,6 +33,8 @@ class IncurredCostModel {
       type: CostType.fromApi((json['type'] ?? json['costType'])?.toString()),
       placeId: json['place_id']?.toString() ?? json['placeId']?.toString(),
       placeName: json['place_name']?.toString() ?? json['placeName']?.toString(),
+      dayNumber:
+          (json['day_number'] ?? json['dayNumber'] as num?)?.toInt(),
       note: (json['note'] ?? '').toString(),
       amount: (json['amount'] ?? 0).toDouble(),
       chargedTo:
@@ -54,6 +58,7 @@ class IncurredCostModel {
     type: type,
     placeId: placeId,
     placeName: placeName,
+    dayNumber: dayNumber,
     note: note,
     amount: amount,
     chargedTo: chargedTo,
@@ -103,6 +108,7 @@ class MemberCostTotalModel {
   final bool isOwner;
   final double total;
   final double childrenShare;
+  final Map<CostType, double> categoryBreakdown;
 
   const MemberCostTotalModel({
     required this.userId,
@@ -110,9 +116,13 @@ class MemberCostTotalModel {
     required this.isOwner,
     required this.total,
     this.childrenShare = 0,
+    this.categoryBreakdown = const {},
   });
 
   factory MemberCostTotalModel.fromJson(Map<String, dynamic> json) {
+    final rawBreakdown =
+        (json['categoryBreakdown'] ?? json['category_breakdown'])
+            as Map<String, dynamic>?;
     return MemberCostTotalModel(
       userId: (json['userId'] ?? json['user_id'] ?? '').toString(),
       fullName: (json['fullName'] ?? json['full_name'] ?? '').toString(),
@@ -120,6 +130,10 @@ class MemberCostTotalModel {
       total: (json['total'] ?? 0).toDouble(),
       childrenShare:
           (json['childrenShare'] ?? json['children_share'] ?? 0).toDouble(),
+      categoryBreakdown: {
+        for (final entry in (rawBreakdown ?? const {}).entries)
+          CostType.fromApi(entry.key): (entry.value as num).toDouble(),
+      },
     );
   }
 
@@ -129,6 +143,7 @@ class MemberCostTotalModel {
     isOwner: isOwner,
     total: total,
     childrenShare: childrenShare,
+    categoryBreakdown: categoryBreakdown,
   );
 }
 
@@ -315,5 +330,47 @@ class CostBreakdownModel {
     transportRatePerKmCar: transportRatePerKmCar,
     adultCount: adultCount,
     childCount: childCount,
+  );
+}
+
+class DayCostBreakdownModel {
+  final List<MemberCostTotalModel> memberTotals;
+  final double dayBasePlanCost;
+  final double childrenShare;
+  final double transportPerAdultWholeTrip;
+
+  const DayCostBreakdownModel({
+    this.memberTotals = const [],
+    this.dayBasePlanCost = 0,
+    this.childrenShare = 0,
+    this.transportPerAdultWholeTrip = 0,
+  });
+
+  factory DayCostBreakdownModel.fromJson(Map<String, dynamic> json) {
+    return DayCostBreakdownModel(
+      memberTotals:
+          ((json['memberTotals'] ?? json['member_totals']) as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(MemberCostTotalModel.fromJson)
+              .toList() ??
+          const [],
+      dayBasePlanCost:
+          (json['dayBasePlanCost'] ?? json['day_base_plan_cost'] ?? 0)
+              .toDouble(),
+      childrenShare:
+          (json['childrenShare'] ?? json['children_share'] ?? 0).toDouble(),
+      transportPerAdultWholeTrip:
+          (json['transportPerAdultWholeTrip'] ??
+                  json['transport_per_adult_whole_trip'] ??
+                  0)
+              .toDouble(),
+    );
+  }
+
+  DayCostBreakdownEntity toEntity() => DayCostBreakdownEntity(
+    memberTotals: memberTotals.map((e) => e.toEntity()).toList(),
+    dayBasePlanCost: dayBasePlanCost,
+    childrenShare: childrenShare,
+    transportPerAdultWholeTrip: transportPerAdultWholeTrip,
   );
 }

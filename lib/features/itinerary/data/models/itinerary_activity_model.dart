@@ -40,6 +40,7 @@ class ItineraryActivityModel {
   final String? status;
   @JsonKey(name: 'open_hour_compressed')
   final String? openHourCompressed;
+  final String? notes;
 
   const ItineraryActivityModel({
     required this.id,
@@ -65,6 +66,7 @@ class ItineraryActivityModel {
     this.reviewCount,
     this.status,
     this.openHourCompressed,
+    this.notes,
   });
 
   factory ItineraryActivityModel.fromJson(Map<String, dynamic> json) {
@@ -122,6 +124,7 @@ class ItineraryActivityModel {
           ? 'completed'
           : json['status']?.toString(),
       openHourCompressed: json['open_hour_compressed']?.toString(),
+      notes: json['notes']?.toString(),
     );
   }
 
@@ -176,6 +179,7 @@ class ItineraryActivityModel {
       reviewCount: reviewCount,
       status: entityStatus,
       openHourCompressed: openHourCompressed,
+      notes: notes,
     );
   }
 }

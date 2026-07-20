@@ -84,95 +84,129 @@ class ItineraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: item.imageUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                memCacheWidth: 1080, // card full-width — không giải mã full-res
-                placeholder: (context, url) => Container(color: Colors.grey[200]),
-                errorWidget: (context, url, error) => _buildImageFallback(),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.premiumNavy.withValues(alpha: .09),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CachedNetworkImage(
+                  imageUrl: item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 1080,
+                  placeholder: (context, url) =>
+                      Container(color: AppColors.premiumSoftBlue),
+                  errorWidget: (context, url, error) => _buildImageFallback(),
                 ),
-                child: Text(
-                  item.duration,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .94),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      item.duration,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                if (showFavorite)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: LikeButton(
+                      isLiked: isFavorite,
+                      onChanged: onFavoriteChanged,
+                    ),
+                  ),
+              ],
             ),
-            if (showFavorite)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: LikeButton(
-                  isLiked: isFavorite,
-                  onChanged: onFavoriteChanged,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          item.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            DefaultAvatar(
-              radius: 12,
-              imageUrl: item.authorAvatar,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.premiumNavy,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    DefaultAvatar(
+                      radius: 12,
+                      imageUrl: item.authorAvatar,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.authorName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.premiumMuted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.favorite,
+                      size: 12,
+                      color: Colors.redAccent,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.likes,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.premiumMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(
-              item.authorName,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            const Spacer(),
-            const Icon(Icons.visibility_outlined, size: 12, color: Colors.grey),
-            const SizedBox(width: 4),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(item.views, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
-            const SizedBox(width: 4),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(item.likes, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -235,8 +269,8 @@ class ActivityCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           item.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          maxLines: 1,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
@@ -335,8 +369,8 @@ class RestaurantCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           item.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          maxLines: 1,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
@@ -434,8 +468,8 @@ class HotelCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           item.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          maxLines: 1,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 2),
@@ -444,7 +478,7 @@ class HotelCard extends StatelessWidget {
             const Icon(Icons.star, color: Colors.amber, size: 14),
             const SizedBox(width: 2),
             Text(
-              item.rating.toString(),
+              item.rating.toStringAsFixed(1),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 4),
@@ -457,7 +491,9 @@ class HotelCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 1),
-        item.price.trim().isNotEmpty && item.price != 'Liên hệ'
+        item.priceValue > 0 &&
+                item.price.trim().isNotEmpty &&
+                item.price != 'Liên hệ'
             ? RichText(
                 text: TextSpan(
                   style: const TextStyle(color: Colors.black, fontSize: 13),
@@ -471,7 +507,7 @@ class HotelCard extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const TextSpan(
-                      text: '/đêm',
+                      text: '/ngày',
                       style: TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                   ],

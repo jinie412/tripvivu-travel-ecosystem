@@ -24,15 +24,15 @@ class ActivityEditScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => ActivityEditCubit()..initEdit(activity),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumBackground,
           elevation: 0,
           centerTitle: true,
           title: Text(
             'Chi tiết địa điểm',
             style: TextStyle(
-              color: Color(0xFF1E293B),
+              color: AppColors.premiumNavy,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -41,7 +41,7 @@ class ActivityEditScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             icon: const Icon(
               Icons.arrow_back_ios_new,
-              color: Color(0xFF1E293B),
+              color: AppColors.premiumNavy,
               size: 20,
             ),
           ),
@@ -200,7 +200,9 @@ class ActivityEditScreen extends StatelessWidget {
           if (option == 1) {
             context.read<ActivityEditCubit>().resolveConflict(extendTime: true);
           } else if (option == 2) {
-            context.read<ActivityEditCubit>().resolveConflict(allowReduceTime: true);
+            context.read<ActivityEditCubit>().resolveConflict(
+              allowReduceTime: true,
+            );
           }
           // Note: Add Day is usually for addActivity, but if returned here:
           else if (option == 3) {
@@ -433,8 +435,8 @@ class ActivityEditScreen extends StatelessWidget {
                             final numStr = val.replaceAll('.', '');
                             final cost = double.tryParse(numStr) ?? 0.0;
                             context.read<ActivityEditCubit>().updateActualCost(
-                                  cost,
-                                );
+                              cost,
+                            );
                           },
                           decoration: const InputDecoration(
                             isDense: true,
@@ -512,7 +514,6 @@ class ActivityEditScreen extends StatelessWidget {
     );
   }
 }
-
 
 class _ActivityNotesField extends StatelessWidget {
   final String initialNotes;

@@ -59,9 +59,12 @@ class DayCostCalculator {
     
     final groupPlaceCost = placeCostPerAdult * adultCount + (placeCostPerAdult * childPriceRatio) * childCount;
     final groupTransportCost = day.activities.fold(0.0, (sum, item) => sum + item.transportCost);
-    
-    // KHÔNG cộng tiền khách sạn vào tổng ngày
-    final total = groupPlaceCost + groupTransportCost;
+
+    // KHÔNG cộng tiền khách sạn vào tổng ngày. KHÔNG cộng xăng xe nữa (giờ
+    // hiển thị riêng 1 mục "cả chuyến" giống khách sạn, xem
+    // itinerary_summary_screen.dart _buildTransportOverviewRow) — transportShare
+    // vẫn trả về để chỗ khác dùng nếu cần, chỉ không cộng vào total.
+    final total = groupPlaceCost;
 
     return DayCostBreakdown(
       placeCost: groupPlaceCost,

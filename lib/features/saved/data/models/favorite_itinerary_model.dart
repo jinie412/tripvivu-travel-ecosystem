@@ -12,6 +12,10 @@ class FavoriteItineraryModel {
   @JsonKey(name: 'participant_count')
   final int participantCount;
   final String status;
+  @JsonKey(defaultValue: 0.0)
+  final double rating;
+  @JsonKey(name: 'review_count', defaultValue: 0)
+  final int reviewCount;
   final String? image;
   @JsonKey(name: 'image_gallery', defaultValue: <String>[])
   final List<String> imageGallery;
@@ -23,6 +27,8 @@ class FavoriteItineraryModel {
     required this.days,
     required this.participantCount,
     required this.status,
+    this.rating = 0,
+    this.reviewCount = 0,
     this.image,
     this.imageGallery = const <String>[],
   });
@@ -39,6 +45,8 @@ class FavoriteItineraryModel {
     days: days,
     participantCount: participantCount,
     status: status,
+    rating: rating,
+    reviewCount: reviewCount,
     image: image,
     imageGallery: imageGallery,
   );

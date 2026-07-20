@@ -9,6 +9,7 @@ class PlaceEntity with _$PlaceEntity {
     required String name,
     required String imageUrl,
     required double rating,
+    @Default(0) int reviewCount,
     required String district,
     required String city,
   }) = _PlaceEntity;

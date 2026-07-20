@@ -39,8 +39,9 @@ class NotificationDetailScreen extends StatelessWidget {
       create: (_) =>
           sl<NotificationCubit>()..loadNotificationDetail(notificationId),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         appBar: AppBar(
+          backgroundColor: AppColors.premiumBackground,
           title: const Text('Chi tiết thông báo'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new),
@@ -75,8 +76,9 @@ class NotificationDetailScreen extends StatelessWidget {
 
             final isViolation = _isViolation(notification);
             final isResponding = state is NotificationLoading;
-            final itineraryShareResponseLabel =
-                _itineraryShareResponseLabel(notification);
+            final itineraryShareResponseLabel = _itineraryShareResponseLabel(
+              notification,
+            );
 
             final violatingMedia = notification.violationMedia
                 .where((m) => m.categories.isNotEmpty)
@@ -172,10 +174,10 @@ class NotificationDetailScreen extends StatelessWidget {
                             onPressed: isResponding
                                 ? null
                                 : () => _respondToItineraryShare(
-                              context,
-                              notification,
-                              accept: false,
-                                    ),
+                                    context,
+                                    notification,
+                                    accept: false,
+                                  ),
                             icon: const Icon(Icons.close_rounded),
                             label: const Text('Từ chối'),
                             style: OutlinedButton.styleFrom(
@@ -194,10 +196,10 @@ class NotificationDetailScreen extends StatelessWidget {
                             onPressed: isResponding
                                 ? null
                                 : () => _respondToItineraryShare(
-                              context,
-                              notification,
-                              accept: true,
-                                    ),
+                                    context,
+                                    notification,
+                                    accept: true,
+                                  ),
                             icon: const Icon(Icons.check_rounded),
                             label: const Text('Xác nhận'),
                             style: ElevatedButton.styleFrom(
@@ -571,8 +573,7 @@ class _ViolationMediaThumb extends StatelessWidget {
               Container(color: const Color(0xFF111827))
             else
               NetImage(url: item.url, fit: BoxFit.cover),
-            if (isVideo)
-              Container(color: Colors.black.withValues(alpha: 0.18)),
+            if (isVideo) Container(color: Colors.black.withValues(alpha: 0.18)),
             if (isVideo)
               const Center(
                 child: Icon(
@@ -661,9 +662,7 @@ class _ViolationMediaPreviewDialogState
       child: SafeArea(
         child: Stack(
           children: [
-            Center(
-              child: _isVideo ? _buildVideo() : _buildImage(),
-            ),
+            Center(child: _isVideo ? _buildVideo() : _buildImage()),
             Positioned(
               top: 12,
               right: 12,
@@ -746,18 +745,15 @@ class _ShareResponseStatus extends StatelessWidget {
   final bool accepted;
   final String label;
 
-  const _ShareResponseStatus({
-    required this.accepted,
-    required this.label,
-  });
+  const _ShareResponseStatus({required this.accepted, required this.label});
 
   @override
   Widget build(BuildContext context) {
     final color = accepted ? const Color(0xFF14804A) : const Color(0xFFB91C1C);
-    final background =
-        accepted ? const Color(0xFFE9F7EF) : const Color(0xFFFFF1F2);
-    final border =
-        accepted ? const Color(0xFFB7E4C7) : const Color(0xFFFECACA);
+    final background = accepted
+        ? const Color(0xFFE9F7EF)
+        : const Color(0xFFFFF1F2);
+    final border = accepted ? const Color(0xFFB7E4C7) : const Color(0xFFFECACA);
 
     return Container(
       width: double.infinity,

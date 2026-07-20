@@ -25,8 +25,14 @@ class PlaceReviewSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveBreakdown = breakdown ?? _buildBreakdown(reviews);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -35,7 +41,11 @@ class PlaceReviewSection extends StatelessWidget {
             children: [
               const Text(
                 'Bài đánh giá',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.premiumNavy,
+                ),
               ),
               if (onViewAll != null)
                 TextButton(
@@ -87,9 +97,9 @@ class PlaceReviewSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.premiumSoftBlue,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: AppColors.premiumBorder),
       ),
       child: Row(
         children: [
@@ -178,8 +188,9 @@ class PlaceReviewSection extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percent,
                 backgroundColor: const Color(0xFFE2E8F0),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.primary,
+                ),
                 minHeight: 5,
               ),
             ),
@@ -195,9 +206,8 @@ class PlaceReviewSection extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
         5,
-        (index) => _fractionalStar(
-          (roundedRating - index).clamp(0.0, 1.0).toDouble(),
-        ),
+        (index) =>
+            _fractionalStar((roundedRating - index).clamp(0.0, 1.0).toDouble()),
       ),
     );
   }
@@ -217,11 +227,7 @@ class PlaceReviewSection extends StatelessWidget {
           ),
           ClipRect(
             clipper: _StarFillClipper(fill),
-            child: const Icon(
-              Icons.star,
-              size: size,
-              color: Colors.amber,
-            ),
+            child: const Icon(Icons.star, size: size, color: Colors.amber),
           ),
         ],
       ),
@@ -245,7 +251,8 @@ class _StarFillClipper extends CustomClipper<Rect> {
   const _StarFillClipper(this.fill);
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fill, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * fill, size.height);
 
   @override
   bool shouldReclip(_StarFillClipper oldClipper) => oldClipper.fill != fill;

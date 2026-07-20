@@ -12,6 +12,16 @@ class RegionInfo {
   final int totalVisitMinutes;
   final int travelMinutesFromCentral;
   final bool isRemote;
+  // Tâm cụm HDBSCAN (trung bình lat/lng các địa điểm trong vùng) — null nếu
+  // vùng rỗng. Dùng để vẽ pin trên Map View, không phải tọa độ 1 địa điểm cụ
+  // thể nào.
+  final double? centroidLat;
+  final double? centroidLng;
+  // Convex hull (đã nới nhẹ ra ngoài tâm cụm) bao quanh các địa điểm của
+  // vùng — mỗi phần tử là [lat, lng] theo thứ tự vẽ polygon. Null nếu vùng
+  // có < 3 tọa độ phân biệt (không đủ để dựng hull) — Map View khi đó chỉ
+  // vẽ pin, không vẽ vùng.
+  final List<List<double>>? boundary;
 
   RegionInfo({
     required this.regionName,
@@ -22,7 +32,14 @@ class RegionInfo {
     required this.totalVisitMinutes,
     required this.travelMinutesFromCentral,
     required this.isRemote,
+    this.centroidLat,
+    this.centroidLng,
+    this.boundary,
   });
+
+  bool get hasCentroid => centroidLat != null && centroidLng != null;
+
+  bool get hasBoundary => boundary != null && boundary!.length >= 3;
 
   factory RegionInfo.fromJson(Map<String, dynamic> json) {
     return RegionInfo(
@@ -39,6 +56,15 @@ class RegionInfo {
       travelMinutesFromCentral:
           (json['travelMinutesFromCentral'] as num?)?.toInt() ?? 0,
       isRemote: json['isRemote'] == true,
+      centroidLat: (json['centroidLat'] as num?)?.toDouble(),
+      centroidLng: (json['centroidLng'] as num?)?.toDouble(),
+      boundary: (json['boundary'] as List?)
+          ?.map(
+            (point) => (point as List)
+                .map((v) => (v as num).toDouble())
+                .toList(),
+          )
+          .toList(),
     );
   }
 }

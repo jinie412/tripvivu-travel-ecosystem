@@ -6,18 +6,26 @@ class PlaceInfoSection extends StatelessWidget {
   final String name;
   final double rating;
   final List<String> vibes;
+  final double? minimumHotelPrice;
 
   const PlaceInfoSection({
     super.key,
     required this.name,
     required this.rating,
     required this.vibes,
+    this.minimumHotelPrice,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -29,8 +37,8 @@ class PlaceInfoSection extends StatelessWidget {
                   name,
                   style: const TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.premiumNavy,
                   ),
                 ),
               ),
@@ -38,6 +46,29 @@ class PlaceInfoSection extends StatelessWidget {
               _ratingBadge(rating),
             ],
           ),
+          if (minimumHotelPrice != null && minimumHotelPrice! > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.payments_outlined,
+                  size: 18,
+                  color: AppColors.premiumBlue,
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    'Từ ${_formatPrice(minimumHotelPrice!)}/đêm',
+                    style: const TextStyle(
+                      color: AppColors.premiumBlue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (vibes.isNotEmpty) ...[
             const SizedBox(height: 14),
             Wrap(
@@ -56,7 +87,9 @@ class PlaceInfoSection extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 48),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        gradient: const LinearGradient(
+          colors: [AppColors.premiumBlue, AppColors.premiumTeal],
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -100,5 +133,13 @@ class PlaceInfoSection extends StatelessWidget {
 
   String _formatRating(double value) {
     return value.toStringAsFixed(1);
+  }
+
+  String _formatPrice(double value) {
+    final digits = value.round().toString();
+    return '${digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    )}đ';
   }
 }

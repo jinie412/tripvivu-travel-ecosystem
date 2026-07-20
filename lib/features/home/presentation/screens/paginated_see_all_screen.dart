@@ -31,7 +31,9 @@ const kHotelPriceRanges = <PriceRangeOption>[
 
 class PaginatedSeeAllScreen<T> extends StatefulWidget {
   final String title;
+  final String itemCountLabel;
   final int pageSize;
+  final int? maxItems;
   final Future<List<T>> Function(int page, int limit) pageLoader;
   final Widget Function(BuildContext context, T item) itemBuilder;
   final String emptyMessage;
@@ -49,9 +51,11 @@ class PaginatedSeeAllScreen<T> extends StatefulWidget {
   const PaginatedSeeAllScreen({
     super.key,
     required this.title,
+    required this.itemCountLabel,
     required this.pageLoader,
     required this.itemBuilder,
     this.pageSize = 10,
+    this.maxItems,
     this.emptyMessage = 'Không có dữ liệu để hiển thị.',
     this.initialItems = const [],
     this.favoriteChanges,
@@ -87,6 +91,32 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   MinRating _minRating = MinRating.all;
   bool _openNowOnly = false;
   int _priceRangeIndex = -1;
+
+  int get _remainingCapacity {
+    final maxItems = widget.maxItems;
+    if (maxItems == null) return widget.pageSize;
+    return (maxItems - _allItems.length).clamp(0, widget.pageSize).toInt();
+  }
+
+  bool _canLoadMore(int receivedCount, int requestedLimit) {
+    final belowMaximum =
+        widget.maxItems == null || _allItems.length < widget.maxItems!;
+    return belowMaximum && receivedCount >= requestedLimit;
+  }
+
+  Iterable<T> _takePage(
+    List<T> items,
+    int requestedLimit, {
+    int existingCount = 0,
+  }) {
+    var takeCount = requestedLimit;
+    final maxItems = widget.maxItems;
+    if (maxItems != null) {
+      final remaining = (maxItems - existingCount).clamp(0, requestedLimit);
+      takeCount = remaining.toInt();
+    }
+    return items.take(takeCount);
+  }
 
   List<String> get _availableCities {
     final extractor = widget.cityExtractor;
@@ -177,7 +207,7 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
     _scrollController.addListener(_onScroll);
     _favoriteSubscription = widget.favoriteChanges?.listen(_onFavoriteChanged);
     if (widget.initialItems.isNotEmpty) {
-      _allItems.addAll(widget.initialItems);
+      _allItems.addAll(_takePage(widget.initialItems, widget.pageSize));
       _isInitialLoading = false;
       _refreshPage1();
     } else {
@@ -187,7 +217,8 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
 
   Future<void> _refreshPage1() async {
     try {
-      final items = await widget.pageLoader(1, widget.pageSize);
+      final limit = _remainingCapacity;
+      final items = await widget.pageLoader(1, limit);
       if (!mounted) return;
       if (items.isEmpty && _allItems.isNotEmpty) {
         setState(() => _hasMore = false);
@@ -196,8 +227,8 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
       setState(() {
         _allItems
           ..clear()
-          ..addAll(items);
-        _hasMore = items.length >= widget.pageSize;
+          ..addAll(_takePage(items, limit));
+        _hasMore = _canLoadMore(items.length, limit);
         _currentPage = 2;
       });
     } catch (_) {
@@ -247,11 +278,12 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
       _allItems.clear();
     });
     try {
-      final items = await widget.pageLoader(_currentPage, widget.pageSize);
+      final limit = _remainingCapacity;
+      final items = await widget.pageLoader(_currentPage, limit);
       if (!mounted) return;
       setState(() {
-        _allItems.addAll(items);
-        _hasMore = items.length >= widget.pageSize;
+        _allItems.addAll(_takePage(items, limit));
+        _hasMore = _canLoadMore(items.length, limit);
         _currentPage = 2;
       });
     } catch (error) {
@@ -269,11 +301,21 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
       _errorMessage = null;
     });
     try {
-      final items = await widget.pageLoader(_currentPage, widget.pageSize);
+      final limit = _remainingCapacity;
+      if (limit <= 0) {
+        setState(() {
+          _hasMore = false;
+          _isLoadingMore = false;
+        });
+        return;
+      }
+      final items = await widget.pageLoader(_currentPage, limit);
       if (!mounted) return;
       setState(() {
-        _allItems.addAll(items);
-        _hasMore = items.length >= widget.pageSize;
+        _allItems.addAll(
+          _takePage(items, limit, existingCount: _allItems.length),
+        );
+        _hasMore = _canLoadMore(items.length, limit);
         _currentPage += 1;
       });
     } catch (error) {
@@ -288,7 +330,7 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.premiumBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -322,7 +364,8 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
   @override
   Widget build(BuildContext context) {
     final display = _displayItems;
-    final hasFilterOrSort = widget.cityExtractor != null ||
+    final hasFilterOrSort =
+        widget.cityExtractor != null ||
         widget.travelTypeExtractor != null ||
         widget.ratingExtractor != null ||
         widget.statusExtractor != null ||
@@ -330,11 +373,22 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
         (widget.sortOptions?.isNotEmpty ?? false);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.premiumBackground,
       body: Column(
         children: [
           Container(
-            color: AppColors.primary,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.premiumNavy,
+                  AppColors.premiumBlue,
+                  AppColors.premiumTeal,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+            ),
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + 12,
               left: 16,
@@ -346,14 +400,15 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .14),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(color: Colors.white24),
                   ),
                   child: IconButton(
                     icon: const Icon(
                       Icons.arrow_back_ios_new,
-                      color: AppColors.primary,
+                      color: Colors.white,
                       size: 20,
                     ),
                     onPressed: () => Navigator.pop(context),
@@ -361,15 +416,32 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _hasActiveFilter
+                            ? '${display.length}/${_allItems.length} ${widget.itemCountLabel}'
+                            : '${_allItems.length} ${widget.itemCountLabel}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.78),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (hasFilterOrSort)
@@ -388,8 +460,9 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
                         child: IconButton(
                           icon: Icon(
                             Icons.tune_rounded,
-                            color:
-                                _hasActiveFilter ? AppColors.primary : Colors.white,
+                            color: _hasActiveFilter
+                                ? AppColors.primary
+                                : Colors.white,
                             size: 22,
                           ),
                           onPressed: _openFilterSheet,
@@ -414,63 +487,67 @@ class _PaginatedSeeAllScreenState<T> extends State<PaginatedSeeAllScreen<T>> {
             ),
           ),
           Expanded(
-            child: Builder(builder: (context) {
-              if (_isInitialLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (_errorMessage != null && _allItems.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.redAccent),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _loadFirstPage,
-                          child: const Text('Thử lại'),
-                        ),
-                      ],
+            child: Builder(
+              builder: (context) {
+                if (_isInitialLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (_errorMessage != null && _allItems.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _loadFirstPage,
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
                     ),
+                  );
+                }
+                if (display.isEmpty) {
+                  return Center(
+                    child: Text(
+                      _hasActiveFilter
+                          ? 'Không có kết quả phù hợp với bộ lọc'
+                          : widget.emptyMessage,
+                      style: TextStyle(color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 24,
                   ),
+                  itemCount: display.length + (_isLoadingMore ? 1 : 0),
+                  separatorBuilder: (_, index) =>
+                      index == display.length - 1 && _isLoadingMore
+                      ? const SizedBox(height: 12)
+                      : SizedBox(height: widget.separatorHeight),
+                  itemBuilder: (context, index) {
+                    if (index >= display.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    return widget.itemBuilder(context, display[index]);
+                  },
                 );
-              }
-              if (display.isEmpty) {
-                return Center(
-                  child: Text(
-                    _hasActiveFilter
-                        ? 'Không có kết quả phù hợp với bộ lọc'
-                        : widget.emptyMessage,
-                    style: TextStyle(color: Colors.grey.shade600),
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }
-              return ListView.separated(
-                controller: _scrollController,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                itemCount: display.length + (_isLoadingMore ? 1 : 0),
-                separatorBuilder: (_, index) =>
-                    index == display.length - 1 && _isLoadingMore
-                        ? const SizedBox(height: 12)
-                        : SizedBox(height: widget.separatorHeight),
-                itemBuilder: (context, index) {
-                  if (index >= display.length) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  return widget.itemBuilder(context, display[index]);
-                },
-              );
-            }),
+              },
+            ),
           ),
         ],
       ),
@@ -681,7 +758,7 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
                       value: _openNowOnly,
                       onChanged: (value) =>
                           setState(() => _openNowOnly = value),
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                       title: const Text(
@@ -829,13 +906,13 @@ class _FilterSortSheetState<T> extends State<_FilterSortSheet<T>> {
   }
 
   Widget _sectionLabel(String label) => Text(
-        label,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      );
+    label,
+    style: const TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondary,
+    ),
+  );
 
   Widget _dropdownField<V>({
     required V value,

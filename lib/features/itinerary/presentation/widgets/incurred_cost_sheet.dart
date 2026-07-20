@@ -1,24 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
 
 /// Bottom sheet dùng chung để thêm/sửa 1 khoản chi phí phát sinh (mục 1.6),
 /// dùng ở màn "Quản lý chi phí" tổng hợp.
 ///
-/// 2 loại chi phí khác nhau (xem [CostType]): [CostType.priceAdjustment]
-/// (chỉ chủ lịch trình, bắt buộc gắn 1 địa điểm, nhập giá MỚI thay vì số
-/// tiền — sheet tự tính chênh lệch so với giá hiện tại) và các type còn lại
-/// (chi phí phát sinh cá nhân, ai cũng tạo được, nhập thẳng số tiền).
+/// 2 nhóm type khác nhau (xem [CostType]):
+/// - [CostType.transportAdjustment]: chỉ chủ lịch trình, áp dụng CẢ CHUYẾN
+///   (không gắn địa điểm/ngày), nhập thẳng số tiền chênh lệch (có thể âm).
+/// - Còn lại: chi phí phát sinh cá nhân, ai cũng tạo được, nhập thẳng số
+///   tiền, có thể gắn 1 địa điểm HOẶC 1 ngày (không cả hai).
+///
+/// [CostType.baselinePlan] ("Chi phí kế hoạch") không xuất hiện ở đây — hệ
+/// thống tự ghi khi check-in. [CostType.priceAdjustment] cũng không tạo tay
+/// được nữa — sửa giá 1 địa điểm giờ dùng [IncurredCostSheet.showPriceEdit]
+/// (cập nhật thẳng lên dòng "Chi phí kế hoạch", không phải chênh lệch).
 class IncurredCostSheet extends StatefulWidget {
   final String itineraryId;
   final List<ItineraryMemberEntity> members;
   final bool isOwner;
   final String? initialPlaceId;
   final String? initialPlaceName;
+  final List<ItineraryDayEntity> days;
   final IncurredCostEntity? editingCost;
   final VoidCallback? onSaved;
+  // Khi true: sheet chỉ làm đúng 1 việc — sửa giá HIỆU LỰC của
+  // initialPlaceId (đã visited), gọi updatePlaceEffectivePrice() thay vì
+  // tạo/sửa 1 dòng incurred_costs thường. Dùng qua showPriceEdit().
+  final bool isPriceEdit;
+  final double? initialPrice;
+  // Dùng để nhân ra tổng khi user chọn nhập "Mỗi người" thay vì "Tổng cộng"
+  // (xem _amountIsPerPerson) — cả nhóm = adultCount + childCount, KHÔNG nhân
+  // childPriceRatio (chi phí ad-hoc thực tế, trẻ em dùng/ăn y hệt người lớn).
+  final int adultCount;
+  final int childCount;
 
   const IncurredCostSheet({
     super.key,
@@ -27,8 +45,13 @@ class IncurredCostSheet extends StatefulWidget {
     required this.isOwner,
     this.initialPlaceId,
     this.initialPlaceName,
+    this.days = const [],
     this.editingCost,
     this.onSaved,
+    this.isPriceEdit = false,
+    this.initialPrice,
+    this.adultCount = 1,
+    this.childCount = 0,
   });
 
   static Future<void> show(
@@ -38,8 +61,11 @@ class IncurredCostSheet extends StatefulWidget {
     required bool isOwner,
     String? initialPlaceId,
     String? initialPlaceName,
+    List<ItineraryDayEntity> days = const [],
     IncurredCostEntity? editingCost,
     VoidCallback? onSaved,
+    int adultCount = 1,
+    int childCount = 0,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -51,7 +77,36 @@ class IncurredCostSheet extends StatefulWidget {
         isOwner: isOwner,
         initialPlaceId: initialPlaceId,
         initialPlaceName: initialPlaceName,
+        days: days,
         editingCost: editingCost,
+        onSaved: onSaved,
+        adultCount: adultCount,
+        childCount: childCount,
+      ),
+    );
+  }
+
+  /// Sửa giá HIỆU LỰC của 1 địa điểm đã visited — xem [isPriceEdit].
+  static Future<void> showPriceEdit(
+    BuildContext context, {
+    required String itineraryId,
+    required String placeId,
+    required String placeName,
+    required double currentPrice,
+    VoidCallback? onSaved,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => IncurredCostSheet(
+        itineraryId: itineraryId,
+        members: const [],
+        isOwner: true,
+        initialPlaceId: placeId,
+        initialPlaceName: placeName,
+        isPriceEdit: true,
+        initialPrice: currentPrice,
         onSaved: onSaved,
       ),
     );
@@ -69,31 +124,52 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
   List<EligiblePlaceEntity> _places = [];
   bool _loadingPlaces = true;
   String? _selectedPlaceId;
+  int? _selectedDayNumber;
   final Set<String> _chargedTo = {};
+  // true = chip "Cả nhóm" đang chọn (loại trừ với chọn thành viên cụ thể).
+  // Mặc định true vì trước đây "bỏ trống" == cả nhóm — giữ hành vi cũ.
+  bool _wholeGroup = true;
+  // Số tiền nhập vào là TỔNG hay MỖI NGƯỜI (nhân đều theo adultCount+childCount
+  // khi lưu, không nhân theo childPriceRatio — xem _submit()).
+  bool _amountIsPerPerson = false;
   late CostType _type;
   bool _isSaving = false;
   String? _error;
 
   bool get _isEditing => widget.editingCost != null;
-  bool get _isPriceAdjustment => _type == CostType.priceAdjustment;
-
-  EligiblePlaceEntity? get _selectedPlace => _selectedPlaceId == null
-      ? null
-      : _places.where((p) => p.id == _selectedPlaceId).firstOrNull;
+  bool get _isTransportAdjustment => _type == CostType.transportAdjustment;
+  // Đính chính 1 dòng "Điều chỉnh giá" cũ (lịch sử) — vẫn là chi phí CHUNG,
+  // không gán riêng cho ai, và amount vẫn có thể âm (giữ nguyên bản chất
+  // delta của nó). Không tạo mới được (đã chặn ở chip chọn loại).
+  bool get _isEditingPriceAdjustment =>
+      _isEditing && widget.editingCost!.type == CostType.priceAdjustment;
+  bool get _needsSharedGroupAmount =>
+      _isTransportAdjustment || _isEditingPriceAdjustment;
 
   @override
   void initState() {
     super.initState();
+    _type = CostType.other;
+    _noteController = TextEditingController();
+    if (widget.isPriceEdit) {
+      _amountController = TextEditingController(
+        text: widget.initialPrice?.toStringAsFixed(0) ?? '',
+      );
+      _loadingPlaces = false;
+      return;
+    }
     final editing = widget.editingCost;
     _type = editing?.type ?? CostType.other;
-    _noteController = TextEditingController(text: editing?.note ?? '');
+    _noteController.text = editing?.note ?? '';
     _amountController = TextEditingController(
-      text: editing != null && !_isPriceAdjustment
-          ? editing.amount.toStringAsFixed(0)
-          : '',
+      text: editing != null ? editing.amount.toStringAsFixed(0) : '',
     );
     _selectedPlaceId = editing?.placeId ?? widget.initialPlaceId;
+    _selectedDayNumber = editing?.dayNumber;
     _chargedTo.addAll(editing?.chargedTo ?? const []);
+    // Sửa 1 khoản đã có người trả cụ thể -> giữ đúng lựa chọn đó, không mặc
+    // định về "Cả nhóm" nữa.
+    _wholeGroup = _chargedTo.isEmpty;
     _loadPlaces();
   }
 
@@ -119,6 +195,8 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
   }
 
   Future<void> _submit() async {
+    if (widget.isPriceEdit) return _submitPriceEdit();
+
     final note = _noteController.text.trim();
     final rawInput = double.tryParse(
       _amountController.text.replaceAll(RegExp(r'[^0-9.\-]'), ''),
@@ -127,33 +205,33 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
       setState(() => _error = 'Vui lòng nhập nội dung/ghi chú');
       return;
     }
-    if (_isPriceAdjustment && _selectedPlaceId == null) {
-      setState(() => _error = 'Điều chỉnh giá phải gắn với 1 địa điểm');
-      return;
-    }
     if (rawInput == null) {
-      setState(
-        () => _error = _isPriceAdjustment && !_isEditing
-            ? 'Vui lòng nhập giá mới hợp lệ'
-            : 'Vui lòng nhập số tiền hợp lệ',
-      );
-      return;
-    }
-    if (!_isPriceAdjustment && rawInput <= 0) {
       setState(() => _error = 'Vui lòng nhập số tiền hợp lệ');
       return;
     }
-    // Khi tạo mới điều chỉnh giá, người dùng nhập GIÁ MỚI (không phải chênh
-    // lệch) — sheet tự trừ giá hiện tại để ra amount (delta) gửi lên API.
-    // Khi sửa 1 điều chỉnh giá đã có, giữ nguyên số đang nhập là delta trực
-    // tiếp (tránh phải cộng/trừ ngược qua các lần sửa trước đó).
-    final rawAmount =
-        _isPriceAdjustment && !_isEditing
-            ? rawInput - (_selectedPlace?.currentEffectivePrice ?? 0)
+    if (!_needsSharedGroupAmount && rawInput <= 0) {
+      setState(() => _error = 'Vui lòng nhập số tiền hợp lệ');
+      return;
+    }
+    if (!_needsSharedGroupAmount && !_wholeGroup && _chargedTo.isEmpty) {
+      setState(() => _error = 'Vui lòng chọn ít nhất 1 người chi trả');
+      return;
+    }
+    // "Mỗi người" -> nhân đều theo số người áp dụng để ra TỔNG thật gửi lên
+    // server (server/distributeCosts() luôn làm việc với tổng, không biết khái
+    // niệm "mỗi người" nhập tay này). Cả nhóm = adultCount+childCount, chọn
+    // riêng vài người = đúng số người đã chọn. Không áp dụng cho điều chỉnh
+    // xăng xe/giá (delta/giá tuyệt đối, không có khái niệm "mỗi người").
+    final effectiveInput =
+        (!_needsSharedGroupAmount && _amountIsPerPerson)
+            ? rawInput *
+                (_wholeGroup
+                    ? (widget.adultCount + widget.childCount)
+                    : _chargedTo.length)
             : rawInput;
     // Server làm tròn đến nghìn và bắt buộc tối thiểu 1.000đ — validate sớm
     // ở đây để báo lỗi ngay, tránh round-trip lên server mới biết.
-    final amount = (rawAmount / 1000).round() * 1000.0;
+    final amount = (effectiveInput / 1000).round() * 1000.0;
     if (amount.abs() < 1000) {
       setState(() => _error = 'Số tiền phải từ 1.000đ trở lên');
       return;
@@ -164,6 +242,12 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
       _error = null;
     });
     try {
+      // Điều chỉnh xăng xe áp dụng cả chuyến — không gắn địa điểm/ngày.
+      final placeId = _isTransportAdjustment ? null : _selectedPlaceId;
+      final dayNumber = _isTransportAdjustment ? null : _selectedDayNumber;
+      final chargedTo = _needsSharedGroupAmount
+          ? const <String>[]
+          : _chargedTo.toList();
       if (_isEditing) {
         await _repository.updateIncurredCost(
           widget.itineraryId,
@@ -171,8 +255,9 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
           type: _type,
           note: note,
           amount: amount,
-          placeId: _selectedPlaceId,
-          chargedTo: _isPriceAdjustment ? const [] : _chargedTo.toList(),
+          placeId: placeId,
+          dayNumber: dayNumber,
+          chargedTo: chargedTo,
         );
       } else {
         await _repository.createIncurredCost(
@@ -180,10 +265,46 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
           type: _type,
           note: note,
           amount: amount,
-          placeId: _selectedPlaceId,
-          chargedTo: _isPriceAdjustment ? const [] : _chargedTo.toList(),
+          placeId: placeId,
+          dayNumber: dayNumber,
+          chargedTo: chargedTo,
         );
       }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onSaved?.call();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _submitPriceEdit() async {
+    final rawInput = double.tryParse(
+      _amountController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+    );
+    if (rawInput == null || rawInput <= 0) {
+      setState(() => _error = 'Vui lòng nhập giá mới hợp lệ');
+      return;
+    }
+    final amount = (rawInput / 1000).round() * 1000.0;
+    if (amount < 1000) {
+      setState(() => _error = 'Giá phải từ 1.000đ trở lên');
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+    try {
+      await _repository.updatePlaceEffectivePrice(
+        widget.itineraryId,
+        widget.initialPlaceId!,
+        amount,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onSaved?.call();
@@ -201,8 +322,8 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DraggableScrollableSheet(
-        initialChildSize: 0.62,
-        minChildSize: 0.4,
+        initialChildSize: widget.isPriceEdit ? 0.4 : 0.62,
+        minChildSize: 0.3,
         maxChildSize: 0.92,
         expand: false,
         builder: (context, scrollController) {
@@ -214,193 +335,305 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
             child: ListView(
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                Text(
-                  _isEditing
-                      ? 'Sửa chi phí phát sinh'
-                      : 'Thêm chi phí phát sinh',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Loại chi phí',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: CostType.values
-                      .where(
-                        (t) =>
-                            t != CostType.priceAdjustment || widget.isOwner,
-                      )
-                      .map(
-                        (t) => ChoiceChip(
-                          label: Text(t.label),
-                          selected: _type == t,
-                          // Không cho đổi type khi đang sửa — tránh phải xử
-                          // lý lại logic chênh lệch giá giữa chừng.
-                          onSelected: _isEditing
-                              ? null
-                              : (value) {
-                                  if (!value) return;
-                                  setState(() {
-                                    _type = t;
-                                    if (t == CostType.priceAdjustment) {
-                                      _chargedTo.clear();
-                                    }
-                                  });
-                                },
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nội dung/ghi chú',
-                    hintText: 'VD: Gửi xe máy, ăn vặt dọc đường...',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                if (_loadingPlaces)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: LinearProgressIndicator(),
-                  )
-                else
-                  DropdownButtonFormField<String?>(
-                    initialValue: _selectedPlaceId,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: _isPriceAdjustment
-                          ? 'Địa điểm (bắt buộc)'
-                          : 'Địa điểm (tuỳ chọn)',
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: [
-                      if (!_isPriceAdjustment)
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Không gắn địa điểm cụ thể'),
-                        ),
-                      ..._places.map(
-                        (p) => DropdownMenuItem<String?>(
-                          value: p.id,
-                          child: Text(p.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) => setState(() => _selectedPlaceId = value),
-                  ),
-                const SizedBox(height: 12),
-                if (_isPriceAdjustment && !_isEditing && _selectedPlace != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'Giá hiện tại: ${_selectedPlace!.currentEffectivePrice.toStringAsFixed(0)}đ',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                TextField(
-                  controller: _amountController,
-                  keyboardType: TextInputType.numberWithOptions(signed: true),
-                  decoration: InputDecoration(
-                    labelText: _isPriceAdjustment
-                        ? (_isEditing
-                              ? 'Số tiền chênh lệch (VNĐ, có thể âm)'
-                              : 'Giá mới (VNĐ)')
-                        : 'Số tiền phát sinh (VNĐ)',
-                    helperText: 'Tối thiểu 1.000đ, làm tròn đến đơn vị nghìn',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (_isPriceAdjustment) ...[
-                  const Text(
-                    'Điều chỉnh giá áp dụng cho cả nhóm, không gán riêng cho ai.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ] else ...[
-                const SizedBox(height: 4),
-                const Text(
-                  'Người chi trả (bỏ trống = chia đều cả nhóm)',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: widget.members.map((member) {
-                    final selected = _chargedTo.contains(member.id);
-                    return FilterChip(
-                      label: Text(
-                        member.fullName.isNotEmpty
-                            ? member.fullName
-                            : 'Thành viên',
-                      ),
-                      selected: selected,
-                      onSelected: (value) {
-                        setState(() {
-                          if (value) {
-                            _chargedTo.add(member.id);
-                          } else {
-                            _chargedTo.remove(member.id);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                ],
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
-                ],
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _submit,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(_isEditing ? 'Lưu thay đổi' : 'Thêm chi phí'),
-                  ),
-                ),
-              ],
+              children: widget.isPriceEdit
+                  ? _buildPriceEditContent()
+                  : _buildFullFormContent(),
             ),
           );
         },
       ),
     );
+  }
+
+  Widget _buildDragHandle() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton({required String label}) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: _isSaving ? null : _submit,
+        child: _isSaving
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(label),
+      ),
+    );
+  }
+
+  List<Widget> _buildPriceEditContent() {
+    return [
+      _buildDragHandle(),
+      const Text(
+        'Sửa giá địa điểm',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        widget.initialPlaceName ?? '',
+        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _amountController,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(
+          labelText: 'Giá mới (VNĐ)',
+          helperText: 'Tối thiểu 1.000đ, làm tròn đến đơn vị nghìn',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Cập nhật thẳng vào "Chi phí kế hoạch" của địa điểm này — áp dụng cho cả nhóm, không gán riêng cho ai.',
+        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 12),
+        Text(_error!, style: const TextStyle(color: Colors.red)),
+      ],
+      const SizedBox(height: 20),
+      _buildSubmitButton(label: 'Lưu giá mới'),
+    ];
+  }
+
+  List<Widget> _buildFullFormContent() {
+    return [
+      _buildDragHandle(),
+      Text(
+        _isEditing ? 'Sửa chi phí phát sinh' : 'Thêm chi phí phát sinh',
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: 16),
+      const Text('Loại chi phí', style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        // "Chi phí kế hoạch" hệ thống tự ghi, "Điều chỉnh giá" giờ sửa qua
+        // showPriceEdit() — cả 2 không xuất hiện trong form thêm chung này.
+        children: CostType.values
+            .where(
+              (t) =>
+                  t != CostType.baselinePlan && t != CostType.priceAdjustment,
+            )
+            .where((t) => t != CostType.transportAdjustment || widget.isOwner)
+            .map(
+              (t) => ChoiceChip(
+                label: Text(t.label),
+                selected: _type == t,
+                // Không cho đổi type khi đang sửa — tránh phải xử lý lại
+                // logic charged_to/place giữa chừng.
+                onSelected: _isEditing
+                    ? null
+                    : (value) {
+                        if (!value) return;
+                        setState(() {
+                          _type = t;
+                          if (t == CostType.transportAdjustment) {
+                            _chargedTo.clear();
+                            _selectedPlaceId = null;
+                            _selectedDayNumber = null;
+                          }
+                        });
+                      },
+              ),
+            )
+            .toList(),
+      ),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _noteController,
+        decoration: const InputDecoration(
+          labelText: 'Nội dung/ghi chú',
+          hintText: 'VD: Gửi xe máy, ăn vặt dọc đường...',
+          border: OutlineInputBorder(),
+        ),
+        maxLines: 2,
+      ),
+      const SizedBox(height: 12),
+      if (_isTransportAdjustment)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Điều chỉnh xăng xe áp dụng cho CẢ CHUYẾN, không gắn địa điểm/ngày cụ thể.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+        )
+      else ...[
+        if (_loadingPlaces)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: LinearProgressIndicator(),
+          )
+        else
+          DropdownButtonFormField<String?>(
+            initialValue: _selectedPlaceId,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Địa điểm (tuỳ chọn)',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Không gắn địa điểm cụ thể'),
+              ),
+              ..._places.map(
+                (p) => DropdownMenuItem<String?>(
+                  value: p.id,
+                  child: Text(p.name, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: (value) => setState(() {
+              _selectedPlaceId = value;
+              // Chỉ gắn theo địa điểm HOẶC theo ngày, không cả hai.
+              if (value != null) _selectedDayNumber = null;
+            }),
+          ),
+        if (widget.days.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int?>(
+            initialValue: _selectedDayNumber,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Ngày (tuỳ chọn, nếu không gắn địa điểm)',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Không gắn ngày cụ thể'),
+              ),
+              ...widget.days.map(
+                (d) => DropdownMenuItem<int?>(
+                  value: d.dayNumber,
+                  child: Text('Ngày ${d.dayNumber}'),
+                ),
+              ),
+            ],
+            onChanged: (value) => setState(() {
+              _selectedDayNumber = value;
+              if (value != null) _selectedPlaceId = null;
+            }),
+          ),
+        ],
+      ],
+      const SizedBox(height: 12),
+      TextField(
+        controller: _amountController,
+        keyboardType: TextInputType.numberWithOptions(signed: true),
+        decoration: InputDecoration(
+          labelText: _isTransportAdjustment
+              ? 'Số tiền chênh lệch xăng xe (VNĐ, có thể âm)'
+              : _amountIsPerPerson
+                  ? 'Số tiền / người (VNĐ)'
+                  : 'Tổng số tiền phát sinh (VNĐ)',
+          helperText: 'Tối thiểu 1.000đ, làm tròn đến đơn vị nghìn',
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      if (_needsSharedGroupAmount) ...[
+        Text(
+          _isEditingPriceAdjustment
+              ? 'Điều chỉnh giá áp dụng cho cả nhóm, không gán riêng cho ai.'
+              : 'Điều chỉnh xăng xe áp dụng cho cả nhóm, không gán riêng cho ai.',
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+      ] else ...[
+        // Số tiền nhập là TỔNG đã chi thật hay giá TÍNH TRÊN MỖI NGƯỜI (hệ
+        // thống tự nhân ra tổng lúc lưu) — làm rõ để khỏi phải đoán ý nghĩa
+        // con số, đúng góp ý đã nhận: nhập "5.000" có thể là tổng 1 chai nước
+        // hoặc 5.000/người nếu mỗi người 1 chai.
+        const Text('Số tiền nhập là', style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Tổng cộng'),
+              selected: !_amountIsPerPerson,
+              onSelected: (_) => setState(() => _amountIsPerPerson = false),
+            ),
+            ChoiceChip(
+              label: const Text('Mỗi người'),
+              selected: _amountIsPerPerson,
+              onSelected: (_) => setState(() => _amountIsPerPerson = true),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Người chi trả',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // "Cả nhóm" loại trừ với chọn thành viên cụ thể — chọn cái này sẽ
+            // bỏ hết lựa chọn thành viên, và ngược lại. Rõ ràng hơn hẳn so
+            // với "để trống = cả nhóm" trước đây (dễ hiểu nhầm).
+            ChoiceChip(
+              label: const Text('Cả nhóm'),
+              selected: _wholeGroup,
+              onSelected: (value) {
+                if (!value) return;
+                setState(() {
+                  _wholeGroup = true;
+                  _chargedTo.clear();
+                });
+              },
+            ),
+            ...widget.members.map((member) {
+              final selected = !_wholeGroup && _chargedTo.contains(member.id);
+              return FilterChip(
+                label: Text(
+                  member.fullName.isNotEmpty ? member.fullName : 'Thành viên',
+                ),
+                selected: selected,
+                onSelected: (value) {
+                  setState(() {
+                    _wholeGroup = false;
+                    if (value) {
+                      _chargedTo.add(member.id);
+                    } else {
+                      _chargedTo.remove(member.id);
+                    }
+                  });
+                },
+              );
+            }),
+          ],
+        ),
+      ],
+      if (_error != null) ...[
+        const SizedBox(height: 12),
+        Text(_error!, style: const TextStyle(color: Colors.red)),
+      ],
+      const SizedBox(height: 20),
+      _buildSubmitButton(label: _isEditing ? 'Lưu thay đổi' : 'Thêm chi phí'),
+    ];
   }
 }

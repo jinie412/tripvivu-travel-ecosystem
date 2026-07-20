@@ -50,8 +50,14 @@ class _PlaceDescriptionSectionState extends State<PlaceDescriptionSection> {
               : _buildCollapsedDescription(sentences))
         : 'Không có mô tả cho địa điểm này.';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
       child: SizedBox(
         width: double.infinity,
         child: Column(
@@ -59,7 +65,11 @@ class _PlaceDescriptionSectionState extends State<PlaceDescriptionSection> {
           children: [
             Text(
               'Mô tả',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.premiumNavy,
+              ),
             ),
             const SizedBox(height: 12),
             Text(

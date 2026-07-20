@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 
 class ActivityVerticalCard extends StatefulWidget {
@@ -52,7 +53,8 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
     });
 
     try {
-      final success = await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
+      final success =
+          await widget.onFavoriteChanged?.call(nextFavorite) ?? true;
       if (!success) {
         if (!mounted) return;
         setState(() {
@@ -105,20 +107,21 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
         widget.item.status.toLowerCase().contains('dang mo');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.premiumNavy.withValues(alpha: .07),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,11 +132,11 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                 child: CachedNetworkImage(
                   imageUrl: widget.item.imageUrl,
                   fit: BoxFit.cover,
-                  memCacheWidth: 300, // thumbnail 100dp — không giải mã full-res
+                  memCacheWidth:
+                      300, // thumbnail 100dp — không giải mã full-res
                   placeholder: (context, url) =>
                       Container(color: Colors.grey[200]),
-                  errorWidget: (context, url, error) =>
-                      const Icon(Icons.error),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
                 ),
               ),
               Expanded(
@@ -151,10 +154,10 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                               widget.item.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.black,
+                                fontSize: 14,
+                                color: AppColors.premiumNavy,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -209,8 +212,9 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
                         Text(
                           widget.item.status,
                           style: TextStyle(
-                            color:
-                                isOpenStatus ? Colors.grey[700] : Colors.red[400],
+                            color: isOpenStatus
+                                ? Colors.grey[700]
+                                : Colors.red[400],
                             fontSize: 12,
                             fontWeight: isOpenStatus
                                 ? FontWeight.normal

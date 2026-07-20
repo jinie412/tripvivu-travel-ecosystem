@@ -161,14 +161,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         final isLoading = state is AuthLoading;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.premiumBackground,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.premiumBackground,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(
                 Icons.arrow_back_ios_new,
-                color: AppColors.textPrimary,
+                color: AppColors.premiumNavy,
                 size: 20,
               ),
               onPressed: isLoading ? null : () => Navigator.pop(context),
@@ -176,7 +176,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             title: Text(
               'Đổi mật khẩu',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: AppColors.premiumNavy,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -280,11 +280,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                                   ),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu mới';
-                            if (v.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
-                            if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ hoa';
-                            if (!RegExp(r'[a-z]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ thường';
-                            if (!RegExp(r'[0-9]').hasMatch(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ số';
+                            if (v == null || v.isEmpty)
+                              return 'Vui lòng nhập mật khẩu mới';
+                            if (v.length < 8)
+                              return 'Mật khẩu phải có ít nhất 8 ký tự';
+                            if (!RegExp(r'[A-Z]').hasMatch(v))
+                              return 'Mật khẩu phải chứa ít nhất 1 chữ hoa';
+                            if (!RegExp(r'[a-z]').hasMatch(v))
+                              return 'Mật khẩu phải chứa ít nhất 1 chữ thường';
+                            if (!RegExp(r'[0-9]').hasMatch(v))
+                              return 'Mật khẩu phải chứa ít nhất 1 chữ số';
                             if (!RegExp(r'[@$!%*?&.#]').hasMatch(v)) {
                               return r'Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (@$!%*?&.#)';
                             }

@@ -24,6 +24,7 @@ class PlaceDetailEntity with _$PlaceDetailEntity {
     String? closingHours,
     String? openHourCompressed,
     String? phone,
+    double? minimumHotelPrice,
     @Default([]) List<PlaceFoodItemEntity> foodItems,
     @Default([]) List<PlaceReviewEntity> reviews,
     @Default({}) Map<int, int> reviewBreakdown,

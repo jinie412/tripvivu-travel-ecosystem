@@ -437,8 +437,10 @@ class _ExploreViewState extends State<_ExploreView> {
       context,
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<TripSuggestion>(
-          title: 'Lịch trình gợi ý',
+          title: 'Lịch trình nổi bật',
+          itemCountLabel: 'lịch trình',
           pageSize: _pageSize,
+          maxItems: 50,
           initialItems: initial,
           favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
           favoriteMapper: (item, event) =>
@@ -487,9 +489,10 @@ class _ExploreViewState extends State<_ExploreView> {
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<Destination>(
           title: 'Điểm đến nổi bật',
+          itemCountLabel: 'địa điểm',
           pageSize: _pageSize,
           initialItems: initial,
-          separatorHeight: 12,
+          separatorHeight: 0,
           pageLoader: (page, limit) => context
               .read<ExploreCubit>()
               .loadDestinationsPage(page: page, limit: limit),
@@ -555,7 +558,9 @@ class _ExploreViewState extends State<_ExploreView> {
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<CityRestaurant>(
           title: 'Nhà hàng tiêu biểu',
+          itemCountLabel: 'địa điểm',
           pageSize: _pageSize,
+          maxItems: 50,
           initialItems: initial,
           separatorHeight: 0,
           favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
@@ -613,7 +618,9 @@ class _ExploreViewState extends State<_ExploreView> {
       MaterialPageRoute(
         builder: (_) => PaginatedSeeAllScreen<CityHotel>(
           title: 'Khách sạn nổi bật',
+          itemCountLabel: 'địa điểm',
           pageSize: _pageSize,
+          maxItems: 50,
           initialItems: initial,
           separatorHeight: 0,
           favoriteChanges: sl<FavoriteRemoteDataSource>().changes,
@@ -731,17 +738,21 @@ class _ExploreViewState extends State<_ExploreView> {
             );
           }
           if (state is ExploreLoaded) {
-            return Column(
-              children: [
-                const ExploreHeader(),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () =>
-                        context.read<ExploreCubit>().loadData(refresh: true),
-                    child: _buildContent(context, state),
+            return ColoredBox(
+              color: const Color(0xFFF6F8FB),
+              child: Column(
+                children: [
+                  const ExploreHeader(),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: const Color(0xFF176BBD),
+                      onRefresh: () =>
+                          context.read<ExploreCubit>().loadData(refresh: true),
+                      child: _buildContent(context, state),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }
           return const SizedBox.shrink();
@@ -752,8 +763,8 @@ class _ExploreViewState extends State<_ExploreView> {
 
   Widget _buildContent(BuildContext context, ExploreLoaded state) {
     final screenW = MediaQuery.of(context).size.width;
-    final suggestionCardH = screenW * 0.88 * (9 / 16) + 126;
-    final destinationCardH = screenW * 0.35 * (1 / 1) + 64;
+    final suggestionCardH = screenW * 0.88 * (9 / 16) + 142;
+    final destinationCardH = screenW * 0.40 / .78;
     final restaurantCardH = screenW * 0.45 * (3 / 4) + 80;
     final hotelCardH = screenW * 0.45 * (3 / 4) + 100;
 
@@ -765,8 +776,13 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
-                SectionHeader(title: 'Lịch trình của bạn', onSeeAll: null),
+                const SizedBox(height: 28),
+                SectionHeader(
+                  eyebrow: 'Đang diễn ra',
+                  icon: Icons.route_rounded,
+                  title: 'Lịch trình của bạn',
+                  onSeeAll: null,
+                ),
                 const SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -797,26 +813,28 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SectionHeader(
-                  title: 'Lịch trình gợi ý',
+                  eyebrow: 'Cảm hứng du lịch',
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'Lịch trình nổi bật',
                   onSeeAll: () => _openSuggestionSeeAll(),
                 ),
                 const SizedBox(height: 16),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16),
+                  padding: EdgeInsets.zero,
                   child: SizedBox(
                     height: suggestionCardH,
                     child: PageView.builder(
-                      controller: PageController(viewportFraction: 0.88),
-                      padEnds: false,
+                      controller: PageController(viewportFraction: 0.96),
+                      padEnds: true,
                       clipBehavior: Clip.none,
                       itemCount: state.suggestions.take(5).length,
                       onPageChanged: (i) => setState(() => _suggestionPage = i),
                       itemBuilder: (_, i) {
                         final item = state.suggestions[i];
                         return Padding(
-                          padding: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
                           child: GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -843,6 +861,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
                 PageDots(
                   count: state.suggestions.take(5).length,
                   current: _suggestionPage,
@@ -857,8 +876,10 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SectionHeader(
+                  eyebrow: 'Đi để nhớ',
+                  icon: Icons.landscape_rounded,
                   title: 'Điểm đến nổi bật',
                   onSeeAll: () => _openDestinationSeeAll(),
                 ),
@@ -868,10 +889,10 @@ class _ExploreViewState extends State<_ExploreView> {
                   child: SizedBox(
                     height: destinationCardH,
                     child: PageView.builder(
-                      controller: PageController(viewportFraction: 0.35),
+                      controller: PageController(viewportFraction: 0.40),
                       padEnds: false,
                       clipBehavior: Clip.none,
-                      itemCount: state.destinations.take(5).length,
+                      itemCount: state.destinations.length,
                       onPageChanged: (i) => setState(() => _activityPage = i),
                       itemBuilder: (_, i) {
                         final item = state.destinations[i];
@@ -898,8 +919,9 @@ class _ExploreViewState extends State<_ExploreView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
                 PageDots(
-                  count: state.destinations.take(5).length,
+                  count: state.destinations.length,
                   current: _activityPage,
                 ),
               ],
@@ -912,8 +934,10 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SectionHeader(
+                  eyebrow: 'Hương vị địa phương',
+                  icon: Icons.restaurant_rounded,
                   title: 'Nhà hàng tiêu biểu',
                   onSeeAll: () => _openRestaurantSeeAll(),
                 ),
@@ -949,11 +973,13 @@ class _ExploreViewState extends State<_ExploreView> {
                                   ),
                                 );
                               },
-                              child: city_cards.RestaurantCard(
-                                item: item,
-                                showFavorite: false,
-                                onFavoriteChanged: (value) =>
-                                    _setPlaceFavorite(item.id, value),
+                              child: _PremiumPlaceCard(
+                                child: city_cards.RestaurantCard(
+                                  item: item,
+                                  showFavorite: false,
+                                  onFavoriteChanged: (value) =>
+                                      _setPlaceFavorite(item.id, value),
+                                ),
                               ),
                             ),
                           ),
@@ -962,7 +988,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 18),
                 PageDots(
                   count: state.restaurants.take(5).length,
                   current: _restaurantPage,
@@ -977,8 +1003,10 @@ class _ExploreViewState extends State<_ExploreView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 SectionHeader(
+                  eyebrow: 'Nghỉ dưỡng tinh tế',
+                  icon: Icons.bed_rounded,
                   title: 'Khách sạn nổi bật',
                   onSeeAll: () => _openHotelSeeAll(),
                 ),
@@ -1009,11 +1037,13 @@ class _ExploreViewState extends State<_ExploreView> {
                                 ),
                               );
                             },
-                            child: city_cards.HotelCard(
-                              item: item,
-                              showFavorite: false,
-                              onFavoriteChanged: (value) =>
-                                  _setPlaceFavorite(item.id, value),
+                            child: _PremiumPlaceCard(
+                              child: city_cards.HotelCard(
+                                item: item,
+                                showFavorite: false,
+                                onFavoriteChanged: (value) =>
+                                    _setPlaceFavorite(item.id, value),
+                              ),
                             ),
                           ),
                         );
@@ -1021,7 +1051,7 @@ class _ExploreViewState extends State<_ExploreView> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 18),
                 PageDots(
                   count: state.hotels.take(5).length,
                   current: _hotelPage,
@@ -1034,6 +1064,32 @@ class _ExploreViewState extends State<_ExploreView> {
           child: SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
         ),
       ],
+    );
+  }
+}
+
+class _PremiumPlaceCard extends StatelessWidget {
+  final Widget child;
+
+  const _PremiumPlaceCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(9, 9, 9, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE7EDF3)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF102A43).withValues(alpha: .08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

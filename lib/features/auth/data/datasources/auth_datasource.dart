@@ -79,6 +79,7 @@ class RemoteAuthDataSource implements AuthDataSource {
         data['user'] as Map<String, dynamic>,
       );
 
+      await _client.revalidateCacheForUser(userModel.id);
       await _saveSession(
         accessToken: accessToken,
         refreshToken: refreshToken,
@@ -152,6 +153,7 @@ class RemoteAuthDataSource implements AuthDataSource {
         'role': syncRes.data['role'] ?? 'TOURIST',
       });
 
+      await _client.revalidateCacheForUser(userModel.id);
       await _saveSession(
         accessToken: freshToken,
         refreshToken: freshRefreshToken,
@@ -297,7 +299,9 @@ class RemoteAuthDataSource implements AuthDataSource {
     // Parse user từ cache
     try {
       final userMap = jsonDecode(cachedUserJson) as Map<String, dynamic>;
-      return UserModel.fromJson(userMap).toEntity();
+      final userModel = UserModel.fromJson(userMap);
+      await _client.revalidateCacheForUser(userModel.id);
+      return userModel.toEntity();
     } catch (_) {
       return null;
     }
@@ -305,9 +309,14 @@ class RemoteAuthDataSource implements AuthDataSource {
 
   @override
   Future<void> logout() async {
-    await Supabase.instance.client.auth.signOut();
-    await _clearStorage();
-    await _client.clearCache();
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } finally {
+      await Future.wait([
+        _clearStorage(),
+        _client.clearSessionCache(),
+      ]);
+    }
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

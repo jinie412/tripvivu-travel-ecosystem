@@ -10,17 +10,21 @@ class SupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColorsExt.textDark, size: 22),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.premiumNavy,
+            size: 22,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Hỗ trợ',
-          style: AppTextStyles.heading2.copyWith(color: AppColorsExt.textDark),
+          style: AppTextStyles.heading2.copyWith(color: AppColors.premiumNavy),
         ),
         centerTitle: true,
       ),
@@ -37,7 +41,9 @@ class SupportScreen extends StatelessWidget {
               color: Colors.blue[600]!,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đang kết nối tới tổng đài hỗ trợ...')),
+                  const SnackBar(
+                    content: Text('Đang kết nối tới tổng đài hỗ trợ...'),
+                  ),
                 );
               },
             ),
@@ -49,7 +55,9 @@ class SupportScreen extends StatelessWidget {
               color: const Color(0xFF14DFBC),
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đang chuẩn bị gửi email hỗ trợ...')),
+                  const SnackBar(
+                    content: Text('Đang chuẩn bị gửi email hỗ trợ...'),
+                  ),
                 );
               },
             ),
@@ -72,7 +80,6 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-
   Widget _buildSupportCard({
     required IconData icon,
     required String title,
@@ -87,11 +94,12 @@ class SupportScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.r16),
+          border: Border.all(color: AppColors.premiumBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: AppColors.premiumNavy.withOpacity(0.07),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),

@@ -123,9 +123,9 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         elevation: 0,
         centerTitle: true,
         title: Column(
@@ -133,17 +133,14 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
             const Text(
               'Bài đánh giá',
               style: TextStyle(
-                color: Color(0xFF1E293B),
+                color: AppColors.premiumNavy,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
             ),
             Text(
               widget.placeName,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
             ),
           ],
         ),
@@ -151,7 +148,7 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(
             Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
+            color: AppColors.premiumNavy,
             size: 20,
           ),
         ),
@@ -181,7 +178,10 @@ class _PlaceReviewsScreenState extends State<PlaceReviewsScreen> {
             if (_items.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 children: [
                   _SummaryBox(
                     rating: _average,
@@ -412,7 +412,9 @@ class _SummaryBox extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percent,
                 backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.primary,
+                ),
                 minHeight: 5,
               ),
             ),
@@ -427,9 +429,8 @@ class _SummaryBox extends StatelessWidget {
     return Row(
       children: List.generate(
         5,
-        (index) => _fractionalStar(
-          (roundedRating - index).clamp(0.0, 1.0).toDouble(),
-        ),
+        (index) =>
+            _fractionalStar((roundedRating - index).clamp(0.0, 1.0).toDouble()),
       ),
     );
   }
@@ -449,11 +450,7 @@ class _SummaryBox extends StatelessWidget {
           ),
           ClipRect(
             clipper: _StarFillClipper(fill),
-            child: const Icon(
-              Icons.star,
-              size: size,
-              color: Colors.amber,
-            ),
+            child: const Icon(Icons.star, size: size, color: Colors.amber),
           ),
         ],
       ),
@@ -477,7 +474,8 @@ class _StarFillClipper extends CustomClipper<Rect> {
   const _StarFillClipper(this.fill);
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fill, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * fill, size.height);
 
   @override
   bool shouldReclip(_StarFillClipper oldClipper) => oldClipper.fill != fill;
@@ -488,11 +486,7 @@ class _StateMessage extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
-  const _StateMessage({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _StateMessage({required this.message, this.actionLabel, this.onAction});
 
   @override
   Widget build(BuildContext context) {
@@ -502,7 +496,11 @@ class _StateMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.rate_review_outlined, size: 48, color: Color(0xFF94A3B8)),
+            const Icon(
+              Icons.rate_review_outlined,
+              size: 48,
+              color: Color(0xFF94A3B8),
+            ),
             const SizedBox(height: 12),
             Text(
               message,

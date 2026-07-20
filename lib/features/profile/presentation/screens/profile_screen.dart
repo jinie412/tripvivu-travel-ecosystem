@@ -58,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.premiumBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
@@ -69,39 +69,62 @@ class ProfileScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Row: Title & Avatar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Tài khoản',
-                    style: AppTextStyles.heading1.copyWith(
-                      fontSize: 22,
-                      color: AppColorsExt.textDark,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      AppColors.premiumNavy,
+                      AppColors.premiumBlue,
+                      AppColors.premiumTeal,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.premiumNavy.withValues(alpha: .18),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  BlocBuilder<ProfileCubit, ProfileState>(
-                    builder: (context, state) {
-                      final avatarUrl = state is ProfileLoaded
-                          ? state.profile.avatarUrl
-                          : '';
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tài khoản',
+                      style: AppTextStyles.heading1.copyWith(
+                        fontSize: 22,
+                        color: Colors.white,
+                      ),
+                    ),
+                    BlocBuilder<ProfileCubit, ProfileState>(
+                      builder: (context, state) {
+                        final avatarUrl = state is ProfileLoaded
+                            ? state.profile.avatarUrl
+                            : '';
 
-                      return CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: avatarUrl.isNotEmpty
-                            ? NetworkImage(avatarUrl)
-                            : null,
-                        child: avatarUrl.isEmpty
-                            ? const Icon(
-                                Icons.person,
-                                color: Colors.grey,
-                                size: 30,
-                              )
-                            : null,
-                      );
-                    },
-                  ),
-                ],
+                        return CircleAvatar(
+                          radius: 32,
+                          backgroundColor: Colors.white.withValues(alpha: .18),
+                          backgroundImage: avatarUrl.isNotEmpty
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl.isEmpty
+                              ? const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 30,
+                                )
+                              : null,
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSizes.s32),
 
@@ -122,7 +145,6 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
               _buildMenuItem(
                 icon: Icons.notifications,
                 title: 'Thông báo',
@@ -140,7 +162,6 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
               _buildMenuItem(
                 icon: Icons.language,
                 title: 'Ngôn ngữ',
@@ -166,7 +187,6 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
               _buildMenuItem(
                 icon: Icons.lock_outline_rounded,
                 title: 'Đổi mật khẩu',
@@ -182,7 +202,6 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
               _buildMenuItem(
                 icon: Icons.help_outline,
                 title: 'Hỗ trợ',
@@ -195,7 +214,6 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
 
               const SizedBox(height: AppSizes.s48),
 
@@ -206,7 +224,7 @@ class ProfileScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => _logout(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: AppColors.premiumNavy,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppSizes.r16),
@@ -260,18 +278,37 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-      leading: Icon(icon, color: AppColorsExt.textDark, size: AppSizes.iconLg),
-      title: Text(
-        title,
-        style: AppTextStyles.heading2.copyWith(
-          fontSize: 18,
-          color: AppColorsExt.textDark,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppColors.premiumSoftBlue,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(icon, color: AppColors.premiumBlue, size: 22),
+        ),
+        title: Text(
+          title,
+          style: AppTextStyles.heading2.copyWith(
+            fontSize: 15,
+            color: AppColors.premiumNavy,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.premiumMuted,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
 }

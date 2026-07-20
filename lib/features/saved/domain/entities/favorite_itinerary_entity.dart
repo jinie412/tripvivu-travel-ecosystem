@@ -11,6 +11,8 @@ class FavoriteItineraryEntity with _$FavoriteItineraryEntity {
     required int days,
     required int participantCount,
     required String status,
+    @Default(0) double rating,
+    @Default(0) int reviewCount,
     String? image,
     @Default(<String>[]) List<String> imageGallery,
   }) = _FavoriteItineraryEntity;

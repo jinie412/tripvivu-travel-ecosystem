@@ -11,6 +11,8 @@ class PlaceModel {
   @JsonKey(name: 'image_url')
   final String imageUrl;
   final double rating;
+  @JsonKey(name: 'review_count')
+  final int reviewCount;
   final String district;
   final String city;
 
@@ -19,6 +21,7 @@ class PlaceModel {
     required this.name,
     required this.imageUrl,
     required this.rating,
+    this.reviewCount = 0,
     required this.district,
     required this.city,
   });
@@ -31,6 +34,7 @@ class PlaceModel {
     name: name,
     imageUrl: imageUrl,
     rating: rating,
+    reviewCount: reviewCount,
     district: district,
     city: city,
   );

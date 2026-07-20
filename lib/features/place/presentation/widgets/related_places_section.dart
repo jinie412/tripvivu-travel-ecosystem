@@ -28,26 +28,45 @@ class RelatedPlacesSection extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'Có thể bạn sẽ thích',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.premiumNavy,
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 170,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: relatedPlaces.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 14),
-              itemBuilder: (context, index) => _placeCard(context, relatedPlaces[index]),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = ((constraints.maxWidth - 54) / 2)
+                  .clamp(148.0, 190.0);
+              return SizedBox(
+                height: 204,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: relatedPlaces.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 14),
+                  itemBuilder: (context, index) => _placeCard(
+                    context,
+                    relatedPlaces[index],
+                    cardWidth,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _placeCard(BuildContext context, PlaceEntity place) {
+  Widget _placeCard(
+    BuildContext context,
+    PlaceEntity place,
+    double cardWidth,
+  ) {
     return VisiblePlaceTracker(
       placeId: place.id,
       child: GestureDetector(
@@ -64,56 +83,76 @@ class RelatedPlacesSection extends StatelessWidget {
           );
         },
         child: Container(
-          width: 170,
+          width: cardWidth,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.premiumBorder),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.premiumNavy.withValues(alpha: .08),
+                blurRadius: 16,
+                offset: const Offset(0, 7),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
                 child: NetImage(
                   url: place.imageUrl,
-                  height: 100,
+                  height: 108,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      place.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        place.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 10, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          place.rating.toString(),
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                        const Spacer(),
-                        Text(
-                          place.district,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
+                      const Spacer(),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, size: 10, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Text(
+                            place.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              '(${place.reviewCount})',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

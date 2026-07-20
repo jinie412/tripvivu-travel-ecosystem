@@ -65,13 +65,14 @@ class ItineraryCard extends StatelessWidget {
           onTap: onTap,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              color: AppColors.premiumSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.premiumBorder),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  color: AppColors.premiumNavy.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -177,7 +178,7 @@ class ItineraryCard extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1C1C1E),
+                                color: AppColors.premiumNavy,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

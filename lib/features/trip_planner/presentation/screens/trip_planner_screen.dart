@@ -50,17 +50,27 @@ class _TripPlannerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.premiumSurface,
         elevation: 0,
         centerTitle: true,
         leading: Padding(
-          padding: const EdgeInsets.only(left: AppSizes.s16, top: AppSizes.s4, bottom: AppSizes.s4),
+          padding: const EdgeInsets.only(
+            left: AppSizes.s16,
+            top: AppSizes.s4,
+            bottom: AppSizes.s4,
+          ),
           child: Container(
-            decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: AppColors.premiumSoftBlue,
+              borderRadius: BorderRadius.circular(13),
+            ),
             child: IconButton(
-              icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
+              icon: const Icon(
+                Icons.chevron_left,
+                color: AppColors.textPrimary,
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
@@ -69,19 +79,34 @@ class _TripPlannerView extends StatelessWidget {
           children: [
             const Text(
               'Tạo lịch trình mới',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: AppSizes.s2),
             Text(
               'BƯỚC 1/3',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 14)),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
           ),
           const SizedBox(width: AppSizes.s8),
         ],
@@ -92,9 +117,15 @@ class _TripPlannerView extends StatelessWidget {
             loaded: (tripForm) => Column(
               children: [
                 Container(
-                  color: AppColors.surface,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: AppSizes.s8),
-                  child: StepProgressBar(currentStep: tripForm.currentStep, totalSteps: 3),
+                  color: AppColors.premiumSurface,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s16,
+                    vertical: AppSizes.s8,
+                  ),
+                  child: StepProgressBar(
+                    currentStep: tripForm.currentStep,
+                    totalSteps: 3,
+                  ),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -104,27 +135,42 @@ class _TripPlannerView extends StatelessWidget {
                       children: [
                         const Text(
                           'Bạn sẽ đi đâu?',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: AppSizes.s12),
                         Text(
                           'Chọn địa điểm khởi hành, điểm đến và phương tiện di chuyển.',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: AppSizes.s24),
                         LocationSelectorCard(
                           departureLocation: tripForm.departureLocation,
                           destinationLocation: tripForm.destinationLocation,
-                          onTapDeparture: () => _pickCity(context, isDeparture: true),
-                          onTapDestination: () => _pickCity(context, isDeparture: false),
-                          onSwap: () => context.read<TripPlannerCubit>().swapLocations(),
+                          onTapDeparture: () =>
+                              _pickCity(context, isDeparture: true),
+                          onTapDestination: () =>
+                              _pickCity(context, isDeparture: false),
+                          onSwap: () =>
+                              context.read<TripPlannerCubit>().swapLocations(),
                         ),
                         const SizedBox(height: AppSizes.s32),
                         TransportationSelector(
                           selectedOption: tripForm.transportation,
-                          onChanged: (t) => context.read<TripPlannerCubit>().updateTransportation(t),
+                          onChanged: (t) => context
+                              .read<TripPlannerCubit>()
+                              .updateTransportation(t),
                           selectedType: tripForm.tripType,
-                          onTypeChanged: (t) => context.read<TripPlannerCubit>().updateTripType(t),
+                          onTypeChanged: (t) => context
+                              .read<TripPlannerCubit>()
+                              .updateTripType(t),
                         ),
                         const SizedBox(height: AppSizes.s64),
                       ],
@@ -133,7 +179,7 @@ class _TripPlannerView extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.all(AppSizes.s16),
-                  color: AppColors.background,
+                  color: AppColors.premiumBackground,
                   child: ElevatedButton(
                     onPressed: () {
                       final cubit = context.read<TripPlannerCubit>();
@@ -161,16 +207,32 @@ class _TripPlannerView extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, AppSizes.appBarHeight),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r16)),
+                      minimumSize: const Size(
+                        double.infinity,
+                        AppSizes.appBarHeight,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.r16),
+                      ),
                       elevation: 0,
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Tiếp tục', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text(
+                          'Tiếp tục',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                         SizedBox(width: AppSizes.s8),
-                        Icon(Icons.arrow_forward, color: Colors.white, size: AppSizes.iconMd),
+                        Icon(
+                          Icons.arrow_forward,
+                          color: Colors.white,
+                          size: AppSizes.iconMd,
+                        ),
                       ],
                     ),
                   ),

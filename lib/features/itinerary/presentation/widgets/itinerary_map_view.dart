@@ -53,11 +53,15 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
   mapbox.MapboxMap? _mapboxMap;
   mapbox.PointAnnotationManager? _pointAnnotationManager;
   mapbox.PolylineAnnotationManager? _polylineAnnotationManager;
+  // Manager riêng cho các chặng fallback (Goong lỗi/429 → vẽ đường thẳng
+  // tạm). setLineDasharray áp dụng theo cả layer/manager chứ không theo
+  // từng annotation, nên cần 1 manager tách biệt để chặng fallback luôn
+  // hiện nét đứt trong khi tuyến đường thật (manager kia) vẫn nét liền.
+  mapbox.PolylineAnnotationManager? _fallbackPolylineAnnotationManager;
   bool _isStyleLoaded = false;
   bool _showAllDays = false;
   mapbox.Position? _userPosition;
   final Map<String, String> _annotationIdMap = {};
-  final Map<String, List<mapbox.Position>> _routeCache = {};
 
   @override
   void initState() {
@@ -618,48 +622,65 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
     double lineWidth = 4.2,
   }) async {
     if (_polylineAnnotationManager == null || activities.length < 2) return;
-    final routePositions = await _loadRoutePositions(activities);
-    if (routePositions.length < 2) return;
+    final segments = await _loadRouteSegments(activities);
+    if (segments.isEmpty) return;
 
-    await _polylineAnnotationManager?.create(
-      mapbox.PolylineAnnotationOptions(
-        geometry: mapbox.LineString(coordinates: routePositions),
-        lineColor: color.toARGB32(),
-        lineWidth: lineWidth,
-        lineOpacity: lineOpacity,
-      ),
-    );
-    if (showArrows) {
-      await _drawRouteArrows(routePositions, color);
+    final fullRoute = <mapbox.Position>[];
+    for (final segment in segments) {
+      if (segment.points.length < 2) continue;
+      if (segment.isFallback) {
+        // Goong lỗi/hết quota cho chặng này — vẽ nét đứt, màu nhạt hơn để
+        // không bị hiểu nhầm là tuyến đường thật (có thể cắt ngang nhà/sông).
+        await _fallbackPolylineAnnotationManager?.create(
+          mapbox.PolylineAnnotationOptions(
+            geometry: mapbox.LineString(coordinates: segment.points),
+            lineColor: color.toARGB32(),
+            lineWidth: lineWidth * 0.75,
+            lineOpacity: lineOpacity * 0.55,
+          ),
+        );
+      } else {
+        await _polylineAnnotationManager?.create(
+          mapbox.PolylineAnnotationOptions(
+            geometry: mapbox.LineString(coordinates: segment.points),
+            lineColor: color.toARGB32(),
+            lineWidth: lineWidth,
+            lineOpacity: lineOpacity,
+          ),
+        );
+      }
+
+      if (fullRoute.isNotEmpty) {
+        fullRoute.addAll(segment.points.skip(1));
+      } else {
+        fullRoute.addAll(segment.points);
+      }
+    }
+
+    if (showArrows && fullRoute.length >= 2) {
+      await _drawRouteArrows(fullRoute, color);
     }
   }
 
-  Future<List<mapbox.Position>> _loadRoutePositions(
+  Future<List<GoongRouteResult>> _loadRouteSegments(
     List<ItineraryActivityEntity> activities,
   ) async {
-    final route = <mapbox.Position>[];
+    final segments = <GoongRouteResult>[];
 
     for (var i = 0; i < activities.length - 1; i++) {
       final from = activities[i];
       final to = activities[i + 1];
-      final key =
-          '${from.id}:${from.longitude},${from.latitude}->${to.id}:${to.longitude},${to.latitude}';
-      final segment = _routeCache[key] ??= await MapUtils.getGoongRoute(
+      final segment = await MapUtils.getGoongRoute(
         [
           mapbox.Position(from.longitude!, from.latitude!),
           mapbox.Position(to.longitude!, to.latitude!),
         ],
         travelMode: widget.travelMode,
       );
-
-      if (route.isNotEmpty && segment.isNotEmpty) {
-        route.addAll(segment.skip(1));
-      } else {
-        route.addAll(segment);
-      }
+      segments.add(segment);
     }
 
-    return route;
+    return segments;
   }
 
   Future<void> _drawRouteArrows(
@@ -793,6 +814,9 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
         .createPointAnnotationManager();
     _polylineAnnotationManager = await _mapboxMap?.annotations
         .createPolylineAnnotationManager();
+    _fallbackPolylineAnnotationManager = await _mapboxMap?.annotations
+        .createPolylineAnnotationManager();
+    await _fallbackPolylineAnnotationManager?.setLineDasharray([2, 2]);
     _pointAnnotationManager?.addOnPointAnnotationClickListener(this);
     _updateMapContent();
   }
@@ -812,6 +836,7 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
     if (_mapboxMap == null || _pointAnnotationManager == null) return;
     await _pointAnnotationManager?.deleteAll();
     await _polylineAnnotationManager?.deleteAll();
+    await _fallbackPolylineAnnotationManager?.deleteAll();
     _annotationIdMap.clear();
 
     final itineraryPoints = <mapbox.Point>[];

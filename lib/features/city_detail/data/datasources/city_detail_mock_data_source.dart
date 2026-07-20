@@ -418,6 +418,14 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
     return int.tryParse(value.toString()) ?? 0;
   }
 
+  String _formatVndPrice(double value) {
+    final digits = value.round().toString();
+    return '${digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    )}đ';
+  }
+
   String _readImageUrl(Map<String, dynamic> item) {
     final candidates = [
       item['imageUrl'],
@@ -486,6 +494,11 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
         ? _readString(item['city'])
         : _readString(item['location']));
 
+    final minPrice = _readDouble(
+      item['min_price'] ?? item['priceValue'] ?? item['price_value'],
+    );
+    final rawPrice = _readString(item['price']);
+
     return {
       'id': _readString(item['id']),
       'name': _readString(item['name']),
@@ -493,12 +506,12 @@ class RemoteCityDetailDataSource implements CityDetailDataSource {
       'rating': _readDouble(item['rating'] ?? item['average_rating']),
       'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
       'address': _shortAddress(normalizedAddress),
-      'price': _readString(item['price']).isNotEmpty
-          ? _readString(item['price'])
-          : 'Liên hệ',
+      'price': minPrice > 0
+          ? _formatVndPrice(minPrice)
+          : (rawPrice.isNotEmpty ? rawPrice : 'Liên hệ'),
       'isFavorite': item['isFavorite'] == true,
       'starRating': _readInt(item['starRating'] ?? item['star_rating']),
-      'priceValue': _readDouble(item['priceValue'] ?? item['price_value']),
+      'priceValue': minPrice,
       'accommodationType': _readString(
         item['accommodationType'] ?? item['accommodation_type'],
       ),

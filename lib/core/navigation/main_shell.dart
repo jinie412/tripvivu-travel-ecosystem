@@ -199,7 +199,9 @@ class _MainShellState extends State<MainShell> {
         .subscribe();
 
     // Thêm listener cho FCM để cập nhật tức thì nếu realtime của Supabase bị trễ
-    _fcmSubscription ??= FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _fcmSubscription ??= FirebaseMessaging.onMessage.listen((
+      RemoteMessage message,
+    ) {
       if (mounted) {
         _notificationCubit.loadNotifications(silent: true);
       }
@@ -222,9 +224,7 @@ class _MainShellState extends State<MainShell> {
   void _handleBottomNavTap(BuildContext navigationContext, int i) {
     if (i == 2) {
       Navigator.of(navigationContext).push(
-        MaterialPageRoute(
-          builder: (context) => const TripPlannerScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const TripPlannerScreen()),
       );
       return;
     }
@@ -257,8 +257,8 @@ class _MainShellState extends State<MainShell> {
           builder: (context, currentIndex) {
             MainShellTabController._selectTab = (i) =>
                 _handleBottomNavTap(context, i);
-            MainShellTabController._refreshItineraries =
-                () => context.read<ItineraryCubit>().loadData();
+            MainShellTabController._refreshItineraries = () =>
+                context.read<ItineraryCubit>().loadData();
             // Bắt trường hợp Profile đã load xong trước khi Widget build (ví dụ Hot Reload)
             final currentState = context.read<ProfileCubit>().state;
             if (currentState is ProfileLoaded && _notificationChannel == null) {
@@ -273,6 +273,7 @@ class _MainShellState extends State<MainShell> {
                 }
               },
               child: Scaffold(
+                backgroundColor: AppColors.premiumBackground,
                 key: _scaffoldKey,
                 drawer: const ProfileDrawer(),
                 endDrawer: const NotificationDrawer(),
@@ -467,7 +468,7 @@ class SharedBottomNav extends StatelessWidget {
             height: totalHeight,
             child: CustomPaint(
               painter: const _NotchPainter(
-                color: Colors.white,
+                color: AppColors.premiumSurface,
                 notchRadius: _notchRadius,
               ),
               child: Padding(
@@ -540,14 +541,14 @@ class SharedBottomNav extends StatelessWidget {
                 height: _fabDiameter,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
+                    colors: [AppColors.premiumBlue, AppColors.premiumTeal],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.40),
+                      color: AppColors.premiumBlue.withValues(alpha: 0.34),
                       blurRadius: 14,
                       spreadRadius: 1,
                       offset: const Offset(0, 4),
@@ -588,8 +589,8 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool active = current == index;
     final Color itemColor = active
-        ? AppColors.primary
-        : const Color(0xFFB0B8C1);
+        ? AppColors.premiumBlue
+        : AppColors.premiumMuted;
 
     return GestureDetector(
       onTap: () => onTap(index),
@@ -644,8 +645,8 @@ class _CenterNavLabelState extends State<_CenterNavLabel> {
   @override
   Widget build(BuildContext context) {
     final Color labelColor = _pressed
-        ? AppColors.primary
-        : const Color(0xFFB0B8C1);
+        ? AppColors.premiumBlue
+        : AppColors.premiumMuted;
 
     return GestureDetector(
       onTap: widget.onTap,

@@ -46,9 +46,11 @@ class TimelineActivityCard extends StatelessWidget {
   final bool backendIsVisited;
 
   /// Tổng chi phí phát sinh (mục 1.6) đã ghi nhận cho địa điểm này, nếu có.
-  /// Chỉ hiển thị thêm — không có hành động thêm/sửa ở đây (xem màn
-  /// "Quản lý chi phí" ở tổng quan lịch trình).
   final double? extraCost;
+
+  /// Bấm vào badge chi phí phát sinh → nhảy sang "Quản lý chi phí" (Sổ chi
+  /// tiêu) đã lọc sẵn theo địa điểm này. Null = không tappable (badge tĩnh).
+  final VoidCallback? onExtraCostTap;
 
   const TimelineActivityCard({
     super.key,
@@ -78,6 +80,7 @@ class TimelineActivityCard extends StatelessWidget {
     this.hasReview,
     this.backendIsVisited = false,
     this.extraCost,
+    this.onExtraCostTap,
   });
 
   String _formatReviewCount(int? count) {
@@ -102,7 +105,9 @@ class TimelineActivityCard extends StatelessWidget {
   String _priceWithScope() => '${_formatPrice(activity.price)}/người lớn';
 
   String _durationLabel() {
-    if (_isAccommodationStart) return 'Nơi ở & điểm xuất phát';
+    if (_isAccommodationStart) {
+      return isLast ? 'Quay về khách sạn' : 'Nơi ở & điểm xuất phát';
+    }
     final category = (activity.category ?? '').toLowerCase();
     final activityLabel = category.contains('restaurant')
         ? 'Bữa ăn'
@@ -502,24 +507,51 @@ class TimelineActivityCard extends StatelessWidget {
                             ),
                           ),
                         if (extraCost != null && extraCost! > 0)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.add_circle_outline,
-                                size: 12,
-                                color: Color(0xFFF59E0B),
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                '${_formatPrice(extraCost!)} phát sinh',
-                                style: AppTextStylesExt.bodySmall.copyWith(
-                                  color: const Color(0xFFF59E0B),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11,
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: GestureDetector(
+                              onTap: onExtraCostTap,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFFF59E0B,
+                                  ).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.add_circle_outline,
+                                      size: 11,
+                                      color: Color(0xFFF59E0B),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${_formatPrice(extraCost!)} phát sinh',
+                                      style: AppTextStylesExt.bodySmall
+                                          .copyWith(
+                                            color: const Color(0xFFF59E0B),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 10,
+                                          ),
+                                    ),
+                                    if (onExtraCostTap != null) ...[
+                                      const SizedBox(width: 2),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 12,
+                                        color: Color(0xFFF59E0B),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ],
@@ -777,7 +809,7 @@ class TimelineActivityCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Nơi ở & xuất phát',
+                    isLast ? 'Quay về khách sạn' : 'Nơi ở & xuất phát',
                     style: AppTextStylesExt.bodySmall.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w700,
@@ -808,6 +840,121 @@ class TimelineActivityCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
+                  // Không hiện banner note cho dòng khách sạn — notes ở đó
+                  // chỉ là chú thích nội bộ ("chi phí ước tính cho cả đoàn"),
+                  // không phải cảnh báo cần chú ý như "thiếu quán ăn trưa".
+                  if (activity.placeType != 'hotel' &&
+                      activity.notes != null &&
+                      activity.notes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFED7AA)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 14,
+                              color: Color(0xFFB45309),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                activity.notes!,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF9A3412),
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (extraCost != null && extraCost! > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: GestureDetector(
+                        onTap: onExtraCostTap,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFF59E0B,
+                            ).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.add_circle_outline,
+                                size: 11,
+                                color: Color(0xFFF59E0B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_formatPrice(extraCost!)} phát sinh',
+                                style: AppTextStylesExt.bodySmall.copyWith(
+                                  color: const Color(0xFFF59E0B),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              if (onExtraCostTap != null) ...[
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 12,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (onExtraCostTap != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: GestureDetector(
+                        onTap: onExtraCostTap,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: 13,
+                              color: AppColors.primary.withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Ghi chi phí phát sinh',
+                              style: AppTextStylesExt.bodySmall.copyWith(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.8,
+                                ),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

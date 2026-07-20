@@ -20,111 +20,149 @@ class HomeItineraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _buildItineraryImageGallery(),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    item.days.toLowerCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE7EDF3)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF102A43).withValues(alpha: .09),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _buildItineraryImageGallery(),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .94),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      item.days.toLowerCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          item.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-            height: 1.3,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            DefaultAvatar(
-              radius: 12,
-              imageUrl: item.authorAvatar,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                item.authorName,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(
-              Icons.location_on_outlined,
-              size: 12,
-              color: Colors.grey,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                item.location,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (item.rating > 0) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFFB400)),
-              const SizedBox(width: 3),
-              Text(
-                item.rating.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF102A43),
+                    height: 1.25,
+                    letterSpacing: -.15,
+                  ),
                 ),
-              ),
-            ],
-            const SizedBox(width: 8),
-            const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
-            const SizedBox(width: 4),
-            Text(
-              item.likes,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    DefaultAvatar(radius: 12, imageUrl: item.authorAvatar),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        item.authorName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF74849A),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        item.location,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF74849A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (item.rating > 0) ...[
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: Color(0xFFFFB547),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        item.rating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.favorite_rounded,
+                      size: 12,
+                      color: Color(0xFFFF6B6B),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.likes,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF74849A),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 

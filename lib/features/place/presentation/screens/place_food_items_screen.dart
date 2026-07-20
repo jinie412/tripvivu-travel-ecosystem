@@ -104,9 +104,9 @@ class _PlaceFoodItemsScreenState extends State<PlaceFoodItemsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         elevation: 0,
         centerTitle: true,
         title: Column(
@@ -114,17 +114,14 @@ class _PlaceFoodItemsScreenState extends State<PlaceFoodItemsScreen> {
             const Text(
               'Thực đơn',
               style: TextStyle(
-                color: Color(0xFF1E293B),
+                color: AppColors.premiumNavy,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
             ),
             Text(
               widget.placeName,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
             ),
           ],
         ),
@@ -132,7 +129,7 @@ class _PlaceFoodItemsScreenState extends State<PlaceFoodItemsScreen> {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(
             Icons.arrow_back_ios_new,
-            color: Color(0xFF1E293B),
+            color: AppColors.premiumNavy,
             size: 20,
           ),
         ),
@@ -164,7 +161,9 @@ class _PlaceFoodItemsScreenState extends State<PlaceFoodItemsScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: const [
                   SizedBox(height: 120),
-                  _StateMessage(message: 'Địa điểm này chưa có món ăn khả dụng.'),
+                  _StateMessage(
+                    message: 'Địa điểm này chưa có món ăn khả dụng.',
+                  ),
                 ],
               );
             }
@@ -209,7 +208,14 @@ class _FoodItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: AppColors.premiumBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.premiumNavy.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -237,7 +243,9 @@ class _FoodItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item.description.isNotEmpty ? item.description : 'Chưa có mô tả',
+                  item.description.isNotEmpty
+                      ? item.description
+                      : 'Chưa có mô tả',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -271,11 +279,7 @@ class _StateMessage extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
-  const _StateMessage({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _StateMessage({required this.message, this.actionLabel, this.onAction});
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +289,11 @@ class _StateMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inbox_outlined, size: 48, color: Color(0xFF94A3B8)),
+            const Icon(
+              Icons.inbox_outlined,
+              size: 48,
+              color: Color(0xFF94A3B8),
+            ),
             const SizedBox(height: 12),
             Text(
               message,

@@ -26,25 +26,21 @@ class ItineraryFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SingleChildScrollView(
+        SizedBox(
+          height: 40,
+          child: ListView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _chip(label: 'Tất cả', value: null),
-                const SizedBox(width: 8),
-                _chip(label: 'Sắp đi', value: ItineraryStatus.upcoming),
-                const SizedBox(width: 8),
-                _chip(label: 'Đang đi', value: ItineraryStatus.ongoing),
-                const SizedBox(width: 8),
-                _chip(label: 'Đã kết thúc', value: ItineraryStatus.completed),
-                const SizedBox(width: 8),
-                _chip(label: 'Chưa hoàn thành', value: ItineraryStatus.uncompleted),
-                const SizedBox(width: 8),
-                _chip(label: 'Đang tạo', value: ItineraryStatus.draft),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _chip(label: 'Tất cả', value: null),
+              _chip(label: 'Sắp đi', value: ItineraryStatus.upcoming),
+              _chip(label: 'Đang đi', value: ItineraryStatus.ongoing),
+              _chip(label: 'Đã kết thúc', value: ItineraryStatus.completed),
+              _chip(
+                label: 'Chưa hoàn thành',
+                value: ItineraryStatus.uncompleted,
+              ),
+            ],
           ),
         ),
         if (activeFilter == ItineraryStatus.completed) ...[
@@ -57,7 +53,10 @@ class ItineraryFilterChips extends StatelessWidget {
                 const SizedBox(width: 8),
                 _subChip(label: 'Đã đánh giá', value: CompletedFilter.rated),
                 const SizedBox(width: 8),
-                _subChip(label: 'Chưa đánh giá', value: CompletedFilter.unrated),
+                _subChip(
+                  label: 'Chưa đánh giá',
+                  value: CompletedFilter.unrated,
+                ),
               ],
             ),
           ),
@@ -68,24 +67,46 @@ class ItineraryFilterChips extends StatelessWidget {
 
   Widget _chip({required String label, required ItineraryStatus? value}) {
     final isActive = activeFilter == value;
-    return GestureDetector(
-      onTap: () => onChanged(value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? AppColors.primary : const Color(0xFFE5E7EB),
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: GestureDetector(
+        onTap: () => onChanged(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: isActive
+                ? const LinearGradient(
+                    colors: [
+                      AppColors.premiumBlue,
+                      AppColors.premiumTeal,
+                    ],
+                  )
+                : null,
+            color: isActive ? null : AppColors.premiumSurface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isActive
+                  ? Colors.transparent
+                  : AppColors.premiumBorder,
+            ),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppColors.premiumBlue.withValues(alpha: .2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : AppColors.textSecondary,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+              color: isActive ? Colors.white : AppColors.premiumMuted,
+            ),
           ),
         ),
       ),
@@ -100,10 +121,15 @@ class ItineraryFilterChips extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFF1F5F9) : Colors.transparent,
+          gradient: isActive
+              ? const LinearGradient(
+                  colors: [AppColors.premiumBlue, AppColors.premiumTeal],
+                )
+              : null,
+          color: isActive ? null : AppColors.premiumSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isActive ? AppColors.primary : Colors.transparent,
+            color: isActive ? Colors.transparent : AppColors.premiumBorder,
           ),
         ),
         child: Text(
@@ -111,7 +137,7 @@ class ItineraryFilterChips extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-            color: isActive ? AppColors.primary : AppColors.textSecondary,
+            color: isActive ? Colors.white : AppColors.premiumMuted,
           ),
         ),
       ),

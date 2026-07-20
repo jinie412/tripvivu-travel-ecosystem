@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/features/home/domain/entities/explore_home
 import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
 import 'package:travel_advisor_mobile/features/home/domain/usecases/home_usecases.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
+import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
 import 'package:travel_advisor_mobile/features/saved/data/datasources/favorite_remote_datasource.dart';
 
@@ -23,6 +24,7 @@ class ExploreCubit extends Cubit<ExploreState> {
   List<Destination>? _cachedDestinations;
   List<CityHotel>? _cachedHotels;
   List<CityRestaurant>? _cachedRestaurants;
+  String? _cacheOwnerUserId;
 
   ExploreCubit({
     required GetExploreHomeUseCase getExploreHome,
@@ -371,31 +373,6 @@ class ExploreCubit extends Cubit<ExploreState> {
         .toList();
   }
 
-  void _loadRatedDestinations() {
-    _getFeaturedDestinations(limit: 5).then((ratedDests) {
-      if (isClosed || ratedDests.isEmpty) return;
-      final sorted = List<Destination>.from(ratedDests)
-        ..sort((a, b) {
-          final r = b.averageRating.compareTo(a.averageRating);
-          return r != 0 ? r : b.reviewCount.compareTo(a.reviewCount);
-        });
-      final cur = state;
-      if (cur is ExploreLoaded) {
-        emit(ExploreLoaded(
-          suggestions: cur.suggestions,
-          destinations: sorted.take(5).toList(),
-          restaurants: cur.restaurants,
-          hotels: cur.hotels,
-          allSuggestions: cur.allSuggestions,
-          allDestinations: cur.allDestinations,
-          allHotels: cur.allHotels,
-          allRestaurants: cur.allRestaurants,
-          currentItinerary: cur.currentItinerary,
-        ));
-      }
-    }).catchError((_) {});
-  }
-
   Future<void> _silentRefresh() async {
     try {
       final data = await _getExploreHome(forceRefresh: true);
@@ -417,7 +394,6 @@ class ExploreCubit extends Cubit<ExploreState> {
             currentItinerary: data.currentItinerary,
           ),
         );
-        _loadRatedDestinations();
       }
     } catch (_) {
       // Keep showing existing state on refresh failure
@@ -433,17 +409,29 @@ class ExploreCubit extends Cubit<ExploreState> {
   );
 
   Future<void> loadData({bool refresh = false}) async {
+    final currentUserId = await AuthUtils.getCurrentUserId();
+    final userChanged = _cacheOwnerUserId != currentUserId;
+    final shouldRefresh = refresh || userChanged;
+
+    if (userChanged) {
+      _cacheOwnerUserId = currentUserId;
+      _cachedSuggestions = null;
+      _cachedDestinations = null;
+      _cachedRestaurants = null;
+      _cachedHotels = null;
+    }
+
     // If data is already loaded (singleton cubit persists across navigations),
     // show the current state immediately and refresh silently in the background.
-    if (!refresh && state is ExploreLoaded) {
+    if (!shouldRefresh && state is ExploreLoaded) {
       _silentRefresh();
       return;
     }
 
-    if (!refresh) emit(const ExploreLoading());
+    emit(const ExploreLoading());
     try {
       final ExploreHomeData data = await _safeLoad<ExploreHomeData>(
-        () => _getExploreHome(forceRefresh: refresh),
+        () => _getExploreHome(forceRefresh: shouldRefresh),
         _emptyHome,
       );
 
@@ -465,7 +453,6 @@ class ExploreCubit extends Cubit<ExploreState> {
           currentItinerary: data.currentItinerary,
         ),
       );
-      _loadRatedDestinations();
     } catch (e) {
       if (refresh) return;
       if (kDemoMode) {

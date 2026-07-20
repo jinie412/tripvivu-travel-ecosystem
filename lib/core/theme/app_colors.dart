@@ -33,4 +33,15 @@ class AppColors {
   /// Decorative blob colors for auth background
   static const Color blobLight = Color(0xFFBFD9F2);
   static const Color blobMedium = Color(0xFF90BDE8);
+
+  // Premium visual language used by the main mobile surfaces. These are
+  // additive tokens so itinerary summary/detail keep their existing styling.
+  static const Color premiumNavy = Color(0xFF0B2341);
+  static const Color premiumBlue = Color(0xFF176BBD);
+  static const Color premiumTeal = Color(0xFF168A9C);
+  static const Color premiumBackground = Color(0xFFF6F8FB);
+  static const Color premiumSurface = Color(0xFFFFFFFF);
+  static const Color premiumBorder = Color(0xFFE3EAF1);
+  static const Color premiumMuted = Color(0xFF74849A);
+  static const Color premiumSoftBlue = Color(0xFFEAF3FB);
 }

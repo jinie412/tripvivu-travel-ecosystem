@@ -12,7 +12,14 @@ enum CostType {
   gift,
   shopping,
   parkingFee,
-  other;
+  other,
+  // Dòng TỰ ĐỘNG khi 1 địa điểm/khách sạn được check-in — không cho user
+  // tạo/sửa tay (ẩn khỏi CostType.values dùng cho form chọn type).
+  baselinePlan,
+  // Điều chỉnh xăng xe cho CẢ CHUYẾN (không gắn địa điểm/ngày) — chủ lịch
+  // trình, amount là delta có thể âm, giống priceAdjustment nhưng không cần
+  // chọn địa điểm/ngày.
+  transportAdjustment;
 
   static CostType fromApi(String? value) {
     switch (value) {
@@ -26,6 +33,10 @@ enum CostType {
         return CostType.shopping;
       case 'Phí gửi xe':
         return CostType.parkingFee;
+      case 'Chi phí kế hoạch':
+        return CostType.baselinePlan;
+      case 'Điều chỉnh xăng xe':
+        return CostType.transportAdjustment;
       default:
         return CostType.other;
     }
@@ -47,6 +58,10 @@ enum CostType {
         return 'Phí gửi xe';
       case CostType.other:
         return 'Khác';
+      case CostType.baselinePlan:
+        return 'Chi phí kế hoạch';
+      case CostType.transportAdjustment:
+        return 'Điều chỉnh xăng xe';
     }
   }
 }
@@ -58,6 +73,9 @@ class IncurredCostEntity {
   final CostType type;
   final String? placeId;
   final String? placeName;
+  // Ngày thứ N (1-indexed) khi khoản chi không gắn địa điểm cụ thể nhưng
+  // vẫn biết rơi vào ngày nào. Không dùng cùng lúc với placeId.
+  final int? dayNumber;
   final String note;
   final double amount;
   // user_id phải gánh khoản này. Rỗng = chia đều cho cả nhóm. Luôn rỗng khi
@@ -72,6 +90,7 @@ class IncurredCostEntity {
     this.type = CostType.other,
     this.placeId,
     this.placeName,
+    this.dayNumber,
     required this.note,
     required this.amount,
     this.chargedTo = const [],
@@ -112,6 +131,11 @@ class MemberCostTotalEntity {
   final bool isOwner;
   final double total;
   final double childrenShare;
+  // Phần chi phí phát sinh của riêng người này, chia theo CostType (Nước
+  // uống/Quà tặng/Mua sắm/Phí gửi xe/Khác) — KHÔNG gồm basePlanCost (đã nằm
+  // trong [total]), dùng để hiển thị "mỗi người phải trả" chi tiết theo mục
+  // thay vì chỉ 1 tổng gộp.
+  final Map<CostType, double> categoryBreakdown;
 
   const MemberCostTotalEntity({
     required this.userId,
@@ -119,6 +143,7 @@ class MemberCostTotalEntity {
     required this.isOwner,
     required this.total,
     this.childrenShare = 0,
+    this.categoryBreakdown = const {},
   });
 }
 
@@ -195,5 +220,23 @@ class CostBreakdownEntity {
     this.transportRatePerKmCar = 0,
     this.adultCount = 1,
     this.childCount = 0,
+  });
+}
+
+/// "Chi tiết ngày N" trong Sổ chi tiêu — mỗi người phải trả bao nhiêu CHỈ
+/// TÍNH CHO NGÀY NÀY (khác CostBreakdownEntity, tính cho cả chuyến).
+class DayCostBreakdownEntity {
+  final List<MemberCostTotalEntity> memberTotals;
+  final double dayBasePlanCost;
+  final double childrenShare;
+  // Xăng xe KHÔNG chia theo ngày (điều chỉnh 1 lần/cả chuyến) — số này là
+  // tham khảo CỦA CẢ CHUYẾN, không phải riêng ngày N.
+  final double transportPerAdultWholeTrip;
+
+  const DayCostBreakdownEntity({
+    this.memberTotals = const [],
+    this.dayBasePlanCost = 0,
+    this.childrenShare = 0,
+    this.transportPerAdultWholeTrip = 0,
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_cubit.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/cubit/search_state.dart';
 import 'package:travel_advisor_mobile/features/search/presentation/screens/search_all_screen.dart';
@@ -50,37 +51,61 @@ class _SearchViewState extends State<_SearchView> {
     }
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => SearchAllScreen(query: q),
-      ),
+      MaterialPageRoute(builder: (_) => SearchAllScreen(query: q)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.premiumBackground,
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
+            Container(
               padding: const EdgeInsets.fromLTRB(
-                  AppSizes.s16, AppSizes.s16, AppSizes.s16, 0),
-              child: SearchHeaderWidget(
-                controller: _searchController,
-                onClear: () {
-                  _searchController.clear();
-                  context.read<SearchCubit>().onSearchQueryChanged('');
-                },
-                onChanged: (v) =>
-                    context.read<SearchCubit>().onSearchQueryChanged(v),
-                onSubmitted: (_) => _goToSearchAll(context),
+                AppSizes.s16,
+                AppSizes.s12,
+                AppSizes.s16,
+                AppSizes.s16,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.premiumSurface,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 52, bottom: 12),
+                    child: Text(
+                      'Tìm kiếm',
+                      style: TextStyle(
+                        color: AppColors.premiumNavy,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -.4,
+                      ),
+                    ),
+                  ),
+                  SearchHeaderWidget(
+                    controller: _searchController,
+                    onClear: () {
+                      _searchController.clear();
+                      context.read<SearchCubit>().onSearchQueryChanged('');
+                    },
+                    onChanged: (v) =>
+                        context.read<SearchCubit>().onSearchQueryChanged(v),
+                    onSubmitted: (_) => _goToSearchAll(context),
+                  ),
+                ],
               ),
             ),
             Expanded(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
                 child: BlocBuilder<SearchCubit, SearchState>(
                   builder: (context, state) => state.when(
                     initial: () =>

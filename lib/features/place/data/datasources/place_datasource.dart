@@ -318,6 +318,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
       closingHours: (json['close_time'] ?? '').toString(),
       openHourCompressed: json['open_hour_compressed']?.toString(),
       phone: (json['phone'] ?? '').toString(),
+      minimumHotelPrice: (json['min_price'] as num?)?.toDouble(),
       foodItems: foodItems,
       reviews: reviewList,
       reviewBreakdown: reviewBreakdown,
@@ -387,6 +388,7 @@ class RemotePlaceDataSource implements PlaceDataSource {
       name: (json['name'] ?? 'Địa điểm liên quan').toString(),
       imageUrl: image,
       rating: ((json['rating'] as num?) ?? 0).toDouble(),
+      reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
       district: '',
       city: (json['city'] ?? '').toString(),
     );

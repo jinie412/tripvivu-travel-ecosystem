@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
+import 'package:travel_advisor_mobile/core/widgets/default_avatar.dart';
 import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
 
 class ItineraryVerticalCard extends StatelessWidget {
@@ -12,132 +13,142 @@ class ItineraryVerticalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.premiumSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.premiumNavy.withValues(alpha: .08),
+            blurRadius: 20,
+            offset: const Offset(0, 9),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: IntrinsicHeight(
+        borderRadius: BorderRadius.circular(20),
+        child: SizedBox(
+          height: 132,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Image — fixed 100×100 like Activity/Restaurant/Hotel cards
               SizedBox(
-                width: 100,
-                height: 100,
-                child: CachedNetworkImage(
-                  imageUrl: item.imageUrl,
-                  fit: BoxFit.cover,
-                  memCacheWidth: 300, // thumbnail 100dp — không giải mã full-res
-                  placeholder: (context, url) => Container(color: Colors.grey[200]),
-                  errorWidget: (context, url, error) =>
-                      Container(color: Colors.grey[200], child: const Icon(Icons.map_outlined, color: Colors.grey)),
+                width: 124,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: item.imageUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 372,
+                      placeholder: (_, _) =>
+                          Container(color: AppColors.premiumSoftBlue),
+                      errorWidget: (_, _, _) => Container(
+                        color: AppColors.premiumSoftBlue,
+                        child: const Icon(
+                          Icons.map_outlined,
+                          color: AppColors.premiumBlue,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .94),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Text(
+                          item.duration.toLowerCase(),
+                          style: const TextStyle(
+                            color: AppColors.premiumNavy,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-
-              // Info — same padding/spacing as other cards
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Row 1: title + "Lịch trình" label (mirrors name + favorite icon row)
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.premiumNavy,
+                          fontSize: 15,
+                          height: 1.22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          DefaultAvatar(
+                            radius: 11,
+                            imageUrl: item.authorAvatar,
+                          ),
+                          const SizedBox(width: 7),
                           Expanded(
                             child: Text(
-                              item.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.black,
-                              ),
+                              item.authorName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'Lịch trình',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppColors.primary,
+                              style: const TextStyle(
+                                color: AppColors.premiumMuted,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 4),
-
-                      // Row 2: duration (mirrors rating row)
+                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined, size: 13, color: Colors.amber),
-                          const SizedBox(width: 4),
-                          Text(
-                            item.duration,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          const Icon(
+                            Icons.location_on_rounded,
+                            size: 13,
+                            color: AppColors.premiumBlue,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              item.authorName,
-                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              item.location.isNotEmpty
+                                  ? item.location
+                                  : 'Việt Nam',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.premiumMuted,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      // Row 3: destination (mirrors address row)
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_outlined, color: Colors.grey[600], size: 14),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              item.location.isNotEmpty ? item.location : 'Việt Nam',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          const Icon(
+                            Icons.favorite_rounded,
+                            size: 12,
+                            color: Color(0xFFFF6B6B),
                           ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      // Row 4: likes (mirrors status row)
-                      Row(
-                        children: [
-                          const Icon(Icons.favorite, size: 12, color: Colors.redAccent),
                           const SizedBox(width: 4),
                           Text(
-                            '${item.likes} lượt thích',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            item.likes,
+                            style: const TextStyle(
+                              color: AppColors.premiumMuted,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),

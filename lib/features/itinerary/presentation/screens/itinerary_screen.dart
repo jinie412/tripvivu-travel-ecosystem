@@ -15,6 +15,7 @@ import 'itinerary_summary_screen.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/presentation/screens/trip_planner_screen.dart';
 
 import 'package:travel_advisor_mobile/core/widgets/error_view.dart';
+import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_empty_view.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_filter_chips.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/widgets/itinerary_summary_grid.dart';
@@ -179,7 +180,7 @@ class _ItineraryViewState extends State<_ItineraryView> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: AppColors.premiumNavy,
                       ),
                     ),
                   ),
@@ -315,9 +316,9 @@ class _ItineraryViewState extends State<_ItineraryView> {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.premiumSurface,
         borderRadius: BorderRadius.circular(23),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.premiumBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -385,11 +386,11 @@ class _ItineraryViewState extends State<_ItineraryView> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.premiumSoftBlue,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: AppColors.premiumBorder),
         ),
-        child: Icon(icon, size: 20, color: const Color(0xFF1A6EBD)),
+        child: Icon(icon, size: 20, color: AppColors.premiumBlue),
       ),
     );
   }

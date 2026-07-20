@@ -32,8 +32,8 @@ class TripPlannerStep2Screen extends StatelessWidget {
     final initialDate = rawInitial.isBefore(firstDate)
         ? firstDate
         : rawInitial.isAfter(lastDate)
-            ? lastDate
-            : rawInitial;
+        ? lastDate
+        : rawInitial;
 
     final picked = await showDatePicker(
       context: context,
@@ -81,13 +81,17 @@ class TripPlannerStep2Screen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.premiumSurface,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+          icon: const Icon(
+            Icons.chevron_left,
+            color: AppColors.premiumNavy,
+            size: 28,
+          ),
           onPressed: () {
             context.read<TripPlannerCubit>().goPrevStep();
             Navigator.of(context).pop();
@@ -98,7 +102,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             const Text(
               'Tạo lịch trình mới',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.premiumNavy,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -107,7 +111,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             Text(
               'Bước 2/3',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: AppColors.premiumMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -120,7 +124,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
             child: const Text(
               'Hủy',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.premiumBlue,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -137,7 +141,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
                 Container(
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: AppColors.premiumBorder,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -146,7 +150,7 @@ class TripPlannerStep2Screen extends StatelessWidget {
                   child: Container(
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.premiumBlue,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -443,11 +447,11 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                 child: Column(
                   children: kTripIntents.map((intent) {
                     final isSelected = _selected.contains(intent);
-                    final atMax = _selected.length >= kMaxTripIntents &&
+                    final atMax =
+                        _selected.length >= kMaxTripIntents &&
                         !_selected.contains(kGeneralTripIntent);
-                    final canToggle = isSelected ||
-                        intent == kGeneralTripIntent ||
-                        !atMax;
+                    final canToggle =
+                        isSelected || intent == kGeneralTripIntent || !atMax;
                     return CheckboxListTile(
                       value: isSelected,
                       onChanged: canToggle ? (_) => _toggle(intent) : null,
@@ -463,8 +467,8 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                           color: isSelected
                               ? AppColors.primary
                               : canToggle
-                                  ? AppColors.textPrimary
-                                  : AppColors.textSecondary,
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
                         ),
                       ),
                     );

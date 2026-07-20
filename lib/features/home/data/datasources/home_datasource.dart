@@ -431,22 +431,44 @@ class RemoteHomeDataSource implements HomeDataSource {
     );
   }
 
+  double? _readHotelPrice(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is num) return raw > 0 ? raw.toDouble() : null;
+
+    final value = raw.toString().trim();
+    if (value.isEmpty || value.toLowerCase().contains('liên hệ')) return null;
+    final numeric = double.tryParse(value);
+    if (numeric != null) return numeric > 0 ? numeric : null;
+
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return null;
+    final parsed = double.tryParse(digits);
+    return parsed != null && parsed > 0 ? parsed : null;
+  }
+
+  String _formatVndPrice(double value) {
+    final digits = value.round().toString();
+    return '${digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    )}đ';
+  }
+
   CityHotel _mapHotel(Map<String, dynamic> json) {
+    final minPrice = _readHotelPrice(
+      json['min_price'] ??
+          json['priceValue'] ??
+          json['price_value'] ??
+          json['price'],
+    );
     return CityHotel(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? 'Khách sạn').toString(),
       imageUrl: (json['image'] ?? '').toString(),
       rating: ((json['rating'] as num?) ?? 0).toDouble(),
       reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
-      price: () {
-        final rawPrice = (json['price'] ?? json['min_price'] ?? '').toString().trim();
-        if (rawPrice.isEmpty ||
-            rawPrice == '0' ||
-            rawPrice == '0đ') {
-          return 'Liên hệ';
-        }
-        return rawPrice;
-      }(),
+      price: minPrice == null ? 'Liên hệ' : _formatVndPrice(minPrice),
+      priceValue: minPrice ?? 0,
       address: (json['city'] ?? json['province'] ?? json['location'] ?? '').toString(),
       status: () {
         final s = (json['status'] ?? '').toString().trim();

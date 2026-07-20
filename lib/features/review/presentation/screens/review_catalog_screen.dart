@@ -358,14 +358,14 @@ class _ReviewCatalogScreenState extends State<ReviewCatalogScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
         title: const Text(
           'Danh sách đánh giá',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppColors.primary,
@@ -601,14 +601,14 @@ class ReviewReadOnlyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
         title: Text(
           item.isItinerary ? 'Đánh giá lịch trình' : 'Đánh giá địa điểm',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -1259,14 +1259,14 @@ class ReviewedPlaceScreen extends StatelessWidget {
       expirationDate: place.expirationDate,
     );
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
         title: const Text(
           'Đánh giá địa điểm',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.premiumBackground,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

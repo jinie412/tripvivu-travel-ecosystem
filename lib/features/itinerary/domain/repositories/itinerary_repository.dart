@@ -83,16 +83,22 @@ abstract class ItineraryRepository {
   Future<List<IncurredCostEntity>> getIncurredCosts(
     String itineraryId, {
     String? placeId,
+    int? dayNumber,
     String? filterUserId,
   });
   Future<List<EligiblePlaceEntity>> getEligiblePlaces(String itineraryId);
   Future<CostBreakdownEntity> getCostBreakdown(String itineraryId);
+  Future<DayCostBreakdownEntity> getDayCostBreakdown(
+    String itineraryId,
+    int dayNumber,
+  );
   Future<IncurredCostEntity> createIncurredCost(
     String itineraryId, {
     CostType type = CostType.other,
     required String note,
     required double amount,
     String? placeId,
+    int? dayNumber,
     List<String>? chargedTo,
   });
   Future<IncurredCostEntity> updateIncurredCost(
@@ -102,7 +108,16 @@ abstract class ItineraryRepository {
     String? note,
     double? amount,
     String? placeId,
+    int? dayNumber,
     List<String>? chargedTo,
   });
   Future<void> deleteIncurredCost(String itineraryId, String costId);
+  // Sửa giá HIỆU LỰC của 1 địa điểm đã visited — cập nhật thẳng lên dòng
+  // "Chi phí kế hoạch" (amount là giá MỚI tuyệt đối, không phải chênh
+  // lệch). Chỉ chủ lịch trình gọi được.
+  Future<IncurredCostEntity> updatePlaceEffectivePrice(
+    String itineraryId,
+    String placeId,
+    double amount,
+  );
 }
