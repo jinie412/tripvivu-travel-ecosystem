@@ -16,10 +16,23 @@ import 'package:travel_advisor_mobile/features/review/presentation/screens/rate_
 
 bool _isVideoUrl(String url) {
   final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
-  return path.endsWith('.mp4') ||
+  return path.contains('/videos/') ||
+      path.endsWith('.mp4') ||
       path.endsWith('.mov') ||
       path.endsWith('.m4v') ||
       path.endsWith('.webm');
+}
+
+String? _firstItineraryPlaceImageUrl(ReviewCatalogItem item) {
+  for (final place in item.placeReviews) {
+    final url = place.imageUrl?.trim() ?? '';
+    if (url.isNotEmpty) {
+      return url;
+    }
+  }
+
+  final itineraryCover = item.imageUrl?.trim() ?? '';
+  return itineraryCover.isNotEmpty ? itineraryCover : null;
 }
 
 Future<void> openReviewItem(
@@ -641,13 +654,7 @@ class _ItineraryReviewDetail extends StatelessWidget {
     final subtitle = destination?.isNotEmpty == true
         ? '$destination • $range'
         : range;
-    String? reviewCover;
-    for (final url in item.mediaUrls) {
-      if (!_isVideoUrl(url)) {
-        reviewCover = url;
-        break;
-      }
-    }
+    final placeCover = _firstItineraryPlaceImageUrl(item);
     final note = _reviewVisibilityNote(
       isPlace: false,
       reviewStatus: item.reviewStatus,
@@ -669,10 +676,10 @@ class _ItineraryReviewDetail extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (reviewCover != null)
-                _CorsFriendlyImage(url: reviewCover)
+              if (placeCover != null)
+                _CorsFriendlyImage(url: placeCover)
               else
-                NetImage(url: item.imageUrl),
+                const ColoredBox(color: Color(0xFFE5E7EB)),
               Container(color: Colors.black.withValues(alpha: 0.42)),
               Padding(
                 padding: const EdgeInsets.all(18),

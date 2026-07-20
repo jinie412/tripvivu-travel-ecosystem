@@ -482,10 +482,26 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       );
 
       if (confirmSave == true && mounted) {
-        await context.read<ItineraryCubit>().confirmUpdateItinerary(
-          widget.itineraryId,
-        );
+        final saveResult = await context
+            .read<ItineraryCubit>()
+            .confirmUpdateItinerary(widget.itineraryId);
         if (!mounted) return;
+        if (!saveResult.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                saveResult.error ??
+                    'Không thể lưu lịch trình. Vui lòng thử lại.',
+              ),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.r12),
+              ),
+            ),
+          );
+          return;
+        }
         setState(() {
           _isEditMode = false;
           _editSnapshot = null;
@@ -814,6 +830,22 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           return;
         }
       }
+
+      final proposedStartTime = isStart ? newTime : activity.startTime;
+      final proposedEndTime = isStart ? activity.endTime : newTime;
+      final itineraryCubit = context.read<ItineraryCubit>();
+      if (itineraryCubit.isLunchActivity(activity) &&
+          !itineraryCubit.isWithinLunchWindow(
+            proposedStartTime,
+            proposedEndTime,
+          )) {
+        await showTimeError(
+          'Địa điểm ăn trưa phải bắt đầu từ 10:30 và kết thúc trước hoặc lúc 14:00.\n\n'
+          'Vui lòng chọn thời gian trong khung 10:30 - 14:00.',
+        );
+        return;
+      }
+
       // ── Validate giờ mở/đóng cửa của địa điểm ─────────────────────────────────
       if (activity.openHourCompressed != null) {
         final visitDate = _visitDateForDay(_selectedDay);
@@ -1053,12 +1085,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                             backgroundColor: Colors.redAccent,
                           ),
                         );
-                        // Revert the time shift locally if it failed
-                        cubit.updateActivityTimesWithShift(
-                          activityId: activity.id,
-                          deltaMinutes: -deltaMin,
-                          shiftStartTimeOnly: isStart,
-                        );
+                        cubit.discardChanges(itin);
                       } else if (mounted &&
                           optimizeResult.reorderNotes.isNotEmpty) {
                         _showReduceTimeNotesDialog(
@@ -1102,11 +1129,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                           );
                           if (mounted) {
                             if (pinResult.lunchWasPinned) {
-                              _handleLunchPinnedOptimization(
+                              await _handleLunchPinnedOptimization(
                                 cubit,
-                                activity.id,
                                 pinResult.lunchActivityId!,
                                 pinResult.lunchActivityTitle ?? 'Ăn trưa',
+                                itin,
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1142,7 +1169,9 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                             final notes = await cubit.applyOptimizedDay(
                               _selectedDay,
                               true,
-                              lockedActivityId: activity.id,
+                              lockedActivityId: pinResult.lunchWasPinned
+                                  ? null
+                                  : activity.id,
                               pinnedLunchActivityId: pinResult.lunchWasPinned ? pinResult.lunchActivityId : null,
                             );
                             if (mounted) {
@@ -1178,13 +1207,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                               }
                             }
                           } catch (e) {
-                            // Revert the local shift because the API failed
-                            cubit.updateActivityTimesWithShift(
-                              activityId: activity.id,
-                              deltaMinutes: -deltaMin,
-                              shiftStartTimeOnly: isStart,
-                              protectLunchWindow: false,
-                            );
+                            cubit.discardChanges(itin);
                             if (mounted) {
                               final errorMsg = e.toString().replaceAll(
                                 'Exception: ',
@@ -1202,17 +1225,23 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               }
             }
 
+            final snapshotState = cubit.state;
+            if (snapshotState is! ItineraryLoaded ||
+                snapshotState.selectedItinerary == null) {
+              return;
+            }
+            final shiftSnapshot = snapshotState.selectedItinerary!;
             final pinResult = cubit.updateActivityTimesWithShift(
               activityId: activity.id,
               deltaMinutes: deltaMin,
               shiftStartTimeOnly: isStart,
             );
             if (mounted && pinResult.lunchWasPinned) {
-              _handleLunchPinnedOptimization(
+              await _handleLunchPinnedOptimization(
                 cubit,
-                activity.id,
                 pinResult.lunchActivityId!,
                 pinResult.lunchActivityTitle ?? 'Ăn trưa',
+                shiftSnapshot,
               );
             }
             return;
@@ -1384,11 +1413,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
     );
   }
 
-  void _handleLunchPinnedOptimization(
+  Future<void> _handleLunchPinnedOptimization(
     ItineraryCubit cubit,
-    String lockedActivityId,
     String pinnedLunchActivityId,
     String lunchTitle,
+    ItineraryDetailEntity snapshot,
   ) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1406,7 +1435,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       final notes = await cubit.applyOptimizedDay(
         _selectedDay,
         true,
-        lockedActivityId: lockedActivityId,
         pinnedLunchActivityId: pinnedLunchActivityId,
       );
       if (mounted && notes.isNotEmpty) {
@@ -1430,7 +1458,35 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           _showOptimizationNotes(context, mappedNotes);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      cubit.discardChanges(snapshot);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Không thể sắp xếp lịch trình'),
+          content: Text(
+            'Không thể áp dụng thay đổi mà vẫn giữ bữa trưa "$lunchTitle" trong khung 10:30 - 14:00. '
+            'Lịch trình đã được khôi phục. Vui lòng chọn giờ khác hoặc giảm thời gian tham quan.',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: const Text(
+                'Đã hiểu',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   double _calcDistance(double lat1, double lng1, double lat2, double lng2) {

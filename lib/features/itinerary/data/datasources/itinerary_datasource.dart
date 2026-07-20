@@ -424,7 +424,17 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Không thể cập nhật lịch trình');
+      String message = 'Không thể cập nhật lịch trình';
+      try {
+        final errorBody = jsonDecode(res.body);
+        final rawMessage = errorBody['message'];
+        if (rawMessage is Map && rawMessage['message'] != null) {
+          message = rawMessage['message'].toString();
+        } else if (rawMessage != null) {
+          message = rawMessage.toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
     }
   }
 

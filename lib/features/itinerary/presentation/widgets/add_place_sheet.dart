@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 import '../../data/datasources/nearby_places_api.dart';
 import '../../../../core/di/injection_container.dart';
@@ -233,6 +236,20 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     await widget.onAdd(place);
   }
 
+  Future<void> _openPlaceDetail(NearbyPlaceModel place) async {
+    final placeId = place.id.trim();
+    if (placeId.isEmpty) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) => sl<PlaceDetailCubit>(),
+          child: PlaceDetailScreen(placeId: placeId),
+        ),
+      ),
+    );
+  }
+
   // ─── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -288,6 +305,8 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                         separatorBuilder: (_, _) => const SizedBox(height: AppSizes.s12),
                         itemBuilder: (_, i) => _ListCard(
                           place: _listItems[i],
+                          onViewDetail: () =>
+                              _openPlaceDetail(_listItems[i]),
                           onSelect: () => _onSelect(_listItems[i]),
                           fmt: _fmt,
                           fmtPrice: _fmtPrice,
@@ -567,6 +586,7 @@ class _SectionTitle extends StatelessWidget {
 
 class _ListCard extends StatelessWidget {
   final NearbyPlaceModel place;
+  final VoidCallback onViewDetail;
   final VoidCallback onSelect;
   final String Function(int) fmt;
   final String Function(double) fmtPrice;
@@ -574,6 +594,7 @@ class _ListCard extends StatelessWidget {
 
   const _ListCard({
     required this.place,
+    required this.onViewDetail,
     required this.onSelect,
     required this.fmt,
     required this.fmtPrice,
@@ -582,19 +603,22 @@ class _ListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSizes.r16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onViewDetail,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
         children: [
           // Thumbnail
           NetImage(
@@ -699,6 +723,7 @@ class _ListCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

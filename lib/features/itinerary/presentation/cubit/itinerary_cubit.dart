@@ -1322,12 +1322,16 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   // 2. CẢ giờ đến VÀ giờ rời đều nằm trong khung giờ ăn trưa (_kLunchWindowStartMin.._kLunchWindowEndMin)
   //    — khớp đúng ràng buộc solver dùng khi tối ưu lại, không chỉ riêng giờ đến.
   // Cùng cơ chế với isRestaurant() bên api-service, thay vì đoán qua từ khóa category.
-  bool _isLunchActivity(ItineraryActivityEntity activity) {
+  bool isLunchActivity(ItineraryActivityEntity activity) {
     final isFoodPlace = (activity.placeType ?? '').trim().toLowerCase() == 'restaurant';
     if (!isFoodPlace) return false;
 
-    final startMin = _timeStrToMinutes(activity.startTime);
-    final endMin = _timeStrToMinutes(activity.endTime);
+    return isWithinLunchWindow(activity.startTime, activity.endTime);
+  }
+
+  bool isWithinLunchWindow(String startTime, String endTime) {
+    final startMin = _timeStrToMinutes(startTime);
+    final endMin = _timeStrToMinutes(endTime);
     if (startMin == null || endMin == null) return false;
     return startMin >= _kLunchWindowStartMin && endMin <= _kLunchWindowEndMin;
   }
@@ -1339,6 +1343,26 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     } catch (_) {
       return null;
     }
+  }
+
+  bool _hasScheduleOverlap(List<ItineraryActivityEntity> activities) {
+    final sorted = [...activities]
+      ..sort((a, b) {
+        final aStart = _timeStrToMinutes(a.startTime) ?? 0;
+        final bStart = _timeStrToMinutes(b.startTime) ?? 0;
+        return aStart.compareTo(bStart);
+      });
+
+    for (int i = 0; i < sorted.length; i++) {
+      final start = _timeStrToMinutes(sorted[i].startTime);
+      final end = _timeStrToMinutes(sorted[i].endTime);
+      if (start == null || end == null || end <= start) return true;
+      if (i > 0) {
+        final previousEnd = _timeStrToMinutes(sorted[i - 1].endTime);
+        if (previousEnd == null || start < previousEnd) return true;
+      }
+    }
+    return false;
   }
 
   // Trả về (lunchWasPinned, lunchActivityTitle) để caller có thể thông báo cho user.
@@ -1367,6 +1391,36 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? lunchActivityTitle;
     String? lunchActivityId;
 
+    if (protectLunchWindow) {
+      ItineraryActivityEntity? editedActivity;
+      for (final day in itin.days) {
+        for (final activity in day.activities) {
+          if (activity.id == activityId) {
+            editedActivity = activity;
+            break;
+          }
+        }
+        if (editedActivity != null) break;
+      }
+
+      if (editedActivity != null && isLunchActivity(editedActivity)) {
+        final proposedStart = shiftStartTimeOnly
+            ? _shiftTimeStr(editedActivity.startTime, deltaMinutes)
+            : editedActivity.startTime;
+        final proposedEnd = _shiftTimeStr(
+          editedActivity.endTime,
+          deltaMinutes,
+        );
+        if (!isWithinLunchWindow(proposedStart, proposedEnd)) {
+          return (
+            lunchWasPinned: true,
+            lunchActivityTitle: editedActivity.title,
+            lunchActivityId: editedActivity.id,
+          );
+        }
+      }
+    }
+
     final updatedDays = itin.days.map((day) {
       final hasActivity = day.activities.any((a) => a.id == activityId);
       if (!hasActivity) return day;
@@ -1380,7 +1434,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       if (protectLunchWindow) {
         for (int i = editedIdx + 1; i < acts.length; i++) {
           final act = acts[i];
-          if (!_isLunchActivity(act)) continue;
+          if (!isLunchActivity(act)) continue;
           final newStartMin = toMin(act.startTime) + deltaMinutes;
           final newEndMin = toMin(act.endTime) + deltaMinutes;
           if (newEndMin > _kLunchWindowEndMin || newStartMin < _kLunchWindowStartMin) {
@@ -1549,6 +1603,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
       final result = await optimizeDayUseCase!(itin.id, payload);
 
+      if (_hasScheduleOverlap(result.optimized)) {
+        throw Exception('ACTIVITY_OVERLAP');
+      }
+
       final updatedDays = itin.days.map((day) {
         if (day.dayNumber == dayNumber) {
           return day.copyWith(activities: result.optimized);
@@ -1570,11 +1628,17 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
-  Future<void> confirmUpdateItinerary(String id) async {
-    if (state is! ItineraryLoaded) return;
+  Future<({bool success, String? error})> confirmUpdateItinerary(
+    String id,
+  ) async {
+    if (state is! ItineraryLoaded) {
+      return (success: false, error: 'Không tìm thấy lịch trình để lưu');
+    }
     final currentState = state as ItineraryLoaded;
     final itin = currentState.selectedItinerary;
-    if (itin == null) return;
+    if (itin == null) {
+      return (success: false, error: 'Không tìm thấy lịch trình để lưu');
+    }
 
     // Optimistic: cập nhật UI ngay bằng dữ liệu đã có trong memory,
     // không cần re-fetch vì server vừa nhận đúng data này.
@@ -1586,10 +1650,13 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         // Sau khi lưu xong, gọi selectItinerary để lấy data chuẩn xác từ DB (có thể AI vừa re-optimize)
         await selectItinerary(id);
       }
+      return (success: true, error: null);
     } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
       // Rollback về state cũ nếu API lỗi
-      emit(ItineraryError('Không thể cập nhật lịch trình: ${e.toString()}'));
+      emit(ItineraryError('Không thể cập nhật lịch trình: $message'));
       emit(currentState);
+      return (success: false, error: message);
     }
   }
 
