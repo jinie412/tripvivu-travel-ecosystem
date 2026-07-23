@@ -136,22 +136,20 @@ const validateTwoTower = (form: TwoTowerFormState): string[] => {
 interface TwoTowerSettingsCardProps {
   open: boolean;
   onToggle: () => void;
-  setBanner: (message: string) => void;
+  notify: (icon: 'success' | 'error' | 'info', message: string) => void;
 }
 
-export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open, onToggle, setBanner }) => {
+export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open, onToggle, notify }) => {
   const [twoTower, setTwoTower] = useState<TwoTowerFormState>(() => cloneTwoTowerForm(DEFAULT_TWO_TOWER_FORM));
   const [twoTowerOriginal, setTwoTowerOriginal] = useState<TwoTowerFormState | null>(null);
   const [twoTowerLoading, setTwoTowerLoading] = useState(false);
   const [twoTowerSaving, setTwoTowerSaving] = useState(false);
-  const [twoTowerError, setTwoTowerError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     async function loadTwoTowerSettings() {
       setTwoTowerLoading(true);
-      setTwoTowerError(null);
       try {
         const data = await algorithmSettingsAPI.getTwoTowerSettings();
         const form = mapResponseToForm(data);
@@ -160,7 +158,7 @@ export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open
         setTwoTowerOriginal(cloneTwoTowerForm(form));
       } catch {
         if (!alive) return;
-        setTwoTowerError('Không thể tải cấu hình mô hình truy xuất địa điểm. Đang hiển thị giá trị mặc định.');
+        notify('error', 'Không thể tải cấu hình mô hình truy xuất địa điểm. Đang hiển thị giá trị mặc định.');
       } finally {
         if (alive) setTwoTowerLoading(false);
       }
@@ -195,7 +193,7 @@ export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open
   const handleSaveTwoTower = async () => {
     const errors = validateTwoTower(twoTower);
     if (errors.length) {
-      setBanner(errors[0]);
+      notify('error', errors[0]);
       return;
     }
 
@@ -205,9 +203,9 @@ export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open
       const next = mapResponseToForm(updated);
       setTwoTower(next);
       setTwoTowerOriginal(cloneTwoTowerForm(next));
-      setBanner('Đã lưu cấu hình mô hình truy xuất địa điểm.');
+      notify('success', 'Đã lưu cấu hình mô hình truy xuất địa điểm.');
     } catch {
-      setBanner('Không thể lưu cấu hình mô hình truy xuất địa điểm. Vui lòng thử lại.');
+      notify('error', 'Không thể lưu cấu hình mô hình truy xuất địa điểm. Vui lòng thử lại.');
     } finally {
       setTwoTowerSaving(false);
     }
@@ -220,9 +218,9 @@ export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open
       const next = mapResponseToForm(reset);
       setTwoTower(next);
       setTwoTowerOriginal(cloneTwoTowerForm(next));
-      setBanner('Đã khôi phục cấu hình mô hình truy xuất địa điểm mặc định.');
+      notify('success', 'Đã khôi phục cấu hình mô hình truy xuất địa điểm mặc định.');
     } catch {
-      setBanner('Không thể khôi phục cấu hình mô hình truy xuất địa điểm.');
+      notify('error', 'Không thể khôi phục cấu hình mô hình truy xuất địa điểm.');
       if (twoTowerOriginal) setTwoTower(cloneTwoTowerForm(twoTowerOriginal));
     } finally {
       setTwoTowerSaving(false);
@@ -243,7 +241,6 @@ export const TwoTowerSettingsCard: React.FC<TwoTowerSettingsCardProps> = ({ open
       <p className="as-hint as-hint--block">Áp dụng cho bước lấy địa điểm ứng viên.</p>
 
       {twoTowerLoading && <div className="as-muted as-loading-line">Đang tải cấu hình mô hình truy xuất địa điểm...</div>}
-      {twoTowerError && <div className="as-banner as-banner--error as-inline-banner">{twoTowerError}</div>}
       {twoTowerErrors.length > 0 && <div className="as-err-text as-validation-line">{twoTowerErrors[0]}</div>}
 
       <div className="as-section-title">Trạng thái</div>

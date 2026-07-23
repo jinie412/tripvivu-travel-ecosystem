@@ -229,6 +229,13 @@
 
 .arh-fw500 { font-weight: 500; }
 .arh-muted { color: var(--text-muted); }
+.arh-admin-link {
+  color: var(--primary-blue);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.arh-admin-link:hover { text-decoration: underline; }
 .arh-err-text { color: var(--error, #ef4444); font-weight: 500; }
 .arh-state {
   text-align: center;

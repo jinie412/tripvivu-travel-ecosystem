@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, Info } from 'lucide-react';
+import { Bell } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import { NotificationBell } from '../../../components/NotificationBell';
 import { AccordionCard, AlgoGroup, Tip } from './components/AlgorithmSettingsPrimitives';
@@ -12,6 +13,18 @@ import {
 import './AlgorithmSettings.css';
 
 type CardKey = 'weights' | 'classification' | 'conflict' | 'time' | 'twoTower';
+
+const notify = (icon: 'success' | 'error' | 'info', title: string) => {
+  void Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon,
+    title,
+    showConfirmButton: false,
+    timer: 5000,
+    timerProgressBar: true,
+  });
+};
 
 const outOfRange = (value: number, min: number, max: number) =>
   Number.isNaN(value) || value < min || value > max;
@@ -36,7 +49,6 @@ export const AlgorithmSettings: React.FC = () => {
   });
   const toggle = (key: CardKey) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const [banner, setBanner] = useState<string | null>(null);
   const [distanceWeight, setDistanceWeight] = useState(0.4);
   const [candidateCount, setCandidateCount] = useState(10);
   const [recommendationActive, setRecommendationActive] = useState<boolean | null>(null);
@@ -95,7 +107,7 @@ export const AlgorithmSettings: React.FC = () => {
         setCandidateCount(Number(data.candidate_count ?? 10));
         setRecommendationActive(Boolean(data.is_active));
       } catch {
-        if (alive) setBanner('Không thể tải cấu hình thuật toán gợi ý.');
+        if (alive) notify('error', 'Không thể tải cấu hình thuật toán gợi ý.');
       } finally {
         if (alive) setRecommendationLoading(false);
       }
@@ -107,7 +119,7 @@ export const AlgorithmSettings: React.FC = () => {
         const data = await algorithmSettingsAPI.getReviewFilterSettings();
         if (alive) applyReviewFilterSettings(data);
       } catch {
-        if (alive) setBanner('Không thể tải cấu hình thuật toán lọc đánh giá.');
+        if (alive) notify('error', 'Không thể tải cấu hình thuật toán lọc đánh giá.');
       } finally {
         if (alive) setReviewFilterLoading(false);
       }
@@ -123,11 +135,11 @@ export const AlgorithmSettings: React.FC = () => {
 
   const saveRecommendationSettings = async () => {
     if (outOfRange(distanceWeight, 0, 1)) {
-      setBanner('Trọng số khoảng cách phải nằm trong khoảng 0 - 1.');
+      notify('error', 'Trọng số khoảng cách phải nằm trong khoảng 0 - 1.');
       return;
     }
     if (outOfRange(candidateCount, 1, 50) || !Number.isInteger(candidateCount)) {
-      setBanner('Số địa điểm ứng viên phải là số nguyên trong khoảng 1 - 50.');
+      notify('error', 'Số địa điểm ứng viên phải là số nguyên trong khoảng 1 - 50.');
       return;
     }
 
@@ -140,9 +152,9 @@ export const AlgorithmSettings: React.FC = () => {
       setDistanceWeight(Number(data.distance_weight ?? distanceWeight));
       setCandidateCount(Number(data.candidate_count ?? candidateCount));
       setRecommendationActive(Boolean(data.is_active));
-      setBanner('Đã lưu cấu hình thuật toán gợi ý.');
+      notify('success', 'Đã lưu cấu hình thuật toán gợi ý.');
     } catch {
-      setBanner('Không thể lưu cấu hình thuật toán gợi ý. Vui lòng thử lại.');
+      notify('error', 'Không thể lưu cấu hình thuật toán gợi ý. Vui lòng thử lại.');
     } finally {
       setRecommendationSaving(false);
     }
@@ -176,11 +188,11 @@ export const AlgorithmSettings: React.FC = () => {
       if (!meta) continue;
       const unlimitedCandidates = name === 'max_candidates_per_review' && nextValue === 0;
       if (!unlimitedCandidates && outOfRange(nextValue, meta.minValue, meta.maxValue)) {
-        setBanner(`${meta.description || name} phải nằm trong khoảng ${meta.minValue} - ${meta.maxValue}.`);
+        notify('error', `${meta.description || name} phải nằm trong khoảng ${meta.minValue} - ${meta.maxValue}.`);
         return false;
       }
       if (integerParam(name) && !Number.isInteger(nextValue)) {
-        setBanner(`${meta.description || name} phải là số nguyên.`);
+        notify('error', `${meta.description || name} phải là số nguyên.`);
         return false;
       }
     }
@@ -195,9 +207,9 @@ export const AlgorithmSettings: React.FC = () => {
         parameters: Object.fromEntries(names.map((name) => [name, value(name)])),
       });
       applyReviewFilterSettings(data);
-      setBanner('Đã lưu tham số thuật toán lọc đánh giá.');
+      notify('success', 'Đã lưu tham số thuật toán lọc đánh giá.');
     } catch {
-      setBanner('Không thể lưu tham số thuật toán lọc đánh giá.');
+      notify('error', 'Không thể lưu tham số thuật toán lọc đánh giá.');
     } finally {
       setReviewFilterSaving(false);
     }
@@ -208,9 +220,9 @@ export const AlgorithmSettings: React.FC = () => {
     try {
       const data = await algorithmSettingsAPI.resetReviewFilterSettings();
       applyReviewFilterSettings(data);
-      setBanner('Đã khôi phục mặc định tham số thuật toán lọc đánh giá.');
+      notify('success', 'Đã khôi phục mặc định tham số thuật toán lọc đánh giá.');
     } catch {
-      setBanner('Không thể khôi phục mặc định tham số thuật toán lọc đánh giá.');
+      notify('error', 'Không thể khôi phục mặc định tham số thuật toán lọc đánh giá.');
     } finally {
       setReviewFilterSaving(false);
     }
@@ -278,16 +290,6 @@ export const AlgorithmSettings: React.FC = () => {
       </header>
 
       <div className="page-content as-content">
-        {banner && (
-          <div className="as-banner" role="alert">
-            <Info size={14} />
-            <span>{banner}</span>
-            <button className="as-banner__close" type="button" onClick={() => setBanner(null)} aria-label="Đóng">
-              x
-            </button>
-          </div>
-        )}
-
         <AlgoGroup title="Thuật toán gợi ý" badge={statusBadge(recommendationActive)}>
           <AccordionCard
             title="Cấu hình gợi ý"
@@ -499,7 +501,7 @@ export const AlgorithmSettings: React.FC = () => {
         </AlgoGroup>
 
         <AlgoGroup title="Thuật toán lập lịch">
-          <TwoTowerSettingsCard open={open.twoTower} onToggle={() => toggle('twoTower')} setBanner={setBanner} />
+          <TwoTowerSettingsCard open={open.twoTower} onToggle={() => toggle('twoTower')} notify={notify} />
         </AlgoGroup>
       </div>
     </div>

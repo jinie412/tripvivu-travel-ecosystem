@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AdminHeaderProfile } from '../../../components/AdminHeaderProfile';
 import { NotificationBell } from '../../../components/NotificationBell';
 import {
@@ -187,27 +188,28 @@ export const AlgorithmRunHistory: React.FC = () => {
                   <th>Ngày chạy</th>
                   <th>Thời gian</th>
                   <th>Trạng thái</th>
+                  <th>Người thực hiện</th>
                   <th>Kết quả chi tiết</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={5} className="arh-state">
+                    <td colSpan={6} className="arh-state">
                       Đang tải lịch sử...
                     </td>
                   </tr>
                 )}
                 {!loading && error && (
                   <tr>
-                    <td colSpan={5} className="arh-state arh-err-text">
+                    <td colSpan={6} className="arh-state arh-err-text">
                       {error}
                     </td>
                   </tr>
                 )}
                 {!loading && !error && rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="arh-state">
+                    <td colSpan={6} className="arh-state">
                       Chưa có lịch sử chạy thuật toán.
                     </td>
                   </tr>
@@ -226,6 +228,15 @@ export const AlgorithmRunHistory: React.FC = () => {
                             <span className="arh-badge__dot" />
                             {status === 'done' ? 'Hoàn thành' : 'Thất bại'}
                           </span>
+                        </td>
+                        <td>
+                          {row.admin_id ? (
+                            <Link className="arh-admin-link" to={`/admin/users/${row.admin_id}`}>
+                              {row.admin_name || 'Quản trị viên'}
+                            </Link>
+                          ) : (
+                            <span className="arh-muted">Hệ thống</span>
+                          )}
                         </td>
                         <td className={status === 'error' ? 'arh-err-text' : 'arh-muted'}>{getDetailText(row)}</td>
                       </tr>
