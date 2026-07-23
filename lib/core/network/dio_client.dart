@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'api_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:travel_advisor_mobile/core/services/auth_storage.dart';
@@ -36,13 +37,17 @@ class DioClient {
       ),
     );
 
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: false,
+          responseBody: false,
+          requestHeader: false,
+          responseHeader: false,
+        ),
+      );
+    }
     _dio.interceptors.addAll([
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false,
-        responseHeader: false,
-      ),
       DioCacheInterceptor(options: _cacheOptions),
       _AuthInterceptor(_dio),
     ]);

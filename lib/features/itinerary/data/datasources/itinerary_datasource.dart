@@ -373,16 +373,19 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       },
     );
 
-    print('DETAIL API STATUS: ${res.statusCode}');
-    print('DETAIL API BODY: ${res.body}');
+    if (kDebugMode) {
+      debugPrint('DETAIL API STATUS: ${res.statusCode}');
+    }
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       try {
         return ItineraryDetailModel.fromJson(data as Map<String, dynamic>);
       } catch (e, stack) {
-        print('DETAIL PARSE ERROR: $e');
-        print('DETAIL PARSE STACK: $stack');
+        if (kDebugMode) {
+          debugPrint('DETAIL PARSE ERROR: $e');
+          debugPrintStack(stackTrace: stack);
+        }
         rethrow;
       }
     } else {
@@ -397,6 +400,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     String id,
     List<ItineraryDayEntity> days,
   ) async {
+    final headers = await _authHeaders();
     final List<Map<String, dynamic>> daysJson = days.map((day) {
       return {
         'dayNumber': day.dayNumber,
@@ -419,7 +423,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
 
     final res = await http.patch(
       Uri.parse('$baseUrl/itinerary/$id/activities'),
-      headers: {'Content-Type': 'application/json'},
+      headers: headers,
       body: jsonEncode({'days': daysJson}),
     );
 

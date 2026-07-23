@@ -151,7 +151,13 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
           q: q,
         );
         if (isDefaultFeed) {
-          places = _filterTourismOnly(places);
+          final tourismPlaces = _filterTourismOnly(places);
+          // Backend already excludes food/accommodation for the default feed.
+          // Keep its valid results when a newly added category is not yet in
+          // the mobile keyword list instead of showing an empty suggestion UI.
+          if (tourismPlaces.isNotEmpty) {
+            places = tourismPlaces;
+          }
         }
       }
 

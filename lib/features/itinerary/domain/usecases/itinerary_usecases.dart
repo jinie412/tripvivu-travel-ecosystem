@@ -156,6 +156,9 @@ class AddActivityUseCase {
     String placeId, {
     String? preferredTime,
     bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
   }) {
     return _repository.addActivityToItinerary(
       itineraryId,
@@ -163,6 +166,9 @@ class AddActivityUseCase {
       placeId,
       preferredTime: preferredTime,
       isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+      addExtraDay: addExtraDay,
     );
   }
 }

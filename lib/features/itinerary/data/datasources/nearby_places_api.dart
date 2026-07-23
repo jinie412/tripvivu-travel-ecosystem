@@ -8,6 +8,7 @@ class NearbyPlaceModel {
   final String category;
   final double rating;
   final int reviewCount;
+  final double estimatedCost;
   final String imageUrl;
   final double? distanceKm;
   final double? latitude;
@@ -23,6 +24,7 @@ class NearbyPlaceModel {
     required this.category,
     required this.rating,
     required this.reviewCount,
+    this.estimatedCost = 0,
     required this.imageUrl,
     this.distanceKm,
     this.latitude,
@@ -39,6 +41,11 @@ class NearbyPlaceModel {
       category: json['category']?.toString() ?? 'Tham quan',
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+      estimatedCost: json['estimatedCost'] is num
+          ? (json['estimatedCost'] as num).toDouble()
+          : json['estimated_cost'] is num
+          ? (json['estimated_cost'] as num).toDouble()
+          : 0.0,
       imageUrl: json['imageUrl']?.toString() ?? 'https://placehold.co/1080x720?text=No+Image',
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       latitude: (json['latitude'] as num?)?.toDouble(),

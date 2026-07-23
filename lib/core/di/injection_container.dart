@@ -203,6 +203,7 @@ Future<void> initDependencies() async {
       searchShareRecipients: sl(),
       createShareLink: sl(),
       deleteActivity: sl(),
+      addActivity: sl(),
       optimizeDayUseCase: sl(),
     ),
   );

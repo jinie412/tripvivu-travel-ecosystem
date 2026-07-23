@@ -61,7 +61,9 @@ class _ItinerarySummaryScreenState extends State<ItinerarySummaryScreen> {
         final alreadyLoaded =
             state is ItineraryLoaded &&
             state.selectedItinerary?.id == widget.itineraryId;
-        if (!alreadyLoaded) {
+        if (alreadyLoaded) {
+          cubit.refreshDetail(widget.itineraryId);
+        } else {
           cubit.ensureItinerarySelected(widget.itineraryId);
         }
       });

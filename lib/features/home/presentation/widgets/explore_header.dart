@@ -161,6 +161,9 @@ class ExploreHeader extends StatelessWidget {
                                   size: AppSizes.iconMd,
                                 ),
                                 onPressed: () {
+                                  context
+                                      .read<NotificationCubit>()
+                                      .loadNotifications(silent: true);
                                   Scaffold.of(context).openEndDrawer();
                                 },
                               ),

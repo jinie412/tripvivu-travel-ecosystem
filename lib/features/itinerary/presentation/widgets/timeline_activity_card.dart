@@ -155,6 +155,7 @@ class TimelineActivityCard extends StatelessWidget {
           icon: _activityIcon,
           content: _buildActivityCard(context),
           showLine: true,
+          editsStartTime: true,
           isCompleted:
               activity.status == ActivityStatus.daDi ||
               trackingStatus?.status == VisitStatus.visited ||
@@ -171,6 +172,7 @@ class TimelineActivityCard extends StatelessWidget {
             icon: Icons.directions_car,
             content: _buildTransitionChip(),
             showLine: true,
+            editsStartTime: false,
             isTransition: true,
             isEditMode: isEditMode,
           ),
@@ -184,6 +186,7 @@ class TimelineActivityCard extends StatelessWidget {
             icon: Icons.flag_rounded,
             content: const SizedBox.shrink(),
             showLine: false,
+            editsStartTime: false,
             isTransition: true,
             isEditMode: isEditMode,
           ),
@@ -209,19 +212,19 @@ class TimelineActivityCard extends StatelessWidget {
     required IconData icon,
     required Widget content,
     required bool showLine,
+    required bool editsStartTime,
     bool isTransition = false,
     bool isCompleted = false,
     bool isEditMode = false,
   }) {
-    String _formatTime(String t) {
+    String formatTime(String t) {
       if (t.length >= 5) {
         return t.substring(0, 5);
       }
       return t;
     }
 
-    final formattedTime = _formatTime(time);
-    final isStartTime = label.contains('Tham quan');
+    final formattedTime = formatTime(time);
     final isAccommodationStart = _isAccommodationStart;
     return IntrinsicHeight(
       child: Row(
@@ -235,7 +238,7 @@ class TimelineActivityCard extends StatelessWidget {
               children: [
                 isEditMode
                     ? InkWell(
-                        onTap: isStartTime ? onStartTimeTap : onEndTimeTap,
+                        onTap: editsStartTime ? onStartTimeTap : onEndTimeTap,
                         borderRadius: BorderRadius.circular(4),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
@@ -506,53 +509,53 @@ class TimelineActivityCard extends StatelessWidget {
                               fontSize: 11,
                             ),
                           ),
-                        if (extraCost != null && extraCost! > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: GestureDetector(
-                              onTap: onExtraCostTap,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFF59E0B,
-                                  ).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.add_circle_outline,
-                                      size: 11,
-                                      color: Color(0xFFF59E0B),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${_formatPrice(extraCost!)} phát sinh',
-                                      style: AppTextStylesExt.bodySmall
-                                          .copyWith(
-                                            color: const Color(0xFFF59E0B),
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 10,
-                                          ),
-                                    ),
-                                    if (onExtraCostTap != null) ...[
-                                      const SizedBox(width: 2),
+                          if (extraCost != null && extraCost! > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: GestureDetector(
+                                onTap: onExtraCostTap,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFFF59E0B,
+                                    ).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
                                       const Icon(
-                                        Icons.chevron_right_rounded,
-                                        size: 12,
+                                        Icons.add_circle_outline,
+                                        size: 11,
                                         color: Color(0xFFF59E0B),
                                       ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${_formatPrice(extraCost!)} phát sinh',
+                                        style: AppTextStylesExt.bodySmall
+                                            .copyWith(
+                                              color: const Color(0xFFF59E0B),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 10,
+                                            ),
+                                      ),
+                                      if (onExtraCostTap != null) ...[
+                                        const SizedBox(width: 2),
+                                        const Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 12,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ],
                     ),
@@ -944,9 +947,7 @@ class TimelineActivityCard extends StatelessWidget {
                             Text(
                               'Ghi chi phí phát sinh',
                               style: AppTextStylesExt.bodySmall.copyWith(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.8,
-                                ),
+                                color: AppColors.primary.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11,
                               ),

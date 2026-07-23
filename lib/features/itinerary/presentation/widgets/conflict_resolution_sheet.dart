@@ -275,10 +275,7 @@ class ConflictResolutionSheet extends StatelessWidget {
       );
     }
 
-    return GestureDetector(
-      onTap: () => onSelect(0),
-      child: card,
-    );
+    return card;
   }
 
   Widget _tag(String text, Color bg, Color textCo) {

@@ -2,6 +2,7 @@ import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class OptimizeRouteApi {
   static Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})> optimizeDay(
@@ -12,12 +13,14 @@ class OptimizeRouteApi {
     /// ID của activity vừa được thêm mới — optimizer sẽ chèn nó vào vị trí tối ưu
     /// thay vì buộc nó phải đứng sau tất cả activities cũ.
     String? newActivityId,
-    String? editedActivityId,
+    Set<String> lockedActivityIds = const <String>{},
     /// Ngày tham quan "YYYY-MM-DD" — dùng để parse openHourCompressed đúng ngày
     /// (chợ đêm mở tối, bãi biển mở sáng, v.v.)
     String? visitDate,
   }) async {
-    if (activities.length <= 1) return (optimized: activities, reorderNotes: <String>[]);
+    if (activities.isEmpty) {
+      return (optimized: activities, reorderNotes: <String>[]);
+    }
 
     try {
       final client = sl<DioClient>();
@@ -51,8 +54,8 @@ class OptimizeRouteApi {
             'reviewCount':       a.reviewCount,
             // ─── Fields cho TSPTW ──────────────────────
             'durationMinutes':   duration,
-            'isLocked':          editedActivityId != null && a.id == editedActivityId,
-            'lockedArriveTime':  editedActivityId != null && a.id == editedActivityId ? a.startTime : null,
+            'isLocked':          lockedActivityIds.contains(a.id),
+            'lockedArriveTime':  lockedActivityIds.contains(a.id) ? a.startTime : null,
             'openHourCompressed': a.openHourCompressed,
             // is_new = true → optimizer có thể chèn activity này vào BẤT KỲ vị trí nào,
             // không bị ràng buộc phải đứng sau tất cả activity cũ.
@@ -109,7 +112,9 @@ class OptimizeRouteApi {
           throw Exception('SCHEDULE_FULL');
         }
       }
-      print('Error optimizing route: $e');
+      if (kDebugMode) {
+        debugPrint('Error optimizing route: $e');
+      }
       throw Exception('Không thể kết nối dịch vụ tối ưu lịch trình');
     }
   }

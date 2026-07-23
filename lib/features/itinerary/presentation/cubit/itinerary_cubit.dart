@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'itinerary_state.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
@@ -25,6 +26,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final SearchItineraryShareRecipientsUseCase _searchShareRecipients;
   final CreateItineraryShareLinkUseCase _createShareLink;
   final DeleteActivityUseCase _deleteActivity;
+  final AddActivityUseCase _addActivity;
   final OptimizeDayUseCase? optimizeDayUseCase;
 
   // Khung giờ ăn trưa — PHẢI khớp với LUNCH_START/LUNCH_END trong
@@ -37,6 +39,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   Timer? _searchDebounce;
   String _currentSearchQuery = '';
   int _loadGeneration = 0;
+  final Set<String> _manuallyEditedActivityIds = <String>{};
 
   ItineraryCubit({
     required GetItinerariesUseCase getItineraries,
@@ -50,6 +53,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required SearchItineraryShareRecipientsUseCase searchShareRecipients,
     required CreateItineraryShareLinkUseCase createShareLink,
     required DeleteActivityUseCase deleteActivity,
+    required AddActivityUseCase addActivity,
     this.optimizeDayUseCase,
   }) : _getItineraries = getItineraries,
        _getSummary = getSummary,
@@ -62,6 +66,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
        _searchShareRecipients = searchShareRecipients,
        _createShareLink = createShareLink,
        _deleteActivity = deleteActivity,
+       _addActivity = addActivity,
        super(const ItineraryInitial());
 
   static const bool kDemoMode = AppConfig.kUseMockData;
@@ -337,7 +342,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     final total = dec(summary.total);
     switch (status) {
       case ItineraryStatus.completed:
-        return summary.copyWith(total: total, completed: dec(summary.completed));
+        return summary.copyWith(
+          total: total,
+          completed: dec(summary.completed),
+        );
       case ItineraryStatus.upcoming:
         return summary.copyWith(total: total, upcoming: dec(summary.upcoming));
       case ItineraryStatus.ongoing:
@@ -388,6 +396,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   }
 
   Future<void> selectItinerary(String id) async {
+    _manuallyEditedActivityIds.clear();
     final currentState = state;
     if (currentState is ItineraryLoaded) {
       emit(currentState.copyWithSelected(null));
@@ -452,8 +461,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   /// Refresh chi tiết lịch trình mà không xóa dữ liệu hiện tại khỏi màn hình.
   /// Dùng cho pull-to-refresh: data cũ vẫn hiển thị, chỉ thay thế khi có data mới.
-  Future<void> refreshDetail(String id) async {
-    if (state is! ItineraryLoaded) return;
+  Future<bool> refreshDetail(String id) async {
+    if (state is! ItineraryLoaded) return false;
     try {
       final detail = await _getItineraryDetail(id);
       if (!isClosed && state is ItineraryLoaded) {
@@ -463,8 +472,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           ),
         );
       }
+      return true;
     } catch (_) {
       // Silent — không làm gián đoạn UI khi refresh lỗi
+      return false;
     }
   }
 
@@ -1313,6 +1324,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         return day.copyWith(activities: updatedActivities);
       }).toList();
 
+      _manuallyEditedActivityIds.add(activityId);
       emit(currentState.copyWithSelected(itin.copyWith(days: updatedDays)));
     }
   }
@@ -1323,7 +1335,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   //    — khớp đúng ràng buộc solver dùng khi tối ưu lại, không chỉ riêng giờ đến.
   // Cùng cơ chế với isRestaurant() bên api-service, thay vì đoán qua từ khóa category.
   bool isLunchActivity(ItineraryActivityEntity activity) {
-    final isFoodPlace = (activity.placeType ?? '').trim().toLowerCase() == 'restaurant';
+    final isFoodPlace =
+        (activity.placeType ?? '').trim().toLowerCase() == 'restaurant';
     if (!isFoodPlace) return false;
 
     return isWithinLunchWindow(activity.startTime, activity.endTime);
@@ -1376,11 +1389,20 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     bool protectLunchWindow = true,
   }) {
     if (state is! ItineraryLoaded) {
-      return (lunchWasPinned: false, lunchActivityTitle: null, lunchActivityId: null);
+      return (
+        lunchWasPinned: false,
+        lunchActivityTitle: null,
+        lunchActivityId: null,
+      );
     }
     final currentState = state as ItineraryLoaded;
     final itin = currentState.selectedItinerary;
-    if (itin == null) return (lunchWasPinned: false, lunchActivityTitle: null, lunchActivityId: null);
+    if (itin == null)
+      return (
+        lunchWasPinned: false,
+        lunchActivityTitle: null,
+        lunchActivityId: null,
+      );
 
     int toMin(String t) {
       final p = t.split(':');
@@ -1407,10 +1429,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         final proposedStart = shiftStartTimeOnly
             ? _shiftTimeStr(editedActivity.startTime, deltaMinutes)
             : editedActivity.startTime;
-        final proposedEnd = _shiftTimeStr(
-          editedActivity.endTime,
-          deltaMinutes,
-        );
+        final proposedEnd = _shiftTimeStr(editedActivity.endTime, deltaMinutes);
         if (!isWithinLunchWindow(proposedStart, proposedEnd)) {
           return (
             lunchWasPinned: true,
@@ -1437,7 +1456,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           if (!isLunchActivity(act)) continue;
           final newStartMin = toMin(act.startTime) + deltaMinutes;
           final newEndMin = toMin(act.endTime) + deltaMinutes;
-          if (newEndMin > _kLunchWindowEndMin || newStartMin < _kLunchWindowStartMin) {
+          if (newEndMin > _kLunchWindowEndMin ||
+              newStartMin < _kLunchWindowStartMin) {
             lunchIdx = i;
             lunchWasPinned = true;
             lunchActivityTitle = act.title;
@@ -1461,14 +1481,18 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         if (i == editedIdx) {
           // Activity đang chỉnh
           if (shiftStartTimeOnly) {
-            updatedActivities.add(activity.copyWith(
-              startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
-              endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-            ));
+            updatedActivities.add(
+              activity.copyWith(
+                startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+                endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+              ),
+            );
           } else {
-            updatedActivities.add(activity.copyWith(
-              endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-            ));
+            updatedActivities.add(
+              activity.copyWith(
+                endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+              ),
+            );
           }
           continue;
         }
@@ -1484,24 +1508,30 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           // Activity giữa activity được chỉnh và ăn trưa → tịnh tiến, clamp endTime
           final newEndMin = toMin(activity.endTime) + deltaMinutes;
           if (newEndMin > _kLunchWindowStartMin) {
-            updatedActivities.add(activity.copyWith(
-              startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
-              endTime: _minutesToTimeStr(_kLunchWindowStartMin),
-            ));
+            updatedActivities.add(
+              activity.copyWith(
+                startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+                endTime: _minutesToTimeStr(_kLunchWindowStartMin),
+              ),
+            );
           } else {
-            updatedActivities.add(activity.copyWith(
-              startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
-              endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-            ));
+            updatedActivities.add(
+              activity.copyWith(
+                startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+                endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+              ),
+            );
           }
           continue;
         }
 
         // i > lunchIdx (hoặc không có ăn trưa bị ghim) → tịnh tiến bình thường
-        updatedActivities.add(activity.copyWith(
-          startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
-          endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
-        ));
+        updatedActivities.add(
+          activity.copyWith(
+            startTime: _shiftTimeStr(activity.startTime, deltaMinutes),
+            endTime: _shiftTimeStr(activity.endTime, deltaMinutes),
+          ),
+        );
       }
 
       updatedActivities.sort((a, b) {
@@ -1513,6 +1543,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       return day.copyWith(activities: updatedActivities);
     }).toList();
 
+    _manuallyEditedActivityIds.add(activityId);
     emit(currentState.copyWithSelected(itin.copyWith(days: updatedDays)));
     return (
       lunchWasPinned: lunchWasPinned,
@@ -1549,6 +1580,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     bool allowReduceTime, {
     String? lockedActivityId,
     String? pinnedLunchActivityId,
+    String? movableActivityId,
   }) async {
     if (state is! ItineraryLoaded || optimizeDayUseCase == null) return [];
     final currentState = state as ItineraryLoaded;
@@ -1569,6 +1601,15 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
     if (dayData.activities.isEmpty) return [];
 
+    final lockedActivityIds = <String>{..._manuallyEditedActivityIds};
+    if (movableActivityId != null) {
+      lockedActivityIds.remove(movableActivityId);
+    }
+    if (lockedActivityId != null) lockedActivityIds.add(lockedActivityId);
+    if (pinnedLunchActivityId != null) {
+      lockedActivityIds.add(pinnedLunchActivityId);
+    }
+
     try {
       final payload = {
         'activities': dayData.activities
@@ -1587,8 +1628,8 @@ class ItineraryCubit extends Cubit<ItineraryState> {
                 'placeType': a.placeType,
                 'startTime': a.startTime,
                 'endTime': a.endTime,
-                'isLocked': a.id == lockedActivityId || a.id == pinnedLunchActivityId,
-                'lockedArriveTime': (a.id == lockedActivityId || a.id == pinnedLunchActivityId)
+                'isLocked': lockedActivityIds.contains(a.id),
+                'lockedArriveTime': lockedActivityIds.contains(a.id)
                     ? a.startTime
                     : null,
               },
@@ -1607,9 +1648,24 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         throw Exception('ACTIVITY_OVERLAP');
       }
 
+      final currentActivitiesById = <String, ItineraryActivityEntity>{
+        for (final activity in dayData.activities) activity.id: activity,
+      };
+      final mergedOptimized = result.optimized.map((optimized) {
+        final current = currentActivitiesById[optimized.id];
+        if (current == null) return optimized;
+        return current.copyWith(
+          startTime: optimized.startTime,
+          endTime: optimized.endTime,
+          transportInfo: optimized.transportInfo,
+          transitDistanceKm: optimized.transitDistanceKm,
+          transitDurationMinutes: optimized.transitDurationMinutes,
+        );
+      }).toList();
+
       final updatedDays = itin.days.map((day) {
         if (day.dayNumber == dayNumber) {
-          return day.copyWith(activities: result.optimized);
+          return day.copyWith(activities: mergedOptimized);
         }
         return day;
       }).toList();
@@ -1624,6 +1680,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
   void discardChanges(ItineraryDetailEntity snapshot) {
     if (state is ItineraryLoaded) {
+      _manuallyEditedActivityIds.clear();
       emit((state as ItineraryLoaded).copyWithSelected(snapshot));
     }
   }
@@ -1639,6 +1696,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     if (itin == null) {
       return (success: false, error: 'Không tìm thấy lịch trình để lưu');
     }
+    final effectiveItineraryId = id.trim();
+    if (effectiveItineraryId.isEmpty) {
+      return (
+        success: false,
+        error: 'Không thể xác định lịch trình. Vui lòng tải lại trang.',
+      );
+    }
+    if (itin.id.trim() != effectiveItineraryId) {
+      return (
+        success: false,
+        error: 'Dữ liệu lịch trình đã thay đổi. Vui lòng tải lại trang.',
+      );
+    }
 
     // Optimistic: cập nhật UI ngay bằng dữ liệu đã có trong memory,
     // không cần re-fetch vì server vừa nhận đúng data này.
@@ -1646,17 +1716,134 @@ class ItineraryCubit extends Cubit<ItineraryState> {
 
     try {
       if (!kDemoMode) {
-        await _updateActivities(id, itin.days);
-        // Sau khi lưu xong, gọi selectItinerary để lấy data chuẩn xác từ DB (có thể AI vừa re-optimize)
-        await selectItinerary(id);
+        final pendingActivities =
+            <({int dayNumber, ItineraryActivityEntity activity})>[];
+        final uuidPattern = RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+          caseSensitive: false,
+        );
+        for (final day in itin.days) {
+          for (final activity in day.activities) {
+            if (!uuidPattern.hasMatch(activity.id) &&
+                activity.placeId?.isNotEmpty == true) {
+              pendingActivities.add((
+                dayNumber: day.dayNumber,
+                activity: activity,
+              ));
+            }
+          }
+        }
+
+        bool containsPendingActivity(
+          ItineraryDetailEntity detail,
+          ({int dayNumber, ItineraryActivityEntity activity}) pending,
+        ) {
+          final dayIndex = detail.days.indexWhere(
+            (day) => day.dayNumber == pending.dayNumber,
+          );
+          if (dayIndex < 0) return false;
+          return detail.days[dayIndex].activities.any(
+            (activity) => activity.placeId == pending.activity.placeId,
+          );
+        }
+
+        await _updateActivities(effectiveItineraryId, itin.days);
+        var persistedDetail = await _getItineraryDetail(effectiveItineraryId);
+        var missingActivities = pendingActivities
+            .where(
+              (pending) => !containsPendingActivity(persistedDetail, pending),
+            )
+            .toList();
+
+        if (missingActivities.isNotEmpty) {
+          var knownMaxDay = persistedDetail.days.fold<int>(
+            0,
+            (maxDay, day) => math.max(maxDay, day.dayNumber),
+          );
+          for (final pending in missingActivities) {
+            final addExtraDay = pending.dayNumber > knownMaxDay;
+            await _addActivity(
+              effectiveItineraryId,
+              pending.dayNumber,
+              pending.activity.placeId!,
+              preferredTime: pending.activity.startTime,
+              isLocked: true,
+              allowReduceTime: true,
+              addExtraDay: addExtraDay,
+            );
+            knownMaxDay = math.max(knownMaxDay, pending.dayNumber);
+          }
+
+          persistedDetail = await _getItineraryDetail(effectiveItineraryId);
+          final reconciledDays = itin.days.map((localDay) {
+            final persistedDayIndex = persistedDetail.days.indexWhere(
+              (day) => day.dayNumber == localDay.dayNumber,
+            );
+            if (persistedDayIndex < 0) return localDay;
+            final persistedDay = persistedDetail.days[persistedDayIndex];
+            final reconciledActivities = localDay.activities.map((local) {
+              if (uuidPattern.hasMatch(local.id) || local.placeId == null) {
+                return local;
+              }
+              final persistedIndex = persistedDay.activities.indexWhere(
+                (saved) => saved.placeId == local.placeId,
+              );
+              if (persistedIndex < 0) return local;
+              return local.copyWith(
+                id: persistedDay.activities[persistedIndex].id,
+              );
+            }).toList();
+            return localDay.copyWith(activities: reconciledActivities);
+          }).toList();
+
+          await _updateActivities(effectiveItineraryId, reconciledDays);
+          persistedDetail = await _getItineraryDetail(effectiveItineraryId);
+          missingActivities = pendingActivities
+              .where(
+                (pending) => !containsPendingActivity(persistedDetail, pending),
+              )
+              .toList();
+        }
+
+        if (missingActivities.isNotEmpty) {
+          throw Exception(
+            'Máy chủ chưa lưu được ${missingActivities.length} địa điểm mới',
+          );
+        }
+
+        _manuallyEditedActivityIds.clear();
+        emit(currentState.copyWithSelected(persistedDetail));
       }
       return (success: true, error: null);
     } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
+      final technicalMessage = e.toString().replaceFirst('Exception: ', '');
+      if (kDebugMode) {
+        debugPrint('confirmUpdateItinerary failed: $technicalMessage');
+      }
+      final normalized = technicalMessage.toLowerCase();
+      // Các lỗi nghiệp vụ từ backend (LUNCH_CONFLICT, ACTIVITY_OVERLAP,
+      // INVALID_ACTIVITY_TIME, địa điểm không tồn tại...) đã là câu tiếng Việt
+      // dễ hiểu — hiện thẳng ra thay vì nuốt vào thông báo chung chung, để
+      // người dùng biết chính xác cần sửa gì trước khi lưu lại.
+      final looksTechnical =
+          normalized.contains('exception') ||
+          normalized.contains('socket') ||
+          normalized.contains('timeout') ||
+          normalized.contains('format') ||
+          normalized.contains('http status');
+      final userMessage =
+          normalized.contains('itinerary not found') ||
+              normalized.contains('không tìm thấy lịch trình')
+          ? 'Lịch trình không còn tồn tại. Vui lòng tải lại danh sách.'
+          : normalized.contains('máy chủ chưa lưu được')
+          ? 'Một số địa điểm chưa được lưu. Vui lòng thử lại.'
+          : (!looksTechnical && technicalMessage.trim().isNotEmpty)
+          ? technicalMessage
+          : 'Không thể lưu thay đổi. Vui lòng thử lại.';
       // Rollback về state cũ nếu API lỗi
-      emit(ItineraryError('Không thể cập nhật lịch trình: $message'));
+      emit(ItineraryError(userMessage));
       emit(currentState);
-      return (success: false, error: message);
+      return (success: false, error: userMessage);
     }
   }
 
@@ -1773,6 +1960,13 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         newActs[i - 1] = newActs[i - 1].copyWith(
           transportInfo: _transitLabel(travel.minutes, travel.km),
         );
+      }
+
+      // Hoạt động ăn trưa (đã nằm trong khung 10:30-14:00 trước khi dồn giờ)
+      // không được đẩy sớm hơn 10:30 khi dồn lịch — nếu không, backend sẽ
+      // chặn lưu bằng lỗi LUNCH_CONFLICT sau khi xóa một hoạt động phía trước.
+      if (isLunchActivity(act) && currentMin < _kLunchWindowStartMin) {
+        currentMin = _kLunchWindowStartMin;
       }
 
       final arrivalTime = minutesToTime(currentMin);
@@ -1951,13 +2145,17 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? address,
     String? category,
     String? openHourCompressed,
+    double price = 0,
     int durationMinutes = 60,
     bool allowReduceTime = false,
     bool extendTime = false,
     bool addExtraDay = false,
+    bool previewOnly = false,
+    bool evaluateAlternatives = true,
+    ItineraryLoaded? previewSourceState,
   }) async {
-    if (state is! ItineraryLoaded) return null;
-    final currentState = state as ItineraryLoaded;
+    if (previewSourceState == null && state is! ItineraryLoaded) return null;
+    final currentState = previewSourceState ?? state as ItineraryLoaded;
     final itin = currentState.selectedItinerary;
     if (itin == null) return null;
 
@@ -1971,12 +2169,19 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         address: address,
         category: category,
         openHourCompressed: openHourCompressed,
+        price: price,
         durationMinutes: durationMinutes,
         allowReduceTime: allowReduceTime,
+        previewOnly: previewOnly,
+        previewSourceState: currentState,
       );
     }
 
-    emit(const ItineraryLoading(message: 'Đang tìm vị trí phù hợp để thêm...'));
+    if (!previewOnly) {
+      emit(
+        const ItineraryLoading(message: 'Đang tìm vị trí phù hợp để thêm...'),
+      );
+    }
 
     int targetDayNumber = -1;
     List<ItineraryDayEntity>? updatedDaysResult;
@@ -1998,8 +2203,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     // 5 phút buffer di chuyển tối thiểu trước khi hoạt động mới bắt đầu
     const kTravelBufferMin = 5;
 
-    bool possibleToReduce = false;
-
     for (int i = 0; i < itin.days.length; i++) {
       int checkDayNum = ((dayNumber - 1 + i) % itin.days.length) + 1;
       final dayToTest = itin.days.firstWhere((d) => d.dayNumber == checkDayNum);
@@ -2013,22 +2216,6 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       final estimatedEndMin =
           timeToMinutes(startTime) + kTravelBufferMin + durationMinutes;
       if (estimatedEndMin > dailyEndMin && !extendTime && !allowReduceTime) {
-        int totalReducible = 0;
-        for (final act in dayToTest.activities) {
-          int actDuration =
-              timeToMinutes(act.endTime) - timeToMinutes(act.startTime);
-          if (actDuration <= 0) actDuration = 60;
-          int minDur = (actDuration ~/ 2) < 15 ? 15 : (actDuration ~/ 2);
-          totalReducible += (actDuration - minDur);
-        }
-        int newMinDur = (durationMinutes ~/ 2) < 15
-            ? 15
-            : (durationMinutes ~/ 2);
-        totalReducible += (durationMinutes - newMinDur);
-
-        if (estimatedEndMin - totalReducible <= dailyEndMin) {
-          possibleToReduce = true;
-        }
         continue; // Ngày này không đủ chỗ về thời gian, thử ngày tiếp theo
       }
 
@@ -2039,6 +2226,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         locationName: placeName,
         address: address ?? '',
         imageUrl: imageUrl ?? 'https://placehold.co/1080x720?text=New+Place',
+        price: price,
         startTime: startTime,
         endTime: endTime,
         latitude: lat,
@@ -2074,6 +2262,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         if (e.toString().contains('SCHEDULE_FULL')) {
           continue; // Try next day
         }
+        if (!previewOnly) {
+          emit(currentState);
+        }
         rethrow;
       }
 
@@ -2092,21 +2283,92 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
 
     if (targetDayNumber == -1 || updatedDaysResult == null) {
-      // Khôi phục state cũ nhưng KHÔNG emit lỗi cứng ở đây, trả về để UI hỏi người dùng
-      emit(currentState);
+      var canExtend = false;
+      var canReduce = false;
+      var canAddDay = false;
+      try {
+        if (evaluateAlternatives) {
+          final previews = await Future.wait([
+            addActivityToDay(
+              dayNumber,
+              placeId,
+              placeName,
+              lat: lat,
+              lng: lng,
+              imageUrl: imageUrl,
+              address: address,
+              category: category,
+              openHourCompressed: openHourCompressed,
+              price: price,
+              durationMinutes: durationMinutes,
+              extendTime: true,
+              previewOnly: true,
+              evaluateAlternatives: false,
+              previewSourceState: currentState,
+            ),
+            addActivityToDay(
+              dayNumber,
+              placeId,
+              placeName,
+              lat: lat,
+              lng: lng,
+              imageUrl: imageUrl,
+              address: address,
+              category: category,
+              openHourCompressed: openHourCompressed,
+              price: price,
+              durationMinutes: durationMinutes,
+              allowReduceTime: true,
+              previewOnly: true,
+              evaluateAlternatives: false,
+              previewSourceState: currentState,
+            ),
+            addActivityToDay(
+              dayNumber,
+              placeId,
+              placeName,
+              lat: lat,
+              lng: lng,
+              imageUrl: imageUrl,
+              address: address,
+              category: category,
+              openHourCompressed: openHourCompressed,
+              price: price,
+              durationMinutes: durationMinutes,
+              addExtraDay: true,
+              previewOnly: true,
+              evaluateAlternatives: false,
+              previewSourceState: currentState,
+            ),
+          ]);
+          final extendPreview = previews[0];
+          canExtend = extendPreview != null && !extendPreview.isFull;
+          final reducePreview = previews[1];
+          canReduce = reducePreview != null && !reducePreview.isFull;
+          final addDayPreview = previews[2];
+          canAddDay = addDayPreview != null && !addDayPreview.isFull;
+        }
+      } finally {
+        if (!previewOnly) {
+          emit(currentState);
+        }
+      }
+
       return (
         activityId: null,
         dayNumber: null,
         isFull: true,
-        canReduceTime: !allowReduceTime && possibleToReduce,
-        canExtend: true,
-        canAddDay: true,
+        canReduceTime: canReduce,
+        canExtend: canExtend,
+        canAddDay: canAddDay,
         reorderNotes: <String>[],
       );
     }
 
     final newItin = itin.copyWith(days: updatedDaysResult);
-    emit(currentState.copyWithSelected(newItin));
+    if (!previewOnly) {
+      emit(currentState.copyWithSelected(newItin));
+    }
 
     return (
       activityId: newActivityId,
@@ -2139,46 +2401,105 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     String? address,
     String? category,
     String? openHourCompressed,
+    double price = 0,
     int durationMinutes = 60,
     bool allowReduceTime = false,
+    bool previewOnly = false,
+    ItineraryLoaded? previewSourceState,
   }) async {
-    if (state is! ItineraryLoaded) return null;
-    final currentState = state as ItineraryLoaded;
+    if (previewSourceState == null && state is! ItineraryLoaded) return null;
+    final currentState = previewSourceState ?? state as ItineraryLoaded;
     final itin = currentState.selectedItinerary;
     if (itin == null) return null;
 
     final newDayNumber = itin.days.length + 1;
     final newDate = itin.days.last.date.add(const Duration(days: 1));
 
+    final window = resolveTimeWindow(itin);
+    final temporaryActivityId =
+        '${DateTime.now().microsecondsSinceEpoch}_preview_day';
+    final newActivity = ItineraryActivityEntity(
+      id: temporaryActivityId,
+      placeId: placeId,
+      title: placeName,
+      locationName: placeName,
+      address: address ?? '',
+      imageUrl: imageUrl ?? 'https://placehold.co/1080x720?text=New+Place',
+      price: price,
+      startTime: window.startTime,
+      endTime: _shiftTimeStr(window.startTime, durationMinutes),
+      latitude: lat,
+      longitude: lng,
+      category: category,
+      openHourCompressed: openHourCompressed,
+    );
     final newDay = ItineraryDayEntity(
       dayNumber: newDayNumber,
       date: newDate,
       totalDuration: '0h',
       locationsCount: 0,
       dayBudget: 0.0,
-      activities: [],
+      activities: [newActivity],
     );
 
-    final newItin = itin.copyWith(
-      days: [...itin.days, newDay],
-      endDate: newDate,
-    );
+    try {
+      final optimizeResult = await _optimizeSpecificDay(
+        [...itin.days, newDay],
+        newDayNumber,
+        dailyStartTime: window.startTime,
+        dailyEndTime: window.endTime,
+        allowReduceTime: allowReduceTime,
+        newActivityId: temporaryActivityId,
+        visitDate: newDate,
+      );
+      final optimizedNewDay = optimizeResult.days.firstWhere(
+        (day) => day.dayNumber == newDayNumber,
+      );
+      final wasPlaced = optimizedNewDay.activities.any(
+        (activity) => activity.id == temporaryActivityId,
+      );
+      if (!wasPlaced) {
+        return (
+          activityId: null,
+          dayNumber: null,
+          isFull: true,
+          canReduceTime: false,
+          canExtend: false,
+          canAddDay: false,
+          reorderNotes: <String>[],
+        );
+      }
 
-    emit(currentState.copyWithSelected(newItin));
-
-    return await addActivityToDay(
-      newDayNumber,
-      placeId,
-      placeName,
-      lat: lat,
-      lng: lng,
-      imageUrl: imageUrl,
-      address: address,
-      category: category,
-      openHourCompressed: openHourCompressed,
-      durationMinutes: durationMinutes,
-      allowReduceTime: false,
-    );
+      if (!previewOnly) {
+        emit(
+          currentState.copyWithSelected(
+            itin.copyWith(days: optimizeResult.days, endDate: newDate),
+          ),
+        );
+      }
+      return (
+        activityId: temporaryActivityId,
+        dayNumber: newDayNumber,
+        isFull: false,
+        canReduceTime: false,
+        canExtend: false,
+        canAddDay: true,
+        reorderNotes: optimizeResult.reorderNotes,
+      );
+    } catch (e) {
+      if (e.toString().contains('SCHEDULE_FULL')) {
+        return (
+          activityId: null,
+          dayNumber: null,
+          isFull: true,
+          canReduceTime: false,
+          canExtend: false,
+          canAddDay: false,
+          reorderNotes: <String>[],
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Tổng khoảng cách Haversine của toàn bộ lộ trình (km).
@@ -2263,6 +2584,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }).toList();
 
       if (updatedDayNum != null) {
+        _manuallyEditedActivityIds.remove(activityId);
         // Optimistic UI update: xóa ngay lập tức khỏi màn hình
         emit(currentState.copyWithSelected(itin.copyWith(days: updatedDays)));
 
@@ -2297,7 +2619,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required String editedActivityId,
   }) async {
     try {
-      final itin = state is ItineraryLoaded ? (state as ItineraryLoaded).selectedItinerary : null;
+      final itin = state is ItineraryLoaded
+          ? (state as ItineraryLoaded).selectedItinerary
+          : null;
       if (itin == null) {
         return (error: 'Không tìm thấy lịch trình.', reorderNotes: <String>[]);
       }
@@ -2308,6 +2632,7 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       }
 
       final day = itin.days[dayIndex];
+      _manuallyEditedActivityIds.add(editedActivityId);
 
       final optimizeResult = await _optimizeSpecificDay(
         itin.days,
@@ -2316,11 +2641,11 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         visitDate: day.date,
         allowReduceTime: true,
       );
-      emit((state as ItineraryLoaded).copyWith(
-        selectedItinerary: itin.copyWith(
-          days: optimizeResult.days,
+      emit(
+        (state as ItineraryLoaded).copyWith(
+          selectedItinerary: itin.copyWith(days: optimizeResult.days),
         ),
-      ));
+      );
       return (error: null, reorderNotes: optimizeResult.reorderNotes);
     } catch (e) {
       if (e.toString().contains('SCHEDULE_FULL')) {
@@ -2360,7 +2685,10 @@ class ItineraryCubit extends Cubit<ItineraryState> {
           dailyEndTime: dailyEndTime,
           allowReduceTime: allowReduceTime,
           newActivityId: newActivityId,
-          editedActivityId: editedActivityId,
+          lockedActivityIds: <String>{
+            ..._manuallyEditedActivityIds,
+            if (editedActivityId != null) editedActivityId,
+          },
           visitDate: visitDateStr,
         );
         final optimized = result.optimized;
