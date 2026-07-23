@@ -207,6 +207,24 @@ export const ReviewManagement: React.FC = () => {
     setItineraryStats(latestStats);
   };
 
+  const handleUpdateLocationVisibility = async (
+    reviewId: string,
+    hidden: boolean,
+    reason?: string,
+  ) => {
+    if (hidden) {
+      if (!reason?.trim()) {
+        throw new Error('Hide reason is required');
+      }
+      await reviewAPI.hideReview(reviewId, reason.trim());
+    } else {
+      await reviewAPI.unhideReview(reviewId);
+    }
+
+    const latestStats = await reviewAPI.getReviewStats();
+    setLocationStats(latestStats);
+  };
+
   const activeStats = activeTab === 'location' ? locationStats : itineraryStats;
   const activeReviews = activeTab === 'location' ? locationReviews : itineraryReviews;
   const activeTotal = activeTab === 'location' ? locationTotal : itineraryTotal;
@@ -273,6 +291,7 @@ export const ReviewManagement: React.FC = () => {
             itemsPerPage={itemsPerPage}
             onPageChange={setCurrentPage}
             onStatusChange={handleStatusChange}
+            onVisibilityChange={activeTab === 'location' ? handleUpdateLocationVisibility : undefined}
             showClassification={activeTab === 'location'}
             targetColumnLabel={activeTab === 'location' ? 'ĐỊA ĐIỂM' : 'LỊCH TRÌNH'}
             rowNavigatePath={activeTab === 'itinerary' ? '/admin/itinerary-reviews' : '/admin/reviews'}

@@ -9,6 +9,8 @@ export interface Review {
   reviewType?: string;
   date: string;
   status: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
+  hiddenReason?: string | null;
+  hiddenAt?: string | null;
   classification?: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
 }
 
@@ -49,6 +51,8 @@ export interface ReviewDetailInfo {
   // Báo cáo vi phạm từ người dùng
   status?: 'Chờ duyệt' | 'Đã duyệt' | 'Vi phạm' | 'Đã ẩn';
   violation_reason?: string | null;
+  hiddenReason?: string | null;
+  hiddenAt?: string | null;
   classification: 'Ngắn hạn' | 'Dài hạn' | 'Cần xử lý' | 'Chưa phân loại';
   classificationReason?: string | null;
   predictedTimeLabel?: 'Ngắn hạn' | 'Dài hạn' | null;

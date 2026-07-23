@@ -17,6 +17,8 @@ interface BackendReviewItem {
   main_topic: string | null;
   time_label: string | null;
   status: BackendReviewStatus;
+  hidden_reason: string | null;
+  hidden_at: string | null;
   created_at: string;
 }
 
@@ -59,6 +61,8 @@ interface BackendReviewDetailResponse {
   images: Array<{ url: string }>;
   status: BackendReviewStatus;
   violation_reason: string | null;
+  hidden_reason: string | null;
+  hidden_at: string | null;
   created_at: string;
 }
 
@@ -195,6 +199,8 @@ const mapReview = (item: BackendReviewItem): Review => ({
   reviewType: item.review_type,
   date: formatDateTime(item.created_at),
   status: mapStatus(item.status),
+  hiddenReason: item.hidden_reason ?? null,
+  hiddenAt: item.hidden_at ?? null,
   classification:
     item.review_type === 'with_content'
       ? mapClassification(item.time_label)
@@ -217,6 +223,8 @@ const mapReviewDetail = (item: BackendReviewDetailResponse): ReviewDetailInfo =>
   images: item.images.map((image) => image.url),
   status: mapStatus(item.status),
   violation_reason: item.violation_reason ?? null,
+  hiddenReason: item.hidden_reason ?? null,
+  hiddenAt: item.hidden_at ? formatDateTime(item.hidden_at) : null,
   classification:
     item.review_type === 'with_content'
       ? mapClassification(item.time_label)
@@ -336,6 +344,14 @@ export const reviewAPI = {
       status: 'violation',
       reason: reason || 'Đánh giá vi phạm chính sách nội dung.',
     });
+  },
+
+  hideReview: async (id: string, reason: string): Promise<void> => {
+    await apiClient.put(`/admin/reviews/${id}/hide`, { reason });
+  },
+
+  unhideReview: async (id: string): Promise<void> => {
+    await apiClient.put(`/admin/reviews/${id}/unhide`);
   },
 
   updateReviewTimeLabel: async (

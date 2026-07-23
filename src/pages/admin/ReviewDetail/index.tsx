@@ -77,6 +77,7 @@ export const ReviewDetail: React.FC = () => {
   const handleUpdateClassification = async (newType: 'Ngắn hạn' | 'Dài hạn') => {
     if (!review) return;
     if (!id) return;
+    if (review.status === 'Đã ẩn') return;
 
     try {
       const result = await reviewAPI.updateReviewTimeLabel(id, newType);
@@ -121,6 +122,66 @@ export const ReviewDetail: React.FC = () => {
     }
   };
 
+  const handleVisibilityChange = async (hidden: boolean) => {
+    if (!review || !id) return;
+
+    let reason: string | undefined;
+    if (hidden) {
+      const result = await Swal.fire({
+        title: 'Ẩn đánh giá',
+        input: 'text',
+        inputLabel: 'Nhập lý do ẩn đánh giá',
+        inputPlaceholder: 'Lý do ẩn...',
+        inputAttributes: { maxlength: '500' },
+        showCancelButton: true,
+        confirmButtonText: 'Ẩn đánh giá',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: '#64748b',
+        inputValidator: (value) => value.trim() ? undefined : 'Vui lòng nhập lý do ẩn đánh giá.',
+      });
+      if (!result.isConfirmed) return;
+      reason = typeof result.value === 'string' ? result.value.trim() : undefined;
+    } else {
+      const result = await Swal.fire({
+        title: 'Cho hiển thị lại đánh giá?',
+        text: 'Đánh giá sẽ được chuyển về trạng thái Đã duyệt và hiển thị với người dùng.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Hiển thị lại',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: '#2563eb',
+      });
+      if (!result.isConfirmed) return;
+    }
+
+    setUpdatingStatus(true);
+    try {
+      if (hidden) {
+        await reviewAPI.hideReview(id, reason as string);
+        const now = new Date();
+        setReview({
+          ...review,
+          status: 'Đã ẩn',
+          hiddenReason: reason,
+          hiddenAt: `${now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${now.toLocaleDateString('vi-VN')}`,
+        });
+      } else {
+        await reviewAPI.unhideReview(id);
+        setReview({
+          ...review,
+          status: 'Đã duyệt',
+          hiddenReason: null,
+          hiddenAt: null,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update review visibility', error);
+      Swal.fire({ text: 'Không thể cập nhật khả năng hiển thị đánh giá. Vui lòng thử lại.', icon: 'error' });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const hasContent = Boolean(
     review?.content && review.content.trim() !== '' && review.content !== '(Không có nội dung)',
   );
@@ -150,16 +211,19 @@ export const ReviewDetail: React.FC = () => {
             <div className="rd-col-main" style={{ width: '100%' }}>
               <ReviewHeader review={review} />
 
-              {(review.status !== 'Đã ẩn' || showClassification) && (
+              {(review.status || showClassification) && (
                 <div style={{ display: 'flex', gap: 20, alignItems: 'stretch', marginBottom: 20 }}>
-                  {review.status !== 'Đã ẩn' && (
+                  {review.status && (
                     <div style={{ flex: 1 }}>
                       <ReviewStatusBanner
                         status={review.status}
                         violationReason={review.violation_reason}
+                        hiddenReason={review.hiddenReason}
+                        hiddenAt={review.hiddenAt}
                         getTranslatedReason={getTranslatedReason}
                         updating={updatingStatus}
                         onUpdateStatus={handleUpdateStatus}
+                        onVisibilityChange={handleVisibilityChange}
                       />
                     </div>
                   )}
@@ -169,6 +233,7 @@ export const ReviewDetail: React.FC = () => {
                         classification={review.classification}
                         classificationReason={review.classificationReason}
                         predictedTimeLabel={review.predictedTimeLabel}
+                        readOnly={review.status === 'Đã ẩn'}
                         onUpdateClassification={handleUpdateClassification}
                       />
                     </div>

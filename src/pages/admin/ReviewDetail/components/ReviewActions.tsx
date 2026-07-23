@@ -7,6 +7,7 @@ interface ReviewActionsProps {
   classificationReason?: string | null;
   predictedTimeLabel?: 'Ngắn hạn' | 'Dài hạn' | null;
   hasContent?: boolean;
+  readOnly?: boolean;
   onUpdateClassification: (newType: 'Ngắn hạn' | 'Dài hạn') => Promise<void> | void;
 }
 
@@ -16,6 +17,7 @@ export const ReviewActions: React.FC<ReviewActionsProps> = ({
   classificationReason,
   predictedTimeLabel,
   hasContent = true,
+  readOnly = false,
   onUpdateClassification
 }) => {
   const [selectedType, setSelectedType] = useState<'Ngắn hạn' | 'Dài hạn' | null>(
@@ -65,26 +67,43 @@ export const ReviewActions: React.FC<ReviewActionsProps> = ({
               </span>
             </span>
           </p>
-          <div className="rd-toggle-group">
-            <button 
-              type="button"
-              className={`rd-toggle-btn rd-toggle-btn--short-term ${selectedType === 'Ngắn hạn' ? 'active' : ''}`}
-              disabled={updatingType}
-              onClick={() => handleTypeSelect('Ngắn hạn')}
-            >
-              <Clock size={15} />
-              <span>Ngắn hạn</span>
-            </button>
-            <button 
-              type="button"
-              className={`rd-toggle-btn rd-toggle-btn--long-term ${selectedType === 'Dài hạn' ? 'active' : ''}`}
-              disabled={updatingType}
-              onClick={() => handleTypeSelect('Dài hạn')}
-            >
-              <Calendar size={15} />
-              <span>Dài hạn</span>
-            </button>
-          </div>
+          {readOnly ? (
+            <div className={`rd-classification-readonly rd-classification-readonly--${
+              selectedType === 'Dài hạn'
+                ? 'long-term'
+                : selectedType === 'Ngắn hạn'
+                  ? 'short-term'
+                  : 'need-action'
+            }`}>
+              {selectedType === 'Dài hạn'
+                ? <Calendar size={15} />
+                : selectedType === 'Ngắn hạn'
+                  ? <Clock size={15} />
+                  : <Info size={15} />}
+              <span>{classification}</span>
+            </div>
+          ) : (
+            <div className="rd-toggle-group">
+              <button
+                type="button"
+                className={`rd-toggle-btn rd-toggle-btn--short-term ${selectedType === 'Ngắn hạn' ? 'active' : ''}`}
+                disabled={updatingType}
+                onClick={() => handleTypeSelect('Ngắn hạn')}
+              >
+                <Clock size={15} />
+                <span>Ngắn hạn</span>
+              </button>
+              <button
+                type="button"
+                className={`rd-toggle-btn rd-toggle-btn--long-term ${selectedType === 'Dài hạn' ? 'active' : ''}`}
+                disabled={updatingType}
+                onClick={() => handleTypeSelect('Dài hạn')}
+              >
+                <Calendar size={15} />
+                <span>Dài hạn</span>
+              </button>
+            </div>
+          )}
           {classification === 'Cần xử lý' && (classificationReason || predictedTimeLabel) && (
             <div className="rd-classification-suggestion">
               {classificationReason && (

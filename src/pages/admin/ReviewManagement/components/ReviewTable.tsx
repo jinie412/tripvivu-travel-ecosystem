@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Review } from '../../../../types/review';
-import { Star, ChevronDown, CheckCircle, AlertTriangle, EyeOff, Info, Clock } from 'lucide-react';
+import { Star, ChevronDown, CheckCircle, AlertTriangle, Eye, EyeOff, Info, Clock } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 interface ReviewTableProps {
@@ -13,6 +13,7 @@ interface ReviewTableProps {
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onStatusChange: (id: string, status: Review['status']) => Promise<void>;
+  onVisibilityChange?: (id: string, hidden: boolean, reason?: string) => Promise<void>;
   showClassification?: boolean;
   targetColumnLabel?: string;
   disableRowNavigation?: boolean;
@@ -74,12 +75,59 @@ const ClassificationTooltip = () => {
   );
 };
 
+const StatusTooltip = () => {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLSpanElement>(null);
+
+  const showTooltip = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPosition({
+      top: rect.bottom + 10,
+      left: rect.left + rect.width / 2,
+    });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className="rv-info-tip"
+        tabIndex={0}
+        aria-label="Giải thích trạng thái đánh giá"
+        onMouseEnter={showTooltip}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={showTooltip}
+        onBlur={() => setOpen(false)}
+      >
+        <Info size={14} />
+      </span>
+      {open &&
+        createPortal(
+          <div
+            className="rv-info-popover"
+            style={{ top: position.top, left: position.left }}
+            role="tooltip"
+          >
+            <strong>Đã duyệt / Vi phạm:</strong> kết quả kiểm duyệt nội dung đánh giá.
+            <br />
+            <strong>Đã ẩn:</strong> đánh giá không còn hiển thị với người dùng, nhưng vẫn được lưu trong hệ thống.
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+};
+
 /** Dropdown chỉnh trạng thái riêng lẻ */
 const StatusDropdown: React.FC<{
   reviewId: string;
   current: Review['status'];
   onChange: (id: string, status: Review['status']) => void;
-}> = ({ reviewId, current, onChange }) => {
+  onVisibilityChange?: (id: string, hidden: boolean) => void;
+}> = ({ reviewId, current, onChange, onVisibilityChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -95,17 +143,40 @@ const StatusDropdown: React.FC<{
 
   if (current === 'Đã ẩn') {
     return (
-      <span
+      <div
+        onClick={(event) => event.stopPropagation()}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          padding: '4px 10px', borderRadius: '100px',
-          backgroundColor: cfg.bg, color: cfg.text,
-          fontWeight: 600, fontSize: '0.78rem',
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
         }}
       >
-        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: cfg.dot, flexShrink: 0 }} />
-        {current}
-      </span>
+        <span
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '4px 10px', borderRadius: '100px',
+            backgroundColor: cfg.bg, color: cfg.text,
+            fontWeight: 600, fontSize: '0.78rem',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: cfg.dot, flexShrink: 0 }} />
+          {current}
+        </span>
+        {onVisibilityChange && (
+          <button
+            type="button"
+            title="Hiển thị lại đánh giá"
+            aria-label="Hiển thị lại đánh giá"
+            onClick={() => onVisibilityChange(reviewId, false)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: 8,
+              border: '1px solid #cbd5e1', background: '#fff',
+              color: '#2563eb', cursor: 'pointer',
+            }}
+          >
+            <Eye size={15} />
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -161,6 +232,25 @@ const StatusDropdown: React.FC<{
                 </button>
               );
             })}
+            {onVisibilityChange && (
+              <>
+                <div style={{ height: 1, background: '#e2e8f0', margin: '4px 6px' }} />
+                <button
+                  type="button"
+                  onClick={() => { onVisibilityChange(reviewId, true); setOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '9px 14px', borderRadius: '8px',
+                    background: 'transparent', color: '#475569',
+                    border: 'none', cursor: 'pointer', fontWeight: 600,
+                    fontSize: '0.875rem', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <EyeOff size={14} />
+                  Ẩn đánh giá
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -176,6 +266,7 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
   itemsPerPage,
   onPageChange,
   onStatusChange,
+  onVisibilityChange,
   showClassification = true,
   targetColumnLabel = 'ĐỊA ĐIỂM',
   disableRowNavigation = false,
@@ -195,6 +286,59 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
       if (error instanceof Error && error.message === 'REASON_INPUT_CANCELLED') return;
       console.error('Failed to update review status', error);
       Swal.fire({ text: 'Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.', icon: 'error' });
+    }
+  };
+
+  const handleVisibilityChange = async (id: string, hidden: boolean) => {
+    if (!onVisibilityChange) return;
+
+    let reason: string | undefined;
+    if (hidden) {
+      const result = await Swal.fire({
+        title: 'Ẩn đánh giá',
+        input: 'text',
+        inputLabel: 'Nhập lý do ẩn đánh giá',
+        inputPlaceholder: 'Lý do ẩn...',
+        inputAttributes: { maxlength: '500' },
+        showCancelButton: true,
+        confirmButtonText: 'Ẩn đánh giá',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: '#64748b',
+        inputValidator: (value) => value.trim() ? undefined : 'Vui lòng nhập lý do ẩn đánh giá.',
+      });
+      if (!result.isConfirmed) return;
+      reason = typeof result.value === 'string' ? result.value.trim() : undefined;
+    } else {
+      const result = await Swal.fire({
+        title: 'Cho hiển thị lại đánh giá?',
+        text: 'Đánh giá sẽ được chuyển về trạng thái Đã duyệt và hiển thị với người dùng.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Hiển thị lại',
+        cancelButtonText: 'Hủy',
+        confirmButtonColor: '#2563eb',
+      });
+      if (!result.isConfirmed) return;
+    }
+
+    const previousReviews = reviews;
+    setReviews((items) => items.map((review) => (
+      review.id === id
+        ? {
+            ...review,
+            status: hidden ? 'Đã ẩn' : 'Đã duyệt',
+            hiddenReason: hidden ? reason : null,
+            hiddenAt: hidden ? new Date().toISOString() : null,
+          }
+        : review
+    )));
+
+    try {
+      await onVisibilityChange(id, hidden, reason);
+    } catch (error) {
+      setReviews(previousReviews);
+      console.error('Failed to update review visibility', error);
+      Swal.fire({ text: 'Không thể cập nhật khả năng hiển thị đánh giá. Vui lòng thử lại.', icon: 'error' });
     }
   };
 
@@ -251,7 +395,12 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                 </span>
               </th>
             )}
-            <th>TRẠNG THÁI</th>
+            <th>
+              <span className="rv-th-with-tip">
+                TRẠNG THÁI
+                <StatusTooltip />
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -309,6 +458,9 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                       onChange={(id, nextStatus) => {
                         void handleStatusChange(id, nextStatus);
                       }}
+                      onVisibilityChange={onVisibilityChange
+                        ? (id, hidden) => { void handleVisibilityChange(id, hidden); }
+                        : undefined}
                     />
                   </td>
                 </tr>
