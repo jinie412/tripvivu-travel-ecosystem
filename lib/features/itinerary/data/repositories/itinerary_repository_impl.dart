@@ -149,6 +149,7 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       description: params.tripName,
       proceedWithOverBudget: params.proceedWithOverBudget,
       regionAllocations: params.regionAllocations,
+      confirmToken: params.confirmToken,
     );
     return _dataSource.createItinerary(request);
   }

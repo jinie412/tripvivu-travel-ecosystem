@@ -143,7 +143,7 @@ class _BudgetSliderSectionState extends State<BudgetSliderSection> {
             CurrencyInputFormatter(),
           ],
           decoration: InputDecoration(
-            labelText: 'Chi phí dự kiến cho mỗi người lớn',
+            labelText: 'Chi phí ước tính cho mỗi người lớn',
             hintText: _unlimited ? 'Bấm để nhập ngân sách...' : 'Nhập số tiền',
             suffixText: 'VND',
             filled: true,

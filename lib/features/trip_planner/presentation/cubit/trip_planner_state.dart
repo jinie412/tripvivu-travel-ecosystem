@@ -22,6 +22,7 @@ class TripPlannerState with _$TripPlannerState {
     required double calculatedCost,
     required double recommendedBudget,
     required int participantCount,
+    String? confirmToken,
   }) = _BudgetConfirmationRequired;
   // Backend vừa phân cụm địa lý xong — luôn hỏi người dùng phân bổ số ngày
   // cho từng vùng trước khi tạo lịch trình thật sự (wizard phân vùng).
@@ -31,4 +32,19 @@ class TripPlannerState with _$TripPlannerState {
     required int numDays,
     required int estimatedTotalDays,
   }) = _RegionAllocationRequired;
+  // Scheduler không tìm được BẤT KỲ lịch trình nào thỏa ngân sách/thời
+  // gian/giờ mở cửa (khác budgetConfirmationRequired: đó là "tìm được nhưng
+  // đắt hơn", đây là "không tìm được cái nào cả") — hiện dialog đứng yên
+  // kèm gợi ý, không phải SnackBar tự biến mất như trước.
+  const factory TripPlannerState.infeasible({
+    required String message,
+    @Default([]) List<String> suggestions,
+  }) = _Infeasible;
+  // Backend chặn sớm TRƯỚC KHI chạy thuật toán vì ngân sách rõ ràng quá
+  // thấp (không đủ ngay cả mức sàn tối thiểu) — khác infeasible (đã chạy
+  // xong mới biết không đủ), nên không có gì để "dùng mức đề xuất".
+  const factory TripPlannerState.budgetTooLow({
+    required String message,
+    required double minimumBudget,
+  }) = _BudgetTooLow;
 }

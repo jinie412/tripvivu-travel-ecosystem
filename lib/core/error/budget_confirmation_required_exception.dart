@@ -8,6 +8,9 @@ class BudgetConfirmationRequiredException implements Exception {
   final double calculatedCost;
   final double recommendedBudget;
   final int participantCount;
+  /// Token cho phép resend dùng thẳng plan backend đã tính sẵn (bỏ qua chạy
+  /// lại thuật toán) — gửi lại nguyên vẹn ở request "Dùng mức đề xuất".
+  final String? confirmToken;
 
   BudgetConfirmationRequiredException({
     required this.message,
@@ -15,6 +18,7 @@ class BudgetConfirmationRequiredException implements Exception {
     required this.calculatedCost,
     required this.recommendedBudget,
     required this.participantCount,
+    this.confirmToken,
   });
 
   factory BudgetConfirmationRequiredException.fromJson(
@@ -29,6 +33,7 @@ class BudgetConfirmationRequiredException implements Exception {
       calculatedCost: toDouble(json['calculatedCost']),
       recommendedBudget: toDouble(json['recommendedBudget']),
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 1,
+      confirmToken: json['confirmToken']?.toString(),
     );
   }
 

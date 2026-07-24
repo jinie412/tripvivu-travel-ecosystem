@@ -170,6 +170,7 @@ class CostBreakdownModel {
   final double hotelCostPerAdult;
   final double hotelCostPerChild;
   final double transportPerAdult;
+  final bool transportIsActual;
   final double childPriceRatio;
   final double transportRatePerKmMotorbike;
   final double transportRatePerKmCar;
@@ -199,6 +200,7 @@ class CostBreakdownModel {
     this.hotelCostPerAdult = 0,
     this.hotelCostPerChild = 0,
     this.transportPerAdult = 0,
+    this.transportIsActual = false,
     this.childPriceRatio = 0.7,
     this.transportRatePerKmMotorbike = 0,
     this.transportRatePerKmCar = 0,
@@ -282,6 +284,9 @@ class CostBreakdownModel {
       transportPerAdult:
           (json['transportPerAdult'] ?? json['transport_per_adult'] ?? 0)
               .toDouble(),
+      transportIsActual:
+          (json['transportIsActual'] ?? json['transport_is_actual'] ?? false)
+              as bool,
       childPriceRatio:
           (json['childPriceRatio'] ?? json['child_price_ratio'] ?? 0.7)
               .toDouble(),
@@ -325,6 +330,7 @@ class CostBreakdownModel {
     hotelCostPerAdult: hotelCostPerAdult,
     hotelCostPerChild: hotelCostPerChild,
     transportPerAdult: transportPerAdult,
+    transportIsActual: transportIsActual,
     childPriceRatio: childPriceRatio,
     transportRatePerKmMotorbike: transportRatePerKmMotorbike,
     transportRatePerKmCar: transportRatePerKmCar,

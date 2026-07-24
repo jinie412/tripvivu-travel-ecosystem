@@ -42,6 +42,10 @@ class CreateItineraryParams {
   // số ngày user chọn cho từng vùng địa lý đã phát hiện. Rỗng ở lần gọi đầu
   // tiên, backend sẽ luôn trả về REGION_ALLOCATION_REQUIRED cho tới khi có.
   final List<RegionAllocationInput> regionAllocations;
+  // Token nhận từ BudgetConfirmationRequiredException — gửi lại ở request
+  // "Dùng mức đề xuất" để backend dùng thẳng plan đã tính sẵn, bỏ qua chạy
+  // lại thuật toán lập lịch trình.
+  final String? confirmToken;
 
   const CreateItineraryParams({
     required this.userId,
@@ -61,12 +65,14 @@ class CreateItineraryParams {
     this.tripName,
     this.proceedWithOverBudget = false,
     this.regionAllocations = const [],
+    this.confirmToken,
   });
 
   CreateItineraryParams copyWith({
     double? budget,
     bool? proceedWithOverBudget,
     List<RegionAllocationInput>? regionAllocations,
+    String? confirmToken,
   }) {
     return CreateItineraryParams(
       userId: userId,
@@ -87,6 +93,7 @@ class CreateItineraryParams {
       proceedWithOverBudget:
           proceedWithOverBudget ?? this.proceedWithOverBudget,
       regionAllocations: regionAllocations ?? this.regionAllocations,
+      confirmToken: confirmToken ?? this.confirmToken,
     );
   }
 }

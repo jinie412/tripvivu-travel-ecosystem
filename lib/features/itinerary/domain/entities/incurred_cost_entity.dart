@@ -181,6 +181,11 @@ class CostBreakdownEntity {
   final double hotelCostPerAdult;
   final double hotelCostPerChild;
   final double transportPerAdult;
+  // Chủ lịch trình ĐÃ ghi ≥1 lần "Điều chỉnh xăng xe" thực tế hay chưa —
+  // false = transportPerAdult vẫn chỉ là số ƯỚC TÍNH. UI dùng để ẩn/che số
+  // này cho tới khi lịch trình hoàn tất, tránh hiển thị 1 số tưởng "đã tiêu"
+  // nhưng thực ra chỉ là dự đoán, khiến người dùng không hiểu nó cho việc gì.
+  final bool transportIsActual;
   // Minh bạch: hiển thị rõ "trẻ em = người lớn × childPriceRatio" ở mục Địa
   // điểm & ăn uống / Lưu trú, để tránh hiểu nhầm số trẻ em không rõ căn cứ.
   final double childPriceRatio;
@@ -215,6 +220,7 @@ class CostBreakdownEntity {
     this.hotelCostPerAdult = 0,
     this.hotelCostPerChild = 0,
     this.transportPerAdult = 0,
+    this.transportIsActual = false,
     this.childPriceRatio = 0.7,
     this.transportRatePerKmMotorbike = 0,
     this.transportRatePerKmCar = 0,

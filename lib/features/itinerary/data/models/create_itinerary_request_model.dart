@@ -22,6 +22,9 @@ class CreateItineraryRequestModel {
   final bool proceedWithOverBudget;
   // Kết quả wizard phân bổ vùng (sau khi nhận REGION_ALLOCATION_REQUIRED).
   final List<RegionAllocationInput> regionAllocations;
+  // Token nhận từ BUDGET_CONFIRMATION_REQUIRED — gửi lại để backend dùng
+  // thẳng plan đã tính sẵn, bỏ qua chạy lại thuật toán lập lịch trình.
+  final String? confirmToken;
 
   const CreateItineraryRequestModel({
     required this.userId,
@@ -41,6 +44,7 @@ class CreateItineraryRequestModel {
     this.description,
     this.proceedWithOverBudget = false,
     this.regionAllocations = const [],
+    this.confirmToken,
   });
 
   static const _foodPrefMap = {
@@ -74,5 +78,7 @@ class CreateItineraryRequestModel {
     if (proceedWithOverBudget) 'proceedWithOverBudget': true,
     if (regionAllocations.isNotEmpty)
       'regionAllocations': regionAllocations.map((r) => r.toJson()).toList(),
+    if (confirmToken != null && confirmToken!.isNotEmpty)
+      'confirmToken': confirmToken,
   };
 }

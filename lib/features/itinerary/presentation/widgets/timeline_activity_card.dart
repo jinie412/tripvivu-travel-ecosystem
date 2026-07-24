@@ -30,6 +30,12 @@ class TimelineActivityCard extends StatelessWidget {
   final String? nextTransportInfo;
   final bool canReview;
 
+  /// Hoạt động tiếp theo là khách sạn cuối ngày (nhận phòng sau khi kết thúc
+  /// hoạt động) — không có dữ liệu di chuyển thật tới đó (chỉ là điểm gắn
+  /// thêm, không qua tính toán tuyến đường), nên KHÔNG hiện thời gian di
+  /// chuyển/giờ đến ước lượng, chỉ ghi đơn giản "Quay về khách sạn".
+  final bool nextIsHotel;
+
   /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
   final TrackingPlaceStatus? trackingStatus;
 
@@ -74,6 +80,7 @@ class TimelineActivityCard extends StatelessWidget {
     this.isOpeningReview = false,
     this.nextTransportInfo,
     this.canReview = true,
+    this.nextIsHotel = false,
     this.trackingStatus,
     this.onCheckIn,
     this.isCheckingIn = false,
@@ -106,7 +113,11 @@ class TimelineActivityCard extends StatelessWidget {
 
   String _durationLabel() {
     if (_isAccommodationStart) {
-      return isLast ? 'Quay về khách sạn' : 'Nơi ở & điểm xuất phát';
+      // isLast: mục "2. Transition Item" ngay phía trên đã ghi "Quay về
+      // khách sạn" rồi, và bên trong _buildAccommodationCard cũng có nhãn
+      // "Quay về khách sạn" riêng — để trống ở đây tránh lặp lại 3 lần cùng
+      // 1 câu cho đúng 1 khách sạn.
+      return isLast ? '' : 'Nơi ở & điểm xuất phát';
     }
     final category = (activity.category ?? '').toLowerCase();
     final activityLabel = category.contains('restaurant')
@@ -147,7 +158,10 @@ class TimelineActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 1. Activity Item
+        // 1. Activity Item — riêng khách sạn cuối ngày ("Quay về khách sạn"),
+        // ẩn luôn giờ hiển thị vì không phải giờ đến thật (chỉ nối tiếp giờ
+        // hoạt động trước, xem getItineraryDetail backend), hiện ra dễ hiểu
+        // lầm là giờ check-in chính xác.
         _buildItem(
           context,
           time: activity.startTime,
@@ -161,10 +175,17 @@ class TimelineActivityCard extends StatelessWidget {
               trackingStatus?.status == VisitStatus.visited ||
               backendIsVisited,
           isEditMode: isEditMode,
+          showTime: !(_isAccommodationStart && isLast),
         ),
 
-        // 2. Transition Item
-        if (!isLast)
+        // 2. Transition Item — BỎ HẲN khi hoạt động kế tiếp là khách sạn
+        // cuối ngày: không có tuyến đường/thời gian di chuyển thật để hiện,
+        // và card khách sạn ngay sau đây (item "1" của activity kế tiếp) đã
+        // tự có icon + nhãn "Quay về khách sạn" riêng rồi — thêm 1 dòng
+        // chuyển tiếp nữa chỉ tạo ra 2 icon + 2 chữ trùng lặp cho đúng 1
+        // khách sạn. Đường kẻ nối (showLine) vẫn liền mạch nhờ item "1" phía
+        // trên đã có showLine: true.
+        if (!isLast && !nextIsHotel)
           _buildItem(
             context,
             time: activity.endTime,
@@ -177,7 +198,9 @@ class TimelineActivityCard extends StatelessWidget {
             isEditMode: isEditMode,
           ),
 
-        // 3. End Marker (last activity only)
+        // 3. End Marker (last activity only) — cùng lý do ở Activity Item
+        // phía trên: nếu hoạt động cuối là khách sạn, ẩn giờ (endTime ==
+        // startTime vì duration=0, không phải giờ kết thúc thật).
         if (isLast)
           _buildItem(
             context,
@@ -189,6 +212,7 @@ class TimelineActivityCard extends StatelessWidget {
             editsStartTime: false,
             isTransition: true,
             isEditMode: isEditMode,
+            showTime: !_isAccommodationStart,
           ),
       ],
     );
@@ -216,6 +240,7 @@ class TimelineActivityCard extends StatelessWidget {
     bool isTransition = false,
     bool isCompleted = false,
     bool isEditMode = false,
+    bool showTime = true,
   }) {
     String formatTime(String t) {
       if (t.length >= 5) {
@@ -236,41 +261,44 @@ class TimelineActivityCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                isEditMode
-                    ? InkWell(
-                        onTap: editsStartTime ? onStartTimeTap : onEndTimeTap,
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 2,
-                            vertical: 2,
-                          ),
-                          child: Text(
-                            formattedTime,
-                            style: AppTextStylesExt.bodySmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              decoration: TextDecoration.underline,
-                              decorationStyle: TextDecorationStyle.dashed,
-                            ),
-                          ),
-                        ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 2,
-                          vertical: 2,
-                        ),
-                        child: Text(
-                          formattedTime,
-                          style: AppTextStylesExt.bodySmall.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
+                if (!showTime)
+                  const SizedBox.shrink()
+                else if (isEditMode)
+                  InkWell(
+                    onTap: editsStartTime ? onStartTimeTap : onEndTimeTap,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        formattedTime,
+                        style: AppTextStylesExt.bodySmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          decoration: TextDecoration.underline,
+                          decorationStyle: TextDecorationStyle.dashed,
                         ),
                       ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      formattedTime,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: AppSizes.s8),
                 isCompleted
                     ? const Padding(
@@ -791,22 +819,11 @@ class TimelineActivityCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.r16),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
         ),
+        // Không lặp lại icon khách sạn ở đây nữa — cột timeline bên trái
+        // (_activityIcon) đã hiện đúng icon này cho hàng này rồi, thêm 1
+        // icon khách sạn nữa trong card tạo cảm giác 2 icon cho cùng 1 chỗ.
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppSizes.r12),
-              ),
-              child: const Icon(
-                Icons.hotel_rounded,
-                color: AppColors.primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: AppSizes.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -956,6 +973,17 @@ class TimelineActivityCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  // Trước đây card khách sạn không có nút này (khác hẳn card
+                  // hoạt động thường) — bấm vào card chỉ zoom bản đồ tới vị
+                  // trí (onCardTap), không cách nào xem chi tiết địa điểm
+                  // khách sạn (ảnh, đánh giá, review...) như các nơi khác.
+                  const SizedBox(height: AppSizes.s8),
+                  _cardActionButton(
+                    icon: Icons.open_in_new_rounded,
+                    label: 'Xem chi tiết địa điểm',
+                    color: const Color(0xFF2563EB),
+                    onTap: onViewDetailTap ?? onCardLongPress,
+                  ),
                 ],
               ),
             ),

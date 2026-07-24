@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/error/budget_confirmation_required_exception.dart';
+import 'package:travel_advisor_mobile/core/error/budget_too_low_exception.dart';
+import 'package:travel_advisor_mobile/core/error/itinerary_infeasible_exception.dart';
 import 'package:travel_advisor_mobile/core/error/region_allocation_required_exception.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/trip_planner/domain/entities/trip_form.dart';
@@ -422,19 +424,41 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
   /// Gọi lại request tạo lịch trình gần nhất với budget = recommendedBudget
   /// từ state budgetConfirmationRequired — người dùng chọn "Dùng mức đề xuất".
   Future<void> retryWithRecommendedBudget() async {
-    final recommendedBudget = state.whenOrNull(
-      budgetConfirmationRequired: (_, _, _, recommendedBudget, _) =>
-          recommendedBudget,
+    final confirmation = state.whenOrNull(
+      budgetConfirmationRequired: (_, _, _, recommendedBudget, _, confirmToken) =>
+          (recommendedBudget, confirmToken),
     );
     final lastParams = _lastAttemptedParams;
     final lastForm = _lastAttemptedForm;
-    if (recommendedBudget == null || lastParams == null || lastForm == null) {
+    if (confirmation == null || lastParams == null || lastForm == null) {
       return;
     }
+    final (recommendedBudget, confirmToken) = confirmation;
     await _submitParams(
-      lastParams.copyWith(budget: recommendedBudget),
+      lastParams.copyWith(
+        budget: recommendedBudget,
+        confirmToken: confirmToken,
+      ),
       lastForm.copyWith(budget: recommendedBudget),
     );
+  }
+
+  /// Người dùng bấm "Đã hiểu" trên dialog infeasible — quay lại form ở bước
+  /// cuối để tự điều chỉnh (tăng ngân sách/giảm ngày...) theo suggestions,
+  /// không có gì để tự động retry như budgetConfirmationRequired.
+  void dismissInfeasible() {
+    final lastForm = _lastAttemptedForm;
+    if (lastForm == null) return;
+    emit(TripPlannerState.loaded(tripForm: lastForm));
+  }
+
+  /// Người dùng bấm "Đã hiểu" trên dialog budgetTooLow — quay lại form để
+  /// tự tăng ngân sách rồi thử lại (backend chặn TRƯỚC KHI chạy thuật toán
+  /// nên không có plan nào để tự động retry).
+  void dismissBudgetTooLow() {
+    final lastForm = _lastAttemptedForm;
+    if (lastForm == null) return;
+    emit(TripPlannerState.loaded(tripForm: lastForm));
   }
 
   /// Gọi lại request tạo lịch trình gần nhất sau khi người dùng đã chốt số
@@ -471,6 +495,7 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           calculatedCost: e.calculatedCost,
           recommendedBudget: e.recommendedBudget,
           participantCount: e.participantCount,
+          confirmToken: e.confirmToken,
         ),
       );
     } on RegionAllocationRequiredException catch (e) {
@@ -480,6 +505,20 @@ class TripPlannerCubit extends Cubit<TripPlannerState> {
           regions: e.regions,
           numDays: e.numDays,
           estimatedTotalDays: e.estimatedTotalDays,
+        ),
+      );
+    } on ItineraryInfeasibleException catch (e) {
+      emit(
+        TripPlannerState.infeasible(
+          message: e.message,
+          suggestions: e.suggestions,
+        ),
+      );
+    } on BudgetTooLowException catch (e) {
+      emit(
+        TripPlannerState.budgetTooLow(
+          message: e.message,
+          minimumBudget: e.minimumBudget,
         ),
       );
     } catch (e) {

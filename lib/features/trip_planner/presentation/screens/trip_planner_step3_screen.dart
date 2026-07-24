@@ -92,6 +92,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 calculatedCost,
                 recommendedBudget,
                 participantCount,
+                confirmToken,
               ) {
                 if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
@@ -102,6 +103,26 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                   recommendedBudget: recommendedBudget,
                 );
               },
+          budgetTooLow: (message, minimumBudget) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+            _showBudgetTooLowDialog(
+              context,
+              message: message,
+              minimumBudget: minimumBudget,
+            );
+          },
+          infeasible: (message, suggestions) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+            _showInfeasibleDialog(
+              context,
+              message: message,
+              suggestions: suggestions,
+            );
+          },
           regionAllocationRequired:
               (message, regions, numDays, estimatedTotalDays) {
                 if (Navigator.of(context).canPop()) {
@@ -283,7 +304,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                         const SizedBox(height: 36),
                         // Phần ngân sách (giữ nguyên như cũ)
                         const Text(
-                          'Tổng chi phí chuyến đi',
+                          'Ngân sách chuyến đi',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -292,7 +313,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Nhập tổng số tiền có thể chi trả cho tất cả thành viên.',
+                          'Nhập số tiền có thể chi trả cho mỗi người lớn.',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -395,9 +416,10 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Ngân sách chưa phù hợp'),
+        title: const Text('Chưa tạo được lịch trình'),
         content: Text(
-          '$message\n\nMức ngân sách đề xuất: ${formatter.format(recommendedBudget)} VNĐ.',
+          '$message Bạn có muốn thử lịch trình với mức chi phí '
+          '${formatter.format(recommendedBudget)}đ này không?',
         ),
         actions: [
           FilledButton(
@@ -405,7 +427,93 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
               Navigator.of(dialogContext).pop();
               cubit.retryWithRecommendedBudget();
             },
-            child: const Text('Dùng mức đề xuất'),
+            child: const Text('Dùng lịch trình gợi ý'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Backend chặn TRƯỚC KHI chạy thuật toán vì ngân sách rõ ràng quá thấp
+  // (dưới cả mức sàn tối thiểu) — không có plan nào để gợi ý, chỉ có thể
+  // hướng dẫn tăng ngân sách rồi thử lại.
+  void _showBudgetTooLowDialog(
+    BuildContext context, {
+    required String message,
+    required double minimumBudget,
+  }) {
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    final cubit = context.read<TripPlannerCubit>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ngân sách quá thấp'),
+        content: Text(
+          '$message\n\nNgân sách tối thiểu: ${formatter.format(minimumBudget)} VNĐ.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.dismissBudgetTooLow();
+            },
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Không tìm được BẤT KỲ lịch trình nào thỏa ngân sách/thời gian/giờ mở
+  // cửa — khác dialog ngân sách ở trên (đó là "tìm được nhưng đắt hơn"),
+  // đây không có gì để tự động retry, chỉ có thể hướng dẫn người dùng tự
+  // điều chỉnh form theo suggestions rồi thử lại.
+  void _showInfeasibleDialog(
+    BuildContext context, {
+    required String message,
+    required List<String> suggestions,
+  }) {
+    final cubit = context.read<TripPlannerCubit>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Không tạo được lịch trình'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message),
+            if (suggestions.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Bạn có thể thử:',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              ...suggestions.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('•  '),
+                      Expanded(child: Text(s)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              cubit.dismissInfeasible();
+            },
+            child: const Text('Đã hiểu'),
           ),
         ],
       ),

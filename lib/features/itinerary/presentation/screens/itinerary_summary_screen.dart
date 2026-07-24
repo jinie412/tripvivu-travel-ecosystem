@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,6 +30,8 @@ import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_ord
 import 'package:travel_advisor_mobile/features/itinerary/tracking/tracking_config.dart';
 import 'package:travel_advisor_mobile/features/itinerary/presentation/screens/incurred_costs_screen.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/utils/day_cost_calculator.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/cubit/place_detail_cubit.dart';
+import 'package:travel_advisor_mobile/features/place/presentation/screens/place_detail_screen.dart';
 
 /// Chế độ thiết kế: true dùng dữ liệu mẫu, false dùng API.
 const bool _useMockData = AppConfig.kUseMockData;
@@ -346,86 +348,92 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.zero,
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header với Glassmorphism Image Card
-                  _buildDestinationHeader(
-                    context,
-                    itin,
-                    dateRange,
-                    visitedVisitCount,
-                    totalVisitCount,
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 32),
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2563EB),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Tổng quan chuyến đi',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        _buildStatsGrid(itin),
-
-                        if (itin.visitedRestaurants.isNotEmpty) ...[
-                          const SizedBox(height: 36),
-                          const SectionHeader(title: 'Món ăn đã đặt'),
-                          const SizedBox(height: 12),
-                          _buildCulinarySection(itin),
-                        ],
-
-                        const SizedBox(height: 36),
-                        const SectionHeader(title: 'Quản lý chi tiêu'),
-                        const SizedBox(height: 16),
-                        _buildExpenseManagementCard(context, itin),
-
-                        const SizedBox(height: 36),
-                        const SectionHeader(title: 'Tổng quan theo ngày'),
-                        const SizedBox(height: 12),
-                        _buildHotelOverviewRow(itin),
-                        _buildTransportOverviewRow(itin),
-                        _buildDayOverviewNote(itin),
-                        ...itin.days
-                            .take(3)
-                            .map<Widget>((day) => _buildShortItineraryItem(context, itin, day)),
-                        if (itin.days.length > 3)
-                          _buildViewAllDaysButton(context, itin),
-
-                        if (itin.notes.isNotEmpty) ...[
-                          const SizedBox(height: 36),
-                          _buildNotesSection(itin.notes),
-                        ],
-
-                        const SizedBox(
-                          height: 120,
-                        ), // Spacing for bottom button
-                      ],
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header với Glassmorphism Image Card
+                    _buildDestinationHeader(
+                      context,
+                      itin,
+                      dateRange,
+                      visitedVisitCount,
+                      totalVisitCount,
                     ),
-                  ),
-                ],
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 32),
+                          Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF2563EB),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Tổng quan chuyến đi',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          _buildStatsGrid(itin),
+
+                          if (itin.visitedRestaurants.isNotEmpty) ...[
+                            const SizedBox(height: 36),
+                            const SectionHeader(title: 'Món ăn đã đặt'),
+                            const SizedBox(height: 12),
+                            _buildCulinarySection(itin),
+                          ],
+
+                          const SizedBox(height: 36),
+                          const SectionHeader(title: 'Quản lý chi tiêu'),
+                          const SizedBox(height: 16),
+                          _buildExpenseManagementCard(context, itin),
+
+                          const SizedBox(height: 36),
+                          const SectionHeader(title: 'Tổng quan theo ngày'),
+                          const SizedBox(height: 12),
+                          _buildHotelOverviewRow(itin),
+                          _buildTransportOverviewRow(itin),
+                          _buildDayOverviewNote(itin),
+                          ...itin.days
+                              .take(3)
+                              .map<Widget>(
+                                (day) => _buildShortItineraryItem(
+                                  context,
+                                  itin,
+                                  day,
+                                ),
+                              ),
+                          if (itin.days.length > 3)
+                            _buildViewAllDaysButton(context, itin),
+
+                          if (itin.notes.isNotEmpty) ...[
+                            const SizedBox(height: 36),
+                            _buildNotesSection(itin.notes),
+                          ],
+
+                          const SizedBox(
+                            height: 120,
+                          ), // Spacing for bottom button
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
             // Nút xem chi tiết ở dưới cùng (Floating effect)
             Positioned(
@@ -1179,7 +1187,12 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     );
   }
 
-  Widget _buildShortItineraryItem(BuildContext context, ItineraryDetailEntity itin, ItineraryDayEntity day, {bool isFromSheet = false}) {
+  Widget _buildShortItineraryItem(
+    BuildContext context,
+    ItineraryDetailEntity itin,
+    ItineraryDayEntity day, {
+    bool isFromSheet = false,
+  }) {
     final breakdown = DayCostCalculator.computeDaily(
       day: day,
       adultCount: itin.adultCount,
@@ -1214,11 +1227,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         if (isFromSheet) {
           Navigator.pop(context);
         }
-        _navigateToDetail(
-          context,
-          itin,
-          initialDay: day.dayNumber,
-        );
+        _navigateToDetail(context, itin, initialDay: day.dayNumber);
       },
     );
   }
@@ -1247,86 +1256,129 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   /// dùng hiểu khách sạn là 1 khoản riêng cho cả chuyến, còn các ngày bên
   /// dưới chỉ là tham quan + ăn uống + di chuyển của riêng ngày đó.
   Widget _buildHotelOverviewRow(ItineraryDetailEntity itin) {
-    final hotelName = _hotelDisplayName(itin);
-    final nightCount = itin.durationDays > 1 ? itin.durationDays - 1 : 0;
+    final hotelActivity = _hotelActivity(itin);
+    final hotelName = hotelActivity == null
+        ? null
+        : (hotelActivity.locationName.isNotEmpty
+              ? hotelActivity.locationName
+              : hotelActivity.title);
+    // Luôn tối thiểu 1 đêm, kể cả chuyến 1 ngày — mọi lịch trình đều bắt
+    // buộc có 1 khoản khách sạn thật (khớp backend _hotel_total_cost).
+    final nightCount = itin.durationDays > 1 ? itin.durationDays - 1 : 1;
     // Trẻ em tính theo childPriceRatio (khớp estimatedCostForGroup/Sổ chi
     // tiêu) — trước đây nhân theo TỔNG số người (trẻ em tính đủ 100% giá
     // khách sạn), khiến "card ngày (không gồm khách sạn) + card khách sạn"
     // luôn CAO HƠN "chi phí chưa dự trù" khi có trẻ em trong đoàn.
-    final totalHotelCost = itin.hotelCost * itin.adultCount +
+    final totalHotelCost =
+        itin.hotelCost * itin.adultCount +
         itin.hotelCost * itin.childPriceRatio * itin.childCount;
-    if (hotelName == null || totalHotelCost <= 0) return const SizedBox.shrink();
+    if (hotelName == null || totalHotelCost <= 0)
+      return const SizedBox.shrink();
     final pricePerNightPerPerson = nightCount > 0
         ? itin.hotelCost / nightCount
         : itin.hotelCost;
     final formatter = NumberFormat('#,###', 'vi_VN');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3F4F6)),
-      ),
-      // Tên khách sạn xuống dòng riêng thay vì chia đôi hàng ngang với cột
-      // giá — tên dài + "N đêm • giá/đêm/người" ép chung 1 hàng trước đây
-      // khiến tên khách sạn bị bóp/che gần hết.
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.hotel_rounded,
-                  color: Color(0xFFEC4899),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Khách sạn (cả chuyến)',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1C1C1E),
+    // Khách sạn luôn nằm ở ngày 1 (nhận phòng cuối ngày 1, xem
+    // getItineraryDetail backend) — bấm vào card này mở thẳng Chi tiết lịch
+    // trình ở ngày 1, nơi khách sạn hiện ra cuối timeline và có thể bấm xem
+    // tiếp chi tiết địa điểm — trước đây card này không bấm được gì cả.
+    return InkWell(
+      onTap: () => _navigateToDetail(context, itin, initialDay: 1),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF3F4F6)),
+        ),
+        // Tên khách sạn xuống dòng riêng thay vì chia đôi hàng ngang với cột
+        // giá — tên dài + "N đêm • giá/đêm/người" ép chung 1 hàng trước đây
+        // khiến tên khách sạn bị bóp/che gần hết.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.hotel_rounded,
+                    color: Color(0xFFEC4899),
+                    size: 20,
                   ),
                 ),
-              ),
-              Text(
-                '${formatter.format(totalHotelCost)}đ',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Khách sạn (cả chuyến)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1C1C1E),
+                    ),
+                  ),
+                ),
+                Text(
+                  '${formatter.format(totalHotelCost)}đ',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hotelName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              nightCount > 0
+                  ? '$nightCount đêm • ${formatter.format(pricePerNightPerPerson)}đ/đêm/người'
+                  : '${formatter.format(pricePerNightPerPerson)}đ/đêm/người',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+            ),
+            if (hotelActivity != null) ...[
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => _openHotelPlaceDetail(hotelActivity),
+                borderRadius: BorderRadius.circular(999),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 13,
+                      color: Color(0xFF2563EB),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Xem chi tiết địa điểm',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            hotelName,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            nightCount > 0
-                ? '$nightCount đêm • ${formatter.format(pricePerNightPerPerson)}đ/đêm/người'
-                : '${formatter.format(pricePerNightPerPerson)}đ/đêm/người',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1337,8 +1389,28 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   /// (tính theo số xe cần dùng, xem backend estimateSelfDriveTransportCost),
   /// nên KHÔNG nhân thêm theo adultCount/childCount như _buildHotelOverviewRow
   /// — nhân thêm ở đây sẽ tính tiền xăng gấp đôi.
+  ///
+  /// Khi chuyến CHƯA hoàn tất và CHƯA ai ghi chi phí xăng xe thực tế, số này
+  /// chỉ là ƯỚC TÍNH — ẩn hẳn khỏi tổng quan để tránh hiển thị quá sớm 1 con
+  /// số trông như đã tiêu thật nhưng người dùng không biết nó tính cho gì
+  /// (chỉ hiện lại đầy đủ trong "Chi phí ước tính" ở card Quản lý chi tiêu).
   Widget _buildTransportOverviewRow(ItineraryDetailEntity itin) {
     if (itin.transportCost <= 0) return const SizedBox.shrink();
+    if (itin.status.toUpperCase() == 'COMPLETED') {
+      return _buildTransportOverviewRowContent(itin);
+    }
+    return FutureBuilder<CostBreakdownEntity>(
+      future: _ensureCostBreakdown(itin.id),
+      builder: (context, snapshot) {
+        if (snapshot.data?.transportIsActual != true) {
+          return const SizedBox.shrink();
+        }
+        return _buildTransportOverviewRowContent(itin);
+      },
+    );
+  }
+
+  Widget _buildTransportOverviewRowContent(ItineraryDetailEntity itin) {
     final isMotorbike = itin.travelMode.toUpperCase() == 'MOTORBIKE';
     final formatter = NumberFormat('#,###', 'vi_VN');
 
@@ -1461,71 +1533,71 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   ) {
     final formatter = NumberFormat('#,###', 'vi_VN');
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => IncurredCostsScreen(
-              itineraryId: itin.id,
-              members: itin.members,
-              isCompleted: itin.status.toUpperCase() == 'COMPLETED',
-              days: itin.days,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    return FutureBuilder<CostBreakdownEntity>(
+      future: _ensureCostBreakdown(itin.id),
+      builder: (context, snapshot) {
+        // Không phải thành viên lịch trình (VD đang xem lịch trình public
+        // của người khác — backend chặn 403, xem incurred-costs.service.ts's
+        // assertCallerIsMember) — ẩn hẳn card "Sổ chi tiêu" thay vì hiện
+        // loading xoay vô tận. Trước đây chỉ check `!snapshot.hasData`,
+        // không phân biệt "đang tải" với "tải lỗi vĩnh viễn" nên khi bị 403,
+        // Future báo lỗi (không bao giờ có data) mà spinner cứ quay mãi.
+        if (snapshot.hasError) return const SizedBox.shrink();
+        final breakdown = snapshot.data;
+
+        return InkWell(
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF334155).withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.menu_book_rounded,
-                    color: Color(0xFFF59E0B),
-                  ),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => IncurredCostsScreen(
+                  itineraryId: itin.id,
+                  members: itin.members,
+                  isCompleted: itin.status.toUpperCase() == 'COMPLETED',
+                  days: itin.days,
                 ),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Text(
-                    'Sổ chi tiêu',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF94A3B8),
+              ),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.premiumBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.premiumNavy.withValues(alpha: 0.045),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            FutureBuilder<CostBreakdownEntity>(
-              future: _ensureCostBreakdown(itin.id),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const SizedBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Sổ chi tiêu',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.costText,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.costTextMuted,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (breakdown == null)
+                  const SizedBox(
                     height: 40,
                     child: Align(
                       alignment: Alignment.centerLeft,
@@ -1535,98 +1607,121 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                  );
-                }
-                final breakdown = snapshot.data!;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${formatter.format(breakdown.roundedGroupTotal)} ${itin.currency}',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      breakdown.childCount > 0
-                          ? 'Tổng ước tính cho ${breakdown.adultCount} người lớn, ${breakdown.childCount} trẻ em'
-                          : 'Tổng ước tính cho ${breakdown.adultCount} người lớn',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Mức có thể chi trả',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF64748B),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${formatter.format(breakdown.roundedGroupTotal)} ${itin.currency}',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.costText,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  breakdown.childCount > 0
+                                      ? 'Tổng ước tính cho ${breakdown.adultCount} người lớn, ${breakdown.childCount} trẻ em'
+                                      : 'Tổng ước tính cho ${breakdown.adultCount} người lớn',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.costTextMuted,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        Text(
-                          '${formatter.format(breakdown.payableLimitForGroup)} ${itin.currency}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.costHeroEnd.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.menu_book_rounded,
+                              color: AppColors.costHeroEnd,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Divider(height: 1, color: AppColors.premiumBorder),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Mức có thể chi trả',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.costTextMuted,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${formatter.format(breakdown.payableLimitForGroup)} ${itin.currency}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.costText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Lưu ý: Chi phí thực tế có thể thay đổi theo thời gian và địa điểm.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: Color(0xFF64748B),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Lưu ý: Chi phí thực tế có thể thay đổi theo thời gian và địa điểm.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                if (breakdown != null) _buildSpendingProgress(breakdown),
+              ],
             ),
-            const SizedBox(height: 20),
-            FutureBuilder<CostBreakdownEntity>(
-              future: _ensureCostBreakdown(itin.id),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
-                return _buildSpendingProgress(snapshot.data!);
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -1658,7 +1753,12 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     final orangeEnd = breakdown.roundedGroupTotal > blueEnd
         ? breakdown.roundedGroupTotal
         : blueEnd;
-    final scale = [payable, orangeEnd, spent, 1.0].reduce((a, b) => a > b ? a : b);
+    final scale = [
+      payable,
+      orangeEnd,
+      spent,
+      1.0,
+    ].reduce((a, b) => a > b ? a : b);
 
     final blueFrac = (blueEnd / scale).clamp(0.0, 1.0);
     final orangeFrac = ((orangeEnd - blueEnd) / scale).clamp(0.0, 1.0);
@@ -1834,7 +1934,14 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   child: ListView(
                     shrinkWrap: true,
                     children: itin.days
-                        .map<Widget>((day) => _buildShortItineraryItem(sheetContext, itin, day, isFromSheet: true))
+                        .map<Widget>(
+                          (day) => _buildShortItineraryItem(
+                            sheetContext,
+                            itin,
+                            day,
+                            isFromSheet: true,
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
@@ -2146,16 +2253,29 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         .toList();
   }
 
-  String? _hotelDisplayName(ItineraryDetailEntity itin) {
+  // Trả về hoạt động khách sạn thật (không chỉ tên) — cần placeId cho nút
+  // "Xem chi tiết địa điểm" ở card tổng quan khách sạn.
+  ItineraryActivityEntity? _hotelActivity(ItineraryDetailEntity itin) {
     for (final day in itin.days) {
       for (final activity in day.activities.where(_isHotelStart)) {
-        final name = activity.locationName.isNotEmpty
-            ? activity.locationName
-            : activity.title;
-        if (name.isNotEmpty) return name;
+        return activity;
       }
     }
     return null;
+  }
+
+  void _openHotelPlaceDetail(ItineraryActivityEntity hotelActivity) {
+    final placeId = hotelActivity.placeId ?? hotelActivity.id;
+    if (placeId.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) => sl<PlaceDetailCubit>(),
+          child: PlaceDetailScreen(placeId: placeId, showRelatedPlaces: true),
+        ),
+      ),
+    );
   }
 
   _CostSnapshot _buildCostSnapshot(

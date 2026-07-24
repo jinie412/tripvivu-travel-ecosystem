@@ -759,8 +759,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               '${toTime(targetStart)} - ${toTime(targetEnd)}, trong khi địa điểm '
               'chỉ hoạt động ${validSlots.join(', ')}.';
         }
-      } catch (_) {
-      }
+      } catch (_) {}
     }
     return null;
   }
@@ -1189,7 +1188,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                         deltaMinutes: deltaMin,
                         shiftStartTimeOnly: isStart,
                       );
-                      
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Đang tối ưu lại lịch trình...'),
@@ -2685,6 +2684,69 @@ class _DayVisitProgressCard extends StatelessWidget {
   }
 }
 
+/// Cảnh báo "ít/không có quán ăn" mà backend tự ghi vào `notes` của hoạt
+/// động ĐẦU TIÊN trong ngày (xem annotateDaysMissingRestaurant() —
+/// itinerary.service.ts) — chỉ đọc lại và hiển thị, không tự tính gì thêm ở
+/// mobile. Rỗng khi ngày đó có đủ ≥2 quán ăn.
+class _RestaurantWarningBanner extends StatelessWidget {
+  final ItineraryDayEntity day;
+
+  const _RestaurantWarningBanner({required this.day});
+
+  @override
+  Widget build(BuildContext context) {
+    // KHÔNG dùng day.activities.first nữa — từ ngày 2 trở đi, khách sạn
+    // được getItineraryDetail() chèn vào ĐẦU mảng activities (xem
+    // itinerary.service.ts), nên "first" thường là dòng khách sạn
+    // (notes luôn null), che mất note thật đã ghi đúng ở hoạt động đầu
+    // tiên THẬT SỰ. Quét cả ngày, lấy note không rỗng đầu tiên gặp được —
+    // chỉ đúng 1 hoạt động/ngày mang note này nên không sợ nhầm.
+    String? note;
+    for (final activity in day.activities) {
+      final candidate = activity.notes;
+      if (candidate != null && candidate.trim().isNotEmpty) {
+        note = candidate;
+        break;
+      }
+    }
+    if (note == null || note.trim().isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.s12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.restaurant_outlined,
+              size: 18,
+              color: Color(0xFFB45309),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                note,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFFB45309),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Thay thế _DayCostSummaryCard + _HotelCostCard cũ (2 card riêng, khá rối)
 /// bằng 1 card duy nhất kiểu icon-stat, đồng bộ với card ngày ở màn tổng
 /// quan lịch trình (ShortItineraryItem) — km di chuyển, giờ tham quan, số
@@ -2821,46 +2883,13 @@ class _DayStatsCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Tổng quan ngày',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Đi thẳng vào chi tiết ngày này trong Sổ chi tiêu —
-                    // mỗi người bao nhiêu + xăng xe, xem incurred_costs_screen.dart.
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => IncurredCostsScreen(
-                            itineraryId: itin.id,
-                            members: itin.members,
-                            isCompleted:
-                                itin.status.toUpperCase() == 'COMPLETED',
-                            initialDayNumber: day.dayNumber,
-                            days: itin.days,
-                          ),
-                        ),
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          size: 16,
-                          // Đồng bộ icon/màu với "Sổ chi tiêu" ở Tổng quan
-                          // lịch trình (itinerary_summary_screen.dart).
-                          color: Color(0xFFF59E0B),
-                        ),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Tổng quan ngày',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.costText,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 ...statColumn
@@ -2870,21 +2899,56 @@ class _DayStatsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // Cột phải: Tổng chi phí + Đã chi.
+          // Cột phải: Tổng chi phí + Đã chi. Icon sổ chi tiêu đặt ngay cạnh
+          // "Tổng chi phí" (chỗ ghi giá tiền) thay vì ở tiêu đề bên trái —
+          // đồng bộ vị trí/màu với "Sổ chi tiêu" ở Tổng quan lịch trình
+          // (itinerary_summary_screen.dart).
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '${formatter.format(breakdown.total)} ${day.currency}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF10B981),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${formatter.format(breakdown.total)} ${day.currency}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.costMint,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => IncurredCostsScreen(
+                          itineraryId: itin.id,
+                          members: itin.members,
+                          isCompleted: itin.status.toUpperCase() == 'COMPLETED',
+                          initialDayNumber: day.dayNumber,
+                          days: itin.days,
+                        ),
+                      ),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.menu_book_rounded,
+                        size: 16,
+                        color: AppColors.costHeroEnd,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const Text(
                 'Tổng chi phí',
-                style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: AppColors.costTextMuted,
+                ),
               ),
               if (dayIncurredTotal > 0) ...[
                 const SizedBox(height: 8),
@@ -2893,12 +2957,15 @@ class _DayStatsCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFF59E0B),
+                    color: AppColors.costAmber,
                   ),
                 ),
                 const Text(
                   'Đã chi',
-                  style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.costTextMuted,
+                  ),
                 ),
               ],
             ],
@@ -3633,6 +3700,7 @@ class _ItineraryDetailView extends StatelessWidget {
             baselineByPlace: baselineCostsByPlace,
             extraCostsByDay: extraCostsByDay,
           ),
+          _RestaurantWarningBanner(day: currentDayData),
           const SizedBox(height: AppSizes.s12),
           _DayVisitProgressCard(
             visitActivities: _visitActivities(currentDayData),
@@ -3686,6 +3754,8 @@ class _ItineraryDetailView extends StatelessWidget {
                     isFirst: index == 0,
                     isLast: index == activities.length - 1,
                     nextTransportInfo: nextTransport,
+                    nextIsHotel:
+                        nextActivity != null && _isHotelStart(nextActivity),
                     extraCost: activity.placeId != null
                         ? costsByPlace[activity.placeId]
                         : null,

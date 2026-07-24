@@ -534,26 +534,23 @@ class _ItineraryMapViewState extends State<ItineraryMapView>
             title.contains('khach san'));
   }
 
+  // Trước đây ngày 1 luôn bị lọc bỏ khách sạn khỏi bản đồ (giả định ngày 1
+  // chưa check-in, chỉ đúng khi ngày 1 KHÔNG hiển thị khách sạn) — từ khi
+  // ngày 1 cũng hiện khách sạn ở CUỐI ngày (getItineraryDetail backend), lọc
+  // riêng cho ngày 1 khiến bản đồ mất hẳn điểm/đường đi tới khách sạn ngày
+  // đó. Giữ nguyên khách sạn cho MỌI ngày, khớp cách ngày 2 trở đi vẫn làm.
   List<ItineraryActivityEntity> _visibleActivitiesForDay(
     ItineraryDayEntity day,
   ) {
-    final items = day.activities
+    return day.activities
         .where((a) => a.latitude != null && a.longitude != null)
         .toList();
-    if (day.dayNumber == 1) {
-      return items.where((a) => !_isHotelStart(a)).toList();
-    }
-    return items;
   }
 
   List<ItineraryActivityEntity> _visibleCurrentDayActivities() {
-    final items = widget.activities
+    return widget.activities
         .where((a) => a.latitude != null && a.longitude != null)
         .toList();
-    if (widget.selectedDay == 1) {
-      return items.where((a) => !_isHotelStart(a)).toList();
-    }
-    return items;
   }
 
   List<mapbox.Point> _pointsFromActivities(

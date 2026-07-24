@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
@@ -10,7 +11,9 @@ import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/iti
 ///
 /// 2 nhóm type khác nhau (xem [CostType]):
 /// - [CostType.transportAdjustment]: chỉ chủ lịch trình, áp dụng CẢ CHUYẾN
-///   (không gắn địa điểm/ngày), nhập thẳng số tiền chênh lệch (có thể âm).
+///   (không gắn địa điểm/ngày), nhập tổng chi phí xăng xe THẬT đã chi cho cả
+///   nhóm (thay thế số ước tính, chia đều cho mọi người); có thể âm để đính
+///   chính lại số đã ghi trước đó.
 /// - Còn lại: chi phí phát sinh cá nhân, ai cũng tạo được, nhập thẳng số
 ///   tiền, có thể gắn 1 địa điểm HOẶC 1 ngày (không cả hai).
 ///
@@ -118,6 +121,7 @@ class IncurredCostSheet extends StatefulWidget {
 
 class _IncurredCostSheetState extends State<IncurredCostSheet> {
   final _repository = sl<ItineraryRepository>();
+  final _amountFormatter = NumberFormat('#,###', 'vi_VN');
   late final TextEditingController _noteController;
   late final TextEditingController _amountController;
 
@@ -164,6 +168,9 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     _amountController = TextEditingController(
       text: editing != null ? editing.amount.toStringAsFixed(0) : '',
     );
+    // Rebuild khi gõ số tiền để cập nhật preview "≈ Xđ/người" theo thời gian
+    // thực (xem _perPersonPreviewText).
+    _amountController.addListener(_onAmountChanged);
     _selectedPlaceId = editing?.placeId ?? widget.initialPlaceId;
     _selectedDayNumber = editing?.dayNumber;
     _chargedTo.addAll(editing?.chargedTo ?? const []);
@@ -171,6 +178,22 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     // định về "Cả nhóm" nữa.
     _wholeGroup = _chargedTo.isEmpty;
     _loadPlaces();
+  }
+
+  void _onAmountChanged() => setState(() {});
+
+  // Số tiền nhập vào (Điều chỉnh xăng xe / Điều chỉnh giá) luôn là TỔNG cho
+  // cả nhóm, chia đều cho mọi người (không theo childPriceRatio) — hiển thị
+  // con số cụ thể để không phải đoán, đúng góp ý người dùng.
+  String? _perPersonPreviewText() {
+    final raw = _amountController.text.replaceAll(RegExp(r'[^0-9\-]'), '');
+    final amount = double.tryParse(raw);
+    if (amount == null || amount == 0) return null;
+    final headcount = widget.adultCount + widget.childCount;
+    if (headcount <= 0) return null;
+    final perPerson = amount / headcount;
+    final sign = perPerson < 0 ? '-' : '';
+    return '≈ $sign${_amountFormatter.format(perPerson.abs())}đ/người ($headcount người)';
   }
 
   Future<void> _loadPlaces() async {
@@ -190,6 +213,7 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
   @override
   void dispose() {
     _noteController.dispose();
+    _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
     super.dispose();
   }
@@ -474,7 +498,7 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
         const Padding(
           padding: EdgeInsets.only(bottom: 8),
           child: Text(
-            'Điều chỉnh xăng xe áp dụng cho CẢ CHUYẾN, không gắn địa điểm/ngày cụ thể.',
+            'Áp dụng cho cả chuyến đi (không phải riêng ngày hay địa điểm nào).',
             style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
         )
@@ -544,11 +568,13 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
         keyboardType: TextInputType.numberWithOptions(signed: true),
         decoration: InputDecoration(
           labelText: _isTransportAdjustment
-              ? 'Số tiền chênh lệch xăng xe (VNĐ, có thể âm)'
+              ? 'Chi phí xăng xe đã chi (VNĐ, cả nhóm)'
               : _amountIsPerPerson
                   ? 'Số tiền / người (VNĐ)'
                   : 'Tổng số tiền phát sinh (VNĐ)',
-          helperText: 'Tối thiểu 1.000đ, làm tròn đến đơn vị nghìn',
+          helperText: _isTransportAdjustment
+              ? 'Nhập tổng cộng cho cả nhóm. Có thể nhập số âm nếu cần đính chính lại số đã ghi trước đó.'
+              : 'Tối thiểu 1.000đ, làm tròn đến đơn vị nghìn',
           border: const OutlineInputBorder(),
         ),
       ),
@@ -557,9 +583,20 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
         Text(
           _isEditingPriceAdjustment
               ? 'Điều chỉnh giá áp dụng cho cả nhóm, không gán riêng cho ai.'
-              : 'Điều chỉnh xăng xe áp dụng cho cả nhóm, không gán riêng cho ai.',
+              : 'Số tiền trên là TỔNG cho cả nhóm, sẽ được chia đều cho mọi người (kể cả trẻ em).',
           style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
         ),
+        if (_isTransportAdjustment && _perPersonPreviewText() != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _perPersonPreviewText()!,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F766E),
+            ),
+          ),
+        ],
       ] else ...[
         // Số tiền nhập là TỔNG đã chi thật hay giá TÍNH TRÊN MỖI NGƯỜI (hệ
         // thống tự nhân ra tổng lúc lưu) — làm rõ để khỏi phải đoán ý nghĩa
