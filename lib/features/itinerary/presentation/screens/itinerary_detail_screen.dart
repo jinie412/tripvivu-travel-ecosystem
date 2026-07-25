@@ -3236,7 +3236,7 @@ class _ItineraryDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.premiumBackground,
       body: BlocBuilder<ItineraryCubit, ItineraryState>(
         builder: (context, state) {
           if (state is ItineraryLoading) {
@@ -3398,7 +3398,7 @@ class _ItineraryDetailView extends StatelessWidget {
                                       width: 40,
                                       height: 4,
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade300,
+                                        color: AppColors.premiumBorder,
                                         borderRadius: BorderRadius.circular(2),
                                       ),
                                     ),
@@ -3423,7 +3423,7 @@ class _ItineraryDetailView extends StatelessWidget {
                                           ),
                                           padding: EdgeInsets.zero,
                                           onPressed: onRefreshTap,
-                                          color: AppColors.textSecondary,
+                                          color: AppColors.premiumMuted,
                                         ),
                                 ),
                               ],

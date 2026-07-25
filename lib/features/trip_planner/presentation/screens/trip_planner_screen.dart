@@ -69,7 +69,7 @@ class _TripPlannerView extends StatelessWidget {
             child: IconButton(
               icon: const Icon(
                 Icons.chevron_left,
-                color: AppColors.textPrimary,
+                color: AppColors.premiumNavy,
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -80,7 +80,7 @@ class _TripPlannerView extends StatelessWidget {
             const Text(
               'Tạo lịch trình mới',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: AppColors.premiumNavy,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -89,7 +89,7 @@ class _TripPlannerView extends StatelessWidget {
             Text(
               'BƯỚC 1/3',
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: AppColors.premiumMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -102,7 +102,7 @@ class _TripPlannerView extends StatelessWidget {
             child: const Text(
               'Hủy',
               style: TextStyle(
-                color: AppColors.primary,
+                color: AppColors.premiumBlue,
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -138,7 +138,7 @@ class _TripPlannerView extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color: AppColors.premiumNavy,
                           ),
                         ),
                         const SizedBox(height: AppSizes.s12),
@@ -146,7 +146,7 @@ class _TripPlannerView extends StatelessWidget {
                           'Chọn địa điểm khởi hành, điểm đến và phương tiện di chuyển.',
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.textSecondary,
+                            color: AppColors.premiumMuted,
                             height: 1.5,
                           ),
                         ),
@@ -180,60 +180,69 @@ class _TripPlannerView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(AppSizes.s16),
                   color: AppColors.premiumBackground,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final cubit = context.read<TripPlannerCubit>();
-                      final error = cubit.validateStep1();
-                      if (error != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(error),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.primary],
+                      ),
+                      borderRadius: BorderRadius.circular(AppSizes.r16),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final cubit = context.read<TripPlannerCubit>();
+                        final error = cubit.validateStep1();
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        cubit.goNextStep();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<TripPlannerCubit>(),
+                              child: const TripPlannerStep2Screen(),
+                            ),
                           ),
                         );
-                        return;
-                      }
-                      cubit.goNextStep();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider.value(
-                            value: context.read<TripPlannerCubit>(),
-                            child: const TripPlannerStep2Screen(),
-                          ),
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        minimumSize: const Size(
+                          double.infinity,
+                          AppSizes.appBarHeight,
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(
-                        double.infinity,
-                        AppSizes.appBarHeight,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppSizes.r16),
+                        ),
+                        elevation: 0,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.r16),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Tiếp tục',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Tiếp tục',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: AppSizes.s8),
+                          Icon(
+                            Icons.arrow_forward,
                             color: Colors.white,
+                            size: AppSizes.iconMd,
                           ),
-                        ),
-                        SizedBox(width: AppSizes.s8),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white,
-                          size: AppSizes.iconMd,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

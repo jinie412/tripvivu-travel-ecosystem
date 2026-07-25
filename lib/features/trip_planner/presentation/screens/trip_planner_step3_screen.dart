@@ -166,7 +166,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 child: IconButton(
                   icon: const Icon(
                     Icons.chevron_left,
-                    color: AppColors.textPrimary,
+                    color: AppColors.premiumNavy,
                   ),
                   onPressed: () {
                     context.read<TripPlannerCubit>().goPrevStep();
@@ -180,7 +180,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 const Text(
                   'Tạo lịch trình mới',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: AppColors.premiumNavy,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -189,7 +189,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 Text(
                   'BƯỚC 3/3',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: AppColors.premiumMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -203,7 +203,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 child: const Text(
                   'Hủy',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: AppColors.premiumBlue,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -216,7 +216,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
             loaded: (tripForm) => Column(
               children: [
                 Container(
-                  color: AppColors.surface,
+                  color: AppColors.premiumSurface,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
@@ -269,7 +269,7 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(
-                                color: AppColors.primary,
+                                color: AppColors.premiumBlue,
                                 width: 1.5,
                               ),
                             ),
@@ -338,32 +338,45 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
                 ),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: AppColors.background,
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        context.read<TripPlannerCubit>().submitTripPlan(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  color: AppColors.premiumBackground,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.primary],
                       ),
-                      elevation: 0,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Hoàn thành',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          context.read<TripPlannerCubit>().submitTripPlan(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        SizedBox(width: 8),
-                        Icon(Icons.check_circle, color: Colors.white, size: 20),
-                      ],
+                        elevation: 0,
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Hoàn thành',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

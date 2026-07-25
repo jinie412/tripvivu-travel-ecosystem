@@ -27,7 +27,7 @@ class TransportationSelector extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: AppColors.premiumNavy,
           ),
         ),
         const SizedBox(height: 12),
@@ -68,17 +68,15 @@ class TransportationSelector extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 22),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
+          color: isSelected ? AppColors.premiumBlue : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.inputBorder.withValues(alpha: 0.5),
+            color: isSelected ? AppColors.premiumBlue : AppColors.premiumBorder,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.24),
+                    color: AppColors.premiumBlue.withValues(alpha: 0.2),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -89,7 +87,7 @@ class TransportationSelector extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.white : AppColors.textPrimary,
+              color: isSelected ? Colors.white : AppColors.premiumNavy,
               size: 30,
             ),
             const SizedBox(height: 12),
@@ -98,7 +96,7 @@ class TransportationSelector extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: isSelected ? Colors.white : AppColors.textPrimary,
+                color: isSelected ? Colors.white : AppColors.premiumNavy,
               ),
             ),
           ],

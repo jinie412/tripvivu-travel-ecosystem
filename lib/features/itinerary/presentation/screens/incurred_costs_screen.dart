@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:travel_advisor_mobile/core/constants/cost_ui_labels.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
@@ -252,7 +253,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
       backgroundColor: AppColors.premiumBackground,
       appBar: AppBar(
         title: const Text(
-          'Quản lý chi phí',
+          CostUiLabels.managementTitle,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -333,15 +334,15 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                     _buildOverviewHero(_breakdown!),
                     const SizedBox(height: 20),
                     _buildSectionHeading(
-                      'Kế hoạch chuyến đi',
-                      'Dự toán và hạn mức của cả nhóm',
+                      CostUiLabels.estimateDetails,
+                      CostUiLabels.estimateDetailsSubtitle,
                     ),
                     const SizedBox(height: 10),
                     _buildEstimateCard(_breakdown!),
                     const SizedBox(height: 20),
                     _buildSectionHeading(
-                      'Phân bổ thành viên',
-                      'Số tiền mỗi người chịu trách nhiệm',
+                      CostUiLabels.memberAllocation,
+                      CostUiLabels.memberAllocationSubtitle,
                     ),
                     const SizedBox(height: 10),
                     _buildMemberBreakdownCard(_breakdown!),
@@ -360,7 +361,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                         ? 'Chi phí tại ${_placeFilterName ?? "địa điểm này"}'
                         : _dayFilterNumber != null
                         ? 'Chi phí ngày $_dayFilterNumber'
-                        : 'Lịch sử chi tiêu',
+                        : CostUiLabels.expenseHistory,
                     _costs.isEmpty
                         ? 'Chưa ghi nhận khoản chi nào'
                         : '${_costs.length} khoản chi đã ghi nhận',
@@ -422,7 +423,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'TỔNG QUAN CHI PHÍ',
+                  CostUiLabels.overviewEyebrow,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -441,7 +442,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: const Text(
-                  'Đã gồm 10% dự trù',
+                  CostUiLabels.reserveIncluded,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -453,7 +454,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
           ),
           const SizedBox(height: 22),
           const Text(
-            'Tổng ước tính cả nhóm',
+            CostUiLabels.estimatedTotal,
             style: TextStyle(fontSize: 13, color: Color(0xFFCFE0F2)),
           ),
           const SizedBox(height: 4),
@@ -479,7 +480,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               children: [
                 Expanded(
                   child: _buildHeroMetric(
-                    'Đã chi đến nay',
+                    CostUiLabels.spent,
                     '${_formatter.format(breakdown.spentSoFar)}đ',
                   ),
                 ),
@@ -492,7 +493,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16),
                     child: _buildHeroMetric(
-                      'Hạn mức nhóm',
+                      CostUiLabels.spendingLimit,
                       '${_formatter.format(breakdown.payableLimitForGroup)}đ',
                     ),
                   ),
@@ -925,10 +926,6 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
   /// hiển thị công thức nhân rõ ràng ("2 × 1.500.000đ = 3.000.000đ"); riêng
   /// phần ước tính có thể bấm xổ ra breakdown Địa điểm/Lưu trú/Xăng xe.
   Widget _buildEstimateCard(CostBreakdownEntity breakdown) {
-    String formula(int count, double unitPrice) =>
-        '$count × ${_formatter.format(unitPrice)}đ = '
-        '${_formatter.format(count * unitPrice)}đ';
-
     Widget breakdownRow(
       String label,
       double value, {
@@ -989,39 +986,111 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
       double? adultPlaceCost,
       double? adultHotelCost,
     }) {
-      return ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
-        title: Text(
-          '$label: ${formula(count, unitPrice)}',
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        decoration: BoxDecoration(
+          color: AppColors.premiumBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.premiumBorder),
         ),
-        children: [
-          breakdownRow(
-            'Địa điểm & ăn uống',
-            placeCost,
-            caption: adultPlaceCost != null
-                ? childRatioCaption(adultPlaceCost)
-                : null,
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          iconColor: AppColors.premiumBlue,
+          collapsedIconColor: AppColors.costTextMuted,
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$label ($count)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.costText,
+                  ),
+                ),
+              ),
+              Text(
+                '${_formatter.format(count * unitPrice)}đ',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.costText,
+                ),
+              ),
+            ],
           ),
-          breakdownRow(
-            'Lưu trú',
-            hotelCost,
-            caption: adultHotelCost != null
-                ? childRatioCaption(adultHotelCost)
-                : null,
+          subtitle: Text(
+            '${_formatter.format(unitPrice)}đ/người · Chạm để xem chi tiết',
+            style: const TextStyle(
+              fontSize: 10.5,
+              color: AppColors.costTextMuted,
+            ),
           ),
-          breakdownRow('Xăng xe/tự túc', transportCost, caption: rateCaption),
-          breakdownRow('Phí dự trù (10%, đã làm tròn)', contingency),
-        ],
+          children: [
+            breakdownRow(
+              'Địa điểm & ăn uống',
+              placeCost,
+              caption: adultPlaceCost != null
+                  ? childRatioCaption(adultPlaceCost)
+                  : null,
+            ),
+            breakdownRow(
+              'Lưu trú',
+              hotelCost,
+              caption: adultHotelCost != null
+                  ? childRatioCaption(adultHotelCost)
+                  : null,
+            ),
+            breakdownRow('Xăng xe/tự túc', transportCost, caption: rateCaption),
+            breakdownRow('Phí dự trù (10%, đã làm tròn)', contingency),
+          ],
+        ),
       );
     }
 
-    Widget formulaLine(String label, int count, double unitPrice) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Text(
-        '$label: ${formula(count, unitPrice)}',
-        style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+    Widget formulaLine(String label, int count, double unitPrice) => Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.costSoftMint,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$label ($count)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.costText,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_formatter.format(unitPrice)}đ/người',
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.costTextMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${_formatter.format(count * unitPrice)}đ',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.premiumTeal,
+            ),
+          ),
+        ],
       ),
     );
 
@@ -1047,7 +1116,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               Icon(Icons.shield_outlined, size: 18, color: AppColors.costMint),
               SizedBox(width: 8),
               Text(
-                'Hạn mức có thể chi trả',
+                CostUiLabels.spendingLimit,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1085,7 +1154,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
           const Divider(height: 1, color: AppColors.premiumBorder),
           const SizedBox(height: 14),
           const Text(
-            'Chi tiết dự toán theo nhóm khách',
+            CostUiLabels.estimateByTraveler,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -1093,7 +1162,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
             ),
           ),
           Text(
-            'Chi phí gốc chưa dự trù: '
+            '${CostUiLabels.beforeReserve}: '
             '${_formatter.format(breakdown.estimatedCostForGroup)}đ',
             style: const TextStyle(
               fontSize: 11,
@@ -1152,32 +1221,23 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
         children: [
           const Row(
             children: [
-              Icon(
-                Icons.groups_2_outlined,
-                size: 19,
-                color: AppColors.premiumBlue,
-              ),
+              Icon(Icons.schedule_rounded, size: 17, color: AppColors.costMint),
               SizedBox(width: 8),
               Text(
-                'Chi tiết theo thành viên',
+                'Tính đến hiện tại',
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.costText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.costTextMuted,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
           // Số này là CHI PHÍ THỰC TẾ (chỉ địa điểm đã ghé + chi phí phát
           // sinh gắn địa điểm đã ghé) — khác với "Chi phí ước tính" ở card
           // trên (tính cho cả kế hoạch), nên cần ghi rõ mốc thời gian để
           // tránh hiểu nhầm 2 số không khớp nhau là do sai sót.
-          const Text(
-            'Tính đến hiện tại',
-            style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           for (int i = 0; i < breakdown.memberTotals.length; i++) ...[
             // Phân cách rõ giữa từng người — trước đây chỉ cách nhau 4px,
             // dễ nhìn lộn phần category breakdown của người này sang người kế

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:travel_advisor_mobile/core/config/app_config.dart';
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/cost_ui_labels.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 
 import 'itinerary_detail_screen.dart';
@@ -114,7 +115,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   String? _costBreakdownItinId;
   Future<CostBreakdownEntity>? _costBreakdownFuture;
 
-  /// Nguồn số liệu duy nhất cho card "Quản lý chi tiêu" — cùng API
+  /// Nguồn số liệu duy nhất cho card "Quản lý chi phí" — cùng API
   /// `getCostBreakdown()` mà [IncurredCostsScreen] dùng, để tránh có 2 công
   /// thức tính chi phí ước tính lệch nhau giữa 2 màn.
   Future<CostBreakdownEntity> _ensureCostBreakdown(String itineraryId) {
@@ -256,7 +257,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           c.nearbyRestaurantName != p.nearbyRestaurantName,
       listener: _showFoodProximityPopup,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFBFDFF),
+        backgroundColor: AppColors.premiumBackground,
         extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -371,7 +372,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                                 width: 4,
                                 height: 24,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2563EB),
+                                  color: AppColors.premiumBlue,
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -381,7 +382,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
+                                  color: AppColors.premiumNavy,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -398,7 +399,9 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                           ],
 
                           const SizedBox(height: 36),
-                          const SectionHeader(title: 'Quản lý chi tiêu'),
+                          const SectionHeader(
+                            title: CostUiLabels.managementTitle,
+                          ),
                           const SizedBox(height: 16),
                           _buildExpenseManagementCard(context, itin),
 
@@ -1272,8 +1275,9 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     final totalHotelCost =
         itin.hotelCost * itin.adultCount +
         itin.hotelCost * itin.childPriceRatio * itin.childCount;
-    if (hotelName == null || totalHotelCost <= 0)
+    if (hotelName == null || totalHotelCost <= 0) {
       return const SizedBox.shrink();
+    }
     final pricePerNightPerPerson = nightCount > 0
         ? itin.hotelCost / nightCount
         : itin.hotelCost;
@@ -1393,7 +1397,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
   /// Khi chuyến CHƯA hoàn tất và CHƯA ai ghi chi phí xăng xe thực tế, số này
   /// chỉ là ƯỚC TÍNH — ẩn hẳn khỏi tổng quan để tránh hiển thị quá sớm 1 con
   /// số trông như đã tiêu thật nhưng người dùng không biết nó tính cho gì
-  /// (chỉ hiện lại đầy đủ trong "Chi phí ước tính" ở card Quản lý chi tiêu).
+  /// (chỉ hiện lại đầy đủ trong "Chi phí ước tính" ở card Quản lý chi phí).
   Widget _buildTransportOverviewRow(ItineraryDetailEntity itin) {
     if (itin.transportCost <= 0) return const SizedBox.shrink();
     if (itin.status.toUpperCase() == 'COMPLETED') {
@@ -1538,7 +1542,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
       builder: (context, snapshot) {
         // Không phải thành viên lịch trình (VD đang xem lịch trình public
         // của người khác — backend chặn 403, xem incurred-costs.service.ts's
-        // assertCallerIsMember) — ẩn hẳn card "Sổ chi tiêu" thay vì hiện
+        // assertCallerIsMember) — ẩn hẳn card "Tổng quan chi phí" thay vì hiện
         // loading xoay vô tận. Trước đây chỉ check `!snapshot.hasData`,
         // không phân biệt "đang tải" với "tải lỗi vĩnh viễn" nên khi bị 403,
         // Future báo lỗi (không bao giờ có data) mà spinner cứ quay mãi.
@@ -1577,23 +1581,13 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Sổ chi tiêu',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.costText,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.costTextMuted,
-                    ),
-                  ],
+                const Text(
+                  CostUiLabels.overviewTitle,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.costText,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (breakdown == null)
@@ -1619,8 +1613,17 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                const Text(
+                                  CostUiLabels.estimatedTotal,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.costTextMuted,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
                                 Text(
-                                  '${formatter.format(breakdown.roundedGroupTotal)} ${itin.currency}',
+                                  '${formatter.format(breakdown.roundedGroupTotal)}đ',
                                   style: const TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w900,
@@ -1630,8 +1633,8 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                                 const SizedBox(height: 2),
                                 Text(
                                   breakdown.childCount > 0
-                                      ? 'Tổng ước tính cho ${breakdown.adultCount} người lớn, ${breakdown.childCount} trẻ em'
-                                      : 'Tổng ước tính cho ${breakdown.adultCount} người lớn',
+                                      ? '${breakdown.adultCount} người lớn, ${breakdown.childCount} trẻ em'
+                                      : '${breakdown.adultCount} người lớn',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.costTextMuted,
@@ -1664,7 +1667,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'Mức có thể chi trả',
+                              CostUiLabels.spendingLimit,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.costTextMuted,
@@ -1672,7 +1675,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                             ),
                           ),
                           Text(
-                            '${formatter.format(breakdown.payableLimitForGroup)} ${itin.currency}',
+                            '${formatter.format(breakdown.payableLimitForGroup)}đ',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
@@ -1717,6 +1720,39 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                 ),
                 const SizedBox(height: 20),
                 if (breakdown != null) _buildSpendingProgress(breakdown),
+                if (breakdown != null) ...[
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.premiumSoftBlue,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            CostUiLabels.viewDetails,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.premiumBlue,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: AppColors.premiumBlue,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1781,7 +1817,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           children: [
             const Expanded(
               child: Text(
-                'Chi phí thực tế đã tiêu',
+                CostUiLabels.spent,
                 style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
               ),
             ),
@@ -1839,7 +1875,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
           runSpacing: 4,
           children: [
             Text(
-              'Ước tính: ${_compactMillion(estimated)}',
+              '${CostUiLabels.beforeReserve}: ${_compactMillion(estimated)}',
               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
             Text(
@@ -1847,7 +1883,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
             Text(
-              'Có thể chi trả: ${_compactMillion(payable)}',
+              '${CostUiLabels.spendingLimit}: ${_compactMillion(payable)}',
               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             ),
           ],
@@ -1955,16 +1991,18 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
 
   Widget _buildActionBtn(BuildContext context, ItineraryDetailEntity itin) {
     String btnText = 'XEM CHI TIẾT LỊCH TRÌNH';
-    Color btnColor = const Color(0xFF1E3A8A);
     IconData btnIcon = Icons.arrow_forward;
     void onPressed() => _navigateToDetail(context, itin);
 
     return Container(
       decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primary],
+        ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: btnColor.withValues(alpha: 0.25),
+            color: AppColors.primary.withValues(alpha: 0.22),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1973,7 +2011,8 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: btnColor,
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 54),
           shape: RoundedRectangleBorder(

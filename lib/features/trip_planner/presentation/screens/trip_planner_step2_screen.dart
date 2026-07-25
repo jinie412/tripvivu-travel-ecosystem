@@ -242,58 +242,67 @@ class TripPlannerStep2Screen extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  color: AppColors.background,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final cubit = context.read<TripPlannerCubit>();
-                      final error = cubit.validateStep2();
-                      if (error != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(error),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
+                  color: AppColors.premiumBackground,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.primary],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final cubit = context.read<TripPlannerCubit>();
+                        final error = cubit.validateStep2();
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(error),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        cubit.goNextStep();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<TripPlannerCubit>(),
+                              child: const TripPlannerStep3Screen(),
+                            ),
                           ),
                         );
-                        return;
-                      }
-                      cubit.goNextStep();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider.value(
-                            value: context.read<TripPlannerCubit>(),
-                            child: const TripPlannerStep3Screen(),
-                          ),
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Tiếp tục',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Tiếp tục',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ],
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -336,7 +345,7 @@ class _TripIntentButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.explore_outlined, color: AppColors.primary),
+            const Icon(Icons.explore_outlined, color: AppColors.premiumBlue),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -455,7 +464,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                     return CheckboxListTile(
                       value: isSelected,
                       onChanged: canToggle ? (_) => _toggle(intent) : null,
-                      activeColor: AppColors.primary,
+                      activeColor: AppColors.premiumBlue,
                       checkColor: Colors.white,
                       controlAffinity: ListTileControlAffinity.trailing,
                       title: Text(
@@ -465,7 +474,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: isSelected
-                              ? AppColors.primary
+                              ? AppColors.premiumBlue
                               : canToggle
                               ? AppColors.textPrimary
                               : AppColors.textSecondary,
@@ -492,7 +501,7 @@ class _TripIntentSheetState extends State<_TripIntentSheet> {
                       onPressed: () =>
                           Navigator.of(context).pop(List.of(_selected)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: AppColors.premiumBlue,
                         foregroundColor: Colors.white,
                       ),
                       child: const Text('Áp dụng'),

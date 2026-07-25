@@ -19,13 +19,16 @@ class StepProgressBar extends StatelessWidget {
         final isCompleted = index < currentStep;
         return Expanded(
           child: Container(
-            margin: EdgeInsets.symmetric(horizontal: index == 1 ? 4 : 0).copyWith(
-              left: index == 0 ? 0 : 4,
-              right: index == totalSteps - 1 ? 0 : 4,
-            ),
+            margin: EdgeInsets.symmetric(horizontal: index == 1 ? 4 : 0)
+                .copyWith(
+                  left: index == 0 ? 0 : 4,
+                  right: index == totalSteps - 1 ? 0 : 4,
+                ),
             height: 4,
             decoration: BoxDecoration(
-              color: isCompleted ? AppColors.primary : AppColors.inputBorder.withValues(alpha: 0.5),
+              color: isCompleted
+                  ? AppColors.premiumBlue
+                  : AppColors.premiumBorder,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
