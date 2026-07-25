@@ -42,9 +42,7 @@ abstract class ItineraryDataSource {
   Future<void> deleteItinerary(String id);
   Future<void> toggleVisibility(String id, bool isPublic);
   Future<void> shareItinerary(String id, String recipient);
-  Future<List<ItineraryShareRecipientData>> searchShareRecipients(
-    String query,
-  );
+  Future<List<ItineraryShareRecipientData>> searchShareRecipients(String query);
   Future<ItineraryShareLinkData> createShareLink(String id);
   Future<void> updateItineraryTitle(String id, String title);
   Future<void> updateActivity(
@@ -61,7 +59,9 @@ abstract class ItineraryDataSource {
   Future<void> deleteActivity(String itineraryId, String activityId);
 
   /// Gọi POST /itinerary/plan → trả về CreateItineraryResult (có gaItineraryId khi compare).
-  Future<CreateItineraryResult> createItinerary(CreateItineraryRequestModel request);
+  Future<CreateItineraryResult> createItinerary(
+    CreateItineraryRequestModel request,
+  );
   Future<void> updateItineraryActivities(
     String id,
     List<ItineraryDayEntity> days,
@@ -229,29 +229,30 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     final headers = await _authHeaders();
     final userId = await AuthUtils.requireCurrentUserId();
     final res = await http.get(
-      Uri.parse('$baseUrl/itinerary/share/recipients').replace(
-        queryParameters: {
-          'q': trimmed,
-          'senderUserId': userId,
-        },
-      ),
+      Uri.parse(
+        '$baseUrl/itinerary/share/recipients',
+      ).replace(queryParameters: {'q': trimmed, 'senderUserId': userId}),
       headers: headers,
     );
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final users = (data['users'] as List?) ?? const [];
-      return users.whereType<Map<String, dynamic>>().map((item) {
-        return (
-          id: (item['id'] ?? '').toString(),
-          fullName: (item['fullName'] ?? '').toString(),
-          email: (item['email'] ?? '').toString(),
-          phoneNumber: item['phoneNumber']?.toString(),
-        );
-      }).where((item) => item.id.isNotEmpty).toList();
+      return users
+          .whereType<Map<String, dynamic>>()
+          .map((item) {
+            return (
+              id: (item['id'] ?? '').toString(),
+              fullName: (item['fullName'] ?? '').toString(),
+              email: (item['email'] ?? '').toString(),
+              phoneNumber: item['phoneNumber']?.toString(),
+            );
+          })
+          .where((item) => item.id.isNotEmpty)
+          .toList();
     }
 
-    var message = 'KhÃ´ng thá»ƒ tÃ¬m ngÆ°á»i dÃ¹ng';
+    var message = 'Không thể tìm người dùng';
     try {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final raw = data['message'];
@@ -464,7 +465,9 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
       final executionTimeSeconds = data['executionTimeSeconds'];
       final warning = data['warning'];
       if (executionTimeSeconds != null) {
-        debugPrint('Itinerary generation completed in ${executionTimeSeconds}s');
+        debugPrint(
+          'Itinerary generation completed in ${executionTimeSeconds}s',
+        );
       }
       if (warning is String && warning.isNotEmpty) {
         debugPrint('Itinerary generation warning: $warning');
@@ -805,9 +808,7 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
   }
 
   @override
-  Future<List<EligiblePlaceModel>> getEligiblePlaces(
-    String itineraryId,
-  ) async {
+  Future<List<EligiblePlaceModel>> getEligiblePlaces(String itineraryId) async {
     final headers = await _authHeaders();
     final userId = await AuthUtils.requireCurrentUserId();
     final res = await http.get(
@@ -977,7 +978,11 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     final res = await http.patch(
       Uri.parse('$baseUrl/itinerary/$itineraryId/incurred-costs/place-price'),
       headers: headers,
-      body: jsonEncode({'userId': userId, 'placeId': placeId, 'amount': amount}),
+      body: jsonEncode({
+        'userId': userId,
+        'placeId': placeId,
+        'amount': amount,
+      }),
     );
     if (res.statusCode != 200) {
       throw Exception(_extractErrorMessage(res, 'Không thể sửa giá địa điểm'));

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -49,7 +51,10 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
     return BlocConsumer<TripPlannerCubit, TripPlannerState>(
       listener: (context, state) {
         state.whenOrNull(
-          generating: () => _showLoadingDialog(context),
+          generating: (isDetectingRegions) => _showLoadingDialog(
+            context,
+            isDetectingRegions: isDetectingRegions,
+          ),
           success: (itineraryId) {
             if (Navigator.of(context).canPop()) Navigator.of(context).pop();
             MainShellTabController.refreshItineraries();
@@ -371,28 +376,18 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
     );
   }
 
-  void _showLoadingDialog(BuildContext context) {
+  void _showLoadingDialog(
+    BuildContext context, {
+    required bool isDetectingRegions,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const PopScope(
+      builder: (_) => PopScope(
         canPop: false,
         child: AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text(
-                'Tạo lịch trình...',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Vui lòng chờ trong giây lát',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-            ],
+          content: _GeneratingDialogContent(
+            isDetectingRegions: isDetectingRegions,
           ),
         ),
       ),
@@ -517,6 +512,84 @@ class _TripPlannerStep3ScreenState extends State<TripPlannerStep3Screen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Nội dung dialog loading khi tạo lịch trình — xoay vòng thông điệp theo
+/// thời gian thay vì 1 dòng chữ đứng yên, để người dùng không thấy chán/nghi
+/// ngờ app bị treo khi bước lập lịch trình thật (CP-SAT) mất 20-30 giây.
+/// [isDetectingRegions] = true cho bước phát hiện vùng địa lý (nhanh, chỉ
+/// cần 1 thông điệp), false cho bước lập lịch trình thật (chậm, cần xoay
+/// vòng nhiều thông điệp để cảm giác vẫn đang có việc diễn ra).
+class _GeneratingDialogContent extends StatefulWidget {
+  final bool isDetectingRegions;
+
+  const _GeneratingDialogContent({required this.isDetectingRegions});
+
+  @override
+  State<_GeneratingDialogContent> createState() =>
+      _GeneratingDialogContentState();
+}
+
+class _GeneratingDialogContentState extends State<_GeneratingDialogContent> {
+  static const _detectingRegionsMessages = ['Đang tìm địa điểm phù hợp...'];
+
+  static const _planningMessages = [
+    'Đang tìm địa điểm phù hợp...',
+    'Đang chọn quán ăn ngon gần đó...',
+    'Đang sắp xếp lịch trình hợp lý...',
+    'Đang tính toán thời gian di chuyển...',
+    'Sắp xong rồi, chờ thêm chút nhé...',
+  ];
+
+  Timer? _timer;
+  int _index = 0;
+
+  List<String> get _messages =>
+      widget.isDetectingRegions ? _detectingRegionsMessages : _planningMessages;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_messages.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!mounted) return;
+        setState(() {
+          if (_index < _messages.length - 1) _index++;
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(),
+        const SizedBox(height: 16),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Text(
+            _messages[_index],
+            key: ValueKey(_index),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Vui lòng chờ trong giây lát',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+      ],
     );
   }
 }

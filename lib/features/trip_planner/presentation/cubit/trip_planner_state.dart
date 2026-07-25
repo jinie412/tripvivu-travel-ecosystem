@@ -10,8 +10,15 @@ class TripPlannerState with _$TripPlannerState {
   const factory TripPlannerState.initial() = _Initial;
   const factory TripPlannerState.loading() = _Loading;
   const factory TripPlannerState.loaded({required TripForm tripForm}) = _Loaded;
-  const factory TripPlannerState.generating() = _Generating;
-  const factory TripPlannerState.success({required String itineraryId}) = _Success;
+  // isDetectingRegions = true cho bước gửi form lần đầu (backend chỉ chạy
+  // phát hiện vùng địa lý, nhanh) — false cho bước sau khi đã chốt phân bổ
+  // vùng (backend chạy CP-SAT lập lịch trình thật, có thể mất 20-30 giây) —
+  // dùng để chọn đúng bộ thông điệp loading cho từng giai đoạn.
+  const factory TripPlannerState.generating({
+    @Default(false) bool isDetectingRegions,
+  }) = _Generating;
+  const factory TripPlannerState.success({required String itineraryId}) =
+      _Success;
   const factory TripPlannerState.error(String message) = _Error;
   // Ngân sách nhập vào không đủ tạo lịch trình khả thi — hỏi người dùng dùng
   // mức đề xuất hay tiếp tục với ngân sách hiện tại (xem mục 1.5 trong plan

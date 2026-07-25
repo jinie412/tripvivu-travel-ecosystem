@@ -2828,7 +2828,12 @@ class _ItineraryShareSheetState extends State<_ItineraryShareSheet> {
                             Icons.person_add_alt_1_rounded,
                           ),
                           errorText: _errorText,
-                          errorMaxLines: 2,
+                          // Cảnh báo "đã đủ số người lớn..." từ backend khá
+                          // dài (~190 ký tự) — 2 dòng cũ bị cắt mất phần
+                          // hướng dẫn cuối câu. Tăng lên đủ dòng để hiển thị
+                          // trọn vẹn, không ảnh hưởng các thông báo ngắn khác
+                          // (chỉ chiếm đúng số dòng thực tế cần).
+                          errorMaxLines: 6,
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           border: OutlineInputBorder(

@@ -103,7 +103,7 @@ class _ActivityVerticalCardState extends State<ActivityVerticalCard> {
     final hasStatus = widget.item.status.trim().isNotEmpty;
     final isOpenStatus =
         widget.item.status.contains('Đang mở') ||
-        widget.item.status.contains('Äang má»Ÿ') ||
+        widget.item.status.contains('Đang mở') ||
         widget.item.status.toLowerCase().contains('dang mo');
 
     return Container(
