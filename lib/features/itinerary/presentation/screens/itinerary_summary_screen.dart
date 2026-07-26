@@ -14,6 +14,7 @@ import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tr
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_cubit.dart';
 import 'package:travel_advisor_mobile/features/itinerary/tracking/presentation/cubit/tracking_state.dart';
 
+import 'package:travel_advisor_mobile/core/widgets/info_pill.dart';
 import 'package:travel_advisor_mobile/core/widgets/section_header.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
@@ -217,7 +218,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         reviewCount: 0,
         onOrderTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
           Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -231,11 +232,16 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         },
         onSkipTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
         },
       ),
     ).then((_) {
-      if (ctx.mounted) ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+      if (ctx.mounted) {
+        ctx.read<TrackingCubit>().dismissNearbyRestaurant(
+          detailId: detailId,
+          evaluateNext: true,
+        );
+      }
     });
   }
 
@@ -399,10 +405,6 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                           ],
 
                           const SizedBox(height: 36),
-                          const SectionHeader(
-                            title: CostUiLabels.managementTitle,
-                          ),
-                          const SizedBox(height: 16),
                           _buildExpenseManagementCard(context, itin),
 
                           const SizedBox(height: 36),
@@ -569,6 +571,27 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
         ),
       );
     }
+  }
+
+  void _showCostEstimateInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Về chi phí ước tính'),
+        content: const Text(
+          'Chi phí thực tế có thể thay đổi theo thời gian và địa điểm.\n\n'
+          '${CostUiLabels.reserveIncluded} để dự phòng các khoản phát sinh ngoài kế hoạch.\n\n'
+          'Số liệu được tính trên chi phí tham quan, ăn uống, khách sạn và di chuyển ước lượng cho cả nhóm.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildDestinationHeader(
@@ -844,35 +867,8 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
     );
   }
 
-  Widget _summaryInfoPill(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.95),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _summaryInfoPill(IconData icon, String label) =>
+      InfoPill(icon: icon, label: label, variant: InfoPillVariant.dark);
 
   String _formatFullDateRange(DateTime start, DateTime end) {
     if (start.year == end.year) {
@@ -1483,7 +1479,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                 color: const Color(0xFF3B82F6),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: _StatCardV2(
                 value: '$visitCount địa điểm',
@@ -1493,7 +1489,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         // Bọc IntrinsicHeight để card phương tiện cao bằng card người
         // lớn/trẻ em (card kia giờ 2 dòng nên cao hơn 1 dòng "Xe máy"/"Ô tô").
         IntrinsicHeight(
@@ -1510,7 +1506,7 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                   color: const Color(0xFF10B981),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _StatCardV2(
                   value: isMotorbike ? 'Xe máy' : 'Ô tô',
@@ -1581,15 +1577,6 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  CostUiLabels.overviewTitle,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.costText,
-                  ),
-                ),
-                const SizedBox(height: 16),
                 if (breakdown == null)
                   const SizedBox(
                     height: 40,
@@ -1613,13 +1600,31 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  CostUiLabels.estimatedTotal,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.costTextMuted,
-                                  ),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      CostUiLabels.estimatedTotal,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.costTextMuted,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(999),
+                                      onTap: () =>
+                                          _showCostEstimateInfoDialog(context),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(2),
+                                        child: Icon(
+                                          Icons.info_outline_rounded,
+                                          size: 14,
+                                          color: AppColors.costTextMuted,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -1686,38 +1691,6 @@ class _ItinerarySummaryViewState extends State<_ItinerarySummaryView> {
                       ),
                     ],
                   ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        size: 16,
-                        color: Color(0xFF64748B),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Lưu ý: Chi phí thực tế có thể thay đổi theo thời gian và địa điểm.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 20),
                 if (breakdown != null) _buildSpendingProgress(breakdown),
                 if (breakdown != null) ...[
@@ -2405,16 +2378,16 @@ class _StatCardV2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -2423,28 +2396,28 @@ class _StatCardV2 extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
               color: Color(0xFF1E293B),
             ),
           ),
           if (secondLine != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               secondLine!,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF1E293B),
               ),

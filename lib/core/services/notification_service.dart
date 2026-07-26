@@ -12,6 +12,21 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _isInitialized = false;
+  static final Set<String> _claimedRemoteNotificationIds = <String>{};
+
+  /// FCM foreground và Supabase Realtime có thể cùng báo một notification.
+  /// Nguồn đến trước được quyền hiển thị; nguồn đến sau bỏ qua theo ID.
+  static bool claimRemoteNotification(String? notificationId) {
+    final id = notificationId?.trim() ?? '';
+    if (id.isEmpty) return true;
+    if (!_claimedRemoteNotificationIds.add(id)) return false;
+    if (_claimedRemoteNotificationIds.length > 200) {
+      _claimedRemoteNotificationIds.remove(
+        _claimedRemoteNotificationIds.first,
+      );
+    }
+    return true;
+  }
 
   Future<void> init() async {
     if (_isInitialized) return;

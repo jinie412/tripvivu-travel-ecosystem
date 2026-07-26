@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/widgets.dart';
 import 'package:travel_advisor_mobile/core/network/dio_client.dart';
 import 'package:travel_advisor_mobile/core/services/notification_navigation_service.dart';
+import 'package:travel_advisor_mobile/core/services/notification_service.dart';
 
 /// Background message handler — must be a top-level function.
 @pragma('vm:entry-point')
@@ -55,6 +56,11 @@ class FcmService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
       if (notification == null) return;
+      if (!NotificationService.claimRemoteNotification(
+        message.data['notification_id']?.toString(),
+      )) {
+        return;
+      }
 
       // v21: show uses named parameters
       _localNotif.show(

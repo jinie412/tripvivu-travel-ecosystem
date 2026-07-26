@@ -33,6 +33,11 @@ class ProfileCubit extends Cubit<ProfileState> {
       var profile = await _getProfile();
       var activities = const <ActivityItemEntity>[];
 
+      // Hiển thị header/menu ngay khi profile về; activities là dữ liệu phụ và
+      // được tải tiếp ở nền thay vì khóa toàn bộ drawer bằng spinner.
+      if (isClosed) return;
+      emit(ProfileLoaded(profile: profile, activities: activities));
+
       if (includeActivities) {
         try {
           activities = await _getRecentActivities();
@@ -46,7 +51,9 @@ class ProfileCubit extends Cubit<ProfileState> {
       }
 
       if (isClosed) return;
-      emit(ProfileLoaded(profile: profile, activities: activities));
+      if (includeActivities) {
+        emit(ProfileLoaded(profile: profile, activities: activities));
+      }
     } catch (e) {
       if (isClosed) return;
       emit(ProfileError(e.toString()));

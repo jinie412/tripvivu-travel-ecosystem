@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/core/theme/app_colors.dart';
@@ -158,7 +159,9 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     _noteController = TextEditingController();
     if (widget.isPriceEdit) {
       _amountController = TextEditingController(
-        text: widget.initialPrice?.toStringAsFixed(0) ?? '',
+        text: widget.initialPrice != null
+            ? _amountFormatter.format(widget.initialPrice!.round())
+            : '',
       );
       _loadingPlaces = false;
       return;
@@ -167,18 +170,39 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     _type = editing?.type ?? CostType.other;
     _noteController.text = editing?.note ?? '';
     _amountController = TextEditingController(
-      text: editing != null ? editing.amount.toStringAsFixed(0) : '',
+      text: editing != null
+          ? _amountFormatter.format(editing.amount.round())
+          : '',
     );
     // Rebuild khi gõ số tiền để cập nhật preview "≈ Xđ/người" theo thời gian
     // thực (xem _perPersonPreviewText).
     _amountController.addListener(_onAmountChanged);
     _selectedPlaceId = editing?.placeId ?? widget.initialPlaceId;
-    _selectedDayNumber = editing?.dayNumber;
+    // Có địa điểm thì ngày LUÔN lấy theo ngày viếng thăm thực tế của địa
+    // điểm đó (xem _dayByPlaceId), không dùng dayNumber lưu sẵn trên dòng cũ
+    // — tránh lệch nếu ngày viếng thăm bị đổi sau khi khoản chi đã tạo.
+    _selectedDayNumber = _selectedPlaceId != null
+        ? _dayByPlaceId()[_selectedPlaceId]
+        : editing?.dayNumber;
     _chargedTo.addAll(editing?.chargedTo ?? const []);
     // Sửa 1 khoản đã có người trả cụ thể -> giữ đúng lựa chọn đó, không mặc
     // định về "Cả nhóm" nữa.
     _wholeGroup = _chargedTo.isEmpty;
     _loadPlaces();
+  }
+
+  /// place_id -> ngày thứ N mà địa điểm đó nằm trong lịch trình — dùng để tự
+  /// điền/khoá ngày khi đã chọn địa điểm (cùng logic với
+  /// _dayNumberByPlaceId() ở incurred_costs_screen.dart).
+  Map<String, int> _dayByPlaceId() {
+    final map = <String, int>{};
+    for (final day in widget.days) {
+      for (final activity in day.activities) {
+        final placeId = activity.placeId;
+        if (placeId != null) map[placeId] = day.dayNumber;
+      }
+    }
+    return map;
   }
 
   void _onAmountChanged() => setState(() {});
@@ -223,8 +247,10 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
     if (widget.isPriceEdit) return _submitPriceEdit();
 
     final note = _noteController.text.trim();
+    // ".": dấu phân cách hàng nghìn hiển thị (xem _ThousandsSeparatorInputFormatter),
+    // KHÔNG phải dấu thập phân — loại bỏ trước khi parse, số tiền luôn là số nguyên.
     final rawInput = double.tryParse(
-      _amountController.text.replaceAll(RegExp(r'[^0-9.\-]'), ''),
+      _amountController.text.replaceAll(RegExp(r'[^0-9\-]'), ''),
     );
     if (note.isEmpty) {
       setState(() => _error = 'Vui lòng nhập nội dung/ghi chú');
@@ -308,7 +334,7 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
 
   Future<void> _submitPriceEdit() async {
     final rawInput = double.tryParse(
-      _amountController.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+      _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
     );
     if (rawInput == null || rawInput <= 0) {
       setState(() => _error = 'Vui lòng nhập giá mới hợp lệ');
@@ -619,6 +645,9 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
+            inputFormatters: [
+              _ThousandsSeparatorInputFormatter(_amountFormatter),
+            ],
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -629,7 +658,6 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
               hintText: '0',
               prefixIcon: Icon(Icons.account_balance_wallet_outlined),
               suffixText: 'đ',
-              helperText: 'Tối thiểu 1.000đ · Làm tròn đến đơn vị nghìn',
             ),
           ),
           const SizedBox(height: 12),
@@ -784,7 +812,11 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
                   ],
                   onChanged: (value) => setState(() {
                     _selectedPlaceId = value;
-                    if (value != null) _selectedDayNumber = null;
+                    // Có địa điểm thì ngày LUÔN khoá theo ngày viếng thăm
+                    // thực tế của địa điểm đó — không để trống/tự chọn nữa.
+                    _selectedDayNumber = value != null
+                        ? _dayByPlaceId()[value]
+                        : null;
                   }),
                 ),
               if (widget.days.isNotEmpty) ...[
@@ -808,16 +840,23 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
                       ),
                     ),
                   ],
-                  onChanged: (value) => setState(() {
-                    _selectedDayNumber = value;
-                    if (value != null) _selectedPlaceId = null;
-                  }),
+                  // Đã chọn địa điểm -> ngày bị khoá theo địa điểm, không
+                  // cho tự chọn tay (onChanged: null làm Flutter tự hiện
+                  // dropdown ở dạng disabled).
+                  onChanged: _selectedPlaceId != null
+                      ? null
+                      : (value) => setState(() {
+                          _selectedDayNumber = value;
+                          if (value != null) _selectedPlaceId = null;
+                        }),
                 ),
               ],
               const SizedBox(height: 10),
-              const Text(
-                'Chỉ chọn địa điểm hoặc ngày; hệ thống sẽ tự bỏ lựa chọn còn lại.',
-                style: TextStyle(
+              Text(
+                _selectedPlaceId != null
+                    ? 'Đã chọn địa điểm nên ngày được khoá theo đúng ngày viếng thăm địa điểm đó.'
+                    : 'Chỉ chọn địa điểm hoặc ngày; hệ thống sẽ tự bỏ lựa chọn còn lại.',
+                style: const TextStyle(
                   fontSize: 10.5,
                   color: AppColors.costTextMuted,
                 ),
@@ -867,6 +906,9 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
         TextField(
           controller: _amountController,
           keyboardType: const TextInputType.numberWithOptions(signed: true),
+          inputFormatters: [
+            _ThousandsSeparatorInputFormatter(_amountFormatter),
+          ],
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -883,7 +925,7 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
             suffixText: 'đ',
             helperText: _isTransportAdjustment
                 ? 'Có thể nhập số âm để đính chính'
-                : 'Tối thiểu 1.000đ · Làm tròn đến đơn vị nghìn',
+                : null,
           ),
         ),
         if (_needsSharedGroupAmount) ...[
@@ -1086,5 +1128,37 @@ class _IncurredCostSheetState extends State<IncurredCostSheet> {
       case CostType.other:
         return Icons.receipt_long_outlined;
     }
+  }
+}
+
+/// Tự chèn dấu chấm phân cách hàng nghìn khi gõ số tiền (vd 1000000 ->
+/// "1.000.000"), giữ dấu "-" ở đầu nếu có (điều chỉnh xăng xe cho phép âm).
+/// Con trỏ luôn đưa về cuối chuỗi sau mỗi lần gõ — đơn giản và đủ dùng cho 1
+/// ô nhập số tiền ngắn, không cần giữ đúng vị trí con trỏ giữa các dấu chấm.
+class _ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  final NumberFormat _formatter;
+
+  _ThousandsSeparatorInputFormatter(this._formatter);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final isNegative = newValue.text.trim().startsWith('-');
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      final text = isNegative ? '-' : '';
+      return TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+    final formatted =
+        (isNegative ? '-' : '') + _formatter.format(int.parse(digits));
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }

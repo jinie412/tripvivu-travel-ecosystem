@@ -125,6 +125,13 @@ abstract class ItineraryDataSource {
     String placeId,
     double amount,
   );
+
+  /// Gán lại TOÀN BỘ danh sách "ai phụ trách bao nhiêu trẻ em" — thay thế
+  /// hoàn toàn danh sách cũ (không phải patch từng dòng).
+  Future<void> setChildAssignments(
+    String itineraryId,
+    List<ChildAssignmentModel> assignments,
+  );
 }
 
 class RemoteItineraryDataSource implements ItineraryDataSource {
@@ -990,5 +997,31 @@ class RemoteItineraryDataSource implements ItineraryDataSource {
     return IncurredCostModel.fromJson(
       jsonDecode(res.body) as Map<String, dynamic>,
     );
+  }
+
+  @override
+  Future<void> setChildAssignments(
+    String itineraryId,
+    List<ChildAssignmentModel> assignments,
+  ) async {
+    final headers = await _authHeaders();
+    final userId = await AuthUtils.requireCurrentUserId();
+    final res = await http.patch(
+      Uri.parse(
+        '$baseUrl/itinerary/$itineraryId/incurred-costs/child-assignments',
+      ),
+      headers: headers,
+      body: jsonEncode({
+        'userId': userId,
+        'assignments': assignments
+            .map((a) => {'touristId': a.userId, 'childCount': a.childCount})
+            .toList(),
+      }),
+    );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception(
+        _extractErrorMessage(res, 'Không thể gán trẻ em cho thành viên'),
+      );
+    }
   }
 }

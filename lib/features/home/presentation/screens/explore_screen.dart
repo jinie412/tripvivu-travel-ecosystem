@@ -26,9 +26,6 @@ import 'package:travel_advisor_mobile/features/home/presentation/widgets/home_it
 
 import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/widgets/pre_order_popup.dart';
-import 'package:travel_advisor_mobile/features/food/data/datasources/food_remote_data_source.dart';
-import 'package:travel_advisor_mobile/features/review/domain/repositories/review_repository.dart';
-import 'package:travel_advisor_mobile/features/review/presentation/widgets/itinerary_rating_popup.dart';
 import 'package:travel_advisor_mobile/features/city_detail/presentation/screens/city_detail_screen.dart';
 
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
@@ -80,14 +77,6 @@ class _ExploreViewState extends State<_ExploreView> {
   int _activityPage = 0;
   int _restaurantPage = 0;
   int _hotelPage = 0;
-  List<OrderEligiblePlace> _orderPlaces = const [];
-  int _currentOrderPlaceIndex = 0;
-  bool _isLoadingOrderPlaces = false;
-
-  bool get _isTrackingActive {
-    if (!mounted) return false;
-    return context.read<TrackingCubit>().state.isActive;
-  }
 
   @override
   void initState() {
@@ -161,8 +150,6 @@ class _ExploreViewState extends State<_ExploreView> {
         itineraryId,
         stoppedStatus,
       );
-      _orderPlaces = const [];
-      _currentOrderPlaceIndex = 0;
       messenger.showSnackBar(
         const SnackBar(
           content: Text(
@@ -206,155 +193,6 @@ class _ExploreViewState extends State<_ExploreView> {
         duration: Duration(seconds: 3),
       ),
     );
-
-    Future.delayed(const Duration(seconds: 4), () {
-      if (!mounted || !_isTrackingActive) return;
-      _showNextPreOrderNotification();
-    });
-  }
-
-  Future<void> _prepareOrderPlaces() async {
-    if (_isLoadingOrderPlaces || _orderPlaces.isNotEmpty) {
-      return;
-    }
-
-    final exploreState = context.read<ExploreCubit>().state;
-    if (exploreState is! ExploreLoaded ||
-        exploreState.currentItinerary == null) {
-      return;
-    }
-
-    _isLoadingOrderPlaces = true;
-    try {
-      final places = await sl<FoodRemoteDataSource>().getItineraryOrderPlaces(
-        itineraryId: exploreState.currentItinerary!.id,
-      );
-
-      _orderPlaces = places;
-      _currentOrderPlaceIndex = 0;
-    } catch (_) {
-      _orderPlaces = const [];
-      _currentOrderPlaceIndex = 0;
-    } finally {
-      _isLoadingOrderPlaces = false;
-    }
-  }
-
-  Future<void> _showNextPreOrderNotification() async {
-    await _prepareOrderPlaces();
-    if (!mounted || !_isTrackingActive) {
-      return;
-    }
-
-    if (_currentOrderPlaceIndex >= _orderPlaces.length) {
-      Future.delayed(const Duration(seconds: 6), () {
-        if (!mounted || !_isTrackingActive) return;
-        _showTripCompletionPopup();
-      });
-      return;
-    }
-
-    final currentPlace = _orderPlaces[_currentOrderPlaceIndex];
-
-    OrderPopupData popupData;
-    try {
-      popupData = await sl<FoodRemoteDataSource>().getOrderPopup(
-        currentPlace.placeId,
-      );
-    } catch (_) {
-      popupData = OrderPopupData(
-        placeId: currentPlace.placeId,
-        placeName: currentPlace.placeName,
-        title: 'Gợi ý cho bạn',
-        message:
-            'Bạn có muốn đặt trước món ăn để không phải chờ đợi khi đến nơi?',
-        estimatedWaitMinutes: 20,
-        rating: 0,
-        reviewCount: 0,
-      );
-    }
-
-    if (!mounted || !_isTrackingActive) {
-      return;
-    }
-
-    bool movedToNext = false;
-    void moveNext() {
-      if (movedToNext) {
-        return;
-      }
-      movedToNext = true;
-      _currentOrderPlaceIndex += 1;
-      Future.delayed(const Duration(seconds: 4), () {
-        if (!mounted || !_isTrackingActive) {
-          return;
-        }
-        _showNextPreOrderNotification();
-      });
-    }
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => PreOrderPopup(
-        title: popupData.title,
-        message: popupData.message,
-        restaurantName: popupData.placeName,
-        estimatedWaitMinutes: popupData.estimatedWaitMinutes,
-        rating: popupData.rating,
-        reviewCount: popupData.reviewCount,
-        onOrderTap: () {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FoodMenuScreen(
-                placeId: popupData.placeId,
-                restaurantName: popupData.placeName,
-                itineraryDetailId: currentPlace.itineraryDetailId,
-              ),
-            ),
-          ).then((_) => moveNext());
-        },
-        onSkipTap: () {
-          Navigator.pop(context);
-          moveNext();
-        },
-      ),
-    );
-
-    if (!movedToNext) {
-      moveNext();
-    }
-  }
-
-  void _showTripCompletionPopup() {
-    final exploreState = context.read<ExploreCubit>().state;
-    if (exploreState is! ExploreLoaded ||
-        exploreState.currentItinerary == null) {
-      return;
-    }
-
-    final itinerary = exploreState.currentItinerary!;
-
-    sl<ReviewRepository>()
-        .getPopupData(itinerary.id)
-        .then((popupData) {
-          if (!mounted || !popupData.showPopup) {
-            return;
-          }
-
-          showDialog(
-            context: context,
-            barrierDismissible: true,
-            builder: (context) => ItineraryRatingPopup(
-              itineraryId: popupData.itineraryId,
-              itineraryTitle: popupData.itineraryTitle,
-            ),
-          );
-        })
-        .catchError((_) {});
   }
 
   ExploreLoaded? get _loadedState {
@@ -697,7 +535,7 @@ class _ExploreViewState extends State<_ExploreView> {
         reviewCount: 0,
         onOrderTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
           Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -711,11 +549,16 @@ class _ExploreViewState extends State<_ExploreView> {
         },
         onSkipTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
         },
       ),
     ).then((_) {
-      if (ctx.mounted) ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+      if (ctx.mounted) {
+        ctx.read<TrackingCubit>().dismissNearbyRestaurant(
+          detailId: detailId,
+          evaluateNext: true,
+        );
+      }
     });
   }
 
@@ -770,10 +613,30 @@ class _ExploreViewState extends State<_ExploreView> {
     final cardImgW = screenW * 0.45 - 30;
     final restaurantCardH = cardImgW * (3 / 4) + 110;
     final hotelCardH = cardImgW * (3 / 4) + 130;
+    final isCompletelyEmpty =
+        state.currentItinerary == null &&
+        state.suggestions.isEmpty &&
+        state.destinations.isEmpty &&
+        state.restaurants.isEmpty &&
+        state.hotels.isEmpty;
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
+        if (isCompletelyEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'Chưa có nội dung khám phá. Kéo xuống để tải lại.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 15),
+                ),
+              ),
+            ),
+          ),
         if (state.currentItinerary != null)
           SliverToBoxAdapter(
             child: Column(
@@ -795,9 +658,18 @@ class _ExploreViewState extends State<_ExploreView> {
                         p.itineraryId != c.itineraryId,
                     builder: (context, trackingState) {
                       final currentId = state.currentItinerary?.id ?? '';
-                      final isStarted =
+                      // Backend là nguồn trạng thái bền vững trong lúc
+                      // TrackingCubit đang restore context sau khi mở app.
+                      // Nếu chỉ đọc state thiết bị, switch sẽ tạm/tự tắt mỗi
+                      // lần Explore refresh hoặc trước khi restore hoàn tất.
+                      final backendStarted =
+                          state.currentItinerary?.trackingActive == true ||
+                          state.currentItinerary?.status ==
+                              ItineraryStatus.ongoing;
+                      final localStarted =
                           trackingState.isActive &&
                           trackingState.itineraryId == currentId;
+                      final isStarted = backendStarted || localStarted;
                       return CurrentItineraryCard(
                         item: state.currentItinerary,
                         isStarted: isStarted,

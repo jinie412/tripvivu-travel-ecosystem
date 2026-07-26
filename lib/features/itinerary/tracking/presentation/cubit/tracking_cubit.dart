@@ -8,13 +8,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'package:travel_advisor_mobile/core/network/api_config.dart';
 import 'package:travel_advisor_mobile/core/services/notification_service.dart';
 import 'package:travel_advisor_mobile/core/utils/auth_utils.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/food/data/datasources/food_remote_data_source.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 
 import '../../data/datasources/tracking_remote_datasource.dart';
 import '../../data/models/tracking_models.dart';
@@ -223,14 +224,40 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     );
   }
 
-  void _startFoodProximityWatch(List<ItineraryActivityEntity> activities) {
+  Future<void> _startFoodProximityWatch(
+    List<ItineraryActivityEntity> activities,
+  ) async {
     final placeIdByDetailId = {
       for (final p in state.places) p.itineraryDetailId: p.placeId,
     };
-    _foodSpots = activities
+    final visitedDetailIds = {
+      for (final p in state.places)
+        if (p.status == VisitStatus.visited) p.itineraryDetailId,
+    };
+    var eligibleOrderByDetailId = <String, int>{};
+    var eligibilityLoaded = false;
+    final itineraryId = state.itineraryId;
+    if (itineraryId != null && itineraryId.isNotEmpty) {
+      try {
+        final eligible = await sl<FoodRemoteDataSource>()
+            .getItineraryOrderPlaces(itineraryId: itineraryId);
+        eligibleOrderByDetailId = {
+          for (final place in eligible) place.itineraryDetailId: place.order,
+        };
+        eligibilityLoaded = true;
+      } catch (_) {
+        // Fallback về dữ liệu activities nếu API tạm thời không khả dụng.
+      }
+    }
+
+    final candidatesById = <String, _FoodSpot>{};
+    final activityCandidates = activities
         .where(
           (a) =>
               _isFoodCategory(a.category) &&
+              !visitedDetailIds.contains(a.id) &&
+              (!eligibilityLoaded ||
+                  eligibleOrderByDetailId.containsKey(a.id)) &&
               a.latitude != null &&
               a.longitude != null,
         )
@@ -244,6 +271,44 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
           ),
         )
         .toList();
+    for (final spot in activityCandidates) {
+      candidatesById[spot.id] = spot;
+    }
+
+    // ExploreScreen khởi động tracking mà không có activities. Dùng geofence
+    // từ /tracking/start để vẫn dựng quán ăn theo danh sách eligible của API.
+    if (eligibilityLoaded) {
+      for (final geofence in _geofences) {
+        final detailId = geofence.itineraryDetailId;
+        if (!eligibleOrderByDetailId.containsKey(detailId) ||
+            visitedDetailIds.contains(detailId) ||
+            !geofence.hasValidLocation) {
+          continue;
+        }
+        candidatesById.putIfAbsent(
+          detailId,
+          () => _FoodSpot(
+            id: detailId,
+            placeId: geofence.placeId ?? placeIdByDetailId[detailId] ?? '',
+            name: geofence.name?.trim().isNotEmpty == true
+                ? geofence.name!.trim()
+                : 'Quán ăn',
+            lat: geofence.latitude,
+            lng: geofence.longitude,
+          ),
+        );
+      }
+    }
+
+    final candidates = candidatesById.values.toList();
+    if (eligibilityLoaded) {
+      candidates.sort(
+        (a, b) => (eligibleOrderByDetailId[a.id] ?? 1 << 30).compareTo(
+          eligibleOrderByDetailId[b.id] ?? 1 << 30,
+        ),
+      );
+    }
+    _foodSpots = candidates;
     _persistFoodSpots();
     _subscribeLocationStream();
   }
@@ -384,6 +449,7 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   void _checkFoodProximity(Position pos) {
     if (isClosed || _foodSpots.isEmpty) return;
     for (final s in _foodSpots) {
+      if (_visitedIds.contains(s.id)) continue;
       if (_dismissedNearbyRestaurantIds.contains(s.id)) continue;
       final km = _haversineKm(pos.latitude, pos.longitude, s.lat, s.lng);
       if (km <= _foodProximityKm) {
@@ -455,7 +521,6 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
               id,
               'DWELL',
               dwellSeconds: g.dwellThresholdSeconds,
-              placeName: g.name,
             ).then((ok) {
               // Gửi lỗi (mất mạng) -> bỏ cờ để lần poll sau thử lại.
               if (!ok) _dwellSentIds.remove(id);
@@ -472,12 +537,12 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
   }
 
   /// Gửi một sự kiện geofence lên backend. Trả về true nếu thành công.
-  /// Khi DWELL được xác nhận "Đã ghé": cập nhật bản đồ + bắn thông báo cục bộ.
+  /// Khi DWELL được xác nhận "Đã ghé": cập nhật bản đồ. Backend chịu trách
+  /// nhiệm gửi duy nhất một FCM notification có payload mở lịch trình.
   Future<bool> _sendGeofenceEvent(
     String detailId,
     String eventType, {
     int? dwellSeconds,
-    String? placeName,
   }) async {
     if (_touristId.isEmpty) _touristId = await _resolveTouristId();
     if (_touristId.isEmpty) return false;
@@ -492,48 +557,11 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
       if (eventType == 'DWELL' && res.status == VisitStatus.visited) {
         _visitedIds.add(detailId);
         await refreshStatus();
-        await _showArrivalNotification(
-          detailId: detailId,
-          placeName: res.name ?? placeName ?? 'địa điểm',
-        );
       }
       return true;
     } catch (_) {
       return false;
     }
-  }
-
-  /// Thông báo cục bộ "Đã đến nơi" (song song với native callback nền).
-  Future<void> _showArrivalNotification({
-    required String detailId,
-    required String placeName,
-  }) async {
-    try {
-      final plugin = FlutterLocalNotificationsPlugin();
-      const initSettings = InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(),
-      );
-      await plugin.initialize(settings: initSettings);
-      const details = NotificationDetails(
-        android: AndroidNotificationDetails(
-          'itinerary_tracking_channel',
-          'Theo dõi lịch trình',
-          channelDescription:
-              'Thông báo khi bạn đến một địa điểm trong lịch trình',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      );
-      await plugin.show(
-        id: detailId.hashCode & 0x7fffffff,
-        title: 'Đã đến nơi 🎉',
-        body: 'Bạn đã đến $placeName',
-        notificationDetails: details,
-        payload: 'tracking:$detailId',
-      );
-    } catch (_) {}
   }
 
   /// Dựng lại danh sách geofence để phát hiện chủ động từ trạng thái bản đồ
@@ -583,18 +611,33 @@ class TrackingCubit extends Cubit<TrackingState> with WidgetsBindingObserver {
     return true;
   }
 
-  void dismissNearbyRestaurant() {
-    final detailId =
-        state.nearbyRestaurantDetailId ?? _showingNearbyRestaurantId;
-    if (detailId != null && detailId.isNotEmpty) {
-      _dismissedNearbyRestaurantIds.add(detailId);
-      _globalDismissedNearbyRestaurantIds.add(detailId);
-      if (_globalShowingNearbyRestaurantId == detailId) {
+  void dismissNearbyRestaurant({String? detailId, bool evaluateNext = false}) {
+    final targetId =
+        detailId ??
+        state.nearbyRestaurantDetailId ??
+        _showingNearbyRestaurantId;
+    if (targetId != null && targetId.isNotEmpty) {
+      _dismissedNearbyRestaurantIds.add(targetId);
+      _globalDismissedNearbyRestaurantIds.add(targetId);
+      if (_globalShowingNearbyRestaurantId == targetId) {
         _globalShowingNearbyRestaurantId = null;
       }
     }
-    _showingNearbyRestaurantId = null;
-    emit(state.copyWith(clearNearbyRestaurant: true));
+    if (_showingNearbyRestaurantId == targetId) {
+      _showingNearbyRestaurantId = null;
+    }
+    if (state.nearbyRestaurantDetailId == targetId) {
+      emit(state.copyWith(clearNearbyRestaurant: true));
+    }
+
+    // Chỉ xét quán tiếp theo sau khi bottom sheet hiện tại đã đóng hoàn toàn.
+    // _foodSpots đã được sort theo sequence_order nên quán kế tiếp luôn đúng thứ tự.
+    if (evaluateNext && _lastPosition != null) {
+      final position = _lastPosition!;
+      Future<void>.delayed(Duration.zero, () {
+        if (!isClosed && state.isActive) _checkFoodProximity(position);
+      });
+    }
   }
 
   Future<String> _resolveTouristId() async {

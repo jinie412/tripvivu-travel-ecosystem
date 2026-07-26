@@ -11,6 +11,7 @@ import 'activity_edit_screen.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
 import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/cost_ui_labels.dart';
 import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
 import 'package:travel_advisor_mobile/core/di/injection_container.dart';
 import 'package:travel_advisor_mobile/features/food/presentation/screens/food_menu_screen.dart';
@@ -2517,7 +2518,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         reviewCount: 0,
         onOrderTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
           Navigator.push(
             ctx,
             MaterialPageRoute(
@@ -2531,13 +2532,16 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
         },
         onSkipTap: () {
           Navigator.pop(ctx);
-          ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+          ctx.read<TrackingCubit>().dismissNearbyRestaurant(detailId: detailId);
         },
       ),
     ).then((_) {
       // Đóng popup → dismiss để không hiện lại ngay
       if (ctx.mounted) {
-        ctx.read<TrackingCubit>().dismissNearbyRestaurant();
+        ctx.read<TrackingCubit>().dismissNearbyRestaurant(
+          detailId: detailId,
+          evaluateNext: true,
+        );
       }
     });
   }
@@ -2944,7 +2948,7 @@ class _DayStatsCard extends StatelessWidget {
                 ],
               ),
               const Text(
-                'Tổng chi phí',
+                CostUiLabels.dayTotalCost,
                 style: TextStyle(
                   fontSize: 10.5,
                   color: AppColors.costTextMuted,
@@ -2961,7 +2965,7 @@ class _DayStatsCard extends StatelessWidget {
                   ),
                 ),
                 const Text(
-                  'Đã chi',
+                  CostUiLabels.daySpent,
                   style: TextStyle(
                     fontSize: 10.5,
                     color: AppColors.costTextMuted,

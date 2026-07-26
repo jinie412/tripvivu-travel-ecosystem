@@ -6,7 +6,6 @@ class CostUiLabels {
   CostUiLabels._();
 
   static const managementTitle = 'Quản lý chi phí';
-  static const overviewTitle = 'Tổng quan chi phí';
   static const overviewEyebrow = 'TỔNG QUAN CHI PHÍ';
   static const estimatedTotal = 'Tổng chi phí ước tính';
   static const spent = 'Chi phí đã chi';
@@ -16,9 +15,16 @@ class CostUiLabels {
   static const estimateDetails = 'Chi tiết chi phí ước tính';
   static const estimateDetailsSubtitle =
       'Theo người lớn, trẻ em và từng hạng mục';
-  static const estimateByTraveler = 'Dự toán theo nhóm khách';
+  static const estimateByTraveler = 'Chi tiết chi phí theo loại khách';
   static const memberAllocation = 'Chi phí theo thành viên';
   static const memberAllocationSubtitle = 'Số tiền mỗi người chịu trách nhiệm';
   static const expenseHistory = 'Lịch sử chi tiêu';
   static const viewDetails = 'Xem chi tiết và quản lý khoản chi';
+
+  // Card "Tổng quan ngày" ở Chi tiết lịch trình — CỐ Ý ghi rõ "ngày này" để
+  // không bị hiểu nhầm là số của CẢ CHUYẾN (estimatedTotal/spent ở trên là
+  // số cả chuyến, 2 khái niệm khác nhau dù trước đây dùng chung chữ "Tổng
+  // chi phí"/"Đã chi" ngắn gọn, gây lẫn lộn giữa các màn).
+  static const dayTotalCost = 'Chi phí ngày này';
+  static const daySpent = 'Đã chi ngày này';
 }

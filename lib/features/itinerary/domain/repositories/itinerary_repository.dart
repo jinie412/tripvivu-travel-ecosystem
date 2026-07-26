@@ -120,4 +120,11 @@ abstract class ItineraryRepository {
     String placeId,
     double amount,
   );
+
+  /// Gán lại TOÀN BỘ danh sách "ai phụ trách bao nhiêu trẻ em" — thay thế
+  /// hoàn toàn danh sách cũ. Chỉ chủ lịch trình gọi được.
+  Future<void> setChildAssignments(
+    String itineraryId,
+    List<ChildAssignmentEntity> assignments,
+  );
 }

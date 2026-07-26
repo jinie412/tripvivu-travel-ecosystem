@@ -9,6 +9,7 @@ import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/crea
 import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
 import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/incurred_cost_model.dart';
 
 /// Implementation cụ thể của [ItineraryRepository].
 ///
@@ -241,10 +242,7 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
     String itineraryId,
     int dayNumber,
   ) async {
-    final model = await _dataSource.getDayCostBreakdown(
-      itineraryId,
-      dayNumber,
-    );
+    final model = await _dataSource.getDayCostBreakdown(itineraryId, dayNumber);
     return model.toEntity();
   }
 
@@ -311,5 +309,23 @@ class ItineraryRepositoryImpl implements ItineraryRepository {
       amount,
     );
     return model.toEntity();
+  }
+
+  @override
+  Future<void> setChildAssignments(
+    String itineraryId,
+    List<ChildAssignmentEntity> assignments,
+  ) {
+    return _dataSource.setChildAssignments(
+      itineraryId,
+      assignments
+          .map(
+            (a) => ChildAssignmentModel(
+              userId: a.userId,
+              childCount: a.childCount,
+            ),
+          )
+          .toList(),
+    );
   }
 }

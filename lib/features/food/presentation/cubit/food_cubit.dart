@@ -36,22 +36,22 @@ class FoodState extends Equatable {
   });
 
   factory FoodState.initial() => const FoodState(
-        placeId: '',
-        itineraryDetailId: null,
-        restaurantName: '',
-        allItems: [],
-        mainCategories: [
-          FoodState.allCategoryLabel,
-          FoodState.mainCategoryLabel,
-          FoodState.drinkCategoryLabel,
-        ],
-        selectedMainCategory: FoodState.allCategoryLabel,
-        selectedSubCategory: FoodState.allCategoryLabel,
-        subCategories: [FoodState.allCategoryLabel],
-        isLoading: false,
-        isSubmitting: false,
-        errorMessage: null,
-      );
+    placeId: '',
+    itineraryDetailId: null,
+    restaurantName: '',
+    allItems: [],
+    mainCategories: [
+      FoodState.allCategoryLabel,
+      FoodState.mainCategoryLabel,
+      FoodState.drinkCategoryLabel,
+    ],
+    selectedMainCategory: FoodState.allCategoryLabel,
+    selectedSubCategory: FoodState.allCategoryLabel,
+    subCategories: [FoodState.allCategoryLabel],
+    isLoading: false,
+    isSubmitting: false,
+    errorMessage: null,
+  );
 
   List<FoodItemEntity> get filteredItems {
     var items = allItems;
@@ -106,72 +106,46 @@ class FoodState extends Equatable {
       subCategories: subCategories ?? this.subCategories,
       isLoading: isLoading ?? this.isLoading,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage:
-          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
   List<Object?> get props => [
-        placeId,
-        itineraryDetailId,
-        restaurantName,
-        allItems,
-        mainCategories,
-        selectedMainCategory,
-        selectedSubCategory,
-        subCategories,
-        isLoading,
-        isSubmitting,
-        errorMessage,
-      ];
+    placeId,
+    itineraryDetailId,
+    restaurantName,
+    allItems,
+    mainCategories,
+    selectedMainCategory,
+    selectedSubCategory,
+    subCategories,
+    isLoading,
+    isSubmitting,
+    errorMessage,
+  ];
 }
 
 class FoodCubit extends Cubit<FoodState> {
   final FoodRemoteDataSource _remote;
 
   FoodCubit({required FoodRemoteDataSource remote})
-      : _remote = remote,
-        super(FoodState.initial());
+    : _remote = remote,
+      super(FoodState.initial());
 
   Future<void> loadRestaurantMenu({
     required String placeId,
     required String restaurantName,
     String? itineraryDetailId,
   }) async {
-    print('[FoodCubit] loadRestaurantMenu called | placeId="$placeId" | restaurant="$restaurantName"');
-    emit(state.copyWith(
-      placeId: placeId,
-      itineraryDetailId: itineraryDetailId,
-      restaurantName: restaurantName,
-      allItems: const [],
-      subCategories: const [FoodState.allCategoryLabel],
-      selectedMainCategory: FoodState.allCategoryLabel,
-      selectedSubCategory: FoodState.allCategoryLabel,
-      isLoading: true,
-      clearErrorMessage: true,
-    ));
-
-    try {
-      final result = await _remote.getFoodItems(placeId: placeId);
-      final subCats = _buildSubCategories(result.items);
-
-      emit(state.copyWith(
-        placeId: placeId,
-        itineraryDetailId: itineraryDetailId,
-        restaurantName:
-            result.placeName.isNotEmpty ? result.placeName : restaurantName,
-        allItems: result.items,
-        subCategories: subCats,
-        selectedMainCategory: FoodState.allCategoryLabel,
-        selectedSubCategory: FoodState.allCategoryLabel,
-        isLoading: false,
-        clearErrorMessage: true,
-      ));
-    } catch (e, st) {
-      print('[FoodCubit] loadRestaurantMenu error | placeId=$placeId | $e');
-      print(st);
-      emit(state.copyWith(
+    if (isClosed) return;
+    print(
+      '[FoodCubit] loadRestaurantMenu called | placeId="$placeId" | restaurant="$restaurantName"',
+    );
+    emit(
+      state.copyWith(
         placeId: placeId,
         itineraryDetailId: itineraryDetailId,
         restaurantName: restaurantName,
@@ -179,9 +153,48 @@ class FoodCubit extends Cubit<FoodState> {
         subCategories: const [FoodState.allCategoryLabel],
         selectedMainCategory: FoodState.allCategoryLabel,
         selectedSubCategory: FoodState.allCategoryLabel,
-        isLoading: false,
-        errorMessage: e.toString(),
-      ));
+        isLoading: true,
+        clearErrorMessage: true,
+      ),
+    );
+
+    try {
+      final result = await _remote.getFoodItems(placeId: placeId);
+      final subCats = _buildSubCategories(result.items);
+
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          placeId: placeId,
+          itineraryDetailId: itineraryDetailId,
+          restaurantName: result.placeName.isNotEmpty
+              ? result.placeName
+              : restaurantName,
+          allItems: result.items,
+          subCategories: subCats,
+          selectedMainCategory: FoodState.allCategoryLabel,
+          selectedSubCategory: FoodState.allCategoryLabel,
+          isLoading: false,
+          clearErrorMessage: true,
+        ),
+      );
+    } catch (e, st) {
+      print('[FoodCubit] loadRestaurantMenu error | placeId=$placeId | $e');
+      print(st);
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          placeId: placeId,
+          itineraryDetailId: itineraryDetailId,
+          restaurantName: restaurantName,
+          allItems: const [],
+          subCategories: const [FoodState.allCategoryLabel],
+          selectedMainCategory: FoodState.allCategoryLabel,
+          selectedSubCategory: FoodState.allCategoryLabel,
+          isLoading: false,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -199,17 +212,22 @@ class FoodCubit extends Cubit<FoodState> {
   }
 
   void selectMainCategory(String cat) {
-    emit(state.copyWith(
-      selectedMainCategory: cat,
-      selectedSubCategory: FoodState.allCategoryLabel,
-    ));
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        selectedMainCategory: cat,
+        selectedSubCategory: FoodState.allCategoryLabel,
+      ),
+    );
   }
 
   void selectSubCategory(String subCat) {
+    if (isClosed) return;
     emit(state.copyWith(selectedSubCategory: subCat));
   }
 
   void updateQuantity(String id, int delta) {
+    if (isClosed) return;
     final newItems = state.allItems.map((item) {
       if (item.id == id) {
         final newQty = (item.quantity + delta).clamp(0, 99);
@@ -220,7 +238,21 @@ class FoodCubit extends Cubit<FoodState> {
     emit(state.copyWith(allItems: newItems));
   }
 
+  void replaceQuantities(Map<String, int> quantities) {
+    if (isClosed) return;
+    final newItems = state.allItems.map((item) {
+      final quantity = quantities[item.id];
+      return quantity == null
+          ? item
+          : item.copyWith(quantity: quantity.clamp(0, 99));
+    }).toList();
+    emit(state.copyWith(allItems: newItems));
+  }
+
   Future<CreateOrderResult> submitOrder({String? notes}) async {
+    if (isClosed) {
+      throw StateError('Màn hình đặt món đã được đóng');
+    }
     final selectedItems = state.allItems
         .where((item) => item.quantity > 0)
         .map(
@@ -244,12 +276,19 @@ class FoodCubit extends Cubit<FoodState> {
         items: selectedItems,
       );
 
-      final resetItems =
-          state.allItems.map((item) => item.copyWith(quantity: 0)).toList();
-      emit(state.copyWith(allItems: resetItems, isSubmitting: false));
+      // Người dùng có thể đóng route trong lúc API đang chờ. Đơn vẫn được tạo
+      // thành công nhưng cubit đã close thì tuyệt đối không emit thêm state.
+      if (!isClosed) {
+        final resetItems = state.allItems
+            .map((item) => item.copyWith(quantity: 0))
+            .toList();
+        emit(state.copyWith(allItems: resetItems, isSubmitting: false));
+      }
       return result;
     } catch (e) {
-      emit(state.copyWith(isSubmitting: false));
+      if (!isClosed) {
+        emit(state.copyWith(isSubmitting: false));
+      }
       rethrow;
     }
   }

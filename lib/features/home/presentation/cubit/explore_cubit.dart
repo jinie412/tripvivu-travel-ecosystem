@@ -25,6 +25,19 @@ class ExploreCubit extends Cubit<ExploreState> {
   List<CityHotel>? _cachedHotels;
   List<CityRestaurant>? _cachedRestaurants;
   String? _cacheOwnerUserId;
+  Future<void>? _loadDataFuture;
+  Future<void>? _silentRefreshFuture;
+
+  // Chỉ dùng làm fallback cho các API phụ (ví dụ danh sách nhà hàng).
+  // Luồng loadData chính không dùng fallback rỗng để lỗi mạng không bị biến
+  // thành một trang ExploreLoaded trắng.
+  static const ExploreHomeData _emptyHome = ExploreHomeData(
+    suggestions: <TripSuggestion>[],
+    destinations: <Destination>[],
+    restaurants: <CityRestaurant>[],
+    hotels: <CityHotel>[],
+    currentItinerary: null,
+  );
 
   ExploreCubit({
     required GetExploreHomeUseCase getExploreHome,
@@ -373,7 +386,19 @@ class ExploreCubit extends Cubit<ExploreState> {
         .toList();
   }
 
-  Future<void> _silentRefresh() async {
+  Future<void> _silentRefresh() {
+    final running = _silentRefreshFuture;
+    if (running != null) return running;
+    final request = _performSilentRefresh();
+    _silentRefreshFuture = request;
+    return request.whenComplete(() {
+      if (identical(_silentRefreshFuture, request)) {
+        _silentRefreshFuture = null;
+      }
+    });
+  }
+
+  Future<void> _performSilentRefresh() async {
     try {
       final data = await _getExploreHome(forceRefresh: true);
       if (!isClosed && (data.suggestions.isNotEmpty || data.destinations.isNotEmpty)) {
@@ -400,16 +425,27 @@ class ExploreCubit extends Cubit<ExploreState> {
     }
   }
 
-  static const ExploreHomeData _emptyHome = ExploreHomeData(
-    suggestions: <TripSuggestion>[],
-    destinations: <Destination>[],
-    restaurants: <CityRestaurant>[],
-    hotels: <CityHotel>[],
-    currentItinerary: null,
-  );
-
   Future<void> loadData({bool refresh = false}) async {
-    final currentUserId = await AuthUtils.getCurrentUserId();
+    final running = _loadDataFuture;
+    if (running != null) return running;
+    final request = _performLoadData(refresh: refresh);
+    _loadDataFuture = request;
+    try {
+      await request;
+    } finally {
+      if (identical(_loadDataFuture, request)) _loadDataFuture = null;
+    }
+  }
+
+  Future<void> _performLoadData({required bool refresh}) async {
+    final previous = state is ExploreLoaded ? state as ExploreLoaded : null;
+    String? currentUserId;
+    try {
+      currentUserId = await AuthUtils.getCurrentUserId();
+    } catch (e) {
+      if (previous == null) emit(ExploreError(e.toString()));
+      return;
+    }
     final userChanged = _cacheOwnerUserId != currentUserId;
     final shouldRefresh = refresh || userChanged;
 
@@ -428,12 +464,11 @@ class ExploreCubit extends Cubit<ExploreState> {
       return;
     }
 
-    emit(const ExploreLoading());
+    // Pull-to-refresh giữ nguyên nội dung đang có; chỉ lần tải đầu tiên mới
+    // thay toàn màn hình bằng loading indicator.
+    if (previous == null || userChanged) emit(const ExploreLoading());
     try {
-      final ExploreHomeData data = await _safeLoad<ExploreHomeData>(
-        () => _getExploreHome(forceRefresh: shouldRefresh),
-        _emptyHome,
-      );
+      final data = await _getExploreHome(forceRefresh: shouldRefresh);
 
       _cachedSuggestions = null;
       _cachedDestinations = null;
@@ -454,7 +489,9 @@ class ExploreCubit extends Cubit<ExploreState> {
         ),
       );
     } catch (e) {
-      if (refresh) return;
+      // Refresh lỗi thì giữ state cũ, tránh biến trang đang có dữ liệu thành
+      // ExploreLoaded rỗng. Lần tải đầu tiên vẫn hiển thị ErrorView để retry.
+      if (previous != null && !userChanged) return;
       if (kDemoMode) {
         // ⚠️ BACKEND NOTE: Mock dữ liệu trang chủ cho Demo
         final mockExplore = ExploreHomeData(

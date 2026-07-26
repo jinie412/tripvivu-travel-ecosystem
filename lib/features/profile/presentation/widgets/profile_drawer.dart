@@ -35,10 +35,7 @@ class ProfileDrawer extends StatelessWidget {
           bottomRight: Radius.circular(32),
         ),
       ),
-      child: BlocProvider(
-        create: (_) => sl<ProfileCubit>()..loadProfile(includeActivities: true),
-        child: const _DrawerContent(),
-      ),
+      child: const _DrawerContent(),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dio/dio.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
@@ -367,10 +368,21 @@ class NotificationDetailScreen extends StatelessWidget {
         ),
       );
     } catch (e) {
+      var message = e.toString().replaceFirst('Exception: ', '');
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          final value = data['message'];
+          message = value is List ? value.join('\n') : value.toString();
+        } else if (e.response?.statusCode == 409) {
+          message =
+              'Bạn đang tham gia một lịch trình đang diễn ra. Vui lòng dừng hoặc kết thúc lịch trình đó trước khi chấp nhận lời mời này.';
+        }
+      }
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Không thể phản hồi lời mời: ${e.toString().replaceFirst('Exception: ', '')}',
+            'Không thể phản hồi lời mời: $message',
           ),
           behavior: SnackBarBehavior.floating,
         ),

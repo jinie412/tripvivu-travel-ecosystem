@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:native_geofence/native_geofence.dart';
 
 import '../data/models/tracking_models.dart';
@@ -46,13 +45,7 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
       final result = GeofenceEventResult.fromAny(res.data);
       debugPrint('[Geofence] $eventType → detailId=$detailId status=${result.status}');
 
-      // Đủ dwell -> "Đã ghé" -> bắn push "Bạn đã đến [Tên địa điểm]".
-      if (eventType == 'DWELL' && result.status == VisitStatus.visited) {
-        await _showArrivalNotification(
-          detailId: detailId,
-          placeName: result.name ?? meta?.name ?? 'địa điểm',
-        );
-      }
+      // Backend tạo một FCM notification có payload mở chi tiết lịch trình.
     } catch (e) {
       // Ghi log để trace qua ADB logcat: adb logcat | grep Geofence
       debugPrint('[Geofence] ERR send event $eventType detailId=$detailId: $e');
@@ -60,7 +53,6 @@ Future<void> geofenceTriggered(GeofenceCallbackParams params) async {
     }
   }
 }
-
 String? _eventTypeOf(GeofenceEvent e) {
   switch (e) {
     case GeofenceEvent.enter:
@@ -70,37 +62,4 @@ String? _eventTypeOf(GeofenceEvent e) {
     case GeofenceEvent.exit:
       return 'EXIT';
   }
-}
-
-Future<void> _showArrivalNotification({
-  required String detailId,
-  required String placeName,
-}) async {
-  final plugin = FlutterLocalNotificationsPlugin();
-  const initSettings = InitializationSettings(
-    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    iOS: DarwinInitializationSettings(),
-  );
-  await plugin.initialize(settings: initSettings);
-
-  const details = NotificationDetails(
-    android: AndroidNotificationDetails(
-      'itinerary_tracking_channel',
-      'Theo dõi lịch trình',
-      channelDescription: 'Thông báo khi bạn đến một địa điểm trong lịch trình',
-      importance: Importance.max,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    ),
-    iOS: DarwinNotificationDetails(),
-  );
-
-  await plugin.show(
-    id: detailId.hashCode & 0x7fffffff,
-    title: 'Đã đến nơi 🎉',
-    body: 'Bạn đã đến $placeName',
-    notificationDetails: details,
-    payload: 'tracking:$detailId',
-  );
 }

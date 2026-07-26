@@ -389,10 +389,11 @@ Future<void> _showFoodDetails(BuildContext context, FoodItemEntity item) {
                               child: OutlinedButton.icon(
                                 onPressed: () {
                                   Navigator.pop(sheetContext);
-                                  Future<void>.delayed(
-                                    Duration.zero,
-                                    () => _showCart(menuContext),
-                                  );
+                                  Future<void>.delayed(Duration.zero, () {
+                                    if (menuContext.mounted) {
+                                      _showCart(menuContext);
+                                    }
+                                  });
                                 },
                                 icon: const Icon(Icons.shopping_cart_outlined),
                                 label: const Text('Xem giỏ hàng'),
@@ -590,11 +591,16 @@ class _BottomCartBar extends StatelessWidget {
   }
 
   Future<void> _submitOrder(BuildContext context, String restaurantName) async {
+    // Bottom cart bar biến mất ngay khi submitOrder reset giỏ về 0. Không dùng
+    // BuildContext của bar sau await vì element đó có thể đã bị unmount.
+    final cubit = context.read<FoodCubit>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await context.read<FoodCubit>().submitOrder();
-      if (!context.mounted) return;
+      await cubit.submitOrder();
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!messenger.mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -617,11 +623,12 @@ class _BottomCartBar extends StatelessWidget {
           duration: const Duration(seconds: 4),
         ),
       );
-      Navigator.pop(context);
+      if (navigator.mounted && navigator.canPop()) {
+        navigator.pop();
+      }
     } catch (e) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!messenger.mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Không thể đặt món: ${_orderErrorMessage(e)}'),
           backgroundColor: Colors.red,
@@ -633,238 +640,553 @@ class _BottomCartBar extends StatelessWidget {
   }
 }
 
-Future<void> _showCart(BuildContext context) {
+Future<void> _showCart(BuildContext context) async {
   final cubit = context.read<FoodCubit>();
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) {
-      return BlocProvider.value(
-        value: cubit,
-        child: BlocBuilder<FoodCubit, FoodState>(
+  final messenger = ScaffoldMessenger.of(context);
+  final submission = await Navigator.of(context).push<_CartSubmission>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => _FoodCartPage(initialState: cubit.state),
+    ),
+  );
+
+  if (submission == null || cubit.isClosed) return;
+  cubit.replaceQuantities(submission.quantities);
+  await _submitOrderFromCart(
+    cubit,
+    messenger,
+    submission.restaurantName,
+    submission.notes,
+  );
+}
+
+// Giữ tạm implementation cũ để đối chiếu; flow runtime không còn gọi modal
+// này nữa. Có thể xóa sau khi xác nhận bản route mới ổn định trên thiết bị.
+// ignore: unused_element
+Future<void> _showCartLegacy(BuildContext context) async {
+  final cubit = context.read<FoodCubit>();
+  final messenger = ScaffoldMessenger.of(context);
+  final noteController = TextEditingController();
+  String? submittedNotes;
+  var isClosingCart = false;
+  try {
+    submittedNotes = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return BlocBuilder<FoodCubit, FoodState>(
+          bloc: cubit,
           builder: (context, state) {
             final selectedItems = state.allItems
                 .where((item) => item.quantity > 0)
                 .toList();
-            return SafeArea(
-              top: false,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Giỏ hàng của bạn',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Flexible(
+                        child: selectedItems.isEmpty
+                            ? const Padding(
+                                padding: EdgeInsets.all(32),
+                                child: Text(
+                                  'Giỏ hàng đang trống',
+                                  style: TextStyle(color: Color(0xFF64748B)),
+                                ),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                itemCount: selectedItems.length,
+                                separatorBuilder: (_, _) =>
+                                    const Divider(height: 24),
+                                itemBuilder: (context, index) {
+                                  final item = selectedItems[index];
+                                  return Row(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: NetImage(
+                                          url: item.imageUrl,
+                                          width: 64,
+                                          height: 64,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.title,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF1E293B),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _formatCurrency(item.price),
+                                              style: const TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      _QuantityButton(
+                                        icon: Icons.remove,
+                                        onTap: () =>
+                                            cubit.updateQuantity(item.id, -1),
+                                      ),
+                                      SizedBox(
+                                        width: 36,
+                                        child: Text(
+                                          '${item.quantity}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      _QuantityButton(
+                                        icon: Icons.add,
+                                        filled: true,
+                                        onTap: () =>
+                                            cubit.updateQuantity(item.id, 1),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: noteController,
+                              minLines: 2,
+                              maxLines: 4,
+                              maxLength: 500,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: InputDecoration(
+                                labelText: 'Ghi chú cho quán',
+                                hintText:
+                                    'Ví dụ: Không cay, ít đá, không dùng hành...',
+                                prefixIcon: const Icon(
+                                  Icons.edit_note_rounded,
+                                  color: AppColors.primary,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF8FAFC),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${state.totalItems} món',
+                                  style: const TextStyle(
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                Text(
+                                  _formatCurrency(state.totalPrice),
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed:
+                                    state.isSubmitting || selectedItems.isEmpty
+                                    ? null
+                                    : () {
+                                        // Chặn double tap: pop lần hai trong lúc
+                                        // animation đóng sheet sẽ pop luôn màn
+                                        // hình FoodMenu và close FoodCubit.
+                                        if (isClosingCart) return;
+                                        isClosingCart = true;
+                                        // Đóng bàn phím và bottom sheet trước. API
+                                        // chỉ được gọi sau khi route modal đã tháo
+                                        // hoàn toàn khỏi widget tree.
+                                        FocusManager.instance.primaryFocus
+                                            ?.unfocus();
+                                        Navigator.of(
+                                          context,
+                                        ).pop(noteController.text);
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: state.isSubmitting
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Đặt món',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    noteController.dispose();
+  }
+
+  if (submittedNotes == null || cubit.isClosed) return;
+  await _submitOrderFromCart(
+    cubit,
+    messenger,
+    cubit.state.restaurantName,
+    submittedNotes,
+  );
+}
+
+class _CartSubmission {
+  final String restaurantName;
+  final String notes;
+  final Map<String, int> quantities;
+
+  const _CartSubmission({
+    required this.restaurantName,
+    required this.notes,
+    required this.quantities,
+  });
+}
+
+class _FoodCartPage extends StatefulWidget {
+  final FoodState initialState;
+
+  const _FoodCartPage({required this.initialState});
+
+  @override
+  State<_FoodCartPage> createState() => _FoodCartPageState();
+}
+
+class _FoodCartPageState extends State<_FoodCartPage> {
+  late final TextEditingController _noteController;
+  late List<FoodItemEntity> _items;
+  bool _isReturning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController();
+    _items = List<FoodItemEntity>.from(widget.initialState.allItems);
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _updateQuantity(String id, int delta) {
+    if (_isReturning) return;
+    setState(() {
+      _items = _items.map((item) {
+        if (item.id != id) return item;
+        return item.copyWith(quantity: (item.quantity + delta).clamp(0, 99));
+      }).toList();
+    });
+  }
+
+  void _returnSubmission() {
+    if (_isReturning) return;
+    _isReturning = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.of(context).pop(
+      _CartSubmission(
+        restaurantName: widget.initialState.restaurantName,
+        notes: _noteController.text.trim(),
+        quantities: {for (final item in _items) item.id: item.quantity},
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Giỏ hàng của bạn'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1E293B),
+        elevation: 0,
+      ),
+      body: Builder(
+        builder: (context) {
+          final selectedItems = _items
+              .where((item) => item.quantity > 0)
+              .toList();
+          final totalItems = _items.fold<int>(
+            0,
+            (sum, item) => sum + item.quantity,
+          );
+          final totalPrice = _items.fold<double>(
+            0,
+            (sum, item) => sum + item.price * item.quantity,
+          );
+          return Column(
+            children: [
+              Expanded(
+                child: selectedItems.isEmpty
+                    ? const Center(child: Text('Giỏ hàng đang trống'))
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: selectedItems.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final item = selectedItems[index];
+                          return Card(
+                            elevation: 0,
+                            color: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: NetImage(
+                                      url: item.imageUrl,
+                                      width: 64,
+                                      height: 64,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatCurrency(item.price),
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  _QuantityButton(
+                                    icon: Icons.remove,
+                                    onTap: () => _updateQuantity(item.id, -1),
+                                  ),
+                                  SizedBox(
+                                    width: 34,
+                                    child: Text(
+                                      '${item.quantity}',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  _QuantityButton(
+                                    icon: Icons.add,
+                                    filled: true,
+                                    onTap: () => _updateQuantity(item.id, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  16,
+                  20,
+                  16 + MediaQuery.paddingOf(context).bottom,
                 ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 12),
-                    Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(24, 20, 24, 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.shopping_cart_outlined,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            'Giỏ hàng của bạn',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: selectedItems.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(32),
-                              child: Text(
-                                'Giỏ hàng đang trống',
-                                style: TextStyle(color: Color(0xFF64748B)),
-                              ),
-                            )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              itemCount: selectedItems.length,
-                              separatorBuilder: (_, _) =>
-                                  const Divider(height: 24),
-                              itemBuilder: (context, index) {
-                                final item = selectedItems[index];
-                                return Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: NetImage(
-                                        url: item.imageUrl,
-                                        width: 64,
-                                        height: 64,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item.title,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF1E293B),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            _formatCurrency(item.price),
-                                            style: const TextStyle(
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    _QuantityButton(
-                                      icon: Icons.remove,
-                                      onTap: () => context
-                                          .read<FoodCubit>()
-                                          .updateQuantity(item.id, -1),
-                                    ),
-                                    SizedBox(
-                                      width: 36,
-                                      child: Text(
-                                        '${item.quantity}',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    _QuantityButton(
-                                      icon: Icons.add,
-                                      filled: true,
-                                      onTap: () => context
-                                          .read<FoodCubit>()
-                                          .updateQuantity(item.id, 1),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: Color(0xFFE2E8F0)),
+                    TextField(
+                      controller: _noteController,
+                      minLines: 2,
+                      maxLines: 4,
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        labelText: 'Ghi chú cho quán',
+                        hintText: 'Ví dụ: Không cay, ít đá, không dùng hành...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${state.totalItems} món',
-                                style: const TextStyle(
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                              Text(
-                                _formatCurrency(state.totalPrice),
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1E293B),
-                                ),
-                              ),
-                            ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('$totalItems món'),
+                        Text(
+                          _formatCurrency(totalPrice),
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed:
-                                  state.isSubmitting || selectedItems.isEmpty
-                                  ? null
-                                  : () => _submitOrderFromCart(
-                                      context,
-                                      sheetContext,
-                                      state.restaurantName,
-                                    ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: state.isSubmitting
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Đặt món',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: selectedItems.isEmpty || _isReturning
+                            ? null
+                            : _returnSubmission,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Đặt món'),
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      );
-    },
-  );
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 Future<void> _submitOrderFromCart(
-  BuildContext blocContext,
-  BuildContext sheetContext,
+  FoodCubit cubit,
+  ScaffoldMessengerState messenger,
   String restaurantName,
+  String notes,
 ) async {
   try {
-    await blocContext.read<FoodCubit>().submitOrder();
-    if (!blocContext.mounted) return;
-    ScaffoldMessenger.of(blocContext).showSnackBar(
+    await cubit.submitOrder(notes: notes.trim());
+    if (!messenger.mounted) return;
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Đặt món thành công tại $restaurantName!'),
         backgroundColor: const Color(0xFF22C55E),
@@ -872,10 +1194,9 @@ Future<void> _submitOrderFromCart(
         margin: const EdgeInsets.all(16),
       ),
     );
-    if (sheetContext.mounted) Navigator.pop(sheetContext);
   } catch (error) {
-    if (!blocContext.mounted) return;
-    ScaffoldMessenger.of(blocContext).showSnackBar(
+    if (!messenger.mounted) return;
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Không thể đặt món: ${_orderErrorMessage(error)}'),
         backgroundColor: Colors.red,

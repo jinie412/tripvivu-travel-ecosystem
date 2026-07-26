@@ -70,6 +70,9 @@ class ItineraryEntity with _$ItineraryEntity {
     /// Khác với [status]: status = vòng đời chuyến đi; trackingActive = tracking có đang chạy không.
     @Default(false) bool trackingActive,
 
+    /// true khi user hiện tại là chủ lịch trình; false với lịch trình được chia sẻ.
+    @Default(true) bool isOwner,
+
     /// Danh sách ảnh địa điểm trong lịch trình (tối đa 5, từ place_images của API).
     @Default([]) List<String> placeImages,
   }) = _ItineraryEntity;

@@ -346,6 +346,10 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                     ),
                     const SizedBox(height: 10),
                     _buildMemberBreakdownCard(_breakdown!),
+                    if (_breakdown!.childCount > 0) ...[
+                      const SizedBox(height: 12),
+                      _buildChildAssignmentCard(_breakdown!),
+                    ],
                   ],
                   const SizedBox(height: 24),
                   if (_placeFilterId != null) ...[
@@ -370,11 +374,8 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                   if (_costs.isEmpty)
                     _buildEmptyState()
                   else if (_shouldGroupByDay)
-                    ..._groupedCosts().expand(
-                      (group) => [
-                        _buildDayGroupHeader(group.label, group.items),
-                        ...group.items.map(_buildCostTile),
-                      ],
+                    ..._groupedCosts().map(
+                      (group) => _buildDayGroupCard(group.label, group.items),
                     )
                   else
                     ..._costs.map(_buildCostTile),
@@ -1044,7 +1045,7 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
                   : null,
             ),
             breakdownRow('Xăng xe/tự túc', transportCost, caption: rateCaption),
-            breakdownRow('Phí dự trù (10%, đã làm tròn)', contingency),
+            breakdownRow('Phí dự trù (10%)', contingency),
           ],
         ),
       );
@@ -1161,14 +1162,6 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               color: AppColors.costText,
             ),
           ),
-          Text(
-            '${CostUiLabels.beforeReserve}: '
-            '${_formatter.format(breakdown.estimatedCostForGroup)}đ',
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.costTextMuted,
-            ),
-          ),
           const SizedBox(height: 6),
           travelerTile(
             label: 'Người lớn',
@@ -1243,17 +1236,150 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
             // dễ nhìn lộn phần category breakdown của người này sang người kế
             // tiếp khi không có ranh giới nào.
             if (i > 0) const Divider(height: 20, color: Color(0xFFF1F5F9)),
-            _buildMemberRow(breakdown.memberTotals[i], breakdown),
+            _buildMemberRow(breakdown.memberTotals[i]),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildMemberRow(
-    MemberCostTotalEntity m,
-    CostBreakdownEntity breakdown,
-  ) {
+  /// Card RIÊNG cho chi phí trẻ em — tách khỏi từng dòng thành viên ở
+  /// _buildMemberBreakdownCard (trước đây gộp chung, gán cứng cho chủ lịch
+  /// trình, gây khó hiểu "sao người này trả nhiều hơn mà không rõ vì sao").
+  /// Ai phụ trách bao nhiêu trẻ đọc từ breakdown.childAssignments (xem
+  /// travel.itinerary_child_assignments) — phần CHƯA gán (unassignedChildCount)
+  /// mặc định thuộc về chủ lịch trình, hiển thị RÕ là "chưa gán" thay vì lẫn
+  /// vào phần "đã gán" để không đánh lừa người xem.
+  Widget _buildChildAssignmentCard(CostBreakdownEntity breakdown) {
+    final explicitByUser = {
+      for (final a in breakdown.childAssignments) a.userId: a.childCount,
+    };
+    final rows = breakdown.memberTotals.where((m) => m.childrenShare > 0);
+    final canEdit = _isOwner && !widget.isCompleted;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.premiumBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.premiumNavy.withValues(alpha: .045),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.child_care_rounded,
+                size: 18,
+                color: AppColors.costAmber,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Trẻ em',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.costText,
+                  ),
+                ),
+              ),
+              if (canEdit)
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _openChildAssignmentSheet(breakdown),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      'Chỉnh sửa',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.costHeroEnd,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (int i = 0; i < rows.length; i++) ...[
+            if (i > 0) const Divider(height: 16, color: Color(0xFFF1F5F9)),
+            Builder(
+              builder: (context) {
+                final m = rows.elementAt(i);
+                final explicitCount = explicitByUser[m.userId] ?? 0;
+                final isOwnerFallback =
+                    m.isOwner && breakdown.unassignedChildCount > 0;
+                final String subtitle;
+                if (explicitCount > 0 && isOwnerFallback) {
+                  subtitle =
+                      'Phụ trách $explicitCount trẻ + '
+                      '${breakdown.unassignedChildCount} trẻ chưa gán';
+                } else if (explicitCount > 0) {
+                  subtitle = 'Phụ trách $explicitCount trẻ';
+                } else if (isOwnerFallback) {
+                  subtitle = breakdown.unassignedChildCount > 1
+                      ? '${breakdown.unassignedChildCount} trẻ chưa gán (mặc định)'
+                      : '1 trẻ chưa gán (mặc định)';
+                } else {
+                  subtitle = '';
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.fullName.isNotEmpty
+                                ? '${m.fullName}${m.isOwner ? ' (Chủ lịch trình)' : ''}'
+                                : 'Thành viên',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (subtitle.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                subtitle,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.costTextMuted,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${_formatter.format(m.childrenShare)}đ',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMemberRow(MemberCostTotalEntity m) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
@@ -1275,70 +1401,71 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
               ),
             ],
           ),
-          // Chi phí trẻ em không cộng gộp vào total ở trên — hiển thị
-          // thành dòng riêng cho người đang chịu trách nhiệm phần này.
-          if (m.childrenShare > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      breakdown.childCount > 1
-                          ? '+ Phần trẻ em (phụ trách ${breakdown.childCount} trẻ)'
-                          : '+ Phần trẻ em (phụ trách 1 trẻ)',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${_formatter.format(m.childrenShare)}đ',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // Chi phí trẻ em KHÔNG cộng gộp vào total ở trên và KHÔNG hiện
+          // inline ở đây nữa — xem card "Trẻ em" riêng
+          // (_buildChildAssignmentCard) để tránh 2 nơi cùng hiển thị 1 con số
+          // theo 2 kiểu trình bày khác nhau, gây rối mắt.
           // Chi tiết theo từng mục (Nước uống/Quà tặng/Mua sắm/Phí
           // gửi xe/Khác) cộng vào phần của người này — không gồm
           // basePlanCost (đã nằm sẵn trong [total] ở trên).
           if (_visibleCategoryEntries(m.categoryBreakdown).isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 4, left: 4),
+              padding: const EdgeInsets.only(top: 6, left: 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: _visibleCategoryEntries(m.categoryBreakdown)
-                    .map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                e.key.label,
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                              ),
+                children: [
+                  const Text(
+                    'Chi tiết theo mục',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  ..._visibleCategoryEntries(m.categoryBreakdown).map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: _costTypeBackground(e.key),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            Text(
-                              '${_formatter.format(e.value)}đ',
+                            child: Icon(
+                              _costTypeIcon(e.key),
+                              size: 12,
+                              color: _costTypeColor(e.key),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              e.key.label,
                               style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF94A3B8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          Text(
+                            '${_formatter.format(e.value)}đ',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -1346,39 +1473,56 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
     );
   }
 
-  Widget _buildDayGroupHeader(String label, List<IncurredCostEntity> items) {
+  /// Gom các khoản chi cùng 1 ngày vào 1 KHỐI riêng (nền nhạt, bo góc) thay
+  /// vì chỉ 1 dòng tiêu đề mảnh như trước — dễ phân biệt ranh giới giữa các
+  /// ngày khi lướt danh sách dài. Từng khoản chi vẫn giữ card trắng viền
+  /// riêng của nó (_buildCostTile) bên trong khối này.
+  Widget _buildDayGroupCard(String label, List<IncurredCostEntity> items) {
     final subtotal = items.fold<double>(0, (sum, c) => sum + c.amount);
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Row(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.premiumBackground,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: AppColors.costMint,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.costText,
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppColors.costMint,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.costText,
+                  ),
+                ),
+              ),
+              Text(
+                '${_formatter.format(subtotal)}đ',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.costText,
+                ),
+              ),
+            ],
           ),
-          Text(
-            '${_formatter.format(subtotal)}đ',
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.costText,
-            ),
-          ),
+          const SizedBox(height: 10),
+          for (final item in items) _buildCostTile(item),
         ],
       ),
     );
@@ -1599,5 +1743,229 @@ class _IncurredCostsScreenState extends State<IncurredCostsScreen> {
       case CostType.other:
         return Icons.receipt_long_outlined;
     }
+  }
+
+  Future<void> _openChildAssignmentSheet(CostBreakdownEntity breakdown) async {
+    final initial = {
+      for (final a in breakdown.childAssignments) a.userId: a.childCount,
+    };
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _ChildAssignmentSheet(
+        members: widget.members,
+        childCount: breakdown.childCount,
+        initialAssignments: initial,
+        onSave: (assignments) =>
+            _repository.setChildAssignments(widget.itineraryId, assignments),
+      ),
+    );
+    if (saved == true) await _load();
+  }
+}
+
+/// Nội dung sheet gán "ai phụ trách bao nhiêu trẻ em" — mỗi thành viên có 1
+/// stepper riêng, tổng bị CHẶN không cho vượt quá childCount (không cần nút
+/// Lưu tự validate, đơn giản hơn cho người dùng).
+class _ChildAssignmentSheet extends StatefulWidget {
+  final List<ItineraryMemberEntity> members;
+  final int childCount;
+  final Map<String, int> initialAssignments;
+  final Future<void> Function(List<ChildAssignmentEntity> assignments) onSave;
+
+  const _ChildAssignmentSheet({
+    required this.members,
+    required this.childCount,
+    required this.initialAssignments,
+    required this.onSave,
+  });
+
+  @override
+  State<_ChildAssignmentSheet> createState() => _ChildAssignmentSheetState();
+}
+
+class _ChildAssignmentSheetState extends State<_ChildAssignmentSheet> {
+  late final Map<String, int> _counts;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _counts = {
+      for (final m in widget.members)
+        m.id: widget.initialAssignments[m.id] ?? 0,
+    };
+  }
+
+  int get _totalAssigned => _counts.values.fold(0, (a, b) => a + b);
+
+  /// true nếu còn trẻ CHƯA gán (bấm + bình thường) HOẶC có thể "mượn" 1 trẻ
+  /// từ thành viên khác đang giữ (xem _adjust) — không bắt người dùng phải tự
+  /// bấm trừ người cũ rồi mới bấm cộng người mới khi đã gán hết.
+  bool _canIncrement(String memberId) {
+    if (_totalAssigned < widget.childCount) return true;
+    return _counts.entries.any((e) => e.key != memberId && e.value > 0);
+  }
+
+  void _adjust(String memberId, int delta) {
+    final current = _counts[memberId] ?? 0;
+    if (delta < 0) {
+      if (current <= 0) return;
+      setState(() => _counts[memberId] = current - 1);
+      return;
+    }
+    if (_totalAssigned < widget.childCount) {
+      setState(() => _counts[memberId] = current + 1);
+      return;
+    }
+    // Đã gán hết số trẻ — chuyển 1 trẻ từ thành viên đang giữ NHIỀU NHẤT
+    // (khác memberId) sang, thay vì bắt bấm trừ người cũ trước.
+    final donor = _counts.entries
+        .where((e) => e.key != memberId && e.value > 0)
+        .fold<MapEntry<String, int>?>(
+          null,
+          (best, e) => best == null || e.value > best.value ? e : best,
+        );
+    if (donor == null) return;
+    setState(() {
+      _counts[donor.key] = donor.value - 1;
+      _counts[memberId] = current + 1;
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      final assignments = _counts.entries
+          .where((e) => e.value > 0)
+          .map((e) => ChildAssignmentEntity(userId: e.key, childCount: e.value))
+          .toList();
+      await widget.onSave(assignments);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final unassigned = widget.childCount - _totalAssigned;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 24 + media.viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Gán trẻ em cho thành viên',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.costText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            unassigned > 0
+                ? 'Đã gán $_totalAssigned/${widget.childCount} trẻ — còn $unassigned trẻ chưa gán sẽ mặc định thuộc về chủ lịch trình.'
+                : 'Đã gán đủ ${widget.childCount}/${widget.childCount} trẻ.',
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.costTextMuted,
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (final m in widget.members)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      m.fullName.isNotEmpty
+                          ? '${m.fullName}${m.isOwner ? ' (Chủ lịch trình)' : ''}'
+                          : 'Thành viên',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: (_counts[m.id] ?? 0) > 0
+                        ? () => _adjust(m.id, -1)
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 24,
+                    child: Text(
+                      '${_counts[m.id] ?? 0}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: _canIncrement(m.id)
+                        ? () => _adjust(m.id, 1)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.premiumNavy,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Lưu',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

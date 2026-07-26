@@ -177,7 +177,13 @@ class _MainShellState extends State<MainShell> {
                   'notification_id': newRow['notification_id'].toString(),
                 };
 
-                if (mounted) {
+                // Realtime là fallback khi FCM/token không hoạt động. Nếu FCM
+                // đã hiển thị cùng notification_id thì claim trả false, tránh
+                // hai notification giống nhau trên điện thoại.
+                final shouldShow = NotificationService.claimRemoteNotification(
+                  newRow['notification_id']?.toString(),
+                );
+                if (mounted && shouldShow) {
                   NotificationService().showNotification(
                     title: notificationResponse['title'] ?? 'Thông báo',
                     body: notificationResponse['content'] ?? '',
@@ -247,7 +253,11 @@ class _MainShellState extends State<MainShell> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => sl<ItineraryCubit>()),
-        BlocProvider(create: (_) => sl<ProfileCubit>()),
+        BlocProvider(
+          lazy: false,
+          create: (_) => sl<ProfileCubit>()
+            ..loadProfile(includeActivities: true),
+        ),
         BlocProvider(create: (_) => sl<TrackingCubit>()),
         BlocProvider(create: (_) => TabCubit()),
         BlocProvider.value(value: _notificationCubit),

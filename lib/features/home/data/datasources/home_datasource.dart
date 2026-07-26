@@ -301,12 +301,26 @@ class MockHomeDataSource implements HomeDataSource {
 class RemoteHomeDataSource implements HomeDataSource {
   final DioClient _client;
 
+  /// Explore home gom nhiều nhóm dữ liệu nên lần gọi đầu (cold cache/backend)
+  /// có thể lâu hơn request thông thường. Chỉ tăng timeout cho màn hình này,
+  /// không làm các API khác trong ứng dụng phải chờ lâu khi có lỗi mạng.
+  static const Duration _exploreReceiveTimeout = Duration(seconds: 45);
+  static const Duration _exploreSendTimeout = Duration(seconds: 30);
+
   RemoteHomeDataSource(this._client);
+
+  Options _exploreOptions({required bool forceRefresh}) {
+    final base = forceRefresh ? _client.forceRefreshOptions : Options();
+    return base.copyWith(
+      receiveTimeout: _exploreReceiveTimeout,
+      sendTimeout: _exploreSendTimeout,
+    );
+  }
 
   @override
   Future<ExploreHomePayload> getExploreHome({bool forceRefresh = false}) async {
     final touristId = await AuthUtils.requireCurrentUserId();
-    final opts = forceRefresh ? _client.forceRefreshOptions : null;
+    final opts = _exploreOptions(forceRefresh: forceRefresh);
 
     // Fire both requests in parallel — eliminates the sequential penalty when
     // /explore/home returns no current_itinerary and the fallback is needed.
@@ -347,7 +361,7 @@ class RemoteHomeDataSource implements HomeDataSource {
       final r = await _client.dio.get(
         '/explore/current',
         queryParameters: {'tourist_id': touristId},
-        options: _client.forceRefreshOptions,
+        options: _exploreOptions(forceRefresh: true),
       );
       return r.data is Map<String, dynamic> ? r.data as Map<String, dynamic> : null;
     } catch (_) {
@@ -495,6 +509,9 @@ class RemoteHomeDataSource implements HomeDataSource {
       endDate: endDate,
       durationDays: _calcDurationDays(startDate, endDate),
       status: _mapStatus((raw['status'] ?? '').toString()),
+      trackingActive:
+          raw['tracking_active'] == true ||
+          (raw['status'] ?? '').toString().toLowerCase() == 'ongoing',
     );
   }
 

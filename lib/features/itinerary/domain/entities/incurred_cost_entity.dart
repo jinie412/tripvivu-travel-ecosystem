@@ -147,6 +147,16 @@ class MemberCostTotalEntity {
   });
 }
 
+/// Số trẻ em 1 thành viên đang phụ trách (xem
+/// travel.itinerary_child_assignments) — chỉ số lượng, không có danh tính
+/// riêng cho từng trẻ.
+class ChildAssignmentEntity {
+  final String userId;
+  final int childCount;
+
+  const ChildAssignmentEntity({required this.userId, required this.childCount});
+}
+
 class CostBreakdownEntity {
   final List<MemberCostTotalEntity> memberTotals;
   final double totalCost;
@@ -196,6 +206,11 @@ class CostBreakdownEntity {
   final double transportRatePerKmCar;
   final int adultCount;
   final int childCount;
+  // Ai đang phụ trách bao nhiêu trẻ em (chỉ những người > 0) + phần CHƯA gán
+  // (mặc định thuộc về chủ lịch trình) — dùng cho card trẻ em riêng + điền
+  // sẵn khi mở sheet sửa gán.
+  final List<ChildAssignmentEntity> childAssignments;
+  final int unassignedChildCount;
 
   const CostBreakdownEntity({
     this.memberTotals = const [],
@@ -226,6 +241,8 @@ class CostBreakdownEntity {
     this.transportRatePerKmCar = 0,
     this.adultCount = 1,
     this.childCount = 0,
+    this.childAssignments = const [],
+    this.unassignedChildCount = 0,
   });
 }
 

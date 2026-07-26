@@ -32,9 +32,9 @@ class IncurredCostModel {
       id: (json['id'] ?? '').toString(),
       type: CostType.fromApi((json['type'] ?? json['costType'])?.toString()),
       placeId: json['place_id']?.toString() ?? json['placeId']?.toString(),
-      placeName: json['place_name']?.toString() ?? json['placeName']?.toString(),
-      dayNumber:
-          (json['day_number'] ?? json['dayNumber'] as num?)?.toInt(),
+      placeName:
+          json['place_name']?.toString() ?? json['placeName']?.toString(),
+      dayNumber: (json['day_number'] ?? json['dayNumber'] as num?)?.toInt(),
       note: (json['note'] ?? '').toString(),
       amount: (json['amount'] ?? 0).toDouble(),
       chargedTo:
@@ -42,14 +42,14 @@ class IncurredCostModel {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
-      createdBy:
-          (json['created_by'] ?? json['createdBy'] ?? '').toString(),
+      createdBy: (json['created_by'] ?? json['createdBy'] ?? '').toString(),
       createdAt:
           DateTime.tryParse(
             (json['created_at'] ?? json['createdAt'] ?? '').toString(),
           ) ??
           DateTime.now(),
-      updatedBy: json['updated_by']?.toString() ?? json['updatedBy']?.toString(),
+      updatedBy:
+          json['updated_by']?.toString() ?? json['updatedBy']?.toString(),
     );
   }
 
@@ -128,8 +128,8 @@ class MemberCostTotalModel {
       fullName: (json['fullName'] ?? json['full_name'] ?? '').toString(),
       isOwner: json['isOwner'] == true || json['is_owner'] == true,
       total: (json['total'] ?? 0).toDouble(),
-      childrenShare:
-          (json['childrenShare'] ?? json['children_share'] ?? 0).toDouble(),
+      childrenShare: (json['childrenShare'] ?? json['children_share'] ?? 0)
+          .toDouble(),
       categoryBreakdown: {
         for (final entry in (rawBreakdown ?? const {}).entries)
           CostType.fromApi(entry.key): (entry.value as num).toDouble(),
@@ -145,6 +145,24 @@ class MemberCostTotalModel {
     childrenShare: childrenShare,
     categoryBreakdown: categoryBreakdown,
   );
+}
+
+class ChildAssignmentModel {
+  final String userId;
+  final int childCount;
+
+  const ChildAssignmentModel({required this.userId, required this.childCount});
+
+  factory ChildAssignmentModel.fromJson(Map<String, dynamic> json) {
+    return ChildAssignmentModel(
+      userId: (json['userId'] ?? json['user_id'] ?? '').toString(),
+      childCount:
+          (json['childCount'] ?? json['child_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  ChildAssignmentEntity toEntity() =>
+      ChildAssignmentEntity(userId: userId, childCount: childCount);
 }
 
 class CostBreakdownModel {
@@ -176,6 +194,8 @@ class CostBreakdownModel {
   final double transportRatePerKmCar;
   final int adultCount;
   final int childCount;
+  final List<ChildAssignmentModel> childAssignments;
+  final int unassignedChildCount;
 
   const CostBreakdownModel({
     this.memberTotals = const [],
@@ -206,6 +226,8 @@ class CostBreakdownModel {
     this.transportRatePerKmCar = 0,
     this.adultCount = 1,
     this.childCount = 0,
+    this.childAssignments = const [],
+    this.unassignedChildCount = 0,
   });
 
   factory CostBreakdownModel.fromJson(Map<String, dynamic> json) {
@@ -217,14 +239,13 @@ class CostBreakdownModel {
               .toList() ??
           const [],
       totalCost: (json['totalCost'] ?? json['total_cost'] ?? 0).toDouble(),
-      basePlanCost:
-          (json['basePlanCost'] ?? json['base_plan_cost'] ?? 0).toDouble(),
-      incurredTotal:
-          (json['incurredTotal'] ?? json['incurred_total'] ?? 0).toDouble(),
-      childrenShare:
-          (json['childrenShare'] ?? json['children_share'] ?? 0).toDouble(),
-      spentSoFar:
-          (json['spentSoFar'] ?? json['spent_so_far'] ?? 0).toDouble(),
+      basePlanCost: (json['basePlanCost'] ?? json['base_plan_cost'] ?? 0)
+          .toDouble(),
+      incurredTotal: (json['incurredTotal'] ?? json['incurred_total'] ?? 0)
+          .toDouble(),
+      childrenShare: (json['childrenShare'] ?? json['children_share'] ?? 0)
+          .toDouble(),
+      spentSoFar: (json['spentSoFar'] ?? json['spent_so_far'] ?? 0).toDouble(),
       estimatedCostForGroup:
           (json['estimatedCostForGroup'] ??
                   json['estimated_cost_for_group'] ??
@@ -241,19 +262,13 @@ class CostBreakdownModel {
                   0)
               .toDouble(),
       payableLimitForGroup:
-          (json['payableLimitForGroup'] ??
-                  json['payable_limit_for_group'] ??
-                  0)
+          (json['payableLimitForGroup'] ?? json['payable_limit_for_group'] ?? 0)
               .toDouble(),
       payableLimitPerAdult:
-          (json['payableLimitPerAdult'] ??
-                  json['payable_limit_per_adult'] ??
-                  0)
+          (json['payableLimitPerAdult'] ?? json['payable_limit_per_adult'] ?? 0)
               .toDouble(),
       payableLimitPerChild:
-          (json['payableLimitPerChild'] ??
-                  json['payable_limit_per_child'] ??
-                  0)
+          (json['payableLimitPerChild'] ?? json['payable_limit_per_child'] ?? 0)
               .toDouble(),
       reserveCost: (json['reserveCost'] ?? json['reserve_cost'] ?? 0)
           .toDouble(),
@@ -261,8 +276,7 @@ class CostBreakdownModel {
           (json['roundedGroupTotal'] ?? json['rounded_group_total'] ?? 0)
               .toDouble(),
       contingencyCost:
-          (json['contingencyCost'] ?? json['contingency_cost'] ?? 0)
-              .toDouble(),
+          (json['contingencyCost'] ?? json['contingency_cost'] ?? 0).toDouble(),
       roundedCostPerAdult:
           (json['roundedCostPerAdult'] ?? json['rounded_cost_per_adult'] ?? 0)
               .toDouble(),
@@ -304,6 +318,17 @@ class CostBreakdownModel {
           (json['adultCount'] ?? json['adult_count'] as num?)?.toInt() ?? 1,
       childCount:
           (json['childCount'] ?? json['child_count'] as num?)?.toInt() ?? 0,
+      childAssignments:
+          ((json['childAssignments'] ?? json['child_assignments']) as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ChildAssignmentModel.fromJson)
+              .toList() ??
+          const [],
+      unassignedChildCount:
+          (json['unassignedChildCount'] ??
+                  json['unassigned_child_count'] as num?)
+              ?.toInt() ??
+          0,
     );
   }
 
@@ -336,6 +361,8 @@ class CostBreakdownModel {
     transportRatePerKmCar: transportRatePerKmCar,
     adultCount: adultCount,
     childCount: childCount,
+    childAssignments: childAssignments.map((e) => e.toEntity()).toList(),
+    unassignedChildCount: unassignedChildCount,
   );
 }
 
@@ -363,8 +390,8 @@ class DayCostBreakdownModel {
       dayBasePlanCost:
           (json['dayBasePlanCost'] ?? json['day_base_plan_cost'] ?? 0)
               .toDouble(),
-      childrenShare:
-          (json['childrenShare'] ?? json['children_share'] ?? 0).toDouble(),
+      childrenShare: (json['childrenShare'] ?? json['children_share'] ?? 0)
+          .toDouble(),
       transportPerAdultWholeTrip:
           (json['transportPerAdultWholeTrip'] ??
                   json['transport_per_adult_whole_trip'] ??

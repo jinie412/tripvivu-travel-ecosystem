@@ -10,6 +10,7 @@ class ItineraryModel {
   final int days;
   final int progress;
   final bool trackingActive;
+  final bool isOwner;
   final double estimatedCost;
   final int participantCount;
   final int adultCount;
@@ -30,6 +31,7 @@ class ItineraryModel {
   required this.days,
   required this.progress,
   this.trackingActive = false,
+  this.isOwner = true,
   this.estimatedCost = 0,
   this.participantCount = 1,
   this.adultCount = 1,
@@ -52,6 +54,11 @@ factory ItineraryModel.fromJson(Map<String, dynamic> json) {
     days: json['days'] ?? 0,
     progress: json['progress'] ?? 0,
     trackingActive: json['tracking_active'] == true,
+    isOwner: json.containsKey('isOwner')
+        ? json['isOwner'] == true
+        : json.containsKey('is_owner')
+        ? json['is_owner'] == true
+        : json['shared'] != true,
     estimatedCost: (json['estimated_cost'] as num?)?.toDouble() ?? 0,
     participantCount:
         (json['participantCount'] ?? json['participant_count'] as num?)
@@ -114,6 +121,7 @@ ItineraryEntity toEntity() {
 
     placeholderColor: 0xFF42A5F5,
     trackingActive: trackingActive,
+    isOwner: isOwner,
 
     placeImages: placeImages,
   );

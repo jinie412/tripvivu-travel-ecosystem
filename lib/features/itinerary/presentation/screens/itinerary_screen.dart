@@ -671,20 +671,27 @@ class _StartButtonState extends State<_StartButton> {
           p.isActive != c.isActive || p.itineraryId != c.itineraryId,
       builder: (context, trackingState) {
         final isOngoing = _isOngoing(trackingState);
+        final disabledForSharedMember = isOngoing && !widget.item.isOwner;
         final isLocked = !isOngoing && !_isTodayStartDate();
-        final color = isOngoing
+        final color = disabledForSharedMember
+            ? const Color(0xFF9CA3AF)
+            : isOngoing
             ? const Color(0xFF2563EB)
             : isLocked
             ? const Color(0xFF9CA3AF)
             : const Color(0xFF0E9E87);
-        final bgColor = isOngoing
+        final bgColor = disabledForSharedMember
+            ? const Color(0xFFF3F4F6)
+            : isOngoing
             ? const Color(0xFFEFF6FF)
             : isLocked
             ? const Color(0xFFF3F4F6)
             : const Color(0xFFE8FDF8);
 
         return GestureDetector(
-          onTap: _loading ? null : () => _onTap(isOngoing),
+          onTap: _loading || disabledForSharedMember
+              ? null
+              : () => _onTap(isOngoing),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: bgColor,
@@ -726,7 +733,9 @@ class _StartButtonState extends State<_StartButton> {
                   ),
                 ),
                 Icon(
-                  isOngoing
+                  disabledForSharedMember
+                      ? Icons.lock_outline_rounded
+                      : isOngoing
                       ? Icons.stop_circle_outlined
                       : isLocked
                       ? Icons.lock_outline_rounded
