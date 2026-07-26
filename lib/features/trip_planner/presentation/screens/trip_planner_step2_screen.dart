@@ -20,11 +20,11 @@ class TripPlannerStep2Screen extends StatelessWidget {
     required DateTime? currentStart,
     required DateTime? currentEnd,
   }) async {
-    const kMaxTripDays = 7;
+    const kMaxTripDays = 7; // tổng số ngày tối đa, tính cả ngày đi và ngày về
     final now = DateTime.now();
     final firstDate = isStart ? now : (currentStart ?? now);
     final lastDate = !isStart && currentStart != null
-        ? currentStart.add(const Duration(days: kMaxTripDays))
+        ? currentStart.add(const Duration(days: kMaxTripDays - 1))
         : DateTime(now.year + 2);
     final rawInitial = isStart
         ? (currentStart ?? now)

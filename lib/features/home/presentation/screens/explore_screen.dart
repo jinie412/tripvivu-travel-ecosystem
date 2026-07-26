@@ -765,8 +765,11 @@ class _ExploreViewState extends State<_ExploreView> {
     final screenW = MediaQuery.of(context).size.width;
     final suggestionCardH = screenW * 0.88 * (9 / 16) + 142;
     final destinationCardH = screenW * 0.40 / .78;
-    final restaurantCardH = screenW * 0.45 * (3 / 4) + 80;
-    final hotelCardH = screenW * 0.45 * (3 / 4) + 100;
+    // _PremiumPlaceCard bọc ngoài trừ mất 12 (padding phải của item) + 9*2
+    // (padding trái/phải của Container) chiều rộng thực tế của ảnh bên trong.
+    final cardImgW = screenW * 0.45 - 30;
+    final restaurantCardH = cardImgW * (3 / 4) + 110;
+    final hotelCardH = cardImgW * (3 / 4) + 130;
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -1075,6 +1078,7 @@ class _PremiumPlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(9, 9, 9, 12),
       decoration: BoxDecoration(
@@ -1089,7 +1093,14 @@ class _PremiumPlaceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: child,
+      // Giới hạn textScale để cỡ chữ hệ thống lớn không làm tràn khung
+      // chiều cao cố định của card trong carousel.
+      child: MediaQuery(
+        data: mediaQuery.copyWith(
+          textScaler: mediaQuery.textScaler.clamp(maxScaleFactor: 1.15),
+        ),
+        child: child,
+      ),
     );
   }
 }
