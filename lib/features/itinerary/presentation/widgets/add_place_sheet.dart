@@ -18,11 +18,14 @@ class AddPlaceSheet extends StatefulWidget {
   final double? referenceLat;
   final double? referenceLng;
   final List<String>? existingIds;
+
   /// Ngày tham quan — dùng để validate opening hours đúng ngày trong tuần.
   final DateTime? visitDate;
+
   /// Giờ dự kiến tham quan (HH:mm) — dùng để validate opening hours.
   final String? proposedVisitTime;
   final String? destinationCity;
+
   /// Null (or an itinerary created before this feature existed) falls back
   /// to nearby search.
   final String? itineraryId;
@@ -75,6 +78,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
+  int _searchRequestId = 0;
 
   bool _isLoading = true;
   List<NearbyPlaceModel> _allPlaces = [];
@@ -98,7 +102,14 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     'landmark', 'monument', 'ruins', 'citadel', 'castle', 'palace',
     // Thiên nhiên
     'công viên', 'vườn', 'thiên nhiên', 'núi', 'biển', 'hồ', 'thác', 'hang',
-    'park', 'garden', 'nature', 'beach', 'mountain', 'lake', 'waterfall', 'cave',
+    'park',
+    'garden',
+    'nature',
+    'beach',
+    'mountain',
+    'lake',
+    'waterfall',
+    'cave',
     // Tham quan
     'tham quan', 'du lịch', 'điểm đến', 'attraction', 'sightseeing', 'tourist',
     'khu du lịch', 'khu tham quan',
@@ -122,6 +133,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   }
 
   Future<void> _loadNearbyPlaces({String? q, int retryCount = 0}) async {
+    final requestId = ++_searchRequestId;
     setState(() => _isLoading = true);
     try {
       final isDefaultFeed = _isDefaultFeed(q);
@@ -136,6 +148,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
           widget.itineraryId!,
           limit: 10,
         );
+        if (!mounted || requestId != _searchRequestId) return;
       }
 
       if (places.isEmpty) {
@@ -144,12 +157,15 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
         places = await NearbyPlacesApi.getNearbyPlaces(
           lat,
           lng,
-          excludeIds: widget.existingIds,
+          // Suggestions should not repeat itinerary places. Explicit search,
+          // however, still shows them and validates when the user selects one.
+          excludeIds: isDefaultFeed ? widget.existingIds : null,
           preferCategory: isDefaultFeed ? 'Tham quan' : null,
           radius: isDefaultFeed ? 30 : 50,
           limit: isDefaultFeed ? 10 : 30,
           q: q,
         );
+        if (!mounted || requestId != _searchRequestId) return;
         if (isDefaultFeed) {
           final tourismPlaces = _filterTourismOnly(places);
           // Backend already excludes food/accommodation for the default feed.
@@ -164,13 +180,13 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
       // If we got empty places on initial load and haven't retried yet, retry once for cold starts
       if (places.isEmpty && retryCount < 1 && isDefaultFeed) {
         await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
+        if (mounted && requestId == _searchRequestId) {
           await _loadNearbyPlaces(q: q, retryCount: retryCount + 1);
         }
         return;
       }
 
-      if (mounted) {
+      if (mounted && requestId == _searchRequestId) {
         places.sort((a, b) {
           if (b.rating != a.rating) {
             return b.rating.compareTo(a.rating);
@@ -183,14 +199,15 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
         });
       }
     } catch (e) {
+      if (!mounted || requestId != _searchRequestId) return;
       if (retryCount < 1) {
         await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
+        if (mounted && requestId == _searchRequestId) {
           await _loadNearbyPlaces(q: q, retryCount: retryCount + 1);
         }
         return;
       }
-      if (mounted) {
+      if (mounted && requestId == _searchRequestId) {
         setState(() {
           _isLoading = false;
         });
@@ -200,15 +217,27 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
 
   void _onSearchChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    final newQuery = _searchController.text.trim();
+    if (_searchQuery == newQuery) return;
+
+    _searchRequestId++;
+    setState(() {
+      _searchQuery = newQuery;
+      _isLoading = true;
+    });
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
-        final newQuery = _searchController.text.trim();
-        if (_searchQuery != newQuery) {
-          setState(() => _searchQuery = newQuery);
-          _loadNearbyPlaces(q: newQuery);
-        }
+        _loadNearbyPlaces(q: newQuery);
       }
     });
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+    _searchController.clear();
+    if (_searchQuery.isEmpty && !_isLoading) {
+      _loadNearbyPlaces();
+    }
   }
 
   @override
@@ -220,8 +249,9 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  String _fmt(int count) =>
-      count >= 1000 ? '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k' : '$count';
+  String _fmt(int count) => count >= 1000
+      ? '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k'
+      : '$count';
 
   String _fmtPrice(double price) {
     if (price >= 1000000) return '${(price / 1000000).toStringAsFixed(1)}M₫';
@@ -232,14 +262,54 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   Color _tagColor(String tag) {
     if (tag.contains('danh mục')) return const Color(0xFF2563EB);
     if (tag.contains('Gần')) return const Color(0xFF10B981);
-    if (tag.contains('cao') || tag.contains('Phổ biến')) return const Color(0xFFF59E0B);
+    if (tag.contains('cao') || tag.contains('Phổ biến'))
+      return const Color(0xFFF59E0B);
     if (tag.contains('Miễn phí')) return const Color(0xFF10B981);
     return const Color(0xFF8B5CF6);
   }
 
   Future<void> _onSelect(NearbyPlaceModel place) async {
+    if (_isExistingPlace(place.id)) {
+      await _showExistingPlaceWarning(place.name);
+      return;
+    }
+
     Navigator.pop(context);
     await widget.onAdd(place);
+  }
+
+  bool _isExistingPlace(String placeId) {
+    final normalizedId = placeId.trim().toLowerCase();
+    if (normalizedId.isEmpty) return false;
+    return widget.existingIds?.any(
+          (id) => id.trim().toLowerCase() == normalizedId,
+        ) ??
+        false;
+  }
+
+  Future<void> _showExistingPlaceWarning(String placeName) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+        ),
+        title: const Text(
+          'Địa điểm đã tồn tại',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '"$placeName" đã tồn tại trong lịch trình. '
+          'Vui lòng chọn địa điểm khác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openPlaceDetail(NearbyPlaceModel place) async {
@@ -270,17 +340,16 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r24)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppSizes.r24),
+            ),
           ),
           child: Column(
             children: [
               _Header(
                 searchController: _searchController,
                 searchQuery: _searchQuery,
-                onClearSearch: () {
-                  _searchController.clear();
-                  setState(() => _searchQuery = '');
-                },
+                onClearSearch: _clearSearch,
                 onClose: () => Navigator.pop(context),
               ),
               Expanded(
@@ -288,37 +357,45 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                   controller: scrollController,
                   padding: EdgeInsets.zero,
                   children: [
-                    _SectionTitle(
-                      icon: Icons.auto_awesome_rounded,
-                      iconColor: AppColorsExt.warning,
-                      title: _searchQuery.isNotEmpty
-                          ? 'Kết quả tìm kiếm (${_listItems.length})'
-                          : 'Gợi ý',
-                    ),
                     if (_isLoading)
                       const Padding(
                         padding: EdgeInsets.all(AppSizes.s32),
                         child: Center(child: CircularProgressIndicator()),
                       )
-                    else if (_listItems.isEmpty)
-                      _EmptyState(isSearching: _searchQuery.isNotEmpty)
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
-                        itemCount: _listItems.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: AppSizes.s12),
-                        itemBuilder: (_, i) => _ListCard(
-                          place: _listItems[i],
-                          onViewDetail: () =>
-                              _openPlaceDetail(_listItems[i]),
-                          onSelect: () => _onSelect(_listItems[i]),
-                          fmt: _fmt,
-                          fmtPrice: _fmtPrice,
-                          tagColor: _tagColor,
-                        ),
+                    else ...[
+                      _SectionTitle(
+                        icon: _searchQuery.isNotEmpty
+                            ? Icons.search_rounded
+                            : Icons.auto_awesome_rounded,
+                        iconColor: _searchQuery.isNotEmpty
+                            ? AppColors.primary
+                            : AppColorsExt.warning,
+                        title: _searchQuery.isNotEmpty
+                            ? 'Kết quả tìm kiếm (${_listItems.length})'
+                            : 'Gợi ý',
                       ),
+                      if (_listItems.isEmpty)
+                        _EmptyState(isSearching: _searchQuery.isNotEmpty)
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSizes.s20,
+                          ),
+                          itemCount: _listItems.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: AppSizes.s12),
+                          itemBuilder: (_, i) => _ListCard(
+                            place: _listItems[i],
+                            onViewDetail: () => _openPlaceDetail(_listItems[i]),
+                            onSelect: () => _onSelect(_listItems[i]),
+                            fmt: _fmt,
+                            fmtPrice: _fmtPrice,
+                            tagColor: _tagColor,
+                          ),
+                        ),
+                    ],
                     const SizedBox(height: AppSizes.s20),
                     _ManualAddButton(
                       onTap: () => _showFavoritePlacesDialog(context),
@@ -348,19 +425,30 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
       Navigator.pop(context); // close loading
 
       final favorites = widget.destinationCity != null
-          ? allFavorites.where((f) =>
-              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) ||
-              widget.destinationCity!.toLowerCase().contains(f.city.toLowerCase())
-            ).toList()
+          ? allFavorites
+                .where(
+                  (f) =>
+                      f.city.toLowerCase().contains(
+                        widget.destinationCity!.toLowerCase(),
+                      ) ||
+                      widget.destinationCity!.toLowerCase().contains(
+                        f.city.toLowerCase(),
+                      ),
+                )
+                .toList()
           : allFavorites;
 
       if (favorites.isEmpty) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
-            title: const Text('Danh mục yêu thích',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.r20),
+            ),
+            title: const Text(
+              'Danh mục yêu thích',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             content: Text(
               widget.destinationCity != null
                   ? 'Bạn chưa lưu địa điểm yêu thích nào tại ${widget.destinationCity}.'
@@ -370,7 +458,10 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
+                child: const Text(
+                  'Đóng',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -379,68 +470,93 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
       }
 
       showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
-              title: const Text('Danh mục yêu thích',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              contentPadding: const EdgeInsets.only(top: 16),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 300,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  itemCount: favorites.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final fav = favorites[index];
-                    return GestureDetector(
-                      onTap: () async {
-                        final place = NearbyPlaceModel(
-                          id: fav.id,
-                          name: fav.name,
-                          address: fav.city,
-                          category: 'Yêu thích',
-                          rating: fav.rating,
-                          reviewCount: fav.reviewCount,
-                          imageUrl: fav.image,
-                          latitude: widget.referenceLat,
-                          longitude: widget.referenceLng,
-                        );
-                        Navigator.pop(ctx);
-                        await widget.onAdd(place);
-                      },
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: NetImage(url: fav.image, width: 50, height: 50, fit: BoxFit.cover),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(fav.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 4),
-                                Text(fav.city, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.r20),
+          ),
+          title: const Text(
+            'Danh mục yêu thích',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          contentPadding: const EdgeInsets.only(top: 16),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              itemCount: favorites.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final fav = favorites[index];
+                return GestureDetector(
+                  onTap: () async {
+                    final place = NearbyPlaceModel(
+                      id: fav.id,
+                      name: fav.name,
+                      address: fav.city,
+                      category: 'Yêu thích',
+                      rating: fav.rating,
+                      reviewCount: fav.reviewCount,
+                      imageUrl: fav.image,
+                      latitude: widget.referenceLat,
+                      longitude: widget.referenceLng,
                     );
+                    Navigator.pop(ctx);
+                    if (!mounted) return;
+                    await _onSelect(place);
                   },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
-                ),
-              ],
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: NetImage(
+                          url: fav.image,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fav.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fav.city,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (mounted) Navigator.pop(context);
     }
@@ -466,7 +582,11 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
-          AppSizes.s20, AppSizes.s16, AppSizes.s20, AppSizes.s12),
+        AppSizes.s20,
+        AppSizes.s16,
+        AppSizes.s20,
+        AppSizes.s12,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
@@ -486,8 +606,10 @@ class _Header extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Thêm địa điểm',
-                  style: AppTextStyles.heading2
-                      .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: AppTextStyles.heading2.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -499,8 +621,11 @@ class _Header extends StatelessWidget {
                     color: AppColorsExt.searchBarBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close,
-                      size: 18, color: AppColors.textSecondary),
+                  child: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -517,8 +642,11 @@ class _Header extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: AppSizes.s12),
-                const Icon(Icons.search,
-                    size: AppSizes.iconMd, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.search,
+                  size: AppSizes.iconMd,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppSizes.s4),
                 Expanded(
                   child: TextField(
@@ -544,8 +672,11 @@ class _Header extends StatelessWidget {
                     onTap: onClearSearch,
                     child: const Padding(
                       padding: EdgeInsets.all(AppSizes.s8),
-                      child: Icon(Icons.close,
-                          size: 16, color: AppColors.textSecondary),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   )
                 else
@@ -558,7 +689,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
 
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
@@ -575,14 +705,22 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSizes.s20, AppSizes.s16, AppSizes.s20, AppSizes.s12),
+        AppSizes.s20,
+        AppSizes.s16,
+        AppSizes.s20,
+        AppSizes.s12,
+      ),
       child: Row(
         children: [
           Icon(icon, size: 16, color: iconColor),
           const SizedBox(width: AppSizes.s8),
-          Text(title,
-              style: AppTextStyles.heading2
-                  .copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTextStyles.heading2.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -625,110 +763,127 @@ class _ListCard extends StatelessWidget {
           ],
         ),
         child: Row(
-        children: [
-          // Thumbnail
-          NetImage(
-            url: place.imageUrl,
-            width: 88,
-            height: 95,
-            borderRadius: AppSizes.r16,
-            fit: BoxFit.cover,
-          ),
-          const SizedBox(width: AppSizes.s12),
-          // Info
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    place.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on,
-                          size: 11, color: AppColorsExt.textHint),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          place.address,
-                          style: AppTextStylesExt.bodySmall
-                              .copyWith(fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+          children: [
+            // Thumbnail
+            NetImage(
+              url: place.imageUrl,
+              width: 88,
+              height: 95,
+              borderRadius: AppSizes.r16,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(width: AppSizes.s12),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star,
-                          size: 12, color: Color(0xFFFFC107)),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${place.rating} (${fmt(place.reviewCount)})',
-                        style: const TextStyle(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 11,
+                          color: AppColorsExt.textHint,
+                        ),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            place.address,
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star,
+                          size: 12,
+                          color: Color(0xFFFFC107),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${place.rating} (${fmt(place.reviewCount)})',
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary),
-                      ),
-
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColorsExt.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        child: Text(place.category,
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColorsExt.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            place.category,
                             style: TextStyle(
-                                fontSize: 9,
-                                color: AppColorsExt.success,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Select button
-          Padding(
-            padding: const EdgeInsets.only(right: AppSizes.s12),
-            child: GestureDetector(
-              onTap: onSelect,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s12, vertical: AppSizes.s8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppSizes.r12),
+                              fontSize: 9,
+                              color: AppColorsExt.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                child: const Text('Thêm',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
               ),
             ),
-          ),
-        ],
+            // Select button
+            Padding(
+              padding: const EdgeInsets.only(right: AppSizes.s12),
+              child: GestureDetector(
+                onTap: onSelect,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s12,
+                    vertical: AppSizes.s8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppSizes.r12),
+                  ),
+                  child: const Text(
+                    'Thêm',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -786,20 +941,28 @@ class _ManualAddButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.35), width: 1.5),
+              color: AppColors.primary.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
             borderRadius: BorderRadius.circular(AppSizes.r16),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.favorite_outline_rounded,
-                  size: AppSizes.iconSm, color: AppColors.primary),
+              Icon(
+                Icons.favorite_outline_rounded,
+                size: AppSizes.iconSm,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: AppSizes.s8),
-              Text('Chọn từ danh mục yêu thích',
-                  style: AppTextStylesExt.bodySmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
+              Text(
+                'Chọn từ danh mục yêu thích',
+                style: AppTextStylesExt.bodySmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),

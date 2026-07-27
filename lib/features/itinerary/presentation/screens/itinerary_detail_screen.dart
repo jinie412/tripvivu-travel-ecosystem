@@ -938,16 +938,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       }
 
       final proposedStartTime = isStart ? newTime : activity.startTime;
-      final proposedEndTime = isStart ? activity.endTime : newTime;
       final itineraryCubit = context.read<ItineraryCubit>();
       if (itineraryCubit.isLunchActivity(activity) &&
-          !itineraryCubit.isWithinLunchWindow(
-            proposedStartTime,
-            proposedEndTime,
-          )) {
+          !itineraryCubit.isWithinLunchWindow(proposedStartTime)) {
         await showTimeError(
-          'Địa điểm ăn trưa phải bắt đầu từ 10:30 và kết thúc trước hoặc lúc 14:00.\n\n'
-          'Vui lòng chọn thời gian trong khung 10:30 - 14:00.',
+          'Giờ đến địa điểm ăn trưa phải nằm trong khung 10:30 - 14:00.',
         );
         return;
       }
@@ -1300,9 +1295,6 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                               pinnedLunchActivityId: pinResult.lunchWasPinned
                                   ? pinResult.lunchActivityId
                                   : null,
-                              movableActivityId: pinResult.lunchWasPinned
-                                  ? activity.id
-                                  : null,
                             );
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1557,13 +1549,17 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       ),
     );
     try {
+      final directlyEditingLunch = triggerActivityId == pinnedLunchActivityId;
       final notes = await cubit.applyOptimizedDay(
         _selectedDay,
         true,
-        pinnedLunchActivityId: pinnedLunchActivityId,
-        movableActivityId: triggerActivityId == pinnedLunchActivityId
-            ? null
-            : triggerActivityId,
+        // Ưu tiên tuyệt đối thay đổi của người dùng. Khi một activity phía
+        // trước bị kéo dài, giữ nguyên activity đó và cho phép optimizer dời
+        // quán ăn trong khung 10:30-14:00, thay vì rút ngắn activity vừa sửa.
+        lockedActivityId: triggerActivityId,
+        pinnedLunchActivityId: directlyEditingLunch
+            ? pinnedLunchActivityId
+            : null,
       );
       if (mounted && notes.isNotEmpty) {
         final state = cubit.state;
@@ -1586,7 +1582,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           _showOptimizationNotes(context, mappedNotes);
         }
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Lunch-window optimization failed: $error\n$stackTrace');
       cubit.discardChanges(snapshot);
       if (!mounted) return;
       await showDialog<void>(
@@ -1673,7 +1670,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               newReviewCount: place.reviewCount,
               newAddress: place.address,
               newCategory: place.category,
-              autoOptimize: false,
+              autoOptimize: true,
             );
         if (!mounted) return;
 
@@ -2364,7 +2361,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                 newReviewCount: place.reviewCount,
                 newAddress: place.address,
                 newCategory: place.category,
-                autoOptimize: false,
+                autoOptimize: true,
                 allowReduceTime: allowReduceTime,
                 extendTime: extendTime,
               );

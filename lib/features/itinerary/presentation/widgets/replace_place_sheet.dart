@@ -21,6 +21,7 @@ class ReplacePlaceSheet extends StatefulWidget {
   final Future<void> Function(NearbyPlaceModel place) onReplace;
   final List<String>? existingIds;
   final String? destinationCity;
+
   /// Null skips AI suggestions and goes straight to nearby search.
   final String? itineraryId;
 
@@ -63,6 +64,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _searchQuery = '';
+  int _searchRequestId = 0;
 
   bool _isLoading = true;
   List<NearbyPlaceModel> _sameCategoryPlaces = [];
@@ -79,6 +81,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   }
 
   Future<void> _loadNearbyPlaces({String? q}) async {
+    final requestId = ++_searchRequestId;
     setState(() => _isLoading = true);
     try {
       final isDefaultFeed = q == null || q.isEmpty;
@@ -90,6 +93,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
           widget.itineraryId!,
           widget.currentActivity.id,
         );
+        if (!mounted || requestId != _searchRequestId) return;
       }
 
       if (places.isEmpty) {
@@ -98,12 +102,17 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         places = await NearbyPlacesApi.getNearbyPlaces(
           lat,
           lng,
-          excludeIds: widget.existingIds,
-          preferCategory: isDefaultFeed ? widget.currentActivity.category : null,
+          // Suggestions should not repeat itinerary places. Explicit search,
+          // however, still shows them and validates when the user selects one.
+          excludeIds: isDefaultFeed ? widget.existingIds : null,
+          preferCategory: isDefaultFeed
+              ? widget.currentActivity.category
+              : null,
           radius: isDefaultFeed ? 15 : 50,
           limit: isDefaultFeed ? 10 : 30,
           q: q,
         );
+        if (!mounted || requestId != _searchRequestId) return;
       }
 
       // Hotels are never a valid replacement, regardless of category match.
@@ -114,7 +123,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             !cat.contains('lưu trú');
       }).toList();
 
-      if (mounted) {
+      if (mounted && requestId == _searchRequestId) {
         setState(() {
           _sameCategoryPlaces = places.where((p) => p.isSameCategory).toList();
           _otherPlaces = places.where((p) => !p.isSameCategory).toList();
@@ -122,7 +131,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && requestId == _searchRequestId) {
         setState(() {
           _isLoading = false;
         });
@@ -132,13 +141,17 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 
   void _onSearchChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    final newQuery = _searchController.text.trim();
+    if (_searchQuery == newQuery) return;
+
+    _searchRequestId++;
+    setState(() {
+      _searchQuery = newQuery;
+      _isLoading = true;
+    });
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
-        final newQuery = _searchController.text.trim();
-        if (_searchQuery != newQuery) {
-          setState(() => _searchQuery = newQuery);
-          _loadNearbyPlaces(q: newQuery.isEmpty ? null : newQuery);
-        }
+        _loadNearbyPlaces(q: newQuery.isEmpty ? null : newQuery);
       }
     });
   }
@@ -146,8 +159,9 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   void _clearSearch() {
     _debounce?.cancel();
     _searchController.clear();
-    setState(() => _searchQuery = '');
-    _loadNearbyPlaces(); // reload gợi ý ban đầu (q = null)
+    if (_searchQuery.isEmpty && !_isLoading) {
+      _loadNearbyPlaces();
+    }
   }
 
   @override
@@ -159,8 +173,9 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  String _fmt(int count) =>
-      count >= 1000 ? '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k' : '$count';
+  String _fmt(int count) => count >= 1000
+      ? '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k'
+      : '$count';
 
   String _fmtPrice(double price) {
     if (price >= 1000000) return '${(price / 1000000).toStringAsFixed(1)}M₫';
@@ -171,17 +186,24 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   Color _tagColor(String tag) {
     if (tag.contains('danh mục')) return const Color(0xFF2563EB);
     if (tag.contains('Gần')) return const Color(0xFF10B981);
-    if (tag.contains('cao') || tag.contains('Phổ biến')) return const Color(0xFFF59E0B);
+    if (tag.contains('cao') || tag.contains('Phổ biến'))
+      return const Color(0xFFF59E0B);
     if (tag.contains('Miễn phí')) return const Color(0xFF10B981);
     return const Color(0xFF8B5CF6);
   }
 
   Future<void> _onSelect(NearbyPlaceModel place) async {
+    if (_isExistingPlace(place.id)) {
+      await _showExistingPlaceWarning(place.name);
+      return;
+    }
+
     // Validate opening hours dựa theo giờ hiện tại của activity đang thay thế
     if (place.openHourCompressed != null) {
-      final slot = _openSlotForDay(
-          place.openHourCompressed!, DateTime.now());
-      final hoursStr = slot != null ? '${slot.$1} – ${slot.$2}' : 'không xác định';
+      final slot = _openSlotForDay(place.openHourCompressed!, DateTime.now());
+      final hoursStr = slot != null
+          ? '${slot.$1} – ${slot.$2}'
+          : 'không xác định';
       final outside = slot != null
           ? !_isWithinHours(widget.currentActivity.startTime, slot.$1, slot.$2)
           : false;
@@ -190,9 +212,12 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.r16)),
-            title: const Text('Ngoài giờ mở cửa',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              borderRadius: BorderRadius.circular(AppSizes.r16),
+            ),
+            title: const Text(
+              'Ngoài giờ mở cửa',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
             content: Text(
               '"${place.name}" mở cửa từ $hoursStr.\n\n'
               'Thời gian tham quan dự kiến ${widget.currentActivity.startTime} '
@@ -202,22 +227,30 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hủy',
-                    style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Hủy',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColorsExt.warning,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.r8)),
+                    borderRadius: BorderRadius.circular(AppSizes.r8),
+                  ),
                   elevation: 0,
                 ),
-                child: const Text('Tiếp tục thay thế',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Tiếp tục thay thế',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -227,6 +260,40 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     }
     Navigator.pop(context);
     await widget.onReplace(place);
+  }
+
+  bool _isExistingPlace(String placeId) {
+    final normalizedId = placeId.trim().toLowerCase();
+    if (normalizedId.isEmpty) return false;
+    return widget.existingIds?.any(
+          (id) => id.trim().toLowerCase() == normalizedId,
+        ) ??
+        false;
+  }
+
+  Future<void> _showExistingPlaceWarning(String placeName) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+        ),
+        title: const Text(
+          'Địa điểm đã tồn tại',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '"$placeName" đã tồn tại trong lịch trình. '
+          'Vui lòng chọn địa điểm khác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openPlaceDetail(NearbyPlaceModel place) async {
@@ -245,13 +312,26 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
 
   (String, String)? _openSlotForDay(String jsonStr, DateTime date) {
     try {
-      const dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const dayNames = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
       final Map<String, dynamic> map = jsonDecode(jsonStr);
       final slots = map[dayNames[date.weekday - 1]] as List?;
       if (slots == null || slots.isEmpty) return null;
       final slot = slots[0] as List;
-      return ((slot[0] as String).substring(0, 5), (slot[1] as String).substring(0, 5));
-    } catch (_) { return null; }
+      return (
+        (slot[0] as String).substring(0, 5),
+        (slot[1] as String).substring(0, 5),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _isWithinHours(String time, String openTime, String closeTime) {
@@ -259,6 +339,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       final p = t.split(':');
       return int.parse(p[0]) * 60 + int.parse(p[1]);
     }
+
     final t = toMins(time);
     final o = toMins(openTime);
     final c = toMins(closeTime);
@@ -297,7 +378,9 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         return Container(
           decoration: const BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.r24)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppSizes.r24),
+            ),
           ),
           child: Column(
             children: [
@@ -309,56 +392,61 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                 onClose: () => Navigator.pop(context),
               ),
               Expanded(
-                child: Builder(builder: (_) {
-                  final samePlaces = _filteredSame;
-                  final otherPlaces = _filteredOthers;
-                  final totalSearch = samePlaces.length + otherPlaces.length;
+                child: Builder(
+                  builder: (_) {
+                    final samePlaces = _filteredSame;
+                    final otherPlaces = _filteredOthers;
+                    final totalSearch = samePlaces.length + otherPlaces.length;
 
-                  return ListView(
-                    controller: scrollController,
-                    padding: EdgeInsets.zero,
-                    children: [
-                      if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.all(AppSizes.s32),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (_searchQuery.isNotEmpty) ...[
-                        _SectionTitle(
-                          icon: Icons.search_rounded,
-                          iconColor: AppColors.primary,
-                          title: 'Kết quả tìm kiếm ($totalSearch)',
-                        ),
-                        if (totalSearch == 0)
-                          const _EmptyState(isSearching: true)
-                        else
-                          _buildList([...samePlaces, ...otherPlaces]),
-                      ] else ...[
-                        if (samePlaces.isNotEmpty) ...[
+                    return ListView(
+                      controller: scrollController,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        if (_isLoading)
+                          const Padding(
+                            padding: EdgeInsets.all(AppSizes.s32),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (_searchQuery.isNotEmpty) ...[
                           _SectionTitle(
-                            icon: Icons.auto_awesome_rounded,
-                            iconColor: AppColorsExt.warning,
-                            title: 'Cùng loại: ${widget.currentActivity.category}',
-                          ),
-                          _buildList(samePlaces),
-                        ],
-                        if (otherPlaces.isNotEmpty) ...[
-                          _SectionTitle(
-                            icon: Icons.location_on_rounded,
+                            icon: Icons.search_rounded,
                             iconColor: AppColors.primary,
-                            title: 'Gợi ý',
+                            title: 'Kết quả tìm kiếm ($totalSearch)',
                           ),
-                          _buildList(otherPlaces),
+                          if (totalSearch == 0)
+                            const _EmptyState(isSearching: true)
+                          else
+                            _buildList([...samePlaces, ...otherPlaces]),
+                        ] else ...[
+                          if (samePlaces.isNotEmpty) ...[
+                            _SectionTitle(
+                              icon: Icons.auto_awesome_rounded,
+                              iconColor: AppColorsExt.warning,
+                              title:
+                                  'Cùng loại: ${widget.currentActivity.category}',
+                            ),
+                            _buildList(samePlaces),
+                          ],
+                          if (otherPlaces.isNotEmpty) ...[
+                            _SectionTitle(
+                              icon: Icons.location_on_rounded,
+                              iconColor: AppColors.primary,
+                              title: 'Gợi ý',
+                            ),
+                            _buildList(otherPlaces),
+                          ],
+                          if (samePlaces.isEmpty && otherPlaces.isEmpty)
+                            const _EmptyState(isSearching: false),
                         ],
-                        if (samePlaces.isEmpty && otherPlaces.isEmpty)
-                          const _EmptyState(isSearching: false),
+                        const SizedBox(height: AppSizes.s20),
+                        _ManualAddButton(
+                          onTap: () => _showFavoritePlacesDialog(context),
+                        ),
+                        const SizedBox(height: AppSizes.s32),
                       ],
-                      const SizedBox(height: AppSizes.s20),
-                      _ManualAddButton(onTap: () => _showFavoritePlacesDialog(context)),
-                      const SizedBox(height: AppSizes.s32),
-                    ],
-                  );
-                }),
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -381,19 +469,30 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       Navigator.pop(context); // close loading
 
       final favorites = widget.destinationCity != null
-          ? allFavorites.where((f) =>
-              f.city.toLowerCase().contains(widget.destinationCity!.toLowerCase()) ||
-              widget.destinationCity!.toLowerCase().contains(f.city.toLowerCase())
-            ).toList()
+          ? allFavorites
+                .where(
+                  (f) =>
+                      f.city.toLowerCase().contains(
+                        widget.destinationCity!.toLowerCase(),
+                      ) ||
+                      widget.destinationCity!.toLowerCase().contains(
+                        f.city.toLowerCase(),
+                      ),
+                )
+                .toList()
           : allFavorites;
 
       if (favorites.isEmpty) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
-            title: const Text('Danh mục yêu thích',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.r20),
+            ),
+            title: const Text(
+              'Danh mục yêu thích',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             content: Text(
               widget.destinationCity != null
                   ? 'Bạn chưa lưu địa điểm yêu thích nào tại ${widget.destinationCity}.'
@@ -403,7 +502,10 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
+                child: const Text(
+                  'Đóng',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -412,69 +514,93 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       }
 
       showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.r20)),
-              title: const Text('Danh mục yêu thích',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              contentPadding: const EdgeInsets.only(top: 16),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 300,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  itemCount: favorites.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final fav = favorites[index];
-                    return GestureDetector(
-                      onTap: () async {
-                        final place = NearbyPlaceModel(
-                          id: fav.id,
-                          name: fav.name,
-                          address: fav.city,
-                          category: 'Yêu thích',
-                          rating: fav.rating,
-                          reviewCount: fav.reviewCount,
-                          imageUrl: fav.image,
-                          // FavoritePlaceEntity không có tọa độ riêng
-                          latitude: null,
-                          longitude: null,
-                        );
-                        Navigator.pop(ctx);
-                        await _onSelect(place);
-                      },
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: NetImage(url: fav.image, width: 50, height: 50, fit: BoxFit.cover),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(fav.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 4),
-                                Text(fav.city, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.r20),
+          ),
+          title: const Text(
+            'Danh mục yêu thích',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          contentPadding: const EdgeInsets.only(top: 16),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              itemCount: favorites.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final fav = favorites[index];
+                return GestureDetector(
+                  onTap: () async {
+                    final place = NearbyPlaceModel(
+                      id: fav.id,
+                      name: fav.name,
+                      address: fav.city,
+                      category: 'Yêu thích',
+                      rating: fav.rating,
+                      reviewCount: fav.reviewCount,
+                      imageUrl: fav.image,
+                      // FavoritePlaceEntity không có tọa độ riêng
+                      latitude: null,
+                      longitude: null,
                     );
+                    Navigator.pop(ctx);
+                    await _onSelect(place);
                   },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Đóng', style: TextStyle(color: AppColors.textSecondary)),
-                ),
-              ],
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: NetImage(
+                          url: fav.image,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fav.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              fav.city,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (mounted) Navigator.pop(context);
     }
@@ -502,7 +628,11 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
-          AppSizes.s20, AppSizes.s16, AppSizes.s20, AppSizes.s12),
+        AppSizes.s20,
+        AppSizes.s16,
+        AppSizes.s20,
+        AppSizes.s12,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
@@ -522,8 +652,10 @@ class _Header extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Thay thế địa điểm',
-                  style: AppTextStyles.heading2
-                      .copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: AppTextStyles.heading2.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -535,8 +667,11 @@ class _Header extends StatelessWidget {
                     color: AppColorsExt.searchBarBg,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close,
-                      size: 18, color: AppColors.textSecondary),
+                  child: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -550,7 +685,8 @@ class _Header extends StatelessWidget {
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(AppSizes.r12),
               border: Border.all(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+              ),
             ),
             child: Row(
               children: [
@@ -600,8 +736,11 @@ class _Header extends StatelessWidget {
                     color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.swap_horiz_rounded,
-                      size: 16, color: Color(0xFFF59E0B)),
+                  child: const Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 16,
+                    color: Color(0xFFF59E0B),
+                  ),
                 ),
               ],
             ),
@@ -618,8 +757,11 @@ class _Header extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: AppSizes.s12),
-                const Icon(Icons.search,
-                    size: AppSizes.iconMd, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.search,
+                  size: AppSizes.iconMd,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: AppSizes.s4),
                 Expanded(
                   child: TextField(
@@ -645,8 +787,11 @@ class _Header extends StatelessWidget {
                     onTap: onClearSearch,
                     child: const Padding(
                       padding: EdgeInsets.all(AppSizes.s8),
-                      child: Icon(Icons.close,
-                          size: 16, color: AppColors.textSecondary),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   )
                 else
@@ -659,7 +804,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
 
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
@@ -676,14 +820,22 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSizes.s20, AppSizes.s16, AppSizes.s20, AppSizes.s12),
+        AppSizes.s20,
+        AppSizes.s16,
+        AppSizes.s20,
+        AppSizes.s12,
+      ),
       child: Row(
         children: [
           Icon(icon, size: 16, color: iconColor),
           const SizedBox(width: AppSizes.s8),
-          Text(title,
-              style: AppTextStyles.heading2
-                  .copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTextStyles.heading2.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -726,119 +878,143 @@ class _ListCard extends StatelessWidget {
           ],
         ),
         child: Row(
-        children: [
-          // Thumbnail
-          NetImage(
-            url: place.imageUrl,
-            width: 88,
-            height: 95,
-            borderRadius: AppSizes.r16,
-            fit: BoxFit.cover,
-          ),
-          const SizedBox(width: AppSizes.s12),
-          // Info
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    place.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on,
-                          size: 11, color: AppColorsExt.textHint),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          place.address,
-                          style: AppTextStylesExt.bodySmall
-                              .copyWith(fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+          children: [
+            // Thumbnail
+            NetImage(
+              url: place.imageUrl,
+              width: 88,
+              height: 95,
+              borderRadius: AppSizes.r16,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(width: AppSizes.s12),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSizes.s12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star,
-                          size: 12, color: Color(0xFFFFC107)),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${place.rating} (${fmt(place.reviewCount)})',
-                        style: const TextStyle(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 11,
+                          color: AppColorsExt.textHint,
+                        ),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            place.address,
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star,
+                          size: 12,
+                          color: Color(0xFFFFC107),
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${place.rating} (${fmt(place.reviewCount)})',
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary),
-                      ),
-                      if (place.distanceKm != null) ...[
-                        const SizedBox(width: AppSizes.s8),
-                        const Icon(Icons.near_me,
-                            size: 11, color: AppColorsExt.textHint),
-                        const SizedBox(width: 2),
-                        Text('${place.distanceKm}km',
-                            style: const TextStyle(
-                                fontSize: 10,
-                                color: AppColorsExt.textHint)),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s4),
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColorsExt.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        child: Text(place.category,
+                        if (place.distanceKm != null) ...[
+                          const SizedBox(width: AppSizes.s8),
+                          const Icon(
+                            Icons.near_me,
+                            size: 11,
+                            color: AppColorsExt.textHint,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${place.distanceKm}km',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColorsExt.textHint,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColorsExt.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            place.category,
                             style: TextStyle(
-                                fontSize: 9,
-                                color: AppColorsExt.success,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Select button
-          Padding(
-            padding: const EdgeInsets.only(right: AppSizes.s12),
-            child: GestureDetector(
-              onTap: onSelect,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s12, vertical: AppSizes.s8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppSizes.r12),
+                              fontSize: 9,
+                              color: AppColorsExt.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                child: const Text('Chọn',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
               ),
             ),
-          ),
-        ],
+            // Select button
+            Padding(
+              padding: const EdgeInsets.only(right: AppSizes.s12),
+              child: GestureDetector(
+                onTap: onSelect,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s12,
+                    vertical: AppSizes.s8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppSizes.r12),
+                  ),
+                  child: const Text(
+                    'Chọn',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -896,20 +1072,28 @@ class _ManualAddButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.35), width: 1.5),
+              color: AppColors.primary.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
             borderRadius: BorderRadius.circular(AppSizes.r16),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.favorite_outline_rounded,
-                  size: AppSizes.iconSm, color: AppColors.primary),
+              Icon(
+                Icons.favorite_outline_rounded,
+                size: AppSizes.iconSm,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: AppSizes.s8),
-              Text('Chọn từ danh mục yêu thích',
-                  style: AppTextStylesExt.bodySmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
+              Text(
+                'Chọn từ danh mục yêu thích',
+                style: AppTextStylesExt.bodySmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
