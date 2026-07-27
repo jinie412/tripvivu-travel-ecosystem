@@ -22,7 +22,6 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import { businessLocationAPI } from '../../../../services/businessLocationAPI';
 import { businessReviewAPI } from '../../../../services/businessReviewAPI';
 import {
   getPlaceDetail,
@@ -32,6 +31,9 @@ import {
   addPlaceMenuItem,
   updatePlaceMenuItem,
   deletePlaceMenuItem,
+  addPlaceHotelRoom,
+  updatePlaceHotelRoom,
+  deletePlaceHotelRoom,
   addPlaceFreeService,
   updatePlaceFreeService,
   deletePlaceFreeService,
@@ -44,11 +46,15 @@ import Swal from 'sweetalert2';
 
 // ─── Map utilities (same as AddLocation) ─────────────────────────────────────
 type CityOption = { id: string; name: string };
-type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
+type CatalogMode = 'food' | 'accommodation' | 'service';
+type BusinessTypeOption = { id: string; name: string; category_name?: string | null; data_mode?: CatalogMode };
 
-const isFoodCategory = (categoryName?: string | null): boolean => {
-  const lower = (categoryName ?? '').toLowerCase();
-  return lower.includes('ẩm thực') || lower.includes('nhà hàng') || lower.includes('ăn uống');
+const normalizeTypeText = (...values: Array<string | null | undefined>) => values.filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const getCatalogMode = (type?: BusinessTypeOption): CatalogMode => {
+  const value = normalizeTypeText(type?.category_name, type?.name);
+  if (/(luu tru|khach san|nha nghi|hotel|motel|hostel|homestay|resort|villa|can ho|accommodation)/.test(value)) return 'accommodation';
+  if (/(am thuc|nha hang|quan an|an uong|food|restaurant|cafe|coffee)/.test(value)) return 'food';
+  return type?.data_mode ?? 'service';
 };
 
 const VIETNAM_BOUNDS = { minLat: 8.18, maxLat: 23.39, minLng: 102.14, maxLng: 109.47 };
@@ -240,6 +246,7 @@ interface PlaceServiceItem {
   description: string;
   price: number | null;
   isActive: boolean;
+  quantity?: number;
 }
 
 interface ReviewSummary {
@@ -501,7 +508,7 @@ const LocationEditPage: React.FC = () => {
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [serviceEditor, setServiceEditor] = useState<ServiceEditorState | null>(null);
-  const [serviceDraft, setServiceDraft] = useState({ id: '', name: '', description: '', price: '', isActive: true });
+  const [serviceDraft, setServiceDraft] = useState({ id: '', name: '', description: '', price: '', quantity: '1', isActive: true });
   const [serviceSaving, setServiceSaving] = useState(false);
   const [serviceMessage, setServiceMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -546,6 +553,7 @@ const LocationEditPage: React.FC = () => {
               id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? ''),
               name: String(item.name ?? item.type_name ?? ''),
               category_name: item.category_name ?? null,
+              data_mode: item.data_mode,
             }))
             .filter((item) => item.id && item.name)
             .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -591,30 +599,9 @@ const LocationEditPage: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const [detailResult, listResult] = await Promise.allSettled([
-          getPlaceDetail(id),
-          businessLocationAPI.getLocations({ vendorId }, { page: 1, limit: 200 }),
-        ]);
-
-        const locations = listResult.status === 'fulfilled' ? listResult.value.locations : [];
-        const fromList = locations.find((item) => item.id === id) || null;
-
-        if (detailResult.status === 'rejected' && !fromList) {
-          throw new Error(getApiErrorMessage(detailResult.reason, 'Không thể tải thông tin địa điểm'));
-        }
-
-        if (listResult.status === 'rejected' && detailResult.status === 'rejected') {
-          throw new Error(
-            [getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm'), getApiErrorMessage(listResult.reason, 'Không thể tải danh sách địa điểm')].join(' | '),
-          );
-        }
-
-        const rawDetail = detailResult.status === 'fulfilled' && detailResult.value
-          ? detailResult.value
-          : { id: fromList?.id, name: fromList?.name, address: fromList?.address, category: fromList?.category, status: fromList?.status, average_rating: fromList?.rating, review_count: fromList?.review_count, image_url: fromList?.image };
-
+        const rawDetail = await getPlaceDetail(id);
         const normalized = normalizePlaceDetail(rawDetail);
-        const merged = mergeWithLocationListItem(normalized, fromList);
+        const merged = mergeWithLocationListItem(normalized, null);
 
         setPlace(merged.summary);
         setDraft(merged.draft);
@@ -622,9 +609,6 @@ const LocationEditPage: React.FC = () => {
         setExistingImageUrls(merged.summary.gallery.filter((url) => !url.includes('picsum.photos/seed/location')));
         setNewImages([]);
 
-        if (detailResult.status === 'rejected') {
-          setGeneralMessage(`Đang hiển thị dữ liệu tạm từ danh sách. Chi tiết lỗi: ${getApiErrorMessage(detailResult.reason, 'Không thể tải chi tiết địa điểm')}`);
-        }
       } catch (err) {
         setError(getApiErrorMessage(err, 'Không thể tải thông tin địa điểm'));
       } finally {
@@ -669,6 +653,10 @@ const LocationEditPage: React.FC = () => {
     void fetchReviews();
   }, [activeTab, id, place?.id, reviewHasImages, reviewRating, reviewSort, vendorCandidates]);
 
+  const selectedBusinessType = businessTypes.find((type) => type.id === draft.typeId)
+    ?? businessTypes.find((type) => type.name === draft.type);
+  const catalogMode = getCatalogMode(selectedBusinessType);
+
   // ── Services ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchServices = async () => {
@@ -682,15 +670,20 @@ const LocationEditPage: React.FC = () => {
         const nested = (payload.data as Record<string, unknown> | undefined) ?? {};
         const free = Array.isArray(payload.freeServices) ? payload.freeServices : Array.isArray(nested.freeServices) ? (nested.freeServices as unknown[]) : [];
         const menu = Array.isArray(payload.menuItems) ? payload.menuItems : Array.isArray(nested.menuItems) ? (nested.menuItems as unknown[]) : [];
+        const rooms = Array.isArray(payload.rooms) ? payload.rooms : Array.isArray(nested.rooms) ? (nested.rooms as unknown[]) : [];
         setFreeServices(free.map((item) => normalizeServiceItem(item, 'free')));
-        setMenuItems(menu.map((item) => normalizeServiceItem(item, 'paid')));
+        setMenuItems((catalogMode === 'accommodation' ? rooms : catalogMode === 'food' ? menu : []).map((item) => {
+          const normalized = normalizeServiceItem(item, 'paid');
+          const record = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+          return { ...normalized, quantity: Number(record.quantity) || 1 };
+        }));
       } catch (err) {
         setServicesError(getApiErrorMessage(err, 'Không thể tải dịch vụ'));
         setFreeServices([]);
       } finally { setServicesLoading(false); }
     };
     void fetchServices();
-  }, [activeTab, id, place?.id]);
+  }, [activeTab, catalogMode, id, place?.id]);
 
   // ── Map helpers ───────────────────────────────────────────────────────────────
   const currentLat = parseFloat(draft.latitude) || 10.77;
@@ -773,6 +766,7 @@ const LocationEditPage: React.FC = () => {
       await updatePlaceDetail({
         placeId: id,
         vendorId,
+        p_type_id: draft.typeId,
         name: draft.name.trim(),
         address: draft.address.trim(),
         city: draft.city.trim(),
@@ -787,7 +781,7 @@ const LocationEditPage: React.FC = () => {
         description: draft.description,
         imageUrls,
         isActive,
-        estimated_preparation_time: isFoodCategory(businessTypes.find((t) => t.id === draft.typeId)?.category_name) && draft.estimatedPreparationTime
+        estimated_preparation_time: catalogMode === 'food' && draft.estimatedPreparationTime
           ? Number(draft.estimatedPreparationTime)
           : null,
         status: 'pending',
@@ -812,9 +806,9 @@ const LocationEditPage: React.FC = () => {
   // ── Services helpers ──────────────────────────────────────────────────────────
   const openServiceEditor = (kind: ServiceKind, service?: PlaceServiceItem) => {
     setServiceEditor({ kind, mode: service ? 'edit' : 'create' });
-    setServiceDraft({ id: service?.id || '', name: service?.name || '', description: service?.description || '', price: service?.price !== null && service?.price !== undefined ? String(service.price) : '', isActive: service?.isActive ?? true });
+    setServiceDraft({ id: service?.id || '', name: service?.name || '', description: service?.description || '', price: service?.price !== null && service?.price !== undefined ? String(service.price) : '', quantity: String(service?.quantity || 1), isActive: service?.isActive ?? true });
   };
-  const closeServiceEditor = () => { setServiceEditor(null); setServiceDraft({ id: '', name: '', description: '', price: '', isActive: true }); };
+  const closeServiceEditor = () => { setServiceEditor(null); setServiceDraft({ id: '', name: '', description: '', price: '', quantity: '1', isActive: true }); };
   const saveService = async () => {
     if (!serviceEditor) return;
     const trimmedName = serviceDraft.name.trim();
@@ -822,12 +816,22 @@ const LocationEditPage: React.FC = () => {
     const price = serviceEditor.kind === 'paid'
       ? (() => { const n = Number(String(serviceDraft.price).replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : 0; })()
       : null;
+    const quantity = Number(serviceDraft.quantity);
+    if (serviceEditor.kind === 'paid' && (!price || price <= 0)) { Swal.fire({ text: 'Giá phải lớn hơn 0', icon: 'warning' }); return; }
+    if (serviceEditor.kind === 'paid' && catalogMode === 'accommodation' && (!Number.isInteger(quantity) || quantity <= 0)) { Swal.fire({ text: 'Sức chứa/phòng phải là số nguyên lớn hơn 0', icon: 'warning' }); return; }
     const targetPlaceId = id!;
     try {
       setServiceSaving(true);
       setServiceMessage(null);
       if (serviceEditor.kind === 'paid') {
-        if (serviceEditor.mode === 'create') {
+        if (catalogMode === 'accommodation' && serviceEditor.mode === 'create') {
+          const result = await addPlaceHotelRoom({ placeId: targetPlaceId, name: trimmedName, price: price ?? 0, quantity });
+          const newId = (result?.item as any)?.id ?? (result as any)?.id ?? createId('paid');
+          setMenuItems((current) => [...current, { id: newId, name: trimmedName, description: '', price, quantity, isActive: true }]);
+        } else if (catalogMode === 'accommodation') {
+          await updatePlaceHotelRoom({ roomId: serviceDraft.id, placeId: targetPlaceId, name: trimmedName, price: price ?? 0, quantity });
+          setMenuItems((current) => current.map((item) => item.id === serviceDraft.id ? { ...item, name: trimmedName, price, quantity } : item));
+        } else if (serviceEditor.mode === 'create') {
           const result = await addPlaceMenuItem({ placeId: targetPlaceId, name: trimmedName, description: serviceDraft.description.trim() || undefined, price: price ?? 0 });
           const newId = (result?.item as any)?.id ?? (result as any)?.id ?? createId('paid');
           setMenuItems((current) => [...current, { id: newId, name: trimmedName, description: serviceDraft.description.trim(), price, isActive: true }]);
@@ -861,7 +865,8 @@ const LocationEditPage: React.FC = () => {
     const targetPlaceId = id!;
     try {
       if (kind === 'paid') {
-        await deletePlaceMenuItem({ itemId: serviceId, placeId: targetPlaceId });
+        if (catalogMode === 'accommodation') await deletePlaceHotelRoom({ roomId: serviceId, placeId: targetPlaceId });
+        else await deletePlaceMenuItem({ itemId: serviceId, placeId: targetPlaceId });
         setMenuItems((current) => current.filter((item) => item.id !== serviceId));
       } else {
         await deletePlaceFreeService({ serviceId, placeId: targetPlaceId });
@@ -1006,7 +1011,7 @@ const LocationEditPage: React.FC = () => {
                   ...current,
                   typeId: selectedType?.id || '',
                   type: selectedType?.name || '',
-                  estimatedPreparationTime: isFoodCategory(selectedType?.category_name) ? current.estimatedPreparationTime : '',
+                  estimatedPreparationTime: getCatalogMode(selectedType) === 'food' ? current.estimatedPreparationTime : '',
                 }));
               }}
               disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}
@@ -1037,7 +1042,7 @@ const LocationEditPage: React.FC = () => {
           </div>
 
           {/* Estimated preparation time — only for food category */}
-          {isFoodCategory(businessTypes.find((t) => t.id === draft.typeId)?.category_name) && (
+          {catalogMode === 'food' && (
             <div style={{ marginBottom: '24px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
                 Thời gian hoàn thành đơn (phút)
@@ -1343,9 +1348,10 @@ const LocationEditPage: React.FC = () => {
       <div style={{ marginBottom: '24px', padding: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '20px' }}>
         <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '20px' }}>{editorTitle}</p>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 280px' }}><Input label="Tên dịch vụ" value={serviceDraft.name} onChange={(event) => setServiceDraft((current) => ({ ...current, name: event.target.value }))} style={{ marginBottom: 0 }} /></div>
-          <div style={{ flex: '1 1 360px' }}><Input label="Mô tả" value={serviceDraft.description} onChange={(event) => setServiceDraft((current) => ({ ...current, description: event.target.value }))} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: '1 1 280px' }}><Input label={kind === 'free' ? 'Tên tiện ích' : catalogMode === 'accommodation' ? 'Tên loại phòng' : 'Tên món'} value={serviceDraft.name} onChange={(event) => setServiceDraft((current) => ({ ...current, name: event.target.value }))} style={{ marginBottom: 0 }} /></div>
+          {kind === 'paid' && catalogMode === 'food' && <div style={{ flex: '1 1 360px' }}><Input label="Mô tả" value={serviceDraft.description} onChange={(event) => setServiceDraft((current) => ({ ...current, description: event.target.value }))} style={{ marginBottom: 0 }} /></div>}
           {kind === 'paid' && (<div style={{ flex: '1 1 180px' }}><Input label="Giá (VNĐ)" value={serviceDraft.price} onChange={(event) => setServiceDraft((current) => ({ ...current, price: event.target.value.replace(/[^\d]/g, '') }))} style={{ marginBottom: 0 }} placeholder="Ví dụ: 35000" inputMode="numeric" /></div>)}
+          {kind === 'paid' && catalogMode === 'accommodation' && (<div style={{ flex: '1 1 180px' }}><Input label="Sức chứa/phòng" value={serviceDraft.quantity} onChange={(event) => setServiceDraft((current) => ({ ...current, quantity: event.target.value.replace(/[^\d]/g, '') }))} style={{ marginBottom: 0 }} placeholder="Ví dụ: 2" inputMode="numeric" /></div>)}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
           <Button variant="outline" onClick={closeServiceEditor} disabled={serviceSaving}>Hủy</Button>
@@ -1364,7 +1370,7 @@ const LocationEditPage: React.FC = () => {
           {serviceMessage.text}
         </div>
       )}
-      <div>
+      <div style={{ display: catalogMode === 'service' ? 'none' : 'block' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Tiện ích miễn phí</h5>
           <Button variant="outline" onClick={() => openServiceEditor('free')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}><Plus size={16} /> Thêm tiện ích</Button>
@@ -1398,8 +1404,8 @@ const LocationEditPage: React.FC = () => {
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ ({menuItems.length})</h5>
-          <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}><Plus size={16} /> Thêm dịch vụ</Button>
+          <h5 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', fontFamily: '"Outfit", sans-serif' }}>{catalogMode === 'accommodation' ? 'Phòng' : 'Món ăn'} ({menuItems.length})</h5>
+          <Button variant="outline" onClick={() => openServiceEditor('paid')} style={{ borderRadius: '10px', fontSize: '13px', gap: '8px', padding: '8px 16px' }}><Plus size={16} /> Thêm {catalogMode === 'accommodation' ? 'phòng' : 'món'}</Button>
         </div>
         {renderServiceEditor('paid')}
         <div style={{ background: 'white', border: '1px solid #F1F5F9', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
@@ -1411,7 +1417,7 @@ const LocationEditPage: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', background: '#FCFCFD', borderBottom: '1px solid #F1F5F9' }}>
-                  {['Tên dịch vụ', 'Mô tả', 'Giá', ''].map((h, i) => (
+                  {(catalogMode === 'accommodation' ? ['Tên loại phòng', 'Sức chứa', 'Giá', ''] : ['Tên món', 'Mô tả', 'Giá', '']).map((h, i) => (
                     <th key={`${h}-${i}`} style={{ padding: '20px 32px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', textAlign: i === 2 ? 'left' : i === 3 ? 'right' : 'left' }}>{h}</th>
                   ))}
                 </tr>
@@ -1420,7 +1426,7 @@ const LocationEditPage: React.FC = () => {
                 {menuItems.map((item, index) => (
                   <tr key={item.id} style={{ borderBottom: index < menuItems.length - 1 ? '1px solid #F8FAFC' : 'none' }}>
                     <td style={{ padding: '24px 32px', fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{item.name}</td>
-                    <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{item.description || '-'}</td>
+                    <td style={{ padding: '24px 32px', fontSize: '14px', color: '#64748b' }}>{catalogMode === 'accommodation' ? `${item.quantity || 1} khách/phòng` : item.description || '-'}</td>
                     <td style={{ padding: '24px 32px', fontSize: '15px', fontWeight: '800', color: '#3b82f6' }}>{formatPrice(item.price)}</td>
                     <td style={{ padding: '24px 32px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', color: '#94a3b8' }}>

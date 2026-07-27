@@ -1,38 +1,45 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginPage from '../pages/auth/Login';
 import RegisterPage from '../pages/auth/Register';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword';
 import ResetPasswordPage from '../pages/auth/ResetPassword';
 import AuthCallback from '../pages/auth/Callback';
-import DashboardPage from '../pages/provider/Dashboard';
-import LocationsPage from '../pages/provider/Locations';
-import LocationEditPage from '../pages/provider/Locations/[id]';
-import AddLocationPage from '../pages/provider/AddLocation';
-import ProfilePage from '../pages/provider/Profile';
-import OrdersPage from '../pages/provider/Orders';
-import OrderDetailPage from '../pages/provider/Orders/[id]';
-import ProviderLayout from '../layouts/ProviderLayout/ProviderLayout';
+const DashboardPage = lazy(() => import('../pages/provider/Dashboard'));
+const LocationsPage = lazy(() => import('../pages/provider/Locations'));
+const LocationEditPage = lazy(() => import('../pages/provider/Locations/[id]'));
+const AddLocationPage = lazy(() => import('../pages/provider/AddLocation'));
+const ProfilePage = lazy(() => import('../pages/provider/Profile'));
+const OrdersPage = lazy(() => import('../pages/provider/Orders'));
+const OrderDetailPage = lazy(() => import('../pages/provider/Orders/[id]'));
+const ProviderLayout = lazy(() => import('../layouts/ProviderLayout/ProviderLayout'));
 
-// Admin imports
-import { AdminLayout } from '../layouts/AdminLayout';
-import { AdminDashboard } from '../pages/admin/Dashboard';
-import { UserManagement } from '../pages/admin/UserManagement';
-import { AddUser } from '../pages/admin/AddUser';
-import { UserDetail } from '../pages/admin/UserDetail';
-import { LocationManagement } from '../pages/admin/LocationManagement';
-import { AddLocation } from '../pages/admin/AddLocation';
-import { LocationDetail } from '../pages/admin/LocationDetail';
-import { ReviewManagement } from '../pages/admin/ReviewManagement';
-import { ReviewDetail } from '../pages/admin/ReviewDetail';
-import { ItineraryReviewDetail } from '../pages/admin/ItineraryReviewDetail';
-import { AlgorithmSettings } from '../pages/admin/AlgorithmSettings';
-import { AlgorithmRunner } from '../pages/admin/AlgorithmRunner';
-import { AlgorithmRunHistory } from '../pages/admin/AlgorithmRunHistory';
-import AdminProfilePage from '../pages/admin/Profile';
+// Admin pages are also split so they do not delay the provider application.
+const AdminLayout = lazy(() => import('../layouts/AdminLayout').then((module) => ({ default: module.AdminLayout })));
+const AdminDashboard = lazy(() => import('../pages/admin/Dashboard').then((module) => ({ default: module.AdminDashboard })));
+const UserManagement = lazy(() => import('../pages/admin/UserManagement').then((module) => ({ default: module.UserManagement })));
+const AddUser = lazy(() => import('../pages/admin/AddUser').then((module) => ({ default: module.AddUser })));
+const UserDetail = lazy(() => import('../pages/admin/UserDetail').then((module) => ({ default: module.UserDetail })));
+const LocationManagement = lazy(() => import('../pages/admin/LocationManagement').then((module) => ({ default: module.LocationManagement })));
+const AddLocation = lazy(() => import('../pages/admin/AddLocation').then((module) => ({ default: module.AddLocation })));
+const LocationDetail = lazy(() => import('../pages/admin/LocationDetail').then((module) => ({ default: module.LocationDetail })));
+const ReviewManagement = lazy(() => import('../pages/admin/ReviewManagement').then((module) => ({ default: module.ReviewManagement })));
+const ReviewDetail = lazy(() => import('../pages/admin/ReviewDetail').then((module) => ({ default: module.ReviewDetail })));
+const ItineraryReviewDetail = lazy(() => import('../pages/admin/ItineraryReviewDetail').then((module) => ({ default: module.ItineraryReviewDetail })));
+const AlgorithmSettings = lazy(() => import('../pages/admin/AlgorithmSettings').then((module) => ({ default: module.AlgorithmSettings })));
+const AlgorithmRunner = lazy(() => import('../pages/admin/AlgorithmRunner').then((module) => ({ default: module.AlgorithmRunner })));
+const AlgorithmRunHistory = lazy(() => import('../pages/admin/AlgorithmRunHistory').then((module) => ({ default: module.AlgorithmRunHistory })));
+const AdminProfilePage = lazy(() => import('../pages/admin/Profile'));
+
+const RouteLoading = () => (
+  <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#64748b' }}>
+    Đang tải...
+  </div>
+);
 
 const AppRoutes: React.FC = () => {
   return (
+    <Suspense fallback={<RouteLoading />}>
     <Routes>
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
@@ -74,6 +81,7 @@ const AppRoutes: React.FC = () => {
       {/* Default Redirect */}
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
+    </Suspense>
   );
 };
 

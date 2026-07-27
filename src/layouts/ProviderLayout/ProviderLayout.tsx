@@ -7,7 +7,6 @@ import Swal from 'sweetalert2';
 
 import apiClient from '../../utils/apiClient';
 import { getCurrentUser } from '../../utils/auth';
-import { getOrdersByPlace, isPendingOrder } from '../../services/order.service';
 import { businessLocationAPI } from '../../services/businessLocationAPI';
 import type { Location } from '../../types/location';
 import { NotificationBell } from '../../components/NotificationBell';
@@ -36,8 +35,6 @@ const ProviderLayout: React.FC = () => {
       ].find((value): value is string => typeof value === 'string' && value.trim().length > 0) || ''
     );
   }, []);
-
-  const [pendingOrderCount, setPendingOrderCount] = useState(0);
 
   // --- Quick search (topbar) ---
   const [quickSearch, setQuickSearch] = useState('');
@@ -116,19 +113,6 @@ const ProviderLayout: React.FC = () => {
       avatar: defaultAvatar,
     };
   });
-
-  // Fetch số đơn pending để hiển thị badge
-  useEffect(() => {
-    const user = getCurrentUser<{ businessId?: string; id?: string }>();
-    const vendorId = user?.businessId || user?.id || '';
-    if (!vendorId) return;
-
-    getOrdersByPlace(vendorId)
-      .then((orders) => {
-        setPendingOrderCount(orders.filter(isPendingOrder).length);
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const fetchHeaderInfo = async () => {

@@ -606,11 +606,19 @@ const DashboardPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const period = { month: selectedMonth, year: selectedYear };
-      const [statsResult, performanceResult, fallbackResult] = await Promise.allSettled([
+      const [statsResult, performanceResult] = await Promise.allSettled([
         getDashboardStats(vendorId, period),
         getFoodPerformance(vendorId, period),
-        getFallbackDashboardData(vendorId, period, !isPeriodFilterActive),
       ]);
+
+      // This fallback scans orders and locations and can fan out into many catalog
+      // requests. Keep the normal dashboard path fast by using it only on failure.
+      const needsFallback = statsResult.status === 'rejected' || performanceResult.status === 'rejected';
+      const fallbackResult = needsFallback
+        ? await getFallbackDashboardData(vendorId, period, !isPeriodFilterActive)
+          .then((value) => ({ status: 'fulfilled' as const, value }))
+          .catch((reason) => ({ status: 'rejected' as const, reason }))
+        : null;
 
       let nextStats =
         statsResult.status === 'fulfilled'
@@ -625,15 +633,15 @@ const DashboardPage: React.FC = () => {
               .filter(isPaidPerformanceItem),
           )
           : [];
-      const fallbackPerformance = fallbackResult.status === 'fulfilled' ? fallbackResult.value.performance : [];
-      const fallbackStats = fallbackResult.status === 'fulfilled' ? fallbackResult.value.stats : null;
-      normalizedPerformance = normalizedPerformance.length > 0 ? mergePerformanceItems(normalizedPerformance, fallbackPerformance) : fallbackPerformance;
+      const fallbackPerformance = fallbackResult?.status === 'fulfilled' ? fallbackResult.value.performance : [];
+      const fallbackStats = fallbackResult?.status === 'fulfilled' ? fallbackResult.value.stats : null;
+      if (performanceResult.status === 'rejected') normalizedPerformance = fallbackPerformance;
 
-      if (statsResult.status === 'rejected' && fallbackResult.status === 'fulfilled') {
+      if (statsResult.status === 'rejected' && fallbackResult?.status === 'fulfilled') {
         nextStats = fallbackResult.value.stats;
       }
 
-      if (performanceResult.status === 'rejected' && fallbackResult.status === 'rejected') {
+      if (performanceResult.status === 'rejected' && fallbackResult?.status === 'rejected') {
         setError('Không thể tải đầy đủ dữ liệu hiệu suất. Vui lòng thử lại.');
       }
 

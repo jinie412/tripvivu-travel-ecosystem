@@ -105,7 +105,14 @@ const hasExplicitTimezone = (value: string): boolean => {
 };
 
 const normalizeDateTimeInput = (value: string): string => {
-  return hasExplicitTimezone(value) ? value : `${value}Z`;
+  const normalizedValue = value.trim().replace(' ', 'T');
+
+  // order_sys.orders.ordered_at is `timestamp without time zone` and stores
+  // Vietnam wall-clock time. Give timezone-less values their actual offset
+  // instead of treating them as UTC (which incorrectly adds another 7 hours).
+  return hasExplicitTimezone(normalizedValue)
+    ? normalizedValue
+    : `${normalizedValue}+07:00`;
 };
 
 export const formatVietnamDateTime = (value: unknown, fallback = '-'): string => {
@@ -142,6 +149,18 @@ export const addMinutesToDateTime = (value: unknown, minutes: number): string =>
   }
 
   return new Date(date.getTime() + minutes * 60000).toISOString();
+};
+
+const ORDER_ROUTE_STORAGE_PREFIX = 'provider:order-route:';
+export const formatOrderCode = (orderId: unknown): string => `TRV${String(orderId ?? '').replace(/^TRV/i, '').slice(0, 6).toUpperCase()}`;
+export const rememberOrderRoute = (orderId: string): string => {
+  const code = formatOrderCode(orderId);
+  if (typeof window !== 'undefined') window.sessionStorage.setItem(`${ORDER_ROUTE_STORAGE_PREFIX}${code}`, orderId);
+  return code;
+};
+export const resolveOrderRoute = (routeId: string): string => {
+  if (!/^TRV/i.test(routeId)) return routeId;
+  return typeof window !== 'undefined' ? window.sessionStorage.getItem(`${ORDER_ROUTE_STORAGE_PREFIX}${routeId.toUpperCase()}`) || routeId : routeId;
 };
 
 export const normalizeOrderStatus = (orderOrStatus: unknown): string => {
@@ -378,12 +397,14 @@ export const addNewPlace = async (payload: {
   p_phone?: string;
   p_type_id?: string;
   p_type_name?: string;
+  p_catalog_mode?: 'food' | 'accommodation' | 'service';
   p_categories: string[];
   p_open_time?: string;
   p_close_time?: string;
   p_open_hour_compressed?: Record<string, [string, string][]>;
   p_description?: string;
-  p_services: Array<{ name: string; description: string; service_id?: string }>;
+  p_services: Array<{ name: string; service_id?: string }>;
+  p_food_items?: Array<{ name: string; description: string; price: number; image_url?: string }>;
   p_menu: Array<{ name: string; description: string; price: number; image_url?: string }>;
   p_rooms?: Array<{ name: string; price: number; quantity: number }>;
   p_images?: string[];
@@ -434,6 +455,7 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
 export const updatePlaceDetail = async (payload: {
   placeId: string;
   vendorId: string;
+  p_type_id?: string;
   name: string;
   address: string;
   city?: string;
@@ -524,6 +546,21 @@ export const deletePlaceMenuItem = async (payload: {
   placeId: string;
 }): Promise<any> => {
   const res = await apiClient.delete('/business/menu-item', { data: payload });
+  return extractResponseData<any>(res as any);
+};
+
+export const addPlaceHotelRoom = async (payload: { placeId: string; name: string; price: number; quantity: number }): Promise<any> => {
+  const res = await apiClient.post('/business/hotel-room', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const updatePlaceHotelRoom = async (payload: { roomId: string; placeId: string; name: string; price: number; quantity: number }): Promise<any> => {
+  const res = await apiClient.put('/business/hotel-room', payload);
+  return extractResponseData<any>(res as any);
+};
+
+export const deletePlaceHotelRoom = async (payload: { roomId: string; placeId: string }): Promise<any> => {
+  const res = await apiClient.delete('/business/hotel-room', { data: payload });
   return extractResponseData<any>(res as any);
 };
 

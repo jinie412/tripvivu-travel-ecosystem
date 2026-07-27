@@ -7,6 +7,7 @@ import { getCurrentUser, getToken } from '../../utils/auth';
 import './NotificationBell.css';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { rememberOrderRoute } from '../../services/order.service';
 
 interface Notification {
   id: string;
@@ -159,7 +160,7 @@ export const NotificationBell: React.FC = () => {
           if (meta.place_id) navigate(`/locations/${meta.place_id}`);
           break;
         case 'new_order':
-          if (meta.order_id) navigate(`/orders/${meta.order_id}`);
+          if (meta.order_id) navigate(`/orders/${rememberOrderRoute(meta.order_id)}`);
           break;
       }
     }

@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { formatVietnamDateTime, getOrdersByPlace, normalizeOrderStatus } from '@/services/order.service';
+import { formatOrderCode, formatVietnamDateTime, getOrdersByPlace, normalizeOrderStatus, rememberOrderRoute } from '@/services/order.service';
 import { Order } from '@/types/order.types';
 import { getCurrentUser } from '@/utils/auth';
 import { businessLocationAPI } from '@/services/businessLocationAPI';
@@ -14,6 +14,21 @@ interface ProviderUser {
   vendor_id?: string;
   id?: string;
 }
+
+const ORDERS_PER_PAGE = 10;
+
+const getVisiblePages = (currentPage: number, totalPages: number): Array<number | 'ellipsis'> => {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages: Array<number | 'ellipsis'> = [1];
+  if (currentPage > 4) pages.push('ellipsis');
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+  for (let page = start; page <= end; page += 1) pages.push(page);
+  if (currentPage < totalPages - 3) pages.push('ellipsis');
+  pages.push(totalPages);
+  return pages;
+};
 
 const getProviderIds = (user: ProviderUser | null): string[] => {
   return Array.from(new Set([
@@ -32,6 +47,7 @@ const OrdersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [cityFilter, setCityFilter] = useState('all');
   const [restaurantFilter, setRestaurantFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const providerIds = useMemo(() => getProviderIds(getCurrentUser<ProviderUser>()), []);
 
 
@@ -42,7 +58,7 @@ const OrdersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleViewDetail = (orderId: string) => {
-    navigate(`/orders/${orderId}`);
+    navigate(`/orders/${rememberOrderRoute(orderId)}`);
   };
 
   // --- Fetch data khi component mount ---
@@ -102,6 +118,20 @@ const OrdersPage: React.FC = () => {
     if (restaurantFilter !== 'all' && String(order.place_name || '').trim() !== restaurantFilter) return false;
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * ORDERS_PER_PAGE,
+    currentPage * ORDERS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, cityFilter, restaurantFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const restaurants = Array.from(new Set(
     orders
@@ -199,12 +229,12 @@ const OrdersPage: React.FC = () => {
                     Chưa có đơn đặt món phù hợp.
                   </td>
                 </tr>
-              ) : filteredOrders.map((order, idx) => (
+              ) : paginatedOrders.map((order, idx) => (
                 <tr
                   key={order.order_id || idx}
                   onClick={() => handleViewDetail(order.order_id)}
                   style={{
-                    borderBottom: idx < filteredOrders.length - 1 ? '1px solid #F1F5F9' : 'none',
+                    borderBottom: idx < paginatedOrders.length - 1 ? '1px solid #F1F5F9' : 'none',
                     fontSize: '14px',
                     cursor: 'pointer',
                     transition: 'background 0.2s'
@@ -213,7 +243,7 @@ const OrdersPage: React.FC = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '24px', color: '#3b82f6', fontWeight: '700' }}>
-                    #{order.order_id?.slice(0, 8)}...
+                    {formatOrderCode(order.order_id)}
                   </td>
 
                   <td style={{ padding: '24px', color: '#64748b' }}>
@@ -272,12 +302,41 @@ const OrdersPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-          <div style={{ padding: '20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div style={{ padding: '20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+              Hiển thị {filteredOrders.length === 0 ? 0 : (currentPage - 1) * ORDERS_PER_PAGE + 1}–{Math.min(currentPage * ORDERS_PER_PAGE, filteredOrders.length)} trong {filteredOrders.length} đơn hàng
+            </span>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #F1F5F9', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E2E8F0', cursor: 'not-allowed' }}>
+              <button
+                type="button"
+                aria-label="Trang trước"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #F1F5F9', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage === 1 ? '#E2E8F0' : '#64748b', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
                 <ChevronLeft size={16} />
               </button>
-              <button style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #F1F5F9', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer' }}>
+              {getVisiblePages(currentPage, totalPages).map((page, index) => page === 'ellipsis' ? (
+                <span key={`ellipsis-${index}`} style={{ width: '32px', height: '32px', display: 'grid', placeItems: 'center', color: '#94a3b8' }}>…</span>
+              ) : (
+                <button
+                  key={page}
+                  type="button"
+                  aria-label={`Trang ${page}`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                  onClick={() => setCurrentPage(page)}
+                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: currentPage === page ? '1px solid #3b82f6' : '1px solid #F1F5F9', background: currentPage === page ? '#3b82f6' : 'white', color: currentPage === page ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-label="Trang sau"
+                disabled={currentPage === totalPages || filteredOrders.length === 0}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #F1F5F9', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: currentPage === totalPages || filteredOrders.length === 0 ? '#E2E8F0' : '#64748b', cursor: currentPage === totalPages || filteredOrders.length === 0 ? 'not-allowed' : 'pointer' }}
+              >
                 <ChevronRight size={16} />
               </button>
             </div>

@@ -19,7 +19,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addNewPlace, fetchAllServices, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
+import { addNewPlace, uploadFoodDraftImage, uploadPlaceImage } from '@/services/order.service';
 import { apiClient, extractResponseData } from '@/services/apiClient';
 import { getCurrentUser } from '@/utils/auth';
 import * as XLSX from 'xlsx';
@@ -27,18 +27,33 @@ import defaultServiceIcon from '@/assets/images/service_icon_default.jpg';
 import Swal from 'sweetalert2';
 
 type CityOption = { id: string; name: string };
-type BusinessTypeOption = { id: string; name: string; category_name?: string | null };
+type CatalogMode = 'food' | 'accommodation' | 'service';
+type BusinessTypeOption = { id: string; name: string; category_name?: string | null; data_mode?: CatalogMode };
 type AmenityDraft = { id: string; name: string; description: string; icon: React.ReactNode };
 type MenuDraft = { id: string; name: string; description: string; price: string; quantity?: string; img: string; imageFile?: File | null; previewUrl?: string };
-type MenuColumnKey = 'name' | 'price' | 'description';
+type MenuColumnKey = 'name' | 'price' | 'description' | 'quantity';
 type MenuColumnMapping = Record<MenuColumnKey, string>;
 type ExcelRow = Record<string, unknown>;
 
-const MENU_COLUMNS: Array<{ key: MenuColumnKey; label: string; aliases: string[] }> = [
-  { key: 'name', label: 'Tên món', aliases: ['ten mon', 'ten', 'name', 'item', 'product'] },
-  { key: 'price', label: 'Giá bán', aliases: ['gia ban', 'gia', 'price', 'cost', 'value'] },
-  { key: 'description', label: 'Mô tả', aliases: ['mo ta', 'description', 'ghi chu', 'note'] },
-];
+type CatalogColumn = { key: MenuColumnKey; label: string; aliases: string[] };
+const EMPTY_COLUMN_MAPPING: MenuColumnMapping = { name: '', price: '', description: '', quantity: '' };
+
+const CATALOG_COLUMNS: Record<CatalogMode, CatalogColumn[]> = {
+  food: [
+    { key: 'name', label: 'Tên món', aliases: ['ten mon', 'ten', 'name', 'item', 'product'] },
+    { key: 'price', label: 'Giá bán', aliases: ['gia ban', 'gia', 'price', 'cost', 'value'] },
+    { key: 'description', label: 'Mô tả', aliases: ['mo ta', 'description', 'ghi chu', 'note'] },
+  ],
+  accommodation: [
+    { key: 'name', label: 'Tên loại phòng', aliases: ['ten loai phong', 'ten phong', 'phong', 'room name', 'name'] },
+    { key: 'price', label: 'Giá phòng/đêm', aliases: ['gia phong dem', 'gia phong', 'gia', 'price'] },
+    { key: 'quantity', label: 'Sức chứa/phòng', aliases: ['suc chua phong', 'suc chua', 'capacity', 'max occupancy', 'quantity'] },
+  ],
+  service: [
+    { key: 'name', label: 'Tên dịch vụ', aliases: ['ten dich vu', 'dich vu', 'service name', 'name'] },
+    { key: 'price', label: 'Giá dịch vụ', aliases: ['gia dich vu', 'gia', 'price', 'cost'] },
+  ],
+};
 
 const normalizeColumnName = (value: string) => value
   .normalize('NFD')
@@ -46,7 +61,12 @@ const normalizeColumnName = (value: string) => value
   .toLowerCase()
   .trim();
 
-const parseMappedMenuRows = (rows: ExcelRow[], mapping: MenuColumnMapping) => rows.map(row => {
+const parsePositiveInteger = (value: unknown): string => {
+  const parsed = Number(String(value ?? '').replace(/[^\d]/g, ''));
+  return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : '';
+};
+
+const parseMappedMenuRows = (rows: ExcelRow[], mapping: MenuColumnMapping, mode: CatalogMode) => rows.map(row => {
   const rawPrice = row[mapping.price];
   const numericPrice = typeof rawPrice === 'number'
     ? rawPrice
@@ -54,9 +74,10 @@ const parseMappedMenuRows = (rows: ExcelRow[], mapping: MenuColumnMapping) => ro
   return {
     name: String(row[mapping.name] ?? '').trim(),
     price: numericPrice > 0 ? String(numericPrice) : '',
-    description: String(row[mapping.description] ?? '').trim(),
+    description: mapping.description ? String(row[mapping.description] ?? '').trim() : '',
+    quantity: mode === 'accommodation' ? parsePositiveInteger(row[mapping.quantity]) : undefined,
   };
-}).filter(item => item.name && item.price);
+}).filter(item => item.name && item.price && (mode !== 'accommodation' || item.quantity));
 type WeekdayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 type DayHours = { enabled: boolean; openTime: string; closeTime: string };
 type WeeklyHours = Record<WeekdayKey, DayHours>;
@@ -196,10 +217,24 @@ const isAccommodationCategory = (...values: Array<string | null | undefined>): b
 
   return normalized.includes('luu tru')
     || normalized.includes('khach san')
+    || normalized.includes('nha nghi')
     || normalized.includes('hotel')
+    || normalized.includes('motel')
+    || normalized.includes('hostel')
     || normalized.includes('homestay')
     || normalized.includes('resort')
+    || normalized.includes('villa')
+    || normalized.includes('can ho')
     || normalized.includes('accommodation');
+};
+
+const getCatalogMode = (type?: BusinessTypeOption): CatalogMode => {
+  // Known accommodation names take precedence so an older/cached /types
+  // response cannot classify "Nhà nghỉ" as a generic service.
+  if (isAccommodationCategory(type?.category_name, type?.name)) return 'accommodation';
+  if (isFoodCategory(type?.category_name) || /food|restaurant|cafe|coffee/i.test(type?.name ?? '')) return 'food';
+  if (type?.data_mode) return type.data_mode;
+  return 'service';
 };
 type AddLocationDraft = {
   step: number;
@@ -492,7 +527,7 @@ const AddLocationPage: React.FC = () => {
   const [mapSize, setMapSize] = useState(DEFAULT_MAP_SIZE);
   const [mapZoom, setMapZoom] = useState(MAP_ZOOM);
   // Service input state
-  const [serviceInput, setServiceInput] = useState({ name: '', description: '' });
+  const [serviceInput, setServiceInput] = useState({ name: '' });
   const [serviceMode, setServiceMode] = useState<'free' | 'paid'>(() => restoredDraft?.serviceMode ?? 'free');
 
   // Menu item input state
@@ -508,18 +543,11 @@ const AddLocationPage: React.FC = () => {
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
 
   // Excel preview state
-  const [excelPreviewItems, setExcelPreviewItems] = useState<{ name: string; price: string; description: string }[]>([]);
+  const [excelPreviewItems, setExcelPreviewItems] = useState<Array<{ name: string; price: string; description: string; quantity?: string }>>([]);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
   const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
   const [excelRows, setExcelRows] = useState<ExcelRow[]>([]);
-  const [columnMapping, setColumnMapping] = useState<MenuColumnMapping>({ name: '', price: '', description: '' });
-
-  // DB services cache for dedup check
-  const [dbServices, setDbServices] = useState<Array<{ id: string; name: string }>>([]);
-
-  useEffect(() => {
-    fetchAllServices().then(setDbServices);
-  }, []);
+  const [columnMapping, setColumnMapping] = useState<MenuColumnMapping>({ ...EMPTY_COLUMN_MAPPING });
 
   useEffect(() => {
     const element = mapRef.current;
@@ -617,6 +645,7 @@ const AddLocationPage: React.FC = () => {
             id: String(item.id ?? item.type_id ?? item.code ?? item.name ?? item.type_name ?? ''),
             name: String(item.name ?? item.type_name ?? ''),
             category_name: item.category_name ?? null,
+            data_mode: item.data_mode,
           }))
           .filter((item) => item.id && item.name)
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -668,11 +697,15 @@ const AddLocationPage: React.FC = () => {
     && !emailError,
   );
   const selectedBusinessType = businessTypes.find((type) => type.id === formData.typeId);
-  const isAccommodation = isAccommodationCategory(
-    selectedBusinessType?.category_name,
-    selectedBusinessType?.name,
-    formData.type,
-  );
+  const catalogMode = getCatalogMode(selectedBusinessType);
+  const isAccommodation = catalogMode === 'accommodation';
+  const isFood = catalogMode === 'food';
+  const catalogColumns = CATALOG_COLUMNS[catalogMode];
+  const catalogText = catalogMode === 'food'
+    ? { singular: 'món ăn', plural: 'món ăn', title: 'Thực đơn', nameLabel: 'Tên món', namePlaceholder: 'VD: Cơm gà Hải Nam', priceLabel: 'Giá bán (VNĐ)' }
+    : catalogMode === 'accommodation'
+      ? { singular: 'loại phòng', plural: 'loại phòng', title: 'Danh sách phòng', nameLabel: 'Tên loại phòng', namePlaceholder: 'VD: Phòng Deluxe hướng biển', priceLabel: 'Giá phòng/đêm (VNĐ)' }
+      : { singular: 'dịch vụ', plural: 'dịch vụ có phí', title: 'Danh sách dịch vụ', nameLabel: 'Tên dịch vụ', namePlaceholder: 'VD: Massage toàn thân 60 phút', priceLabel: 'Giá dịch vụ (VNĐ)' };
 
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const digitsOnly = event.target.value.replace(/\D/g, '').slice(0, 10);
@@ -816,10 +849,17 @@ const AddLocationPage: React.FC = () => {
       return;
     }
 
+    const normalizedName = normalizeColumnName(serviceInput.name);
+    if (formData.amenities.some(item => normalizeColumnName(item.name) === normalizedName)
+      || formData.menu.some(item => normalizeColumnName(item.name) === normalizedName)) {
+      Swal.fire({ text: 'Dịch vụ này đã có trong danh sách.', icon: 'warning' });
+      return;
+    }
+
     const newService = {
       id: Date.now().toString(),
       name: serviceInput.name,
-      description: serviceInput.description,
+      description: '',
       icon: <Wifi size={18} />
     };
 
@@ -828,7 +868,7 @@ const AddLocationPage: React.FC = () => {
       amenities: [...prev.amenities, newService]
     }));
 
-    setServiceInput({ name: '', description: '' });
+    setServiceInput({ name: '' });
   };
 
   const handleRemoveService = (id: string) => {
@@ -840,19 +880,26 @@ const AddLocationPage: React.FC = () => {
 
   const handleAddMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      Swal.fire({ text: isAccommodation ? 'Vui long nhap ten phong va gia phong' : 'Vui long nhap ten va gia cua mon an', icon: 'warning' });
+      Swal.fire({ text: `Vui lòng nhập ${catalogText.nameLabel.toLowerCase()} và ${catalogText.priceLabel.toLowerCase()}.`, icon: 'warning' });
+      return;
+    }
+
+    const normalizedName = normalizeColumnName(menuInput.name);
+    if (formData.menu.some(item => normalizeColumnName(item.name) === normalizedName)
+      || (catalogMode === 'service' && formData.amenities.some(item => normalizeColumnName(item.name) === normalizedName))) {
+      Swal.fire({ text: `${catalogText.nameLabel} đã có trong danh sách.`, icon: 'warning' });
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      Swal.fire({ text: 'Gia dich vu co phi phai lon hon 0', icon: 'warning' });
+      Swal.fire({ text: 'Giá phải lớn hơn 0.', icon: 'warning' });
       return;
     }
 
     const quantity = parseInt(menuInput.quantity || '1', 10);
     if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
-      Swal.fire({ text: 'Suc chua phong phai lon hon 0', icon: 'warning' });
+      Swal.fire({ text: 'Sức chứa mỗi phòng phải là số nguyên lớn hơn 0.', icon: 'warning' });
       return;
     }
 
@@ -892,19 +939,26 @@ const AddLocationPage: React.FC = () => {
 
   const handleUpdateMenuItem = () => {
     if (!menuInput.name.trim() || !menuInput.price.trim()) {
-      Swal.fire({ text: isAccommodation ? 'Vui long nhap ten phong va gia phong' : 'Vui long nhap ten va gia cua mon an', icon: 'warning' });
+      Swal.fire({ text: `Vui lòng nhập ${catalogText.nameLabel.toLowerCase()} và ${catalogText.priceLabel.toLowerCase()}.`, icon: 'warning' });
+      return;
+    }
+
+    const normalizedName = normalizeColumnName(menuInput.name);
+    if (formData.menu.some(item => item.id !== editingMenuId && normalizeColumnName(item.name) === normalizedName)
+      || (catalogMode === 'service' && formData.amenities.some(item => normalizeColumnName(item.name) === normalizedName))) {
+      Swal.fire({ text: `${catalogText.nameLabel} đã có trong danh sách.`, icon: 'warning' });
       return;
     }
 
     const price = parseFloat(menuInput.price);
     if (Number.isNaN(price) || price <= 0) {
-      Swal.fire({ text: 'Gia dich vu co phi phai lon hon 0', icon: 'warning' });
+      Swal.fire({ text: 'Giá phải lớn hơn 0.', icon: 'warning' });
       return;
     }
 
     const quantity = parseInt(menuInput.quantity || '1', 10);
     if (isAccommodation && (!Number.isFinite(quantity) || quantity <= 0)) {
-      Swal.fire({ text: 'Suc chua phong phai lon hon 0', icon: 'warning' });
+      Swal.fire({ text: 'Sức chứa mỗi phòng phải là số nguyên lớn hơn 0.', icon: 'warning' });
       return;
     }
 
@@ -992,26 +1046,27 @@ const AddLocationPage: React.FC = () => {
         }
 
         const headers = Object.keys(rows[0]);
-        const suggestedMapping = MENU_COLUMNS.reduce<MenuColumnMapping>((mapping, column) => {
+        const suggestedMapping = catalogColumns.reduce<MenuColumnMapping>((mapping, column) => {
           const match = headers.find(header => {
             const normalizedHeader = normalizeColumnName(header);
             return column.aliases.some(alias => normalizedHeader === alias);
           });
           mapping[column.key] = match ?? '';
           return mapping;
-        }, { name: '', price: '', description: '' });
+        }, { ...EMPTY_COLUMN_MAPPING });
 
         setExcelHeaders(headers);
         setExcelRows(rows);
         setColumnMapping(suggestedMapping);
         setUploadedFile(file);
 
-        const isFullyMapped = Object.values(suggestedMapping).every(Boolean)
-          && new Set(Object.values(suggestedMapping)).size === MENU_COLUMNS.length;
+        const mappedColumns = catalogColumns.map(column => suggestedMapping[column.key]);
+        const isFullyMapped = mappedColumns.every(Boolean)
+          && new Set(mappedColumns).size === catalogColumns.length;
         if (isFullyMapped) {
-          const parsed = parseMappedMenuRows(rows, suggestedMapping);
+          const parsed = parseMappedMenuRows(rows, suggestedMapping, catalogMode);
           if (!parsed.length) {
-            Swal.fire({ text: 'Không có dòng hợp lệ. Tên món không được trống và giá bán phải lớn hơn 0.', icon: 'warning' });
+            Swal.fire({ text: `Không có ${catalogText.singular} hợp lệ. Hãy kiểm tra đầy đủ các cột bắt buộc và các giá trị số phải lớn hơn 0.`, icon: 'warning' });
             return;
           }
           setExcelPreviewItems(parsed);
@@ -1029,9 +1084,9 @@ const AddLocationPage: React.FC = () => {
   };
 
   const handleApplyColumnMapping = () => {
-    const selectedColumns = Object.values(columnMapping);
+    const selectedColumns = catalogColumns.map(column => columnMapping[column.key]);
     if (selectedColumns.some(column => !column)) {
-      Swal.fire({ text: 'Vui lòng mapping đầy đủ 3 cột hệ thống.', icon: 'warning' });
+      Swal.fire({ text: `Vui lòng mapping đầy đủ ${catalogColumns.length} cột hệ thống.`, icon: 'warning' });
       return;
     }
     if (new Set(selectedColumns).size !== selectedColumns.length) {
@@ -1039,10 +1094,10 @@ const AddLocationPage: React.FC = () => {
       return;
     }
 
-    const parsed = parseMappedMenuRows(excelRows, columnMapping);
+    const parsed = parseMappedMenuRows(excelRows, columnMapping, catalogMode);
 
     if (!parsed.length) {
-      Swal.fire({ text: 'Không có dòng hợp lệ. Tên món không được trống và giá bán phải lớn hơn 0.', icon: 'warning' });
+      Swal.fire({ text: `Không có ${catalogText.singular} hợp lệ. Hãy kiểm tra đầy đủ các cột bắt buộc và các giá trị số phải lớn hơn 0.`, icon: 'warning' });
       return;
     }
 
@@ -1051,29 +1106,55 @@ const AddLocationPage: React.FC = () => {
   };
 
   const handleDownloadMenuTemplate = () => {
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Tên món', 'Giá bán', 'Mô tả'],
-      ['Phở bò', 50000, 'Phở bò tái, phục vụ nóng'],
-    ]);
-    worksheet['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 45 }];
+    const templateByMode: Record<CatalogMode, { rows: Array<Array<string | number>>; widths: number[]; sheet: string; file: string }> = {
+      food: {
+        rows: [['Tên món', 'Giá bán', 'Mô tả'], ['Phở bò', 50000, 'Phở bò tái, phục vụ nóng']],
+        widths: [28, 16, 45], sheet: 'Thực đơn', file: 'mau-thuc-don.xlsx',
+      },
+      accommodation: {
+        rows: [['Tên loại phòng', 'Giá phòng/đêm', 'Sức chứa/phòng'], ['Phòng Deluxe hướng biển', 1200000, 2]],
+        widths: [32, 20, 20], sheet: 'Danh sách phòng', file: 'mau-danh-sach-phong.xlsx',
+      },
+      service: {
+        rows: [['Tên dịch vụ', 'Giá dịch vụ'], ['Massage toàn thân 60 phút', 350000]],
+        widths: [32, 18], sheet: 'Dịch vụ', file: 'mau-danh-sach-dich-vu.xlsx',
+      },
+    };
+    const template = templateByMode[catalogMode];
+    const worksheet = XLSX.utils.aoa_to_sheet(template.rows);
+    worksheet['!cols'] = template.widths.map(wch => ({ wch }));
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Thực đơn');
-    XLSX.writeFile(workbook, 'mau-thuc-don.xlsx', { bookType: 'xlsx', compression: true });
+    XLSX.utils.book_append_sheet(workbook, worksheet, template.sheet);
+    XLSX.writeFile(workbook, template.file, { bookType: 'xlsx', compression: true });
   };
 
   const handleConfirmExcelImport = () => {
-    const newItems = excelPreviewItems.map(item => ({
+    const existingNames = new Set([
+      ...formData.menu.map(item => normalizeColumnName(item.name)),
+      ...(catalogMode === 'service' ? formData.amenities.map(item => normalizeColumnName(item.name)) : []),
+    ]);
+    const newItems = excelPreviewItems.filter(item => {
+      const normalizedName = normalizeColumnName(item.name);
+      if (existingNames.has(normalizedName)) return false;
+      existingNames.add(normalizedName);
+      return true;
+    }).map(item => ({
       id: Date.now().toString() + Math.random(),
       name: item.name,
       description: item.description,
       price: item.price,
+      quantity: item.quantity,
       img: '',
     }));
+    if (newItems.length === 0) {
+      Swal.fire({ text: `Tất cả ${catalogText.plural} trong file đã tồn tại.`, icon: 'warning' });
+      return;
+    }
     setFormData(prev => ({ ...prev, menu: [...prev.menu, ...newItems] }));
     setShowExcelPreview(false);
     setExcelHeaders([]);
     setExcelRows([]);
-    setColumnMapping({ name: '', price: '', description: '' });
+    setColumnMapping({ ...EMPTY_COLUMN_MAPPING });
     setFileUploaded(true);
     setShowExcelImport(false);
     setStep(2);
@@ -1085,7 +1166,7 @@ const AddLocationPage: React.FC = () => {
     setExcelPreviewItems([]);
     setExcelHeaders([]);
     setExcelRows([]);
-    setColumnMapping({ name: '', price: '', description: '' });
+    setColumnMapping({ ...EMPTY_COLUMN_MAPPING });
     setShowExcelImport(false);
     setStep(2);
   };
@@ -1138,7 +1219,7 @@ const AddLocationPage: React.FC = () => {
         formData.menu.map(async (item) => {
           let imageUrl = item.img || '';
 
-          if (item.imageFile) {
+          if (isFood && item.imageFile) {
             imageUrl = await uploadFoodDraftImage(item.imageFile);
           }
 
@@ -1174,18 +1255,15 @@ const AddLocationPage: React.FC = () => {
         p_close_time: primaryOpenCloseTime.closeTime,
         p_open_hour_compressed: buildOpenHourCompressed(formData.weeklyHours),
         p_description: formData.description,
-        p_estimated_preparation_time: isFoodCategory(selectedBusinessType?.category_name) && formData.estimatedPreparationTime
+        p_estimated_preparation_time: isFood && formData.estimatedPreparationTime
           ? Number(formData.estimatedPreparationTime)
           : null,
-        p_services: formData.amenities.map(a => {
-          const existing = dbServices.find(s => s.name.toLowerCase().trim() === a.name.toLowerCase().trim());
-          return {
-            name: a.name,
-            description: a.description || '',
-            ...(existing ? { service_id: existing.id } : {}),
-          };
-        }),
-        p_menu: isAccommodation ? [] : menuWithUploadedImages,
+        p_catalog_mode: catalogMode,
+        p_services: formData.amenities.map(amenity => ({
+          name: amenity.name.trim(),
+        })),
+        p_food_items: isFood ? menuWithUploadedImages : [],
+        p_menu: isFood ? menuWithUploadedImages : [],
         p_rooms: isAccommodation ? roomPayload : [],
         p_images: uploadedUrls // Mảng 5 URL ảnh đã upload lên cloud
       };
@@ -1448,14 +1526,29 @@ const AddLocationPage: React.FC = () => {
             value={formData.typeId}
             onChange={(e) => {
               const selectedType = businessTypes.find((type) => type.id === e.target.value);
-              setFormData({
-                ...formData,
+              const nextMode = getCatalogMode(selectedType);
+              const modeChanged = nextMode !== catalogMode;
+              setFormData(prev => ({
+                ...prev,
                 typeId: selectedType?.id || '',
                 type: selectedType?.name || '',
-                estimatedPreparationTime: isFoodCategory(selectedType?.category_name)
-                  ? (formData.estimatedPreparationTime || '15')
-                  : formData.estimatedPreparationTime,
-              });
+                estimatedPreparationTime: nextMode === 'food'
+                  ? (prev.estimatedPreparationTime || '15')
+                  : '',
+                menu: modeChanged ? [] : prev.menu,
+              }));
+              if (modeChanged) {
+                setServiceMode('free');
+                setEditingMenuId(null);
+                setMenuInput({ name: '', description: '', price: '', quantity: '1', img: '', imageFile: null, previewUrl: '' });
+                setUploadedFile(null);
+                setExcelHeaders([]);
+                setExcelRows([]);
+                setExcelPreviewItems([]);
+                setColumnMapping({ ...EMPTY_COLUMN_MAPPING });
+                setShowExcelPreview(false);
+                setShowExcelImport(false);
+              }
             }}
             disabled={loadingBusinessTypes || !!businessTypesError || businessTypes.length === 0}>
             {loadingBusinessTypes ? (
@@ -1502,7 +1595,7 @@ const AddLocationPage: React.FC = () => {
             </div>
           )}
         </div>
-        {isFoodCategory(businessTypes.find((t) => t.id === formData.typeId)?.category_name) && (
+        {isFood && (
           <div style={{ marginBottom: '24px' }}>
             <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
               Thời gian hoàn thành đơn (phút)
@@ -1812,13 +1905,13 @@ const AddLocationPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ background: 'white', padding: '20px 24px', borderRadius: '20px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
         <div>
-          <h4 style={{ fontSize: '1rem', fontWeight: '800', fontFamily: '"Outfit", sans-serif', color: '#0f172a', marginBottom: '4px' }}>Dịch vụ kinh doanh</h4>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>Chọn loại dịch vụ trước khi thêm: tiện ích miễn phí hoặc dịch vụ có giá bán.</p>
+          <h4 style={{ fontSize: '1rem', fontWeight: '800', fontFamily: '"Outfit", sans-serif', color: '#0f172a', marginBottom: '4px' }}>{catalogMode === 'service' ? 'Tiện ích miễn phí' : `${catalogText.title} và tiện ích miễn phí`}</h4>
+          <p style={{ fontSize: '13px', color: '#64748b' }}>{catalogMode === 'service' ? 'Thêm các tiện ích miễn phí hiện có tại địa điểm.' : `Thêm ${catalogText.plural} và các tiện ích miễn phí của địa điểm.`}</p>
           <p style={{ fontSize: '13px', color: '#2563eb', fontWeight: 700, marginTop: '8px' }}>
-            Đã thêm {formData.amenities.length} dịch vụ miễn phí và {formData.menu.length} dịch vụ có phí. Nút hoàn tất địa điểm sẽ lưu cả hai loại.
+            Đã thêm {formData.amenities.length} tiện ích miễn phí{catalogMode !== 'service' ? ` và ${formData.menu.length} ${catalogText.plural}` : ''}.
           </p>
         </div>
-        <div style={{ display: 'flex', padding: '4px', background: '#F1F5F9', borderRadius: '14px', gap: '4px' }}>
+        <div style={{ display: catalogMode === 'service' ? 'none' : 'flex', padding: '4px', background: '#F1F5F9', borderRadius: '14px', gap: '4px' }}>
           <button type="button" onClick={() => setServiceMode('free')} style={{ minHeight: '40px', padding: '0 18px', borderRadius: '10px', border: 'none', background: serviceMode === 'free' ? 'white' : 'transparent', color: serviceMode === 'free' ? '#2563eb' : '#64748b', fontWeight: 800, cursor: 'pointer', boxShadow: serviceMode === 'free' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none' }}>
             Miễn phí ({formData.amenities.length})
           </button>
@@ -1828,13 +1921,12 @@ const AddLocationPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: serviceMode === 'free' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ display: serviceMode === 'free' || catalogMode === 'service' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', color: '#1e293b' }}>
-          <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Dịch vụ tiện ích</h4>
+          <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Tiện ích miễn phí</h4>
         </div>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '24px' }}>
-          <div style={{ flex: 1 }}><Input label="Tên dịch vụ" placeholder="VD: Giữ xe miễn phí" value={serviceInput.name} onChange={(e) => setServiceInput({ ...serviceInput, name: e.target.value })} style={{ marginBottom: 0 }} /></div>
-          <div style={{ flex: 1.5 }}><Input label="Mô tả (không bắt buộc)" placeholder="Nhập mô tả ngắn về dịch vụ" value={serviceInput.description} onChange={(e) => setServiceInput({ ...serviceInput, description: e.target.value })} style={{ marginBottom: 0 }} /></div>
+          <div style={{ flex: 1 }}><Input label="Tên dịch vụ" placeholder="VD: Giữ xe miễn phí" value={serviceInput.name} onChange={(e) => setServiceInput({ name: e.target.value })} style={{ marginBottom: 0 }} /></div>
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
             <span style={{ fontSize: '14px', fontWeight: '600', lineHeight: 1.5, visibility: 'hidden', marginBottom: '8px' }}>
               Thao tác
@@ -1924,7 +2016,7 @@ const AddLocationPage: React.FC = () => {
               display: 'block',
               letterSpacing: '0.5px',
             }}>
-            Dịch vụ đã thêm
+            Tiện ích đã thêm
           </label>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {formData.amenities.length === 0 ? (
@@ -1953,16 +2045,16 @@ const AddLocationPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
+      <div style={{ display: catalogMode !== 'service' && serviceMode === 'paid' ? 'block' : 'none', background: '#F8FAFC80', padding: '24px', borderRadius: '24px', border: '1px solid #F1F5F9' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>Danh sách sản phẩm</h4>
+            <h4 style={{ fontSize: '1rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif' }}>{catalogText.title}</h4>
           </div>
         </div>
 
         {editingMenuId && (
           <div style={{ marginBottom: '12px', padding: '10px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '12px', fontSize: '13px', color: '#1D4ED8', fontWeight: 600 }}>
-            Đang chỉnh sửa dịch vụ. Cập nhật thông tin bên dưới rồi nhấn "Cập nhật".
+            Đang chỉnh sửa {catalogText.singular}. Cập nhật thông tin bên dưới rồi nhấn "Cập nhật".
           </div>
         )}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '32px' }}>
@@ -1974,14 +2066,14 @@ const AddLocationPage: React.FC = () => {
             onChange={handleMenuImageSelect}
           />
           <div
-            onClick={() => document.getElementById('menuImageInput')?.click()}
+            onClick={() => isFood && document.getElementById('menuImageInput')?.click()}
             style={{
+              display: isFood ? 'flex' : 'none',
               width: '100px',
               height: '100px',
               background: '#f8fafc',
               borderRadius: '16px',
               border: `2px dashed ${editingMenuId ? '#93C5FD' : '#E2E8F0'}`,
-              display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
@@ -2005,9 +2097,9 @@ const AddLocationPage: React.FC = () => {
           </div>
           <div style={{ flex: 1, display: 'flex', gap: '16px', alignItems: 'flex-end', paddingTop: '16px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sản phẩm</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{catalogText.nameLabel}</label>
               <input
-                placeholder="VD: Cơm Gà Hải Nam"
+                placeholder={catalogText.namePlaceholder}
                 value={menuInput.name}
                 onChange={(e) => setMenuInput({ ...menuInput, name: e.target.value })}
                 style={{
@@ -2024,7 +2116,7 @@ const AddLocationPage: React.FC = () => {
               />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Giá bán (VNĐ)</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{catalogText.priceLabel}</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   placeholder="0"
@@ -2047,8 +2139,10 @@ const AddLocationPage: React.FC = () => {
             </div>
             {isAccommodation && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sức chứa</label>
+                <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Sức chứa/phòng</label>
                 <input
+                  type="number"
+                  min="1"
                   placeholder="2"
                   value={menuInput.quantity}
                   onChange={(e) => setMenuInput({ ...menuInput, quantity: e.target.value })}
@@ -2066,7 +2160,7 @@ const AddLocationPage: React.FC = () => {
                 />
               </div>
             )}
-            <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ flex: '1 1 100%', display: isAccommodation || catalogMode === 'service' ? 'none' : 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>Mô tả chi tiết</label>
               <textarea
                 placeholder="VD: Bao gồm vé vào cửa, nước uống, áp dụng cuối tuần..."
@@ -2141,7 +2235,7 @@ const AddLocationPage: React.FC = () => {
                 display: 'block',
                 letterSpacing: '0.5px',
               }}>
-              Danh sách món ăn
+              {catalogText.title}
             </label>
             <Button
               variant="outline"
@@ -2174,6 +2268,7 @@ const AddLocationPage: React.FC = () => {
                     <span style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4, marginTop: '4px' }}>{item.description}</span>
                   )}
                   <span style={{ fontSize: '13px', color: '#3b82f6', fontWeight: '600' }}>{item.price}đ</span>
+                  {isAccommodation && <span style={{ fontSize: '12px', color: '#64748b' }}>Tối đa {item.quantity} khách/phòng</span>}
                 </div>
                 <div style={{ display: 'flex', gap: '12px', color: '#94a3b8' }}>
                   <Trash2 size={16} style={{ cursor: 'pointer' }} onClick={() => handleRemoveMenuItem(item.id)} />
@@ -2202,13 +2297,14 @@ const AddLocationPage: React.FC = () => {
         <div style={{ background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: '24px', padding: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
             <CheckCircle size={20} color="#22c55e" />
-            <h5 style={{ fontSize: '0.9375rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif', color: '#1e293b' }}>Món ăn đã thêm ({formData.menu.length})</h5>
+            <h5 style={{ fontSize: '0.9375rem', fontWeight: '700', fontFamily: '"Outfit", sans-serif', color: '#1e293b' }}>{catalogText.title} đã thêm ({formData.menu.length})</h5>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
             {formData.menu.map(item => (
               <div key={item.id} style={{ padding: '12px', background: 'white', borderRadius: '12px', border: '1px solid #DCFCE7' }}>
                 <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>{item.name}</div>
                 <div style={{ fontSize: '13px', color: '#22c55e', marginBottom: '4px' }}>{parseFloat(item.price).toLocaleString('vi-VN')}đ</div>
+                {isAccommodation && <div style={{ fontSize: '12px', color: '#64748b' }}>Tối đa {item.quantity} khách/phòng</div>}
                 {item.description && <div style={{ fontSize: '12px', color: '#64748b' }}>{item.description}</div>}
               </div>
             ))}
@@ -2223,8 +2319,8 @@ const AddLocationPage: React.FC = () => {
             <FileSpreadsheet size={24} />
           </div>
           <div style={{ flex: 1 }}>
-            <h5 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Thêm món ăn từ file Excel (tùy chọn)</h5>
-            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Tải dữ liệu thực đơn và mapping 3 cột hệ thống: "Tên món", "Giá bán", "Mô tả".</p>
+            <h5 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Thêm {catalogText.plural} từ file Excel (tùy chọn)</h5>
+            <p style={{ fontSize: '13px', color: '#94a3b8' }}>Tải đúng template dành cho loại hình này và mapping {catalogColumns.length} cột bắt buộc.</p>
           </div>
           <button
             type="button"
@@ -2278,10 +2374,10 @@ const AddLocationPage: React.FC = () => {
                 <h6 style={{ margin: 0, fontSize: '15px', color: '#1E293B' }}>Mapping cột dữ liệu</h6>
                 <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748B' }}>Chọn cột trong file tương ứng với từng cột mà hệ thống yêu cầu.</p>
               </div>
-              <button type="button" onClick={() => { setUploadedFile(null); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ name: '', price: '', description: '' }); }} style={{ border: 0, background: 'transparent', color: '#EF4444', fontWeight: 600, cursor: 'pointer' }}>Đổi file</button>
+              <button type="button" onClick={() => { setUploadedFile(null); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ ...EMPTY_COLUMN_MAPPING }); }} style={{ border: 0, background: 'transparent', color: '#EF4444', fontWeight: 600, cursor: 'pointer' }}>Đổi file</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {MENU_COLUMNS.map(column => (
+              {catalogColumns.map(column => (
                 <div key={column.key} style={{ display: 'flex', alignItems: 'center', gap: '18px', padding: '14px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC', flexWrap: 'wrap' }}>
                   <div style={{ width: '220px', minWidth: '180px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '5px' }}>Cột hệ thống</div>
@@ -2315,12 +2411,12 @@ const AddLocationPage: React.FC = () => {
                 <CheckCircle size={18} color="#22c55e" />
                 <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
                   {uploadedFile?.name}
-                  <span style={{ color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>— {excelPreviewItems.length} món ăn</span>
+                  <span style={{ color: '#64748b', fontWeight: 400, marginLeft: '6px' }}>— {excelPreviewItems.length} {catalogText.plural}</span>
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ name: '', price: '', description: '' }); }}
+                onClick={() => { setShowExcelPreview(false); setUploadedFile(null); setExcelPreviewItems([]); setExcelHeaders([]); setExcelRows([]); setColumnMapping({ ...EMPTY_COLUMN_MAPPING }); }}
                 style={{ fontSize: '13px', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}
               >
                 Đổi file
@@ -2332,8 +2428,8 @@ const AddLocationPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                   <tr style={{ background: '#F8FAFC' }}>
-                    {['TÊN MÓN', 'GIÁ BÁN', 'MÔ TẢ'].map((col, i) => (
-                      <th key={col} style={{
+                    {catalogColumns.map((column, i) => (
+                      <th key={column.key} style={{
                         padding: '14px 20px',
                         textAlign: 'left',
                         fontSize: '11px',
@@ -2342,9 +2438,9 @@ const AddLocationPage: React.FC = () => {
                         textTransform: 'uppercase',
                         letterSpacing: '0.5px',
                         borderBottom: '1px solid #E2E8F0',
-                        width: i === 0 ? '30%' : i === 1 ? '20%' : '50%',
+                        width: i === 0 ? '30%' : `${70 / Math.max(1, catalogColumns.length - 1)}%`,
                       }}>
-                        {col}
+                        {column.label}
                       </th>
                     ))}
                   </tr>
@@ -2352,11 +2448,17 @@ const AddLocationPage: React.FC = () => {
                 <tbody>
                   {excelPreviewItems.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: idx < excelPreviewItems.length - 1 ? '1px solid #F1F5F9' : 'none', background: idx % 2 === 0 ? 'white' : '#FAFAFA' }}>
-                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>{item.name}</td>
-                      <td style={{ padding: '14px 20px', fontSize: '14px', fontWeight: '600', color: '#3b82f6' }}>
-                        {parseFloat(item.price).toLocaleString('vi-VN')}đ
-                      </td>
-                      <td style={{ padding: '14px 20px', fontSize: '13px', color: '#64748b' }}>{item.description || '—'}</td>
+                      {catalogColumns.map(column => {
+                        const rawValue = item[column.key];
+                        const displayValue = column.key === 'price'
+                          ? `${parseFloat(item.price).toLocaleString('vi-VN')}đ`
+                          : rawValue || '—';
+                        return (
+                          <td key={column.key} style={{ padding: '14px 20px', fontSize: '13px', fontWeight: column.key === 'name' || column.key === 'price' ? '600' : '400', color: column.key === 'price' ? '#3b82f6' : column.key === 'name' ? '#1e293b' : '#64748b' }}>
+                            {displayValue}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -2464,7 +2566,7 @@ const AddLocationPage: React.FC = () => {
                     }}>
                     2
                   </span>
-                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Dịch vụ</span>
+                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Danh mục</span>
                 </div>
               </div>
 

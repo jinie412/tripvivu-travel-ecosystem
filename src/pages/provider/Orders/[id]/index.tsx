@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail, Phone, User, Clock } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { addMinutesToDateTime, formatVietnamDateTime, getOrderDetail } from '@/services/order.service';
+import { addMinutesToDateTime, formatOrderCode, formatVietnamDateTime, getOrderDetail, resolveOrderRoute } from '@/services/order.service';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string; description: string }> = {
    pending:    { label: 'Chờ xác nhận', color: '#92400e', bg: '#FEF9C3', dot: '#f59e0b', description: 'Đơn hàng đang chờ nhà hàng xác nhận qua email.' },
@@ -22,7 +22,7 @@ const OrderDetailPage: React.FC = () => {
    useEffect(() => {
       const fetchOrderDetail = async () => {
          try {
-            const data = await getOrderDetail(id!);
+            const data = await getOrderDetail(resolveOrderRoute(id!));
             
             // Transform API response to match component structure
             const statusMap: { [key: string]: string } = {
@@ -33,7 +33,7 @@ const OrderDetailPage: React.FC = () => {
             };
 
             const transformedData = {
-               id: data.order_id,
+               id: formatOrderCode(data.order_id),
                status: data.status,
                statusText: statusMap[data.status] || data.status,
                customer: {
@@ -77,9 +77,9 @@ const OrderDetailPage: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>
                      <span style={{ cursor: 'pointer' }} onClick={() => navigate('/orders')}>Đơn đặt món</span>
                      <span>/</span>
-                     <span style={{ color: '#1e293b', fontWeight: '700' }}>#{orderData.id}</span>
+                     <span style={{ color: '#1e293b', fontWeight: '700' }}>{orderData.id}</span>
                   </div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>#{orderData.id}</h2>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Outfit", sans-serif' }}>{orderData.id}</h2>
                   <p style={{ fontSize: '15px', color: '#64748b' }}>Chi tiết đơn hàng {orderData.statusText.toLowerCase()}</p>
                </div>
                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#F0F9FF', borderRadius: '12px', color: orderData.status === 'confirm' ? '#3b82f6' : '#f59e0b', fontSize: '13px', fontWeight: '700' }}>
