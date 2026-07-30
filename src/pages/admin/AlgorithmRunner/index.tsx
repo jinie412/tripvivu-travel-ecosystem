@@ -334,7 +334,9 @@ export const AlgorithmRunner: React.FC = () => {
           setRecommendStep(retrainStatus.currentRun.metrics?.current_step ?? retrainStatus.currentRun.status);
         } else if (retrainStatus.latestRun) {
           const latest = retrainStatus.latestRun;
-          observedRunId.current = latest.id;
+          // Run này đã hoàn thành từ trước khi vào trang — chỉ hiển thị trạng thái,
+          // không set observedRunId để tránh polling coi đây là run mới và bắn lại thông báo RMSE.
+          notifiedRunIds.current.add(latest.id);
           setRecommendStep(latest.status === 'completed' ? 'Hoàn thành' : latest.status);
           setRecommendProgress(latest.metrics?.progress ?? 0);
           if (latest.completedAt) setRecommendLastRun(formatPipelineDateTime(latest.completedAt));
