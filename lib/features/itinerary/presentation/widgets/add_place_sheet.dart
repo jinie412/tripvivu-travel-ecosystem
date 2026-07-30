@@ -30,6 +30,12 @@ class AddPlaceSheet extends StatefulWidget {
   /// to nearby search.
   final String? itineraryId;
 
+  /// False when no day has free time left for a new activity without
+  /// extending the day, shortening other activities, or adding a day.
+  /// The default suggestion list is replaced with a warning in that case;
+  /// explicit search still works.
+  final bool hasCapacity;
+
   const AddPlaceSheet({
     super.key,
     required this.onAdd,
@@ -40,6 +46,7 @@ class AddPlaceSheet extends StatefulWidget {
     this.proposedVisitTime,
     this.destinationCity,
     this.itineraryId,
+    this.hasCapacity = true,
   });
 
   static void show(
@@ -52,6 +59,7 @@ class AddPlaceSheet extends StatefulWidget {
     String? proposedVisitTime,
     String? destinationCity,
     String? itineraryId,
+    bool hasCapacity = true,
   }) {
     showModalBottomSheet(
       context: context,
@@ -66,6 +74,7 @@ class AddPlaceSheet extends StatefulWidget {
         proposedVisitTime: proposedVisitTime,
         destinationCity: destinationCity,
         itineraryId: itineraryId,
+        hasCapacity: hasCapacity,
       ),
     );
   }
@@ -89,7 +98,13 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
-    _loadNearbyPlaces();
+    // No point fetching default suggestions the itinerary has no room for —
+    // show the capacity warning instead (search still works on demand).
+    if (widget.hasCapacity) {
+      _loadNearbyPlaces();
+    } else {
+      _isLoading = false;
+    }
   }
 
   // Whitelist: chỉ hiện category là địa điểm du lịch / tham quan / vui chơi
@@ -164,6 +179,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
           radius: isDefaultFeed ? 30 : 50,
           limit: isDefaultFeed ? 10 : 30,
           q: q,
+          city: widget.destinationCity,
         );
         if (!mounted || requestId != _searchRequestId) return;
         if (isDefaultFeed) {
@@ -357,7 +373,9 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                   controller: scrollController,
                   padding: EdgeInsets.zero,
                   children: [
-                    if (_isLoading)
+                    if (!widget.hasCapacity && _searchQuery.isEmpty)
+                      const _CapacityWarning()
+                    else if (_isLoading)
                       const Padding(
                         padding: EdgeInsets.all(AppSizes.s32),
                         child: Center(child: CircularProgressIndicator()),
@@ -882,6 +900,66 @@ class _ListCard extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Capacity warning ──────────────────────────────────────────────────────
+
+class _CapacityWarning extends StatelessWidget {
+  const _CapacityWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.s20,
+        AppSizes.s24,
+        AppSizes.s20,
+        AppSizes.s8,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.s16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.event_busy_rounded,
+                  size: 20,
+                  color: Color(0xFFF59E0B),
+                ),
+                const SizedBox(width: AppSizes.s8),
+                const Text(
+                  'Lịch trình đã kín',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColorsExt.textDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.s8),
+            const Text(
+              'Không còn khung giờ trống để thêm địa điểm mới mà không phải '
+              'kéo dài thời gian tham quan trong ngày, giảm giờ ở nơi khác '
+              'hoặc thêm ngày mới. Bạn có thể xóa bớt địa điểm không thích '
+              'để có chỗ trống, hoặc tìm kiếm địa điểm cụ thể ở trên để tự '
+              'sắp xếp thêm.',
+              style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textSecondary),
             ),
           ],
         ),

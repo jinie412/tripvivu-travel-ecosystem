@@ -79,12 +79,14 @@ class NearbyPlacesApi {
 
   static Future<List<NearbyPlaceModel>> getReplaceSuggestions(
     String itineraryId,
-    String activityId,
-  ) async {
+    String activityId, {
+    int limit = 20,
+  }) async {
     try {
       final client = sl<DioClient>();
       final response = await client.dio.get(
         '/itinerary/$itineraryId/activities/$activityId/suggestions',
+        queryParameters: {'limit': limit},
       );
 
       final data = response.data?['suggestions'] as List? ?? [];
@@ -102,6 +104,7 @@ class NearbyPlacesApi {
     String? preferCategory,
     int radius = 10,
     String? q,
+    String? city,
   }) async {
     try {
       final client = sl<DioClient>();
@@ -119,6 +122,10 @@ class NearbyPlacesApi {
       }
       if (q != null && q.isNotEmpty) {
         queryParams['q'] = q;
+      }
+      // Scope results to the itinerary's destination city.
+      if (city != null && city.isNotEmpty) {
+        queryParams['city'] = city;
       }
       final response = await client.dio.get('/search/nearby', queryParameters: queryParams);
 

@@ -67,11 +67,7 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
   int _searchRequestId = 0;
 
   bool _isLoading = true;
-  List<NearbyPlaceModel> _sameCategoryPlaces = [];
-  List<NearbyPlaceModel> _otherPlaces = [];
-
-  List<NearbyPlaceModel> get _filteredSame => _sameCategoryPlaces;
-  List<NearbyPlaceModel> get _filteredOthers => _otherPlaces;
+  List<NearbyPlaceModel> _places = [];
 
   @override
   void initState() {
@@ -80,6 +76,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
     _loadNearbyPlaces();
   }
 
+  static const _defaultSuggestionCount = 10;
+
   Future<void> _loadNearbyPlaces({String? q}) async {
     final requestId = ++_searchRequestId;
     setState(() => _isLoading = true);
@@ -87,46 +85,67 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       final isDefaultFeed = q == null || q.isEmpty;
       var places = <NearbyPlaceModel>[];
 
-      // Falls through to nearby search below if empty (AI error or no itineraryId).
+      // Recommendation/CF-CP suggestions only — the backend already tops
+      // these up with same-city places when the model returns too few, so
+      // the default feed never needs the generic nearby-radius search below
+      // to fill a page (that would mix in unrelated categories/distances).
       if (isDefaultFeed && widget.itineraryId != null) {
-        places = await NearbyPlacesApi.getReplaceSuggestions(
+        final suggestions = await NearbyPlacesApi.getReplaceSuggestions(
           widget.itineraryId!,
           widget.currentActivity.id,
+          // Buffer above the target count so opening-hours/hotel filtering
+          // below still leaves enough to fill a full page.
+          limit: _defaultSuggestionCount * 2,
         );
         if (!mounted || requestId != _searchRequestId) return;
+        places = _applyFilters(suggestions);
       }
 
+      // Falls back to generic nearby search only when there's no CF/CP
+      // source at all (no itineraryId, or it returned nothing).
       if (places.isEmpty) {
         final lat = widget.currentActivity.latitude ?? 16.047079;
         final lng = widget.currentActivity.longitude ?? 108.206230;
-        places = await NearbyPlacesApi.getNearbyPlaces(
+        final nearby = await NearbyPlacesApi.getNearbyPlaces(
           lat,
           lng,
-          // Suggestions should not repeat itinerary places. Explicit search,
-          // however, still shows them and validates when the user selects one.
           excludeIds: isDefaultFeed ? widget.existingIds : null,
           preferCategory: isDefaultFeed
               ? widget.currentActivity.category
               : null,
           radius: isDefaultFeed ? 15 : 50,
-          limit: isDefaultFeed ? 10 : 30,
+          // Over-fetch on the default feed so that after filtering out
+          // closed/hotel places there are still enough left to fill a page.
+          limit: isDefaultFeed ? _defaultSuggestionCount * 3 : 30,
           q: q,
+          city: widget.destinationCity,
         );
         if (!mounted || requestId != _searchRequestId) return;
+        places = _applyFilters(nearby);
       }
 
-      // Hotels are never a valid replacement, regardless of category match.
-      places = places.where((p) {
-        final cat = p.category.toLowerCase();
-        return !cat.contains('khách sạn') &&
-            !cat.contains('hotel') &&
-            !cat.contains('lưu trú');
-      }).toList();
+      // Rank the whole candidate pool — same-category places first (replacing
+      // a food stop should surface food alternatives, not a museum that just
+      // happens to be closer), nearest first within each group — THEN take
+      // the top 10, so a same-category match further down the buffer isn't
+      // dropped in favor of an unrelated one that was listed earlier.
+      if (isDefaultFeed) {
+        places.sort((a, b) {
+          if (a.isSameCategory != b.isSameCategory) {
+            return a.isSameCategory ? -1 : 1;
+          }
+          return (a.distanceKm ?? double.infinity).compareTo(
+            b.distanceKm ?? double.infinity,
+          );
+        });
+        if (places.length > _defaultSuggestionCount) {
+          places = places.sublist(0, _defaultSuggestionCount);
+        }
+      }
 
       if (mounted && requestId == _searchRequestId) {
         setState(() {
-          _sameCategoryPlaces = places.where((p) => p.isSameCategory).toList();
-          _otherPlaces = places.where((p) => !p.isSameCategory).toList();
+          _places = places;
           _isLoading = false;
         });
       }
@@ -137,6 +156,19 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
         });
       }
     }
+  }
+
+  /// Drops hotels (never a valid replacement) and places closed during the
+  /// activity's scheduled time.
+  List<NearbyPlaceModel> _applyFilters(List<NearbyPlaceModel> places) {
+    return places.where((p) {
+      final cat = p.category.toLowerCase();
+      final isHotel =
+          cat.contains('khách sạn') ||
+          cat.contains('hotel') ||
+          cat.contains('lưu trú');
+      return !isHotel && !_isOutsideOpeningHours(p);
+    }).toList();
   }
 
   void _onSearchChanged() {
@@ -198,68 +230,17 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
       return;
     }
 
-    // Validate opening hours dựa theo giờ hiện tại của activity đang thay thế
-    if (place.openHourCompressed != null) {
-      final slot = _openSlotForDay(place.openHourCompressed!, DateTime.now());
-      final hoursStr = slot != null
-          ? '${slot.$1} – ${slot.$2}'
-          : 'không xác định';
-      final outside = slot != null
-          ? !_isWithinHours(widget.currentActivity.startTime, slot.$1, slot.$2)
-          : false;
-      if (outside) {
-        final proceed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.r16),
-            ),
-            title: const Text(
-              'Ngoài giờ mở cửa',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              '"${place.name}" mở cửa từ $hoursStr.\n\n'
-              'Thời gian tham quan dự kiến ${widget.currentActivity.startTime} '
-              'nằm ngoài khung giờ mở cửa. Bạn có muốn tiếp tục thay thế không?',
-              style: const TextStyle(height: 1.5),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
-                  'Hủy',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColorsExt.warning,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.r8),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Tiếp tục thay thế',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-        if (proceed != true || !mounted) return;
-      }
-    }
     Navigator.pop(context);
     await widget.onReplace(place);
+  }
+
+  /// True when [place] has known opening hours that don't cover the
+  /// scheduled start time of the activity being replaced.
+  bool _isOutsideOpeningHours(NearbyPlaceModel place) {
+    if (place.openHourCompressed == null) return false;
+    final slot = _openSlotForDay(place.openHourCompressed!, DateTime.now());
+    if (slot == null) return false;
+    return !_isWithinHours(widget.currentActivity.startTime, slot.$1, slot.$2);
   }
 
   bool _isExistingPlace(String placeId) {
@@ -394,9 +375,8 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
               Expanded(
                 child: Builder(
                   builder: (_) {
-                    final samePlaces = _filteredSame;
-                    final otherPlaces = _filteredOthers;
-                    final totalSearch = samePlaces.length + otherPlaces.length;
+                    final places = _places;
+                    final isSearching = _searchQuery.isNotEmpty;
 
                     return ListView(
                       controller: scrollController,
@@ -407,36 +387,22 @@ class _ReplacePlaceSheetState extends State<ReplacePlaceSheet> {
                             padding: EdgeInsets.all(AppSizes.s32),
                             child: Center(child: CircularProgressIndicator()),
                           )
-                        else if (_searchQuery.isNotEmpty) ...[
+                        else ...[
                           _SectionTitle(
-                            icon: Icons.search_rounded,
-                            iconColor: AppColors.primary,
-                            title: 'Kết quả tìm kiếm ($totalSearch)',
+                            icon: isSearching
+                                ? Icons.search_rounded
+                                : Icons.auto_awesome_rounded,
+                            iconColor: isSearching
+                                ? AppColors.primary
+                                : AppColorsExt.warning,
+                            title: isSearching
+                                ? 'Kết quả tìm kiếm (${places.length})'
+                                : 'Gợi ý',
                           ),
-                          if (totalSearch == 0)
-                            const _EmptyState(isSearching: true)
+                          if (places.isEmpty)
+                            _EmptyState(isSearching: isSearching)
                           else
-                            _buildList([...samePlaces, ...otherPlaces]),
-                        ] else ...[
-                          if (samePlaces.isNotEmpty) ...[
-                            _SectionTitle(
-                              icon: Icons.auto_awesome_rounded,
-                              iconColor: AppColorsExt.warning,
-                              title:
-                                  'Cùng loại: ${widget.currentActivity.category}',
-                            ),
-                            _buildList(samePlaces),
-                          ],
-                          if (otherPlaces.isNotEmpty) ...[
-                            _SectionTitle(
-                              icon: Icons.location_on_rounded,
-                              iconColor: AppColors.primary,
-                              title: 'Gợi ý',
-                            ),
-                            _buildList(otherPlaces),
-                          ],
-                          if (samePlaces.isEmpty && otherPlaces.isEmpty)
-                            const _EmptyState(isSearching: false),
+                            _buildList(places),
                         ],
                         const SizedBox(height: AppSizes.s20),
                         _ManualAddButton(

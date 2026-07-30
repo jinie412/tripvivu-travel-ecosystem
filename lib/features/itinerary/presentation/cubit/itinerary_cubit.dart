@@ -1900,6 +1900,33 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     );
   }
 
+  /// Same day-fit math as the loop in [addActivityToDay], without the
+  /// backend optimize call — a cheap local check only.
+  bool hasCapacityForNewActivity(
+    ItineraryDetailEntity itin, {
+    int durationMinutes = 60,
+  }) {
+    int timeToMinutes(String timeStr) {
+      final parts = timeStr.split(':');
+      if (parts.length < 2) return 0;
+      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    }
+
+    final window = resolveTimeWindow(itin);
+    final dailyEndMin = timeToMinutes(window.endTime);
+    const kTravelBufferMin = 5;
+
+    for (final day in itin.days) {
+      final startTime = day.activities.isNotEmpty
+          ? day.activities.last.endTime
+          : window.startTime;
+      final estimatedEndMin =
+          timeToMinutes(startTime) + kTravelBufferMin + durationMinutes;
+      if (estimatedEndMin <= dailyEndMin) return true;
+    }
+    return false;
+  }
+
   ({int minutes, double km}) _estimateTimeDiffMin(
     double? lat1,
     double? lng1,

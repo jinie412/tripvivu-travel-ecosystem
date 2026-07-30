@@ -75,6 +75,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   ItineraryDetailEntity? _editSnapshot;
   MapboxMap? _mapController;
   final ScrollController _scrollController = ScrollController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   final Map<String, GlobalKey> _activityKeys = {};
   final Set<String> _openingReviewActivityIds = <String>{};
   String? _highlightedActivityId;
@@ -162,18 +164,21 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   void _showAddPlaceScreen() {
     if (!_isOwnerViewer) return;
 
-    final state = context.read<ItineraryCubit>().state;
+    final cubit = context.read<ItineraryCubit>();
+    final state = cubit.state;
     double? refLat;
     double? refLng;
     String? proposedVisitTime;
     List<String> existingIds = [];
     String? destinationCity;
     String? itineraryId;
+    bool hasCapacity = true;
 
     if (state is ItineraryLoaded && state.selectedItinerary != null) {
       final itin = state.selectedItinerary!;
       destinationCity = itin.destination;
       itineraryId = itin.id;
+      hasCapacity = cubit.hasCapacityForNewActivity(itin);
       for (final day in itin.days) {
         for (final act in day.activities) {
           final String id = act.placeId ?? act.id;
@@ -233,6 +238,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
       proposedVisitTime: proposedVisitTime,
       destinationCity: destinationCity,
       itineraryId: itineraryId,
+      hasCapacity: hasCapacity,
       onAdd: (place) async {
         final success = await context.read<ItineraryCubit>().addActivityToDay(
           _selectedDay,
@@ -748,8 +754,13 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
           final openLabel = open.substring(0, 5);
           final closeLabel = close.substring(0, 5);
           validSlots.add('$openLabel - $closeLabel');
+          // "00:00" làm giờ đóng cửa nghĩa là nửa đêm (24:00), không phải
+          // đầu ngày — nếu để nguyên 0 phút thì mọi khung giờ đều bị coi là
+          // không hợp lệ.
+          final rawCloseMinutes = toMinutes(closeLabel);
+          final closeMinutes = rawCloseMinutes == 0 ? 24 * 60 : rawCloseMinutes;
           if (targetStart >= toMinutes(openLabel) &&
-              targetEnd <= toMinutes(closeLabel)) {
+              targetEnd <= closeMinutes) {
             fitsAnySlot = true;
             break;
           }
@@ -959,7 +970,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
             }
 
             final openMin = toM(slot.$1);
-            final closeMin = toM(slot.$2);
+            // "00:00" làm giờ đóng cửa nghĩa là nửa đêm (cuối ngày, tức 24:00),
+            // không phải đầu ngày — nếu để nguyên 0 phút thì mọi giờ trong
+            // ngày đều bị coi là "vượt quá giờ đóng cửa".
+            final rawCloseMin = toM(slot.$2);
+            final closeMin = rawCloseMin == 0 ? 24 * 60 : rawCloseMin;
             final label = isStart ? 'đến' : 'rời';
             if (newMin < openMin) {
               await showTimeError(
@@ -1120,7 +1135,12 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                         final closeStr = slots[0][1]?.toString();
                         if (openStr != null && closeStr != null) {
                           final openMin = toMinutes(openStr.substring(0, 5));
-                          final closeMin = toMinutes(closeStr.substring(0, 5));
+                          final rawCloseMin = toMinutes(
+                            closeStr.substring(0, 5),
+                          );
+                          final closeMin = rawCloseMin == 0
+                              ? 24 * 60
+                              : rawCloseMin;
                           if (targetStartMin < openMin ||
                               targetEndMin > closeMin) {
                             hasViolation = true;
@@ -1420,7 +1440,8 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
               final closeStr = slots[0][1]?.toString();
               if (openStr != null && closeStr != null) {
                 final openMin = toMinutes(openStr.substring(0, 5));
-                final closeMin = toMinutes(closeStr.substring(0, 5));
+                final rawCloseMin = toMinutes(closeStr.substring(0, 5));
+                final closeMin = rawCloseMin == 0 ? 24 * 60 : rawCloseMin;
                 if (newStartMin < openMin || newEndMin > closeMin) {
                   await showTimeError(
                     'Địa điểm "${activity.title}" hoạt động từ ${openStr.substring(0, 5)} - ${closeStr.substring(0, 5)}.\n\n'
@@ -1939,6 +1960,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _sheetController.dispose();
     _sharedReviewCubit.close();
     super.dispose();
   }
@@ -2440,6 +2462,7 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                 isMapLoaded: _isMapLoaded,
                 onLoadMapTap: () => setState(() => _isMapLoaded = true),
                 scrollController: _scrollController,
+                sheetController: _sheetController,
                 activityKeys: _activityKeys,
                 onActivityTap: _zoomToActivity,
                 onActivityLongPress: _navigateToPlaceDetail,
@@ -2904,72 +2927,85 @@ class _DayStatsCard extends StatelessWidget {
           // "Tổng chi phí" (chỗ ghi giá tiền) thay vì ở tiêu đề bên trái —
           // đồng bộ vị trí/màu với "Sổ chi tiêu" ở Tổng quan lịch trình
           // (itinerary_summary_screen.dart).
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    '${formatter.format(breakdown.total)} ${day.currency}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.costMint,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => IncurredCostsScreen(
-                          itineraryId: itin.id,
-                          members: itin.members,
-                          isCompleted: itin.status.toUpperCase() == 'COMPLETED',
-                          initialDayNumber: day.dayNumber,
-                          days: itin.days,
+          // Flexible (not a bare Column) so a long amount/currency string
+          // can shrink instead of overflowing the Row by a fraction of a
+          // pixel on narrower screens or larger accessibility text scales.
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${formatter.format(breakdown.total)} ${day.currency}',
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.costMint,
+                          ),
                         ),
                       ),
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.menu_book_rounded,
-                        size: 16,
-                        color: AppColors.costHeroEnd,
+                    const SizedBox(width: 4),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => IncurredCostsScreen(
+                            itineraryId: itin.id,
+                            members: itin.members,
+                            isCompleted:
+                                itin.status.toUpperCase() == 'COMPLETED',
+                            initialDayNumber: day.dayNumber,
+                            days: itin.days,
+                          ),
+                        ),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.menu_book_rounded,
+                          size: 16,
+                          color: AppColors.costHeroEnd,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const Text(
-                CostUiLabels.dayTotalCost,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  color: AppColors.costTextMuted,
-                ),
-              ),
-              if (dayIncurredTotal > 0) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '${formatter.format(dayIncurredTotal)} ${day.currency}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.costAmber,
-                  ),
+                  ],
                 ),
                 const Text(
-                  CostUiLabels.daySpent,
+                  CostUiLabels.dayTotalCost,
                   style: TextStyle(
                     fontSize: 10.5,
                     color: AppColors.costTextMuted,
                   ),
                 ),
+                if (dayIncurredTotal > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${formatter.format(dayIncurredTotal)} ${day.currency}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.costAmber,
+                    ),
+                  ),
+                  const Text(
+                    CostUiLabels.daySpent,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.costTextMuted,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ],
       ),
@@ -3171,6 +3207,7 @@ class _ItineraryDetailView extends StatelessWidget {
   final bool isMapLoaded;
   final VoidCallback onLoadMapTap;
   final ScrollController scrollController;
+  final DraggableScrollableController sheetController;
   final Map<String, GlobalKey> activityKeys;
   final Function(ItineraryActivityEntity) onActivityTap;
   final Function(ItineraryActivityEntity) onActivityLongPress;
@@ -3197,6 +3234,12 @@ class _ItineraryDetailView extends StatelessWidget {
   final Map<String, double> baselineCostsByPlace;
   final Map<int, double> extraCostsByDay;
 
+  // Kept in sync with the DraggableScrollableSheet's own min/max/snapSizes
+  // below — the manual drag handler needs the same numbers.
+  static const double _sheetMinSize = 0.12;
+  static const double _sheetMaxSize = 0.85;
+  static const List<double> _sheetSnapSizes = [0.12, 0.45, 0.85];
+
   const _ItineraryDetailView({
     required this.selectedDay,
     required this.isPublic,
@@ -3208,6 +3251,7 @@ class _ItineraryDetailView extends StatelessWidget {
     required this.isMapLoaded,
     required this.onLoadMapTap,
     required this.scrollController,
+    required this.sheetController,
     required this.activityKeys,
     required this.onActivityTap,
     required this.onActivityLongPress,
@@ -3233,6 +3277,36 @@ class _ItineraryDetailView extends StatelessWidget {
     this.baselineCostsByPlace = const {},
     this.extraCostsByDay = const {},
   });
+
+  // The handle sits above the sheet's own scrollable content, so it never
+  // receives the sheet's built-in drag-to-resize gesture — drive the
+  // controller manually from a GestureDetector wrapped around it instead.
+  void _onSheetHandleDragUpdate(
+    DragUpdateDetails details,
+    BuildContext context,
+  ) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    if (screenHeight <= 0 || !sheetController.isAttached) return;
+    final delta = details.primaryDelta! / screenHeight;
+    final newSize = (sheetController.size - delta).clamp(
+      _sheetMinSize,
+      _sheetMaxSize,
+    );
+    sheetController.jumpTo(newSize);
+  }
+
+  void _onSheetHandleDragEnd(DragEndDetails details) {
+    if (!sheetController.isAttached) return;
+    final current = sheetController.size;
+    final nearest = _sheetSnapSizes.reduce(
+      (a, b) => (current - a).abs() < (current - b).abs() ? a : b,
+    );
+    sheetController.animateTo(
+      nearest,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3365,11 +3439,14 @@ class _ItineraryDetailView extends StatelessWidget {
 
                 // ✅ BOTTOM SHEET KÉO LÊN/XUỐNG (DraggableScrollableSheet)
                 DraggableScrollableSheet(
+                  controller: sheetController,
                   initialChildSize: 0.45, // Mở 45% màn hình ban đầu
-                  minChildSize: 0.12, // Thu nhỏ tối đa → gần như chỉ thấy map
-                  maxChildSize: 0.85, // Mở rộng tối đa → che gần hết map
+                  minChildSize:
+                      _sheetMinSize, // Thu nhỏ tối đa → gần như chỉ thấy map
+                  maxChildSize:
+                      _sheetMaxSize, // Mở rộng tối đa → che gần hết map
                   snap: true,
-                  snapSizes: const [0.12, 0.45, 0.85],
+                  snapSizes: _sheetSnapSizes,
                   builder: (context, sheetScrollController) {
                     return Container(
                       decoration: BoxDecoration(
@@ -3388,46 +3465,54 @@ class _ItineraryDetailView extends StatelessWidget {
                       child: Column(
                         children: [
                           // Thanh kéo (drag handle) + nút refresh
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 4),
-                            child: Row(
-                              children: [
-                                const SizedBox(width: 48),
-                                Expanded(
-                                  child: Center(
-                                    child: Container(
-                                      width: 40,
-                                      height: 4,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.premiumBorder,
-                                        borderRadius: BorderRadius.circular(2),
+                          GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onVerticalDragUpdate: (details) =>
+                                _onSheetHandleDragUpdate(details, context),
+                            onVerticalDragEnd: _onSheetHandleDragEnd,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 8, bottom: 4),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 48),
+                                  Expanded(
+                                    child: Center(
+                                      child: Container(
+                                        width: 40,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.premiumBorder,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                SizedBox(
-                                  width: 48,
-                                  child: isRefreshing
-                                      ? const Center(
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
+                                  SizedBox(
+                                    width: 48,
+                                    child: isRefreshing
+                                        ? const Center(
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
                                             ),
+                                          )
+                                        : IconButton(
+                                            icon: const Icon(
+                                              Icons.refresh_rounded,
+                                              size: 20,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            onPressed: onRefreshTap,
+                                            color: AppColors.premiumMuted,
                                           ),
-                                        )
-                                      : IconButton(
-                                          icon: const Icon(
-                                            Icons.refresh_rounded,
-                                            size: 20,
-                                          ),
-                                          padding: EdgeInsets.zero,
-                                          onPressed: onRefreshTap,
-                                          color: AppColors.premiumMuted,
-                                        ),
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           // Nội dung cuộn được
