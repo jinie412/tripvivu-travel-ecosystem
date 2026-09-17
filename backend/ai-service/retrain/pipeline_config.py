@@ -1,10 +1,4 @@
-"""Cấu hình chung cho retrain pipeline.
 
-Đọc biến môi trường từ `ai-service/.env` (cùng file mà service đang dùng) —
-KHÔNG import code của ai-service để pipeline độc lập hoàn toàn với service
-đang chạy. Có thể override bằng biến môi trường thật hoặc file
-`retrain/.env.retrain` (ưu tiên cao hơn .env của service).
-"""
 
 from __future__ import annotations
 

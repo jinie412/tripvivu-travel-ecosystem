@@ -1,16 +1,4 @@
-"""
-two_tower_training.py
 
-FastAPI endpoint cho Phase 1 "Admin trigger retrain" (docs/trigger/02-target-architecture.md):
-- POST /prepare-dataset: chạy scripts/export_training_data.py::run_export() qua run_in_executor,
-  upload lên R2, trả về manifest — NestJS ghi vào ai_config.training_datasets.
-- POST /reload: hot-reload Two-Tower đang serving sau khi admin bấm "Kích hoạt" 1 model_version
-  mới (KHÔNG train ở đây — train chạy trên Modal GPU, xem ai-service/modal_training/).
-
-Việc trigger job GPU trên Modal do NestJS gọi thẳng (không qua ai-service) — ai-service chỉ chịu
-trách nhiệm phần cần chạy Python/pandas/TensorFlow (export dữ liệu, build + swap model mới), theo
-đúng khuôn mẫu app/api/v1/endpoints/session_cf_training.py (run_in_executor, không block event loop).
-"""
 from __future__ import annotations
 
 import asyncio
@@ -102,9 +90,7 @@ def _run_kaggle_trigger_sync(request: TrainRequest) -> dict:
     summary="Spawn job GPU train Two-Tower that (Modal hoac Kaggle, xem TRAINING_BACKEND)",
 )
 async def train(request: TrainRequest) -> TrainResponse:
-    """Backend GPU train duoc chon qua settings.training_backend ("modal" | "kaggle") --
-    docs/trigger/09-migrate-modal-to-kaggle.md. Ca 2 nhanh deu tu goi lai webhook
-    training-callback (NestJS) khi train xong, khong can NestJS biet dang chay o dau."""
+   
     from app.core.config import settings
 
     if settings.training_backend == "kaggle":
@@ -115,10 +101,7 @@ async def train(request: TrainRequest) -> TrainResponse:
                        "xem docs/trigger/09-migrate-modal-to-kaggle.md muc 3.",
             )
         try:
-            # Khac Modal (chi goi HTTP, vai tram ms): goi Kaggle CLI (subprocess, co ghi file +
-            # upload) cham hon dang ke (vai giay toi vai chuc giay) -- can run_in_executor, giong
-            # pattern prepare_dataset()/reload trong cung file, khong dung nhanh "khong executor"
-            # cua Modal ben duoi.
+           
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, _run_kaggle_trigger_sync, request)
             return TrainResponse(**result)
@@ -126,7 +109,7 @@ async def train(request: TrainRequest) -> TrainResponse:
             logger.error(f"[endpoint] Two-Tower train (Kaggle trigger) failed: {exc}", exc_info=True)
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    # nhanh Modal cu -- giu nguyen khong doi (xem muc 11, rollback)
+    
     if not settings.modal_trigger_training_url or not settings.modal_trigger_secret:
         raise HTTPException(
             status_code=500,
@@ -158,8 +141,7 @@ async def train(request: TrainRequest) -> TrainResponse:
 
 
 def _run_reload_sync(request: ReloadRequest) -> None:
-    """Tải weights/vocab mới vào thư mục staging riêng (KHÔNG ghi đè file đang dùng), build model
-    mới, chỉ swap nếu build thành công — xem app/api/deps.py::reload_two_tower()."""
+  
     from app.api.deps import reload_two_tower
 
     reload_two_tower(request.weights_r2_key, request.vocab_r2_key)

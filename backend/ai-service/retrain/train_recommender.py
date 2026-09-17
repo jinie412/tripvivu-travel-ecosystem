@@ -1,19 +1,3 @@
-"""Bước 2 — Train recommender, port trung thực từ ETL_CaNhan_2/Offline_recommender.ipynb.
-
-Input : retrain/output/data/ (Places.csv + bộ rating_matrix_foody.*) — do export_training_data.py sinh.
-Output: retrain/output/recommender_artifacts/ — đúng bộ file HybridRecommender.REQUIRED_ARTIFACTS:
-    serve_manifest.json, cf_user_factors.npy, cf_item_factors.npy,
-    cf_user_bias.npy, cf_item_bias.npy, cf_user_ids.csv, cf_item_ids.csv,
-    cf_city_to_item_idx.pkl, cb_lookup_foody_rich.pkl
-    (+ cf_item_latlon.npy, content_embeddings_foody_rich.npy, embedding_model_foody_rich.txt)
-
-Khác biệt có chủ đích so với notebook:
-- GridSearchCV chỉ chạy khi có cờ --grid-search HOẶC không tìm được best_svd_params
-  của lần train trước (grid search 24 tổ hợp × 3 fold quá nặng để chạy hàng đêm).
-- Luôn encode lại embedding (không cache) vì tập địa điểm thay đổi là lý do chạy pipeline.
-- Ghi thêm metrics (val/test RMSE) + data_snapshot vào serve_manifest.json để
-  retrain_pipeline.py làm quality gate và phát hiện thay đổi lần sau.
-"""
 
 from __future__ import annotations
 
@@ -50,9 +34,7 @@ CB_LOOKUP_FILE = "cb_lookup_foody_rich.pkl"
 CB_LOOKUP_SIGNATURE_FILE = "cb_lookup_signature.txt"
 EMB_MODEL_FILE = "embedding_model_foody_rich.txt"
 
-# Retraining uses SentenceTransformer through PyTorch only. Some local environments
-# also contain Keras 3; allowing transformers to auto-detect TensorFlow then raises
-# an unnecessary tf-keras compatibility error before SentenceTransformer can load.
+
 os.environ.setdefault("USE_TF", "0")
 os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
 
@@ -409,16 +391,7 @@ def evaluate_content_based_f1(
     k: int = CB_EVAL_K,
     relevance_threshold: float = CB_RELEVANCE_THRESHOLD,
 ) -> dict:
-    """Evaluate item-to-item CB as a Top-K recommender on held-out positives.
-
-    A user's positively-rated training items are used as content seeds. Candidate
-    items receive reciprocal-rank votes from each seed's precomputed CB neighbour
-    list; all training interactions are excluded. Relevance is defined only from
-    held-out explicit ratings, so no test interaction leaks into recommendation.
-
-    The reported F1 is micro-averaged across evaluable users, which weights every
-    recommended/relevant item equally and remains well-defined for sparse users.
-    """
+  
     with open(OUTPUT_ARTIFACT_DIR / CB_LOOKUP_FILE, "rb") as f:
         cb_lookup: dict[str, list[str]] = pickle.load(f)
 
@@ -507,12 +480,7 @@ def evaluate_content_based_f1(
 
 
 def train_activity_cf(places: pd.DataFrame, params: dict) -> dict | None:
-    """Train an independent CF model from the implicit activity matrix.
-
-    The exporter has already aggregated, decayed and mapped log strength into
-    [0.5, 5]. Keeping a separate model prevents views/clicks from changing the
-    meaning of explicit ratings.
-    """
+   
     from surprise import SVD, Dataset, Reader
 
     required = (

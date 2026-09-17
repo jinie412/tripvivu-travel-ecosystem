@@ -1,9 +1,3 @@
-"""One-time uploader: Google Drive (Colab mounted path) -> Cloudflare R2.
-
-Example on Colab after drive.mount('/content/drive'):
-  python retrain/upload_base_matrix_to_r2.py \
-    --source-dir "/content/drive/MyDrive/Recommender System"
-"""
 
 from __future__ import annotations
 

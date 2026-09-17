@@ -53,13 +53,13 @@ void main() async {
   }
   await initDependencies();
 
-  // ✅ KHỞI TẠO MAPBOX SDK
-  // Lưu ý: Mapbox v2 bắt buộc dùng Mapbox Public Token (pk...) để khởi động engine.
-  // Goong Key sẽ được dùng riêng trong Style URL ở các Widget.
   if (!kIsWeb) {
-    String mapboxPublicToken =
-        dotenv.env['MAPBOX_PUBLIC_TOKEN'] ??
-        'pk.eyJ1IjoibWFwdHJhdmVsNjgiLCJhIjoiY21vbmpkdXh4MDF0YTJxczlhMzQ3ZzF1cSJ9.gC1J7jzlMnFD_yHe-4JgqQ';
+    String mapboxPublicToken = dotenv.env['MAPBOX_PUBLIC_TOKEN'] ?? '';
+    
+    if (mapboxPublicToken.isEmpty) {
+      throw Exception('Lỗi: Không tìm thấy MAPBOX_PUBLIC_TOKEN trong file .env');
+    }
+    
     MapboxOptions.setAccessToken(mapboxPublicToken);
   }
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);

@@ -43,15 +43,7 @@ router = APIRouter(prefix="/itinerary", tags=["Itinerary Optimizer"])
     ),
 )
 async def optimize_itinerary(request: OptimizeRequest) -> OptimizeResponse:
-    """
-    Tối ưu sắp xếp thứ tự và thời gian các hoạt động trong một ngày.
-
-    Luồng xử lý:
-    1. Nhận OptimizeRequest từ NestJS
-    2. Gọi optimizer.optimize_day_schedule()
-    3. Trả về OptimizeResponse với lịch đã sắp xếp
-    NestJS nhận kết quả và cập nhật vào bảng itinerary_details trên Supabase.
-    """
+   
     logger.info(
         f"[/optimize] Bắt đầu tối ưu: itinerary_id={request.itinerary_id}, "
         f"visit_date={request.visit_date}, "

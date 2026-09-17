@@ -1,10 +1,4 @@
-# Đăng ký Windows Task Scheduler chạy retrain pipeline 02:00 mỗi ngày.
-# Chạy PowerShell với quyền Administrator:
-#   powershell -ExecutionPolicy Bypass -File register_task.ps1
-# Tùy chọn:
-#   -Time "03:30"          giờ chạy khác
-#   -PythonExe "C:\...\python.exe"   python cụ thể (mặc định: python trong PATH)
-#   -Unregister            gỡ task
+
 
 param(
     [string]$Time = "02:00",

@@ -1,17 +1,3 @@
-"""Colab retrain pipeline.
-
-This wrapper runs the existing retrain pipeline with all state/output folders
-stored on Google Drive instead of the local repository. It is intended for
-Colab Pro runs:
-
-    python colab_retrain_pipeline.py --force --dry-run
-    python colab_retrain_pipeline.py --force
-
-Required env:
-    COLAB_RETRAIN_DRIVE_ROOT=/content/drive/MyDrive/GP-Retrain
-    SUPABASE_URL, SUPABASE_KEY
-    R2_ENDPOINT_URL, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
-"""
 
 from __future__ import annotations
 
@@ -37,8 +23,6 @@ def _patch_paths(drive_root: Path) -> None:
     cfgmod.STATE_FILE = cfgmod.STATE_DIR / "retrain_state.json"
     cfgmod.TOURIST_MAP_FILE = cfgmod.STATE_DIR / "tourist_user_map.csv"
 
-    # Modules imported after this point receive the patched objects because
-    # they import names from pipeline_config at import time.
 
 
 def _ensure_drive_layout(drive_root: Path) -> None:

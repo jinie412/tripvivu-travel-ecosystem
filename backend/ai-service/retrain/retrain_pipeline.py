@@ -1,21 +1,4 @@
-"""Điều phối retrain tự động — chạy định kỳ (Task Scheduler / cron).
 
-Luồng:
-    1. Phát hiện thay đổi   — so số places + reviews trên Supabase với lần chạy trước
-                              (không có gì mới → thoát sau vài giây, không train vô ích)
-    2. Export               — export_training_data.py (Places.csv + rating matrix mới)
-    3. Train                — train_recommender.py (artifact mới trong retrain/output/)
-    4. Quality gate         — test RMSE mới không được xấu hơn bản cũ quá RETRAIN_RMSE_TOLERANCE
-    5. Deploy               — backup bản cũ → copy artifact vào thư mục local của ai-service
-                              → upload R2 (nếu cấu hình) → xóa cache để service tải bản mới
-    6. Restart (tùy chọn)   — chạy RETRAIN_RESTART_CMD nếu được cấu hình
-
-Cách chạy:
-    python retrain_pipeline.py              # chạy bình thường (có phát hiện thay đổi)
-    python retrain_pipeline.py --force      # bỏ qua phát hiện thay đổi, train luôn
-    python retrain_pipeline.py --grid-search  # kèm tìm siêu tham số (chạy thưa, vd mỗi tháng)
-    python retrain_pipeline.py --dry-run    # làm hết nhưng KHÔNG deploy (để kiểm tra)
-"""
 
 from __future__ import annotations
 
@@ -38,7 +21,7 @@ from pipeline_config import (
     load_env,
 )
 
-# File data mà ai-service cần lúc serve (đồng bộ lên R2 prefix data/)
+
 DATA_FILES = [
     "Places.csv",
     "rating_matrix_foody.npz",
@@ -60,7 +43,6 @@ def log(msg: str) -> None:
         f.write(line + "\n")
 
 
-# ────────────────────── 1. Phát hiện thay đổi ──────────────────────
 
 def fetch_db_counts(cfg) -> dict:
     from supabase import create_client
@@ -127,7 +109,7 @@ def save_state(state: dict) -> None:
     )
 
 
-# ────────────────────── 4. Quality gate ──────────────────────
+
 
 def find_current_manifest(cfg) -> Path | None:
     """Manifest của bản đang chạy: ưu tiên cache R2, fallback thư mục local."""
@@ -168,7 +150,7 @@ def quality_gate(cfg, current_manifest: Path | None) -> None:
     log(f"Quality gate OK: test_rmse {old_rmse:.4f} → {new_rmse:.4f}")
 
 
-# ────────────────────── 5. Deploy ──────────────────────
+
 
 def _copy_tree_files(src: Path, dst: Path, names: list[str] | None = None) -> None:
     dst.mkdir(parents=True, exist_ok=True)
@@ -244,7 +226,7 @@ def deploy_r2(cfg) -> None:
             key = prefix + f.name
             log(f"⬆ Upload r2://{bucket}/{key} ({f.stat().st_size / 1024 / 1024:.1f} MB)")
             client.upload_file(str(f), bucket, key)
-    # Map UUID -> id số: ship kèm artifact để serving resolve user thật (nhánh CF)
+   
     if TOURIST_MAP_FILE.is_file():
         key = "recommender_artifacts/" + TOURIST_MAP_FILE.name
         log(f"⬆ Upload r2://{bucket}/{key}")
@@ -253,8 +235,7 @@ def deploy_r2(cfg) -> None:
         log(f"{TOURIST_MAP_FILE.name} chưa có — user thật (UUID) sẽ không có nhánh CF")
     log("Upload R2 hoàn tất")
 
-    # Xóa cache local của service: r2_downloader chỉ so SIZE, file .npy cùng
-    # shape sẽ cùng size → nếu không xóa, service restart vẫn dùng bản cũ.
+   
     cache = Path(cfg["artifact_cache_dir"])
     for sub in ("recommender_artifacts", "data"):
         target = cache / sub
@@ -279,7 +260,6 @@ def restart_service(cfg) -> None:
         log("Restart OK")
 
 
-# ────────────────────── Main ──────────────────────
 
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -292,20 +272,20 @@ def main() -> None:
     cfg = load_env()
     log("═══ Retrain pipeline bắt đầu ═══")
 
-    # 1. Phát hiện thay đổi
+
     state = load_state()
     counts = fetch_db_counts(cfg)
     if not args.force and not has_changes(counts, state):
         log("Không có địa điểm/review mới — kết thúc, không train.")
         return
 
-    # 2. Export
+   
     log("── Bước export ──")
     import export_training_data
 
     export_training_data.main()
 
-    # 3. Train
+
     log("── Bước train ──")
     import train_recommender
 
@@ -314,20 +294,20 @@ def main() -> None:
         grid_search=args.grid_search, prev_manifest=current_manifest
     )
 
-    # 4. Quality gate
+    
     quality_gate(cfg, current_manifest)
 
     if args.dry_run:
         log(f"--dry-run: artifact mới nằm ở {OUTPUT_ARTIFACT_DIR}, KHÔNG deploy.")
         return
 
-    # 5. Deploy
+   
     log("── Bước deploy ──")
     backup_current(cfg)
     deploy_local(cfg)
     deploy_r2(cfg)
 
-    # 6. Restart
+   
     restart_service(cfg)
 
     state["db_counts"] = counts
