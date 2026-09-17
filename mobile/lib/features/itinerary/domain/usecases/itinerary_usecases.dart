@@ -1,0 +1,203 @@
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+
+/// UseCase: Lấy danh sách lịch trình (có thể lọc theo status).
+class GetItinerariesUseCase {
+  final ItineraryRepository _repository;
+  GetItinerariesUseCase(this._repository);
+
+  Future<List<ItineraryEntity>> call({ItineraryStatus? status, String? query}) {
+    return _repository.getItineraries(status: status, query: query);
+  }
+}
+
+/// UseCase: Lấy thống kê tổng quan.
+class GetItinerarySummaryUseCase {
+  final ItineraryRepository _repository;
+  GetItinerarySummaryUseCase(this._repository);
+
+  Future<ItinerarySummary> call() {
+    return _repository.getSummary();
+  }
+}
+
+/// UseCase: Xóa một lịch trình.
+class DeleteItineraryUseCase {
+  final ItineraryRepository _repository;
+  DeleteItineraryUseCase(this._repository);
+
+  Future<void> call(String id) {
+    return _repository.deleteItinerary(id);
+  }
+}
+
+/// UseCase: Lấy chi tiết lịch trình.
+class GetItineraryDetailUseCase {
+  final ItineraryRepository _repository;
+  GetItineraryDetailUseCase(this._repository);
+
+  Future<ItineraryDetailEntity> call(String id) {
+    return _repository.getItineraryDetail(id);
+  }
+}
+
+/// UseCase: Cập nhật hoạt động/mốc thời gian của lịch trình.
+class UpdateItineraryActivitiesUseCase {
+  final ItineraryRepository _repository;
+  UpdateItineraryActivitiesUseCase(this._repository);
+
+  Future<void> call(String id, List<ItineraryDayEntity> days) {
+    return _repository.updateItineraryActivities(id, days);
+  }
+}
+
+/// UseCase: Bật/tắt chế độ công khai.
+class ToggleVisibilityUseCase {
+  final ItineraryRepository _repository;
+  ToggleVisibilityUseCase(this._repository);
+
+  Future<void> call(String id, bool isPublic) {
+    return _repository.toggleVisibility(id, isPublic);
+  }
+}
+
+/// UseCase: Gửi lời mời chia sẻ lịch trình bằng email hoặc số điện thoại.
+class ShareItineraryUseCase {
+  final ItineraryRepository _repository;
+  ShareItineraryUseCase(this._repository);
+
+  Future<void> call(String id, String recipient) {
+    return _repository.shareItinerary(id, recipient);
+  }
+}
+
+/// UseCase: Tạo link chia sẻ lịch trình để gửi qua mạng xã hội.
+class SearchItineraryShareRecipientsUseCase {
+  final ItineraryRepository _repository;
+  SearchItineraryShareRecipientsUseCase(this._repository);
+
+  Future<List<ItineraryShareRecipient>> call(String query) {
+    return _repository.searchShareRecipients(query);
+  }
+}
+
+class CreateItineraryShareLinkUseCase {
+  final ItineraryRepository _repository;
+  CreateItineraryShareLinkUseCase(this._repository);
+
+  Future<ItineraryShareLink> call(String id) {
+    return _repository.createShareLink(id);
+  }
+}
+
+/// UseCase: Cập nhật tiêu đề/tên lịch trình.
+class UpdateItineraryTitleUseCase {
+  final ItineraryRepository _repository;
+  UpdateItineraryTitleUseCase(this._repository);
+
+  Future<void> call(String id, String title) {
+    return _repository.updateItineraryTitle(id, title);
+  }
+}
+
+/// UseCase: Cập nhật thông tin một hoạt động.
+class UpdateActivityUseCase {
+  final ItineraryRepository _repository;
+  UpdateActivityUseCase(this._repository);
+
+  Future<void> call(
+    String itineraryId,
+    String activityId, {
+    String? arrivalTime,
+    String? departureTime,
+    double? actualCost,
+    String? userNotes,
+    bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
+  }) {
+    return _repository.updateActivity(
+      itineraryId,
+      activityId,
+      arrivalTime: arrivalTime,
+      departureTime: departureTime,
+      actualCost: actualCost,
+      userNotes: userNotes,
+      isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+    );
+  }
+}
+
+/// UseCase: Xóa một hoạt động khỏi lịch trình.
+class DeleteActivityUseCase {
+  final ItineraryRepository _repository;
+  DeleteActivityUseCase(this._repository);
+
+  Future<void> call(String itineraryId, String activityId) {
+    return _repository.deleteActivity(itineraryId, activityId);
+  }
+}
+
+/// UseCase: Thêm một địa điểm mới vào lịch trình
+class AddActivityUseCase {
+  final ItineraryRepository _repository;
+  AddActivityUseCase(this._repository);
+
+  Future<CustomizeActivityResponseModel> call(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
+  }) {
+    return _repository.addActivityToItinerary(
+      itineraryId,
+      dayNumber,
+      placeId,
+      preferredTime: preferredTime,
+      isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+      addExtraDay: addExtraDay,
+    );
+  }
+}
+
+/// UseCase: Tối ưu hoá cục bộ một ngày (không lưu DB).
+class OptimizeDayUseCase {
+  final ItineraryRepository _repository;
+  OptimizeDayUseCase(this._repository);
+
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
+  call(String itineraryId, Map<String, dynamic> payload) {
+    return _repository.optimizeDay(itineraryId, payload);
+  }
+}
+
+/// UseCase: Thay thế một địa điểm bằng địa điểm khác
+class ReplaceActivityUseCase {
+  final ItineraryRepository _repository;
+  ReplaceActivityUseCase(this._repository);
+
+  Future<CustomizeActivityResponseModel> call(
+    String itineraryId,
+    String activityId,
+    String newPlaceId,
+  ) {
+    return _repository.replaceActivityInItinerary(
+      itineraryId,
+      activityId,
+      newPlaceId,
+    );
+  }
+}

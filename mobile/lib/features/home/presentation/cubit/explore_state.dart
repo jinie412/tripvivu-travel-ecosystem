@@ -1,0 +1,64 @@
+import 'package:equatable/equatable.dart';
+
+import 'package:travel_advisor_mobile/features/city_detail/domain/entities/city_entities.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/destination.dart';
+import 'package:travel_advisor_mobile/features/home/domain/entities/trip_suggestion.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+
+abstract class ExploreState extends Equatable {
+  const ExploreState();
+  @override
+  List<Object?> get props => [];
+}
+
+class ExploreInitial extends ExploreState {
+  const ExploreInitial();
+}
+
+class ExploreLoading extends ExploreState {
+  const ExploreLoading();
+}
+
+class ExploreLoaded extends ExploreState {
+  final List<TripSuggestion> suggestions;
+  final List<Destination> destinations;
+  final List<CityHotel> hotels;
+  final List<CityRestaurant> restaurants;
+  final List<TripSuggestion> allSuggestions;
+  final List<Destination> allDestinations;
+  final List<CityHotel> allHotels;
+  final List<CityRestaurant> allRestaurants;
+  final ItineraryEntity? currentItinerary;
+
+  const ExploreLoaded({
+    required this.suggestions,
+    required this.destinations,
+    required this.hotels,
+    required this.restaurants,
+    required this.allSuggestions,
+    required this.allDestinations,
+    required this.allHotels,
+    required this.allRestaurants,
+    this.currentItinerary,
+  });
+
+  @override
+  List<Object?> get props => [
+    suggestions,
+    destinations,
+    hotels,
+    restaurants,
+    allSuggestions,
+    allDestinations,
+    allHotels,
+    allRestaurants,
+    currentItinerary,
+  ];
+}
+
+class ExploreError extends ExploreState {
+  final String message;
+  const ExploreError(this.message);
+  @override
+  List<Object?> get props => [message];
+}

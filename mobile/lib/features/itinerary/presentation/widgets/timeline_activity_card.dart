@@ -1,0 +1,1084 @@
+import 'package:flutter/material.dart';
+import 'package:travel_advisor_mobile/core/widgets/net_image.dart';
+
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/constants/app_text_styles.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/tracking/data/models/tracking_models.dart';
+import 'package:travel_advisor_mobile/core/utils/demo_review_store.dart';
+
+class TimelineActivityCard extends StatelessWidget {
+  final ItineraryActivityEntity activity;
+  final bool isFirst;
+  final bool isLast;
+  final VoidCallback? onAddTap;
+  final VoidCallback? onEditTap;
+  final VoidCallback? onDeleteTap;
+  final VoidCallback? onReplaceTap;
+  final VoidCallback? onCardTap;
+  final VoidCallback? onCardLongPress;
+  final VoidCallback? onViewDetailTap;
+  final VoidCallback? onStartTimeTap;
+  final VoidCallback? onEndTimeTap;
+  final VoidCallback? onRateTap;
+  final VoidCallback? onDirectionTap;
+  final int day;
+  final bool isHighlighted;
+  final bool isEditMode;
+  final bool isOpeningReview;
+  final String? nextTransportInfo;
+  final bool canReview;
+
+  /// Hoạt động tiếp theo là khách sạn cuối ngày (nhận phòng sau khi kết thúc
+  /// hoạt động) — không có dữ liệu di chuyển thật tới đó (chỉ là điểm gắn
+  /// thêm, không qua tính toán tuyến đường), nên KHÔNG hiện thời gian di
+  /// chuyển/giờ đến ước lượng, chỉ ghi đơn giản "Quay về khách sạn".
+  final bool nextIsHotel;
+
+  /// Trạng thái theo dõi của địa điểm này (null = tracking chưa bật).
+  final TrackingPlaceStatus? trackingStatus;
+
+  /// Callback check-in thủ công "Tôi đã đến" khi tracking active.
+  final VoidCallback? onCheckIn;
+
+  /// Đang xử lý check-in (hiện loading spinner thay nút).
+  final bool isCheckingIn;
+
+  /// Trạng thái review từ backend: true=đã review, false=chưa, null=chưa load.
+  final bool? hasReview;
+
+  /// Đã ghé địa điểm này theo dữ liệu backend (geofence_visits).
+  final bool backendIsVisited;
+
+  /// Tổng chi phí phát sinh (mục 1.6) đã ghi nhận cho địa điểm này, nếu có.
+  final double? extraCost;
+
+  /// Bấm vào badge chi phí phát sinh → nhảy sang "Quản lý chi phí" (Sổ chi
+  /// tiêu) đã lọc sẵn theo địa điểm này. Null = không tappable (badge tĩnh).
+  final VoidCallback? onExtraCostTap;
+
+  const TimelineActivityCard({
+    super.key,
+    required this.activity,
+    this.isFirst = false,
+    this.isLast = false,
+    this.onAddTap,
+    this.onEditTap,
+    this.onDeleteTap,
+    this.onReplaceTap,
+    this.onCardTap,
+    this.onCardLongPress,
+    this.onViewDetailTap,
+    this.onStartTimeTap,
+    this.onEndTimeTap,
+    this.onRateTap,
+    this.onDirectionTap,
+    required this.day,
+    this.isHighlighted = false,
+    this.isEditMode = false,
+    this.isOpeningReview = false,
+    this.nextTransportInfo,
+    this.canReview = true,
+    this.nextIsHotel = false,
+    this.trackingStatus,
+    this.onCheckIn,
+    this.isCheckingIn = false,
+    this.hasReview,
+    this.backendIsVisited = false,
+    this.extraCost,
+    this.onExtraCostTap,
+  });
+
+  String _formatReviewCount(int? count) {
+    if (count == null) return '0';
+    if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')}k';
+    }
+    return count.toString();
+  }
+
+  String _formatPrice(double price) {
+    if (price >= 1_000_000) {
+      final m = price / 1_000_000;
+      return '${m == m.truncate() ? m.toInt() : m.toStringAsFixed(1)}M₫';
+    }
+    if (price >= 1_000) {
+      return '${(price / 1_000).truncate()}k₫';
+    }
+    return '${price.toInt()}₫';
+  }
+
+  String _priceWithScope() => '${_formatPrice(activity.price)}/người lớn';
+
+  String _durationLabel() {
+    if (_isAccommodationStart) {
+      // isLast: mục "2. Transition Item" ngay phía trên đã ghi "Quay về
+      // khách sạn" rồi, và bên trong _buildAccommodationCard cũng có nhãn
+      // "Quay về khách sạn" riêng — để trống ở đây tránh lặp lại 3 lần cùng
+      // 1 câu cho đúng 1 khách sạn.
+      return isLast ? '' : 'Nơi ở & điểm xuất phát';
+    }
+    final category = (activity.category ?? '').toLowerCase();
+    final activityLabel = category.contains('restaurant')
+        ? 'Bữa ăn'
+        : category.contains('cafe')
+        ? 'Nghỉ ngơi & đồ uống'
+        : category.contains('entertainment')
+        ? 'Vui chơi & giải trí'
+        : 'Tham quan';
+    List<int> parts(String t) => t.split(':').map(int.parse).toList();
+    try {
+      final s = parts(activity.startTime);
+      final e = parts(activity.endTime);
+      final mins = (e[0] * 60 + e[1]) - (s[0] * 60 + s[1]);
+      if (mins <= 0) return activityLabel;
+      if (mins < 60) return '$activityLabel trong $mins phút';
+      final h = mins ~/ 60;
+      final m = mins % 60;
+      if (m == 0) return '$activityLabel trong $h giờ';
+      return '$activityLabel trong $h giờ $m phút';
+    } catch (_) {
+      return activityLabel;
+    }
+  }
+
+  IconData get _activityIcon {
+    if (_isAccommodationStart) return Icons.hotel_rounded;
+    final category = (activity.category ?? '').toLowerCase();
+    if (category.contains('restaurant')) return Icons.restaurant_rounded;
+    if (category.contains('cafe')) return Icons.local_cafe_rounded;
+    if (category.contains('entertainment')) {
+      return Icons.local_activity_rounded;
+    }
+    return Icons.location_on;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 1. Activity Item — riêng khách sạn cuối ngày ("Quay về khách sạn"),
+        // ẩn luôn giờ hiển thị vì không phải giờ đến thật (chỉ nối tiếp giờ
+        // hoạt động trước, xem getItineraryDetail backend), hiện ra dễ hiểu
+        // lầm là giờ check-in chính xác.
+        _buildItem(
+          context,
+          time: activity.startTime,
+          label: _durationLabel(),
+          icon: _activityIcon,
+          content: _buildActivityCard(context),
+          showLine: true,
+          editsStartTime: true,
+          isCompleted:
+              activity.status == ActivityStatus.daDi ||
+              trackingStatus?.status == VisitStatus.visited ||
+              backendIsVisited,
+          isEditMode: isEditMode,
+          showTime: !(_isAccommodationStart && isLast),
+        ),
+
+        // 2. Transition Item — BỎ HẲN khi hoạt động kế tiếp là khách sạn
+        // cuối ngày: không có tuyến đường/thời gian di chuyển thật để hiện,
+        // và card khách sạn ngay sau đây (item "1" của activity kế tiếp) đã
+        // tự có icon + nhãn "Quay về khách sạn" riêng rồi — thêm 1 dòng
+        // chuyển tiếp nữa chỉ tạo ra 2 icon + 2 chữ trùng lặp cho đúng 1
+        // khách sạn. Đường kẻ nối (showLine) vẫn liền mạch nhờ item "1" phía
+        // trên đã có showLine: true.
+        if (!isLast && !nextIsHotel)
+          _buildItem(
+            context,
+            time: activity.endTime,
+            label: 'Di chuyển đến điểm tiếp theo',
+            icon: Icons.directions_car,
+            content: _buildTransitionChip(),
+            showLine: true,
+            editsStartTime: false,
+            isTransition: true,
+            isEditMode: isEditMode,
+          ),
+
+        // 3. End Marker (last activity only) — cùng lý do ở Activity Item
+        // phía trên: nếu hoạt động cuối là khách sạn, ẩn giờ (endTime ==
+        // startTime vì duration=0, không phải giờ kết thúc thật).
+        if (isLast)
+          _buildItem(
+            context,
+            time: activity.endTime,
+            label: 'Kết thúc hành trình',
+            icon: Icons.flag_rounded,
+            content: const SizedBox.shrink(),
+            showLine: false,
+            editsStartTime: false,
+            isTransition: true,
+            isEditMode: isEditMode,
+            showTime: !_isAccommodationStart,
+          ),
+      ],
+    );
+  }
+
+  bool get _isAccommodationStart {
+    final category = (activity.category ?? '').toLowerCase();
+    final isAccommodation =
+        category.contains('lưu trú') ||
+        category.contains('luu tru') ||
+        category.contains('khách sạn') ||
+        category.contains('khach san') ||
+        category.contains('hotel');
+    return isAccommodation && activity.startTime == activity.endTime;
+  }
+
+  Widget _buildItem(
+    BuildContext context, {
+    required String time,
+    required String label,
+    required IconData icon,
+    required Widget content,
+    required bool showLine,
+    required bool editsStartTime,
+    bool isTransition = false,
+    bool isCompleted = false,
+    bool isEditMode = false,
+    bool showTime = true,
+  }) {
+    String formatTime(String t) {
+      if (t.length >= 5) {
+        return t.substring(0, 5);
+      }
+      return t;
+    }
+
+    final formattedTime = formatTime(time);
+    final isAccommodationStart = _isAccommodationStart;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Timeline Indicator
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 50),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!showTime)
+                  const SizedBox.shrink()
+                else if (isEditMode)
+                  InkWell(
+                    onTap: editsStartTime ? onStartTimeTap : onEndTimeTap,
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        formattedTime,
+                        style: AppTextStylesExt.bodySmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          decoration: TextDecoration.underline,
+                          decorationStyle: TextDecorationStyle.dashed,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      formattedTime,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: AppSizes.s8),
+                isCompleted
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 5,
+                        ), // padding 5 + size 20 = 30 height
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: AppColorsExt.success,
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColorsExt.profileBlue.withAlpha(25),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 18,
+                          color: AppColorsExt.profileBlue,
+                        ),
+                      ),
+                if (showLine)
+                  Expanded(
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(2, double.infinity),
+                        painter: _DashedLinePainter(),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(height: AppSizes.s24),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.s12),
+          // Content Area
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: isTransition ? AppSizes.s12 : AppSizes.s8,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: AppTextStylesExt.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isEditMode && !isTransition && !isAccommodationStart)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _smallEditAction(
+                              Icons.swap_horiz_rounded,
+                              const Color(0xFFF59E0B),
+                              onReplaceTap,
+                            ),
+                            const SizedBox(width: 6),
+                            _smallEditAction(
+                              Icons.delete_outline_rounded,
+                              const Color(0xFFEF4444),
+                              onDeleteTap,
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.s8),
+                  content,
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _isVisited =>
+      activity.status == ActivityStatus.daDi ||
+      trackingStatus?.status == VisitStatus.visited ||
+      backendIsVisited;
+
+  Widget _buildActivityCard(BuildContext context) {
+    if (_isAccommodationStart) {
+      return _buildAccommodationCard(context);
+    }
+
+    // 🔧 DEMO SYNC: Check if user has rated this in current session
+    final double? userRating = DemoReviewStore.getLocationRating(activity.id);
+    final bool hasUserRated = userRating != null;
+
+    return InkWell(
+      onTap: onCardTap,
+      onLongPress: onCardLongPress,
+      borderRadius: BorderRadius.circular(AppSizes.r16),
+      child: Container(
+        padding: const EdgeInsets.only(right: AppSizes.s8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+          border: Border.all(
+            color: isHighlighted
+                ? AppColors.primary
+                : AppColorsExt.divider.withAlpha(40),
+            width: isHighlighted ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            NetImage(
+              url: activity.imageUrl,
+              width: 82,
+              height: 104,
+              borderRadius: AppSizes.r16,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(width: AppSizes.s12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSizes.s8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            activity.title,
+                            style: AppTextStyles.heading2.copyWith(
+                              fontSize: 14,
+                              color: AppColorsExt.textDark,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      activity.address,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFC107),
+                              size: 13,
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                '${activity.rating?.toStringAsFixed(1) ?? "0.0"} (${_formatReviewCount(activity.reviewCount)})',
+                                style: AppTextStylesExt.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (activity.price > 0) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.local_activity_outlined,
+                                size: 12,
+                                color: Color(0xFF6366F1),
+                              ),
+                              const SizedBox(width: 3),
+                              Flexible(
+                                child: Text(
+                                  _priceWithScope(),
+                                  style: AppTextStylesExt.bodySmall.copyWith(
+                                    color: const Color(0xFF6366F1),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else if (activity.isFree) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Miễn phí',
+                            style: AppTextStylesExt.bodySmall.copyWith(
+                              color: const Color(0xFF10B981),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (extraCost != null && extraCost! > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: GestureDetector(
+                                onTap: onExtraCostTap,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFFF59E0B,
+                                    ).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.add_circle_outline,
+                                        size: 11,
+                                        color: Color(0xFFF59E0B),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${_formatPrice(extraCost!)} phát sinh',
+                                        style: AppTextStylesExt.bodySmall
+                                            .copyWith(
+                                              color: const Color(0xFFF59E0B),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 10,
+                                            ),
+                                      ),
+                                      if (onExtraCostTap != null) ...[
+                                        const SizedBox(width: 2),
+                                        const Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 12,
+                                          color: Color(0xFFF59E0B),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                    // ── Tracking: badge "Đã ghé" hoặc nút "Tôi đã đến" ──────
+                    if (trackingStatus != null) ...[
+                      const SizedBox(height: AppSizes.s8),
+                      _buildTrackingRow(),
+                    ],
+                    const SizedBox(height: AppSizes.s8),
+                    _buildCardActions(hasUserRated, userRating),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardActions(bool hasUserRated, double? userRating) {
+    // Backend data takes precedence; fall back to demo store when not loaded.
+    final bool backendReviewed = hasReview == true;
+    final bool showAsReviewed = backendReviewed || hasUserRated;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _cardActionButton(
+          icon: Icons.open_in_new_rounded,
+          label: 'Xem chi tiết địa điểm',
+          color: const Color(0xFF2563EB),
+          onTap: onViewDetailTap ?? onCardLongPress,
+        ),
+        // Hiện nút khi đã ghé thăm hoặc đã có review từ backend
+        if (canReview && (_isVisited || backendReviewed)) ...[
+          const SizedBox(height: 6),
+          _cardActionButton(
+            icon: backendReviewed
+                ? Icons.visibility_rounded
+                : (showAsReviewed
+                      ? Icons.star_rounded
+                      : Icons.rate_review_rounded),
+            label: backendReviewed
+                ? 'Xem đánh giá'
+                : (showAsReviewed
+                      ? 'Đã đánh giá ${userRating?.toStringAsFixed(1) ?? ''}'
+                      : isOpeningReview
+                      ? 'Đang mở'
+                      : 'Đánh giá'),
+            color: const Color(0xFF10B981),
+            onTap: isOpeningReview ? null : onRateTap,
+            isLoading: isOpeningReview,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _cardActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.20)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLoading)
+              SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              )
+            else
+              Icon(icon, size: 13, color: color),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrackingRow() {
+    final status = trackingStatus!.status;
+    // Đã ghé theo BẤT KỲ nguồn nào (tracking state, backend geofence_visits,
+    // activity.status sau refresh) → hiện badge "Đã đến nơi", không hiện lại
+    // nút check-in "Tôi đã đến".
+    if (_isVisited) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 11,
+                  color: Color(0xFF10B981),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Đã đến nơi',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    if (status == VisitStatus.skipped) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE53935).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.remove_circle_outline,
+                  size: 11,
+                  color: Color(0xFFE53935),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Đã bỏ qua',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE53935),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    // notVisited → nút check-in thủ công
+    return GestureDetector(
+      onTap: isCheckingIn ? null : onCheckIn,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+          ),
+        ),
+        child: isCheckingIn
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: Color(0xFF2563EB),
+                ),
+              )
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 11,
+                    color: Color(0xFF2563EB),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Tôi đã đến',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildAccommodationCard(BuildContext context) {
+    return InkWell(
+      onTap: onCardTap,
+      borderRadius: BorderRadius.circular(AppSizes.r16),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.s16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.22)),
+        ),
+        // Không lặp lại icon khách sạn ở đây nữa — cột timeline bên trái
+        // (_activityIcon) đã hiện đúng icon này cho hàng này rồi, thêm 1
+        // icon khách sạn nữa trong card tạo cảm giác 2 icon cho cùng 1 chỗ.
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isLast ? 'Quay về khách sạn' : 'Nơi ở & xuất phát',
+                    style: AppTextStylesExt.bodySmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    activity.title,
+                    style: AppTextStyles.heading2.copyWith(
+                      fontSize: 15,
+                      color: AppColorsExt.textDark,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (activity.address.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      activity.address,
+                      style: AppTextStylesExt.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  // Không hiện banner note cho dòng khách sạn — notes ở đó
+                  // chỉ là chú thích nội bộ ("chi phí ước tính cho cả đoàn"),
+                  // không phải cảnh báo cần chú ý như "thiếu quán ăn trưa".
+                  if (activity.placeType != 'hotel' &&
+                      activity.notes != null &&
+                      activity.notes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFED7AA)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 14,
+                              color: Color(0xFFB45309),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                activity.notes!,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF9A3412),
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (extraCost != null && extraCost! > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: GestureDetector(
+                        onTap: onExtraCostTap,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFF59E0B,
+                            ).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.add_circle_outline,
+                                size: 11,
+                                color: Color(0xFFF59E0B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_formatPrice(extraCost!)} phát sinh',
+                                style: AppTextStylesExt.bodySmall.copyWith(
+                                  color: const Color(0xFFF59E0B),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              if (onExtraCostTap != null) ...[
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 12,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (onExtraCostTap != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSizes.s8),
+                      child: GestureDetector(
+                        onTap: onExtraCostTap,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: 13,
+                              color: AppColors.primary.withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Ghi chi phí phát sinh',
+                              style: AppTextStylesExt.bodySmall.copyWith(
+                                color: AppColors.primary.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Trước đây card khách sạn không có nút này (khác hẳn card
+                  // hoạt động thường) — bấm vào card chỉ zoom bản đồ tới vị
+                  // trí (onCardTap), không cách nào xem chi tiết địa điểm
+                  // khách sạn (ảnh, đánh giá, review...) như các nơi khác.
+                  const SizedBox(height: AppSizes.s8),
+                  _cardActionButton(
+                    icon: Icons.open_in_new_rounded,
+                    label: 'Xem chi tiết địa điểm',
+                    color: const Color(0xFF2563EB),
+                    onTap: onViewDetailTap ?? onCardLongPress,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _smallEditAction(IconData icon, Color color, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
+        ),
+        child: Icon(icon, size: 14, color: color),
+      ),
+    );
+  }
+
+  Widget _buildTransitionChip() {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.s16,
+        vertical: AppSizes.s8,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.r24),
+        border: Border.all(
+          color: onDirectionTap != null
+              ? AppColors.primary.withAlpha(80)
+              : AppColorsExt.divider.withAlpha(100),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              nextTransportInfo ?? '10-20 phút di chuyển',
+              style: AppTextStylesExt.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColorsExt.textDark,
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: AppSizes.s8),
+          Icon(
+            Icons.directions,
+            size: 16,
+            color: onDirectionTap != null
+                ? AppColors.primary
+                : AppColorsExt.textHint,
+          ),
+        ],
+      ),
+    );
+
+    if (onDirectionTap == null) return chip;
+
+    return GestureDetector(onTap: onDirectionTap, child: chip);
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    double dashHeight = 2, dashSpace = 4, startY = 2; // Small initial offset
+    final paint = Paint()
+      ..color = AppColorsExt.divider
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    while (startY < size.height) {
+      canvas.drawLine(Offset(0, startY), Offset(0, startY + dashHeight), paint);
+      startY += dashHeight + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}

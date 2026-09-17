@@ -1,0 +1,559 @@
+import 'package:travel_advisor_mobile/features/city_detail/data/models/city_models.dart';
+import 'package:travel_advisor_mobile/core/network/dio_client.dart';
+
+abstract class CityDetailDataSource {
+  Future<List<CityItineraryModel>> getItineraries(String cityId);
+  Future<List<CityActivityModel>> getActivities(String cityId);
+  Future<List<CityRestaurantModel>> getRestaurants(String cityId);
+  Future<List<CityHotelModel>> getHotels(String cityId);
+}
+
+class CityDetailMockDataSource implements CityDetailDataSource {
+  @override
+  Future<List<CityItineraryModel>> getItineraries(String cityId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      CityItineraryModel(
+        id: 'i1',
+        title: 'Khám phá Sài Gòn 3 ngày từ Quận 1 đến Chợ Lớn',
+        authorName: 'Minh Anh',
+        authorAvatar: 'https://i.pravatar.cc/150?u=minhanh',
+        imageUrl:
+            'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&q=80',
+        duration: '3 NGÀY',
+        views: '1.2k',
+        likes: '458',
+      ),
+      CityItineraryModel(
+        id: 'i2',
+        title: 'Food Tour Sài Gòn: 10 món phải thử trong 24h',
+        authorName: 'Linh Trần',
+        authorAvatar: 'https://i.pravatar.cc/150?u=linhtran',
+        imageUrl:
+            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
+        duration: '1 NGÀY',
+        views: '3.5k',
+        likes: '920',
+      ),
+      CityItineraryModel(
+        id: 'i3',
+        title: 'Di sản Sài Gòn: Hành trình qua những công trình cổ',
+        authorName: 'Hoàng Nam',
+        authorAvatar: 'https://i.pravatar.cc/150?u=hoangnam',
+        imageUrl:
+            'https://images.unsplash.com/photo-1596541223130-5d31a73fb6c6?w=800&q=80',
+        duration: '2 NGÀY',
+        views: '856',
+        likes: '124',
+      ),
+      CityItineraryModel(
+        id: 'i4',
+        title: 'Góc nhỏ Sài Gòn: Những quán cafe cực chill',
+        authorName: 'Quốc Bảo',
+        authorAvatar: 'https://i.pravatar.cc/150?u=quocbao',
+        imageUrl:
+            'https://cdn2.tuoitre.vn/471584752817336320/data/teen360/pictures/2018/11/28/1543423457_cafe-sg-81.jpg',
+        duration: '1 NGÀY',
+        views: '1.5k',
+        likes: '310',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<CityActivityModel>> getActivities(String cityId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      CityActivityModel(
+        id: 'a1',
+        name: 'Chợ Bến Thành',
+        imageUrl:
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Ben_Thanh_market_2.jpg/330px-Ben_Thanh_market_2.jpg',
+        rating: 4.5,
+        reviewCount: 1200,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a2',
+        name: 'Bưu điện Trung tâm',
+        imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2e/8c/e2/12/caption.jpg?w=900&h=500&s=1',
+        rating: 4.7,
+        reviewCount: 3500,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        isFavorite: true,
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a3',
+        name: 'Dinh Độc Lập',
+        imageUrl:
+            'https://ik.imagekit.io/tvlk/blog/2025/04/dinh-doc-lap.jpg?tr=q-70,c-at_max,w-1000,h-600',
+        rating: 4.6,
+        reviewCount: 2800,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đã đóng cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'paid',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a4',
+        name: 'Nhà thờ Đức Bà',
+        imageUrl:
+            'https://image.vietgoing.com/destination/large/vietgoing_mzh2503128324.webp',
+        rating: 4.4,
+        reviewCount: 1900,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'cultural_history',
+        priceType: 'free',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a5',
+        name: 'Thảo Cầm Viên',
+        imageUrl:
+            'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=500',
+        rating: 4.2,
+        reviewCount: 950,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'nature',
+        priceType: 'paid',
+        district: 'Quận 1',
+      ),
+      CityActivityModel(
+        id: 'a6',
+        name: 'Đầm Sen Park',
+        imageUrl:
+            'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=500',
+        rating: 4.0,
+        reviewCount: 680,
+        address: 'Quận 11, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        category: 'entertainment',
+        priceType: 'paid',
+        district: 'Quận 11',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<CityRestaurantModel>> getRestaurants(String cityId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      CityRestaurantModel(
+        id: 'r1',
+        name: 'Secret Garden Restaurant',
+        imageUrl:
+            'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1a/e5/d3/a8/the-rooftop-ambience.jpg?w=900&h=500&s=1',
+        rating: 4.8,
+        reviewCount: 1240,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'mid_range',
+        amenities: ['air_con'],
+      ),
+      CityRestaurantModel(
+        id: 'r2',
+        name: "Pizza 4P's Bến Thành",
+        imageUrl:
+            'https://doanhnhanplus.vn/wp-content/uploads/2018/05/DN-nha-hang-pizza-4P-Ben-Thanh-Tin-030518-21.jpg',
+        rating: 4.9,
+        reviewCount: 3500,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'foreign',
+        priceLevel: 'mid_range',
+        amenities: ['air_con', 'kid_friendly'],
+      ),
+      CityRestaurantModel(
+        id: 'r3',
+        name: 'Nha Hang Ngon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=500',
+        rating: 4.4,
+        reviewCount: 850,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đã đóng cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'budget',
+        amenities: ['parking', 'air_con'],
+      ),
+      CityRestaurantModel(
+        id: 'r4',
+        name: 'Cuc Gach Quan',
+        imageUrl:
+            'https://ta-img.tatinta.com/resize/1024/webp/destination/file-1627375450588.jpg',
+        rating: 4.3,
+        reviewCount: 420,
+        address: 'Quận 1, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vietnamese',
+        priceLevel: 'premium',
+        amenities: ['air_con', 'parking'],
+      ),
+      CityRestaurantModel(
+        id: 'r5',
+        name: 'Hum Vegetarian',
+        imageUrl:
+            'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500',
+        rating: 4.6,
+        reviewCount: 310,
+        address: 'Quận 3, TP.HCM',
+        status: 'Đang mở cửa',
+        // === Filter fields ===
+        cuisine: 'vegetarian',
+        priceLevel: 'mid_range',
+        amenities: ['air_con'],
+      ),
+    ];
+  }
+
+  @override
+  Future<List<CityHotelModel>> getHotels(String cityId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const [
+      CityHotelModel(
+        id: 'h1',
+        name: 'The Reverie Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500',
+        rating: 5.0,
+        reviewCount: 1250,
+        price: '5.450.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 5450000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
+      ),
+      CityHotelModel(
+        id: 'h2',
+        name: 'Park Hyatt Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=500',
+        rating: 4.8,
+        reviewCount: 850,
+        price: '4.200.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 4200000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
+      ),
+      CityHotelModel(
+        id: 'h3',
+        name: 'Caravelle Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=500',
+        rating: 4.6,
+        reviewCount: 620,
+        price: '1.500.000đ',
+        // === Filter fields ===
+        starRating: 4,
+        priceValue: 1500000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast'],
+      ),
+      CityHotelModel(
+        id: 'h4',
+        name: 'InterContinental Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=500',
+        rating: 4.7,
+        reviewCount: 940,
+        price: '1.800.000đ',
+        // === Filter fields ===
+        starRating: 5,
+        priceValue: 1800000,
+        accommodationType: 'hotel',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
+      ),
+      CityHotelModel(
+        id: 'h5',
+        name: 'Saigon Homestay Cozy',
+        imageUrl:
+            'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=500',
+        rating: 4.3,
+        reviewCount: 180,
+        price: '450.000đ',
+        // === Filter fields ===
+        starRating: 2,
+        priceValue: 450000,
+        accommodationType: 'homestay',
+        amenities: ['wifi'],
+      ),
+      CityHotelModel(
+        id: 'h6',
+        name: 'Fusion Resort Saigon',
+        imageUrl:
+            'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=500',
+        rating: 4.9,
+        reviewCount: 520,
+        price: '3.200.000đ',
+        // === Filter fields ===
+        starRating: 4,
+        priceValue: 3200000,
+        accommodationType: 'resort',
+        amenities: ['pool', 'wifi', 'breakfast', 'gym'],
+      ),
+    ];
+  }
+}
+
+class RemoteCityDetailDataSource implements CityDetailDataSource {
+  final DioClient _client;
+
+  RemoteCityDetailDataSource(this._client);
+
+  final Map<String, Future<Map<String, dynamic>>> _overviewCache = {};
+
+  Future<Map<String, dynamic>> _fetchOverview(String cityId) {
+    return _overviewCache.putIfAbsent(cityId, () async {
+      final response = await _client.dio.get('/explore/cities/$cityId/overview');
+      return (response.data as Map).cast<String, dynamic>();
+    });
+  }
+
+  List<Map<String, dynamic>> _asList(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+    return raw.whereType<Map>().map((item) => item.cast<String, dynamic>()).toList();
+  }
+
+  bool _isApproved(Map<String, dynamic> item) {
+    if (item.containsKey('is_approved')) {
+      return item['is_approved'] == true;
+    }
+    if (item.containsKey('isApproved')) {
+      return item['isApproved'] == true;
+    }
+    // Some API payloads are already pre-filtered and omit approval flags.
+    return true;
+  }
+
+  String _readString(dynamic value) {
+    if (value == null) {
+      return '';
+    }
+    if (value is String) {
+      return value.trim();
+    }
+    return value.toString().trim();
+  }
+
+  /// Rút gọn địa chỉ hiển thị trong city detail: ưu tiên giữ Phường/Xã/Thị trấn;
+  /// nếu không tách được thì bỏ phần cuối (tên tỉnh/TP — thừa vì đang ở trong
+  /// city detail của tỉnh đó). Địa chỉ chỉ có 1 phần thì giữ nguyên.
+  String _shortAddress(String address) {
+    final parts = address
+        .split(',')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return address.trim();
+    if (parts.length > 1 && parts.last.toLowerCase() == 'việt nam') {
+      parts.removeLast();
+    }
+    for (final part in parts) {
+      final lower = part.toLowerCase();
+      if (lower.startsWith('phường ') ||
+          lower.startsWith('p. ') ||
+          lower.startsWith('xã ') ||
+          lower.startsWith('x. ') ||
+          lower.startsWith('thị trấn ') ||
+          lower.startsWith('tt. ')) {
+        return part;
+      }
+    }
+    if (parts.length > 1) parts.removeLast();
+    return parts.join(', ');
+  }
+
+  /// Backend trả "Chưa có giờ mở cửa" khi địa điểm thiếu dữ liệu giờ —
+  /// coi như không có status để card ẩn dòng này thay vì hiển thị.
+  String _readStatus(dynamic value) {
+    final status = _readString(value);
+    return status == 'Chưa có giờ mở cửa' ? '' : status;
+  }
+
+  double _readDouble(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  int _readInt(dynamic value) {
+    if (value == null) {
+      return 0;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  String _formatVndPrice(double value) {
+    final digits = value.round().toString();
+    return '${digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    )}đ';
+  }
+
+  String _readImageUrl(Map<String, dynamic> item) {
+    final candidates = [
+      item['imageUrl'],
+      item['image_url'],
+      item['image'],
+      item['thumbnail'],
+      item['thumbnail_url'],
+      item['cover_image'],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is String && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+
+      if (candidate is List) {
+        for (final nested in candidate) {
+          if (nested is String && nested.trim().isNotEmpty) {
+            return nested.trim();
+          }
+        }
+      }
+    }
+
+    return '';
+  }
+
+  Map<String, dynamic> _normalizeActivity(Map<String, dynamic> item) {
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']).isNotEmpty
+          ? _readString(item['name'])
+          : _readString(item['title']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': _shortAddress(_readString(item['address'])),
+      'status': _readStatus(item['status']),
+      'isFavorite': item['isFavorite'] == true,
+      'category': _readString(item['category']),
+      'priceType': _readString(item['priceType'] ?? item['price_type']),
+      'district': _readString(item['district']),
+    };
+  }
+
+  Map<String, dynamic> _normalizeRestaurant(Map<String, dynamic> item) {
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': _shortAddress(_readString(item['address'])),
+      'status': _readStatus(item['status']),
+      'isFavorite': item['isFavorite'] == true,
+      'cuisine': _readString(item['cuisine']),
+      'priceLevel': _readString(item['priceLevel'] ?? item['price_level']),
+      'amenities': item['amenities'] is List ? item['amenities'] : <String>[],
+    };
+  }
+
+  Map<String, dynamic> _normalizeHotel(Map<String, dynamic> item) {
+    final normalizedAddress = _readString(item['address']).isNotEmpty
+      ? _readString(item['address'])
+      : (_readString(item['city']).isNotEmpty
+        ? _readString(item['city'])
+        : _readString(item['location']));
+
+    final minPrice = _readDouble(
+      item['min_price'] ?? item['priceValue'] ?? item['price_value'],
+    );
+    final rawPrice = _readString(item['price']);
+
+    return {
+      'id': _readString(item['id']),
+      'name': _readString(item['name']),
+      'imageUrl': _readImageUrl(item),
+      'rating': _readDouble(item['rating'] ?? item['average_rating']),
+      'reviewCount': _readInt(item['reviewCount'] ?? item['review_count']),
+      'address': _shortAddress(normalizedAddress),
+      'price': minPrice > 0
+          ? _formatVndPrice(minPrice)
+          : (rawPrice.isNotEmpty ? rawPrice : 'Liên hệ'),
+      'isFavorite': item['isFavorite'] == true,
+      'starRating': _readInt(item['starRating'] ?? item['star_rating']),
+      'priceValue': minPrice,
+      'accommodationType': _readString(
+        item['accommodationType'] ?? item['accommodation_type'],
+      ),
+      'amenities': item['amenities'] is List ? item['amenities'] : <String>[],
+    };
+  }
+
+  @override
+  Future<List<CityItineraryModel>> getItineraries(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['itineraries'])
+        .map(CityItineraryModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityActivityModel>> getActivities(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['activities'])
+      .where(_isApproved)
+      .map(_normalizeActivity)
+      .map(CityActivityModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityRestaurantModel>> getRestaurants(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['restaurants'])
+      .where(_isApproved)
+      .map(_normalizeRestaurant)
+      .map(CityRestaurantModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<CityHotelModel>> getHotels(String cityId) async {
+    final data = await _fetchOverview(cityId);
+    return _asList(data['hotels'])
+        .where(_isApproved)
+        .map(_normalizeHotel)
+        .map(CityHotelModel.fromJson)
+        .toList();
+  }
+}

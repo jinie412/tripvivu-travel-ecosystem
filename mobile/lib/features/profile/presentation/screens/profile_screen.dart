@@ -1,0 +1,314 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'change_password_screen.dart';
+import 'edit_profile_screen.dart';
+import 'notifications_screen.dart';
+import 'support_screen.dart';
+import 'package:travel_advisor_mobile/core/constants/app_colors.dart';
+import 'package:travel_advisor_mobile/core/constants/app_sizes.dart';
+import 'package:travel_advisor_mobile/core/di/injection_container.dart';
+import 'package:travel_advisor_mobile/core/theme/app_theme.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:travel_advisor_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:travel_advisor_mobile/features/home/presentation/cubit/notification_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:travel_advisor_mobile/features/profile/presentation/cubit/profile_state.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  Future<bool> _confirmLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    return shouldLogout ?? false;
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final shouldLogout = await _confirmLogout(context);
+    if (!shouldLogout || !context.mounted) return;
+
+    final authCubit = sl<AuthCubit>();
+    await authCubit.logout();
+    await authCubit.close();
+
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.premiumBackground,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.s24,
+            vertical: AppSizes.s16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row: Title & Avatar
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      AppColors.premiumNavy,
+                      AppColors.premiumBlue,
+                      AppColors.premiumTeal,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.premiumNavy.withValues(alpha: .18),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tài khoản',
+                      style: AppTextStyles.heading1.copyWith(
+                        fontSize: 22,
+                        color: Colors.white,
+                      ),
+                    ),
+                    BlocBuilder<ProfileCubit, ProfileState>(
+                      builder: (context, state) {
+                        final avatarUrl = state is ProfileLoaded
+                            ? state.profile.avatarUrl
+                            : '';
+
+                        return CircleAvatar(
+                          radius: 32,
+                          backgroundColor: Colors.white.withValues(alpha: .18),
+                          backgroundImage: avatarUrl.isNotEmpty
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl.isEmpty
+                              ? const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 30,
+                                )
+                              : null,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSizes.s32),
+
+              // Menu Items
+              _buildMenuItem(
+                icon: Icons.account_circle,
+                title: 'Hồ sơ',
+                onTap: () {
+                  final profileCubit = context.read<ProfileCubit>();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider.value(
+                        value: profileCubit,
+                        child: const EditProfileScreen(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.notifications,
+                title: 'Thông báo',
+                onTap: () {
+                  final notificationCubit = context.read<NotificationCubit>()
+                    ..loadNotifications();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider.value(
+                        value: notificationCubit,
+                        child: const NotificationsScreen(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.language,
+                title: 'Ngôn ngữ',
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Chọn ngôn ngữ'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(
+                              Icons.check,
+                              color: AppColors.primary,
+                            ),
+                            title: Text('Tiếng Việt'),
+                            onTap: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.lock_outline_rounded,
+                title: 'Đổi mật khẩu',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (_) => sl<AuthCubit>(),
+                        child: const ChangePasswordScreen(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuItem(
+                icon: Icons.help_outline,
+                title: 'Hỗ trợ',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SupportScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: AppSizes.s48),
+
+              // Logout Button
+              SizedBox(
+                width: double.infinity,
+                height: AppSizes.buttonHeight,
+                child: ElevatedButton(
+                  onPressed: () => _logout(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.premiumNavy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.r16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Đăng xuất',
+                    style: AppTextStyles.heading2.copyWith(color: Colors.white),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: AppSizes.s40),
+
+              // Footer Info
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'Phiên bản: v66.5 bản dựng 260119007',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.s40,
+                      ),
+                      child: Text(
+                        'ID thiết bị: 19d532bc-7d43-4941-900b-a18233ea8644',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.premiumBorder),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppColors.premiumSoftBlue,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(icon, color: AppColors.premiumBlue, size: 22),
+        ),
+        title: Text(
+          title,
+          style: AppTextStyles.heading2.copyWith(
+            fontSize: 15,
+            color: AppColors.premiumNavy,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.premiumMuted,
+        ),
+      ),
+    );
+  }
+}

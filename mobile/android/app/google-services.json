@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "300194104377",
+    "project_id": "travel-advisor-d067e",
+    "storage_bucket": "travel-advisor-d067e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300194104377:android:a0753bb272d512bce079e8",
+        "android_client_info": {
+          "package_name": "com.traveladvisor.travel_advisor_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLN2y2YHkRXrsQZLIhs5Wz46qDeifa5NM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,331 @@
+import 'package:travel_advisor_mobile/features/itinerary/data/datasources/itinerary_datasource.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/create_itinerary_request_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_detail_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_day_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_summary.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/repositories/itinerary_repository.dart';
+import 'package:travel_advisor_mobile/features/trip_planner/domain/usecases/create_itinerary_usecase.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/customize_activity_response_model.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/itinerary_activity_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/domain/entities/incurred_cost_entity.dart';
+import 'package:travel_advisor_mobile/features/itinerary/data/models/incurred_cost_model.dart';
+
+/// Implementation cụ thể của [ItineraryRepository].
+///
+/// Delegate mọi thao tác sang [ItineraryDataSource] và chuyển đổi
+/// Model → Entity trước khi trả về cho tầng Domain.
+class ItineraryRepositoryImpl implements ItineraryRepository {
+  final ItineraryDataSource _dataSource;
+  ItineraryRepositoryImpl(this._dataSource);
+
+  @override
+  Future<List<ItineraryEntity>> getItineraries({
+    ItineraryStatus? status,
+    String? query,
+  }) async {
+    final models = await _dataSource.getItineraries(query: query);
+    final entities = models.map((m) => m.toEntity()).toList();
+
+    // Lọc theo status nếu có.
+    if (status != null) {
+      return entities.where((e) => e.status == status).toList();
+    }
+    return entities;
+  }
+
+  @override
+  Future<ItinerarySummary> getSummary() async {
+    final models = await _dataSource.getItineraries();
+    final entities = models.map((m) => m.toEntity()).toList();
+
+    return ItinerarySummary(
+      total: entities.length,
+      completed: entities
+          .where((e) => e.status == ItineraryStatus.completed)
+          .length,
+      ongoing: entities
+          .where((e) => e.status == ItineraryStatus.ongoing)
+          .length,
+      upcoming: entities
+          .where((e) => e.status == ItineraryStatus.upcoming)
+          .length,
+      draft: entities.where((e) => e.status == ItineraryStatus.draft).length,
+    );
+  }
+
+  @override
+  Future<void> deleteItinerary(String id) async {
+    await _dataSource.deleteItinerary(id);
+  }
+
+  @override
+  Future<ItineraryDetailEntity> getItineraryDetail(String id) async {
+    final model = await _dataSource.getItineraryDetail(id);
+    return model.toEntity();
+  }
+
+  @override
+  Future<void> updateItineraryActivities(
+    String id,
+    List<ItineraryDayEntity> days,
+  ) async {
+    await _dataSource.updateItineraryActivities(id, days);
+  }
+
+  @override
+  Future<void> toggleVisibility(String id, bool isPublic) {
+    return _dataSource.toggleVisibility(id, isPublic);
+  }
+
+  @override
+  Future<void> shareItinerary(String id, String recipient) {
+    return _dataSource.shareItinerary(id, recipient);
+  }
+
+  @override
+  Future<List<ItineraryShareRecipient>> searchShareRecipients(String query) {
+    return _dataSource.searchShareRecipients(query);
+  }
+
+  @override
+  Future<ItineraryShareLink> createShareLink(String id) {
+    return _dataSource.createShareLink(id);
+  }
+
+  @override
+  Future<void> updateItineraryTitle(String id, String title) {
+    return _dataSource.updateItineraryTitle(id, title);
+  }
+
+  @override
+  Future<void> updateActivity(
+    String itineraryId,
+    String activityId, {
+    String? arrivalTime,
+    String? departureTime,
+    double? actualCost,
+    String? userNotes,
+    bool? isLocked,
+    bool? allowReduceTime,
+    bool? extendTime,
+  }) {
+    return _dataSource.updateActivity(
+      itineraryId,
+      activityId,
+      arrivalTime: arrivalTime,
+      departureTime: departureTime,
+      actualCost: actualCost,
+      userNotes: userNotes,
+      isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+    );
+  }
+
+  @override
+  Future<void> deleteActivity(String itineraryId, String activityId) {
+    return _dataSource.deleteActivity(itineraryId, activityId);
+  }
+
+  @override
+  Future<CreateItineraryResult> createItinerary(
+    CreateItineraryParams params,
+  ) async {
+    final request = CreateItineraryRequestModel(
+      userId: params.userId,
+      tripType: params.tripType,
+      departureLocationId: params.departureLocationId,
+      destinationLocationId: params.destinationLocationId,
+      transportMode: params.transportMode,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      dailyStartTime: params.dailyStartTime,
+      dailyEndTime: params.dailyEndTime,
+      tripIntent: params.tripIntent,
+      adultCount: params.adultCount,
+      childCount: params.childCount,
+      budget: params.budget,
+      foodPreferences: params.foodPreferences,
+      description: params.tripName,
+      proceedWithOverBudget: params.proceedWithOverBudget,
+      regionAllocations: params.regionAllocations,
+      confirmToken: params.confirmToken,
+    );
+    return _dataSource.createItinerary(request);
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> addActivityToItinerary(
+    String itineraryId,
+    int dayNumber,
+    String placeId, {
+    String? preferredTime,
+    bool isLocked = false,
+    bool? allowReduceTime,
+    bool? extendTime,
+    bool? addExtraDay,
+  }) {
+    return _dataSource.addActivityToItinerary(
+      itineraryId,
+      dayNumber,
+      placeId,
+      preferredTime: preferredTime,
+      isLocked: isLocked,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+      addExtraDay: addExtraDay,
+    );
+  }
+
+  @override
+  Future<CustomizeActivityResponseModel> replaceActivityInItinerary(
+    String itineraryId,
+    String activityId,
+    String newPlaceId, {
+    bool? allowReduceTime,
+    bool? extendTime,
+  }) {
+    return _dataSource.replaceActivityInItinerary(
+      itineraryId,
+      activityId,
+      newPlaceId,
+      allowReduceTime: allowReduceTime,
+      extendTime: extendTime,
+    );
+  }
+
+  @override
+  Future<({List<ItineraryActivityEntity> optimized, List<String> reorderNotes})>
+  optimizeDay(String itineraryId, Map<String, dynamic> payload) async {
+    final result = await _dataSource.optimizeDay(itineraryId, payload);
+    return (
+      optimized: result.optimized.map((m) => m.toEntity()).toList(),
+      reorderNotes: result.reorderNotes,
+    );
+  }
+
+  // ── Chi phí phát sinh (mục 1.6-1.7) ──────────────────────────────────
+
+  @override
+  Future<List<IncurredCostEntity>> getIncurredCosts(
+    String itineraryId, {
+    String? placeId,
+    int? dayNumber,
+    String? filterUserId,
+  }) async {
+    final models = await _dataSource.getIncurredCosts(
+      itineraryId,
+      placeId: placeId,
+      dayNumber: dayNumber,
+      filterUserId: filterUserId,
+    );
+    return models.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<List<EligiblePlaceEntity>> getEligiblePlaces(
+    String itineraryId,
+  ) async {
+    final models = await _dataSource.getEligiblePlaces(itineraryId);
+    return models.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<CostBreakdownEntity> getCostBreakdown(String itineraryId) async {
+    final model = await _dataSource.getCostBreakdown(itineraryId);
+    return model.toEntity();
+  }
+
+  @override
+  Future<DayCostBreakdownEntity> getDayCostBreakdown(
+    String itineraryId,
+    int dayNumber,
+  ) async {
+    final model = await _dataSource.getDayCostBreakdown(itineraryId, dayNumber);
+    return model.toEntity();
+  }
+
+  @override
+  Future<IncurredCostEntity> createIncurredCost(
+    String itineraryId, {
+    CostType type = CostType.other,
+    required String note,
+    required double amount,
+    String? placeId,
+    int? dayNumber,
+    List<String>? chargedTo,
+  }) async {
+    final model = await _dataSource.createIncurredCost(
+      itineraryId,
+      type: type,
+      note: note,
+      amount: amount,
+      placeId: placeId,
+      dayNumber: dayNumber,
+      chargedTo: chargedTo,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<IncurredCostEntity> updateIncurredCost(
+    String itineraryId,
+    String costId, {
+    CostType? type,
+    String? note,
+    double? amount,
+    String? placeId,
+    int? dayNumber,
+    List<String>? chargedTo,
+  }) async {
+    final model = await _dataSource.updateIncurredCost(
+      itineraryId,
+      costId,
+      type: type,
+      note: note,
+      amount: amount,
+      placeId: placeId,
+      dayNumber: dayNumber,
+      chargedTo: chargedTo,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<void> deleteIncurredCost(String itineraryId, String costId) {
+    return _dataSource.deleteIncurredCost(itineraryId, costId);
+  }
+
+  @override
+  Future<IncurredCostEntity> updatePlaceEffectivePrice(
+    String itineraryId,
+    String placeId,
+    double amount,
+  ) async {
+    final model = await _dataSource.updatePlaceEffectivePrice(
+      itineraryId,
+      placeId,
+      amount,
+    );
+    return model.toEntity();
+  }
+
+  @override
+  Future<void> setChildAssignments(
+    String itineraryId,
+    List<ChildAssignmentEntity> assignments,
+  ) {
+    return _dataSource.setChildAssignments(
+      itineraryId,
+      assignments
+          .map(
+            (a) => ChildAssignmentModel(
+              userId: a.userId,
+              childCount: a.childCount,
+            ),
+          )
+          .toList(),
+    );
+  }
+}
