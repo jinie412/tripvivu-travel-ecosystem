@@ -1,0 +1,76 @@
+name: CD - Web Deploy
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  REGISTRY: registry.digitalocean.com/graduation-travel
+  IMAGE_NAME: frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create env file
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > .env
+          echo "VITE_SWAGGER_URL=${{ secrets.VITE_SWAGGER_URL }}" >> .env
+          echo "VITE_TOKEN_KEY=${{ secrets.VITE_TOKEN_KEY }}" >> .env
+          echo "VITE_API_TIMEOUT=${{ secrets.VITE_API_TIMEOUT }}" >> .env
+          echo "VITE_APP_NAME=${{ secrets.VITE_APP_NAME }}" >> .env
+          echo "VITE_ENV=${{ secrets.VITE_ENV }}" >> .env
+          echo "VITE_FRONTEND_URL=${{ secrets.VITE_FRONTEND_URL }}" >> .env
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Login DO Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DO_REGISTRY_TOKEN }}
+          password: ${{ secrets.DO_REGISTRY_TOKEN }}
+
+      - name: Build Docker Image
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:latest .
+
+      - name: Push Image
+        run: |
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /root/app
+            echo "${{ secrets.DO_REGISTRY_TOKEN }}" | docker login registry.digitalocean.com -u "${{ secrets.DO_REGISTRY_TOKEN }}" --password-stdin
+            if docker compose version >/dev/null 2>&1; then
+              DC="docker compose"
+            else
+              DC="docker-compose"
+            fi
+            $DC pull frontend
+            $DC rm -f frontend
+            $DC up -d --no-deps frontend
+            $DC ps

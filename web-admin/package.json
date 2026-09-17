@@ -1,0 +1,47 @@
+{
+  "name": "travel-advisor-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Travel Advisor Admin & Provider Web Portal",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "travel",
+    "admin",
+    "provider",
+    "react",
+    "vite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
+    "@tanstack/react-query": "^5.91.0",
+    "@vitejs/plugin-react": "^5.1.4",
+    "axios": "^1.13.6",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.2",
+    "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "sweetalert2": "^11.26.24",
+    "tailwind-merge": "^3.5.0",
+    "vite": "^7.3.1",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}

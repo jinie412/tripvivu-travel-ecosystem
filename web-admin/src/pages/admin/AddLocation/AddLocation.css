@@ -1,0 +1,324 @@
+.add-location-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px 40px;
+}
+
+.content-header {
+  margin-bottom: 32px;
+}
+
+.content-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.content-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Stepper Styling */
+.stepper-wrapper {
+  background-color: var(--bg-surface);
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 24px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.step-item.active {
+  color: var(--primary-blue);
+}
+
+.step-item.completed {
+  color: var(--success-green);
+}
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.step-item.active .step-number {
+  background-color: var(--primary-blue);
+  color: white;
+}
+
+.step-item.completed .step-number {
+  background-color: var(--success-green);
+  color: white;
+}
+
+/* Progress Bar */
+.progress-section {
+  margin-bottom: 40px;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background-color: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--primary-blue);
+  transition: width 0.3s ease;
+}
+
+/* Form Layout */
+.form-layout-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: var(--bg-surface);
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Checkbox Grid */
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.checkbox-item input {
+  width: 18px;
+  height: 18px;
+}
+
+/* Map Style */
+.map-placeholder {
+  width: 100%;
+  height: 240px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  position: relative;
+  background-image: url('https://raw.githubusercontent.com/HanhSpring/travel-assets/main/map-preview.png');
+  /* Mock map img */
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.map-controls {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.map-zoom {
+  width: 28px;
+  height: 28px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.map-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+}
+
+.map-marker {
+  position: relative;
+  bottom: 15px;
+  /* Adjust to point tip of pin */
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Input with icon */
+.input-with-icon {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.input-with-icon input {
+  padding-left: 48px !important;
+}
+
+/* Footer Actions */
+.form-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-cancel {
+  padding: 10px 24px;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-continue {
+  padding: 10px 32px;
+  background-color: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-continue:hover {
+  background-color: var(--primary-blue-hover);
+}
+
+.policy-note {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.policy-note b {
+  color: var(--text-primary);
+}
+
+@media (max-width: 960px) {
+  .form-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}

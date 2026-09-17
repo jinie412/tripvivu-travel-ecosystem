@@ -1,0 +1,19 @@
+/* ItineraryReviewDetail overrides — base styles come from ReviewDetail.css */
+
+/* Itinerary info box: blue theme instead of red */
+.itinerary-review-detail-page .ird-itinerary-info {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.itinerary-review-detail-page .ird-itinerary-info .rd-location-icon {
+  background-color: white;
+}
+
+.itinerary-review-detail-page .ird-itinerary-info .rd-location-name {
+  color: #1e40af;
+}
+
+.itinerary-review-detail-page .ird-itinerary-info .rd-location-address {
+  color: #3b82f6;
+}
