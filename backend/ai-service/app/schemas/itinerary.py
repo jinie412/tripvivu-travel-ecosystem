@@ -1,0 +1,287 @@
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ItineraryPlaceInput(BaseModel):
+    id: str
+    name: str
+    longitude: float
+    latitude: float
+    place_type: str | None = Field(
+        default=None,
+        description="hotel | restaurant | cafe | entertainment | attraction. If omitted, slot_type/category/source is used.",
+    )
+    slot_type: str | None = None
+    category: str | None = None
+    source: str = ""
+    type_id: str = ""
+    type_name: str = ""
+    category_id: str | None = None
+    category_name: str | None = None
+    open_hour: str | None = None
+    open_hour_compressed: str | None = None
+    visit_duration: int | None = None
+    average_rating: float | None = None
+    review_count: int | None = None
+    retrieval_score: float | None = None
+    candidate_rank: int | None = None
+    candidate_total: int | None = None
+    estimated_cost: float | None = None
+    price_min: float | None = None
+    price_max: float | None = None
+    price_basis: str | None = None
+    price_inferred: bool | None = None
+    best_time: str | None = None
+    best_time_source: str | None = None
+    planner_source: str | None = None
+    district_old: str | None = None
+
+
+class ItineraryPlanRequest(BaseModel):
+    places: list[ItineraryPlaceInput]
+    # Pool nhà hàng dự phòng quanh điểm đến, KHÔNG lọc theo sở thích/two-tower
+    # (api-service.recommendation.service.ts:fetchFallbackRestaurants) — chỉ
+    # dùng khi 1 ngày sau khi cluster địa lý bị thiếu ứng viên nhà hàng, xem
+    # SchedulerV2Planner._ensure_restaurant_coverage().
+    fallback_restaurants: list[ItineraryPlaceInput] = Field(default_factory=list)
+    num_days: int = Field(..., ge=1)
+    daily_start_time: str = Field(default="08:00", pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+    daily_end_time: str = Field(default="21:00", pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+    trip_start_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    adult_count: int = Field(default=1, ge=1)
+    child_count: int = Field(default=0, ge=0)
+    trip_budget_total: float = Field(
+        default=0,
+        ge=0,
+        description="Tổng ngân sách tối đa cho toàn bộ nhóm, đơn vị VND.",
+    )
+    budget_per_person: float = Field(
+        default=0,
+        ge=0,
+        description="Deprecated compatibility field. New clients must send trip_budget_total.",
+    )
+    selected_hotel_id: str | None = None
+    hotel_total_cost: float = Field(
+        default=0,
+        ge=0,
+        description="Tổng giá phòng cho toàn bộ kỳ lưu trú, đã được API chọn trước.",
+    )
+    return_to_hotel: bool = False
+    use_goong: bool = True
+    require_goong: bool = False
+    goong_api_key: str = ""
+    travel_vehicle: str = Field(default="car", pattern=r"^(car|bike)$")
+    check_in_time: str | None = Field(
+        default=None,
+        pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+        description="Day 1 start time (HH:MM). If after 13:30, lunch is not enforced on day 1.",
+    )
+    travel_cache_path: str | None = None
+    speed_kmh: float = 30.0
+    population_size: int = Field(default=50, ge=2)
+    generations: int = Field(default=200, ge=1)
+    mutation_rate: float = Field(default=0.30, ge=0, le=1)
+    seed: int | None = 42
+    planner_engine: str = Field(
+        default="scheduler_v2",
+        description="Planner engine: scheduler_v2/or_tools or ga_v1/ga.",
+    )
+    region_day_allocations: list[dict[str, Any]] | None = Field(
+        default=None,
+        description=(
+            "Result of the region-allocation wizard: [{place_ids, days}, ...] "
+            "— how many days the user assigned to each detected geo-region. "
+            "When present, forces those exact day-pools instead of running "
+            "automatic geo-clustering/capacity-balancing."
+        ),
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "places": [
+                    {
+                        "id": "hotel-1",
+                        "name": "Demo Hotel",
+                        "longitude": 108.2208,
+                        "latitude": 16.0678,
+                        "place_type": "hotel",
+                        "slot_type": "accommodation",
+                        "category": "accommodation",
+                        "source": "swagger",
+                        "type_id": "hotel",
+                        "type_name": "Hotel",
+                        "open_hour_compressed": None,
+                        "visit_duration": 60,
+                        "average_rating": 4.5,
+                    },
+                    {
+                        "id": "attraction-1",
+                        "name": "Cau Rong",
+                        "longitude": 108.2274,
+                        "latitude": 16.0611,
+                        "place_type": "attraction",
+                        "slot_type": "attraction",
+                        "category": "attraction",
+                        "source": "swagger",
+                        "type_id": "attraction",
+                        "type_name": "Attraction",
+                        "open_hour_compressed": "08:00-22:00",
+                        "visit_duration": 90,
+                        "average_rating": 4.7,
+                    },
+                    {
+                        "id": "restaurant-1",
+                        "name": "Demo Restaurant",
+                        "longitude": 108.2244,
+                        "latitude": 16.0682,
+                        "place_type": "restaurant",
+                        "slot_type": "restaurant",
+                        "category": "restaurant",
+                        "source": "swagger",
+                        "type_id": "restaurant",
+                        "type_name": "Restaurant",
+                        "open_hour_compressed": "10:00-21:00",
+                        "visit_duration": 60,
+                        "average_rating": 4.3,
+                    },
+                ],
+                "num_days": 1,
+                "daily_start_time": "08:00",
+                "daily_end_time": "21:00",
+                "selected_hotel_id": "hotel-1",
+                "return_to_hotel": False,
+                "use_goong": True,
+                "goong_api_key": "",
+                "speed_kmh": 30,
+                "population_size": 20,
+                "generations": 40,
+                "mutation_rate": 0.3,
+                "seed": 42,
+            }
+        }
+    }
+
+
+class ScheduleEntryResponse(BaseModel):
+    location_id: str
+    location_name: str
+    travel_from_id: str
+    travel_from_name: str
+    travel_minutes: int
+    raw_travel_minutes: int
+    travel_buffer_minutes: int
+    travel_buffer_source: str
+    distance_km: float
+    travel_source: str
+    arrival_time: str
+    service_start_time: str
+    departure_time: str
+    wait_minutes: int
+    base_duration_minutes: int = 0
+    active_duration_minutes: int
+    estimated_cost: float = 0
+    price_basis: str | None = None
+    price_inferred: bool | None = None
+    best_time: str = "ALL_DAY"
+    best_time_source: str = "default_all_day"
+    best_time_deviation_minutes: int = 0
+    best_time_matched: bool | None = None
+    place_type: str = "attraction"
+    is_restaurant: bool
+    unknown_hours: bool
+    is_return_to_hotel: bool
+
+
+class ItineraryDayResponse(BaseModel):
+    day: int
+    candidates: int = 0
+    visited_count: int
+    target_visited_count: int = 4
+    total_travel_minutes: int
+    total_distance_km: float
+    total_visit_minutes: int
+    total_wait_minutes: int
+    total_activity_cost: float = 0
+    total_transport_cost: float = 0
+    total_day_cost: float = 0
+    budget_limit: float = 0
+    budget_overage: float = 0
+    budget_penalty: float = 0
+    skipped_count: int = 0
+    total_hard_violations: int = 0
+    meal_violations: int = 0
+    restaurant_count: int
+    best_time_eligible_count: int = 0
+    best_time_matched_count: int = 0
+    best_time_slight_mismatch_count: int = 0
+    best_time_large_mismatch_count: int = 0
+    best_time_match_rate: float = 1.0
+    best_time_penalty_minutes: int = 0
+    fitness: float
+    stopped_reason: str
+    # Đặt khi _ensure_restaurant_coverage() (scheduler_v2) xác nhận khu vực
+    # ngày này thực sự không có quán ăn nào gần (kể cả sau khi mở rộng tìm
+    # từ fallback_restaurants) — enforce_lunch đã tự tắt cho ngày này, lý do
+    # này để hiển thị cho người dùng thay vì lịch trình thiếu bữa trưa mà
+    # không giải thích gì.
+    lunch_unavailable_reason: str | None = None
+    schedule: list[ScheduleEntryResponse]
+
+
+class ItineraryPlanResponse(BaseModel):
+    hotel_id: str
+    hotel_name: str
+    num_days: int
+    input_places: int
+    total_visited: int
+    total_ms: int = 0
+    matrix_ms: int = 0
+    ga_ms: int = 0
+    planner_engine: str = "scheduler_v2"
+    solver_ms: int = 0
+    assignment_day_loads: list[int] = Field(default_factory=list)
+    assignment_warnings: list[str] = Field(default_factory=list)
+    assignment_debug: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Debug-only day pools produced by pre-allocation.",
+    )
+    travel_source_counts: dict[str, int] = Field(default_factory=dict)
+    validation_is_feasible: bool = True
+    validation_violations: list[dict] = Field(default_factory=list)
+    validation_warnings: list[str] = Field(default_factory=list)
+    comparison: dict[str, Any] | None = None
+    days: list[ItineraryDayResponse]
+
+
+class RegionDetectionRequest(BaseModel):
+    """Lightweight request for the region-allocation wizard's first step —
+    macro-cluster detection only, no hotel/budget/GA fields needed."""
+
+    places: list[ItineraryPlaceInput]
+    num_days: int = Field(..., ge=1)
+    daily_start_time: str = Field(default="08:00", pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+    daily_end_time: str = Field(default="21:00", pattern=r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+
+class RegionInfo(BaseModel):
+    region_name: str
+    place_ids: list[str]
+    place_names: list[str]
+    max_days: int
+    suggested_days: int = 0
+    total_visit_minutes: int
+    travel_minutes_from_central: int
+    is_remote: bool
+    centroid_lat: float | None = None
+    centroid_lng: float | None = None
+    # Convex hull (đã nới nhẹ ra ngoài) quanh các điểm của vùng, dạng
+    # [[lat, lng], ...] — None nếu vùng có < 3 điểm phân biệt để dựng hull.
+    boundary: list[list[float]] | None = None
+
+
+class RegionDetectionResponse(BaseModel):
+    regions: list[RegionInfo]
+    estimated_total_days: int
+    num_days: int

@@ -1,0 +1,46 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.1
+
+
+# TensorFlow — Two Tower inference (CPU-only, khong can CUDA)
+# tensorflow-recommenders khong can cho serving, chi cho trainning
+tensorflow-cpu==2.16.1
+h5py==3.11.0
+
+# PyTorch — Review Classifier & future models
+torch==2.3.0
+transformers==4.41.0
+#sentence-transformers==3.0.0
+scikit-learn==1.5.2
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.13.0
+
+# Database
+supabase>=2.0.0
+
+# HTTP client
+httpx==0.27.2
+
+# Testing
+pytest==8.2.0
+pytest-asyncio==0.23.6
+
+# Utilities
+python-multipart==0.0.12
+
+# Cloudflare R2 / S3-compatible storage
+boto3==1.34.131
+
+# Itinerary optimization
+ortools==9.8.3296
+protobuf>=4.25.0,<5
+geopy>=2.4.0
+
+# Kaggle Notebooks — GPU training trigger (docs/trigger/09-migrate-modal-to-kaggle.md)
+kaggle==1.7.4.5
